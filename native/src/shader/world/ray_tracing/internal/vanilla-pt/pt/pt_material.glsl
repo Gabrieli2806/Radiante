@@ -149,6 +149,11 @@ bool bedrockHeightMapNormal(int map,
     bitangent = normalizeF(bitangent - tangent * dot(tangent, bitangent), cross(viewNormal, tangent));
     float side = dot(g_frontNormal, viewNormal) < 0.0 ? -1.0 : 1.0;
     normal = normalizeF(side * (tangent * local.x + bitangent * local.y) + viewNormal * local.z, viewNormal);
+    // A band's slope leans the normal up to about 76 degrees off the face. Seen along the face, the bands on the far
+    // side of every groove then faced away from the camera and drew a black line each, down the whole of a quartz
+    // pillar. The normal is kept turned at least a little towards the viewer, as the normal maps are.
+    float facing = dot(normal, viewDir);
+    if (facing < 0.15) { normal = normalizeF(normal + viewDir * (0.15 - facing), viewNormal); }
     return true;
 }
 #endif
