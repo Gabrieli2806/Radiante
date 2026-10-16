@@ -122,7 +122,7 @@ void waterMediumSegment(float distance, float density, out vec3 transmittance, o
 // make it, with the pack's coefficients as they stand (matched against Bedrock RTX side by side: Vanilla RTX, plains,
 // noon, pools seen from above and from under water).
 #    ifndef VPT_BEDROCK_WATER_SCATTER_GAIN
-#        define VPT_BEDROCK_WATER_SCATTER_GAIN 3.2
+#        define VPT_BEDROCK_WATER_SCATTER_GAIN 2.4
 #    endif
 const float BEDROCK_WATER_SKY_SHARE = 0.5;
 const float BEDROCK_WATER_SUN_SHARE = 1.6;
