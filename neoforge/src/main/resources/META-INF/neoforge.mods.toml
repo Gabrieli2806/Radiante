@@ -8,7 +8,6 @@ modId = "radiante"
 version = "${version}"
 displayName = "Radiante"
 authors = "Gabrieli2806"
-credits = "LJIONG, Interstellarss, CaSilicate-dev"
 iconFile = "assets/radiante/icon.png"
 displayURL = "https://modrinth.com/project/radiante"
 description = '''Hardware ray-traced renderer with DLSS, FSR and XeSS running on Minecraft's native Vulkan backend.'''
