@@ -1947,11 +1947,13 @@
   },
   "lava_flow": {
    "bedrock": "textures/blocks/lava_flow",
-   "color": false
+   "color": true,
+   "mcmeta": {"animation": {"frametime": 3}}
   },
   "lava_still": {
    "bedrock": "textures/blocks/lava_still",
-   "color": false
+   "color": true,
+   "mcmeta": {"animation": {"frametime": 2}}
   },
   "leaf_litter": {
    "bedrock": "textures/blocks/leaf_litter",

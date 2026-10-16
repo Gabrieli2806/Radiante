@@ -556,9 +556,14 @@ public final class ChunkManager {
                 scratch.panelQuads.add(quad);
             }
         };
+        // Lava's surface glows evenly at a level 15 glow, except where blocks cast their glow as Bedrock RTX does:
+        // there the pack's own emission map lights it, bright specks over a dark crust as Bedrock shows it. The even
+        // glow on top washed it out into a flat orange.
+        boolean lavaGlow = !pointLights;
         FluidRenderer.Output fluidOutput =
             layer -> scratch.writer(layer, atlasId).water(scratch.fluidIsWater).computeQuadNormals(true)
-                .unshadeQuads(unshade ? cardinal : null).albedoEmission(scratch.fluidIsLava ? Glow.LAVA : 0.0f);
+                .unshadeQuads(unshade ? cardinal : null)
+                .albedoEmission(scratch.fluidIsLava && lavaGlow ? Glow.LAVA : 0.0f);
 
         for (BlockPos pos : BlockPos.betweenClosed(origin, max)) {
             BlockState blockState = region.getBlockState(pos);

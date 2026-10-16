@@ -40,7 +40,7 @@ public final class BedrockPackConverter {
     /** Largest size a Bedrock texture set is converted at, in pixels per side; finer maps are averaged down to it. */
     private static final int MAX_DETAIL = 128;
     /** Stored as the zip comment; a pack converted by another version of the converter is converted again. */
-    private static final String CONVERTER_VERSION = "radiante-bedrock-converter 18";
+    private static final String CONVERTER_VERSION = "radiante-bedrock-converter 19";
 
     /** The converter's version, for the log and the settings screen; packs converted by another are converted again. */
     public static String converterVersion() {
