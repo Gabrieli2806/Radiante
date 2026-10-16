@@ -295,6 +295,17 @@ void ptShadeDefault(bool viewMark) {
                        isWaterMaterial, hasFftWaterSurface, surface);
     // A light block in a state that gives no light draws the sprite its lit state glows with (unlit redstone ore).
     if (isUnlitSurface(packedData)) { surface.mat.emission = 0.0; }
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+    // Small plants (grass, flowers, ferns) are lit as if they faced half way up, as Bedrock RTX lights them: side by
+    // side its short grass is three quarters as bright as the grass block under it, where lit by their own upright
+    // quads a noon sun only grazed the blades and they came out at two fifths (and facing straight up, brighter than
+    // the block).
+    if (isPlantSurface(packedData)) {
+        vec3 plantNormal = normalize(surface.geometricNormal + vec3(0.0, 0.75, 0.0));
+        surface.shadingNormal = plantNormal;
+        surface.geometricNormal = plantNormal;
+    }
+#endif
 
     mainRay.normal = surface.shadingNormal;
     ptStoreMaterial(surface.albedoValue, surface.mat.f0, surface.mat.roughness, surface.mat.metallic,
