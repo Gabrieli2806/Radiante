@@ -173,6 +173,21 @@ bool shouldFallbackNearestSecondaryToBilinear(vec3 worldDir, vec3 baseNormal) {
     return descent < 0.0 && -descent <= heightMapNearestSecondaryBilinearFallbackDepthRate;
 }
 
+// The UV lies in the outer third of a texel on the tile's border, on the side facing out of the tile.
+bool isOuterThirdTexelUV(vec2 uv, ivec2 texel, ivec2 atlasTexelMin, ivec2 atlasTexelMax, ivec2 size) {
+    if (size.x <= 0 || size.y <= 0) { return false; }
+
+    vec2 texelUv = 1.0 / vec2(size);
+    vec2 cellLo = vec2(texel) * texelUv;
+    vec2 cellHi = cellLo + texelUv;
+    vec2 third = texelUv / 3.0;
+
+    return (texel.x == atlasTexelMin.x && uv.x <= cellLo.x + third.x) ||
+           (texel.x == atlasTexelMax.x && uv.x >= cellHi.x - third.x) ||
+           (texel.y == atlasTexelMin.y && uv.y <= cellLo.y + third.y) ||
+           (texel.y == atlasTexelMax.y && uv.y >= cellHi.y - third.y);
+}
+
 // Depth of a column's top. Texels outside the tile count as being at the face (depth 0).
 float sampleHeightDepthNearest(
     sampler2D tex, ivec2 texel, ivec2 atlasTexelMin, ivec2 atlasTexelMax, vec2 uv, float maxDepth) {

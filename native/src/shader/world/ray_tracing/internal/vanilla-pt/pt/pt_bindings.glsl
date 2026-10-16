@@ -1,15 +1,13 @@
 #ifndef VPT_PT_BINDINGS_GLSL
 #define VPT_PT_BINDINGS_GLSL
 
-// Every descriptor and ray payload the world raygen declares, in one place (except froxel fog's grids, see the end,
-// and the few the surface shading adds, see pt/pt_shade_default.glsl).
+// Every descriptor and ray payload the world raygen declares, in one place (except froxel fog's grids, see the end).
 //
 // Moved verbatim out of world.rgen, in their old order; the ReSTIR image, which used to be declared just before
 // main(), now comes last (the SPIR-V does not change). Two declarations here are shared with
-// common/block_light.glsl, which declares them itself when included without this file (it was written for the
-// closest-hit shaders that used to shade): the set 2 binding 1 "last frame" world uniform and the ReSTIR reservoir
-// image. GLSL does not allow the same binding to be declared twice in one module, so in the raygen block_light.glsl
-// must skip its own copies. PT_DECLARES_LAST_WORLD_UBO and
+// common/block_light.glsl, which declares them for the closest-hit shaders: the set 2 binding 1 "last frame" world
+// uniform and the ReSTIR reservoir image. GLSL does not allow the same binding to be declared twice in one module,
+// so once the raygen includes block_light.glsl it must skip its own copies. PT_DECLARES_LAST_WORLD_UBO and
 // PT_DECLARES_RESTIR_IMAGE tell it that this file has already declared them (block_light.glsl then reads
 // lastWorldUBO under its own name, vptLastWorldUBO, through a macro).
 
@@ -113,17 +111,8 @@ layout(set = 4, binding = 4) readonly buffer SharcLockBuffer {
 };
 #endif
 
-// The main-path payload: the in half the any-hit shaders read, the out half the recording closest hit or miss
-// writes (pt/pt_payload.glsl). The path itself is not in it: mainRay below is this shader's own state, which ptStep
-// (pt/pt_trace.glsl) copies the any-hits' inputs from before each trace.
-#include "pt/pt_payload.glsl"
-layout(location = 0) rayPayloadEXT PrismHit prismHit;
+layout(location = 0) rayPayloadEXT MainRay mainRay;
 layout(location = 1) rayPayloadEXT ShadowRay shadowRay;
-
-// The state of the path being traced (util/ray_payloads.glsl). It is a private global rather than a payload: the
-// shading, the miss evaluation and the libraries they use (common/block_light.glsl) all read and write it under this
-// name.
-MainRay mainRay;
 
 const uint VPT_WORLD_MISS_INDEX = 1u;
 const uint VPT_HAND_MISS_INDEX = 2u;

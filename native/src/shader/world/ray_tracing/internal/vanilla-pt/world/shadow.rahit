@@ -133,10 +133,6 @@ void main() {
     vec3 bary = vec3(1.0 - (attribs.x + attribs.y), attribs.x, attribs.y);
 
     uint flags = m0.packedData;
-    // The boat's water patch only keeps the water out of the boat for the main path; it casts no shadow.
-    if (isBoatWaterMaskSurface(flags)) {
-        ignoreIntersectionEXT;
-    }
     uint albedoID = m0.textureID;
     uint alphaMode = getAlphaMode(flags);
     bool textured = hasTexture(flags);

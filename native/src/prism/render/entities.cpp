@@ -560,11 +560,7 @@ struct PackedGeometry {
         ranges.clear();
     }
 
-    // extraFlags are ORed into every material word of the geometry (gpu::Vertex::boatWaterMaskBit).
-    void add(const std::vector<PBRVertex> &vertices,
-             const std::vector<uint32_t> &geometryIndices,
-             bool opaque,
-             uint32_t extraFlags) {
+    void add(const std::vector<PBRVertex> &vertices, const std::vector<uint32_t> &geometryIndices, bool opaque) {
         ranges.push_back({
             .firstVertex = static_cast<uint32_t>(positions.size()),
             .vertexCount = static_cast<uint32_t>(vertices.size()),
@@ -575,7 +571,6 @@ struct PackedGeometry {
         for (const PBRVertex &vertex : vertices) {
             positions.push_back(gpu::Vertex::makePositionVertex(vertex));
             materials.push_back(gpu::Vertex::makeMaterialVertex(vertex));
-            materials.back().packedData |= extraFlags;
         }
         indices.insert(indices.end(), geometryIndices.begin(), geometryIndices.end());
     }
@@ -873,9 +868,7 @@ std::shared_ptr<Entity> Entities::State::gatherTraced(const EntitiesBuildTask &t
                 collectEmissiveQuadLights(*source, triangles.vertices, input.hashCode, kept, occupancy, lights);
             }
         }
-        const int geometryType = task.geometryTypes[geometry];
-        target.add(triangles.vertices, triangles.indices, geometryType == World::WORLD_SOLID,
-                   geometryType == World::BOAT_WATER_MASK ? gpu::Vertex::boatWaterMaskBit : 0u);
+        target.add(triangles.vertices, triangles.indices, task.geometryTypes[geometry] == World::WORLD_SOLID);
         entity->geometryGroupNames->emplace_back(groupName(task, geometry));
         entity->geometryContentNames->emplace_back(contentName(task, geometry));
         entity->vertexCounts->push_back(static_cast<uint32_t>(triangles.vertices.size()));

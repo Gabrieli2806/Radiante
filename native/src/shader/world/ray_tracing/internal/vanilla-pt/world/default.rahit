@@ -5,18 +5,10 @@
 #extension GL_EXT_buffer_reference : require
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 
-// Any-hit for ordinary world geometry on the main path. It rejects candidate hits that should not count:
-//   - geometry hidden by the LOD system,
-//   - glass faces merged away by seamless glass (and, in the Bedrock profile, glass/blend faces facing the wrong
-//     way for the camera path),
-//   - cut-out and stochastic-alpha texels (by alpha mode),
-//   - water inside a boat, and water flagged as the surface the ray just left.
-// Glass is always accepted once it survives the face checks; its transparency is handled by the shading.
-
 #include "util/alpha_mode.glsl"
 #include "util/random.glsl"
 #include "util/ray_cone.glsl"
-#include "pt/pt_payload.glsl"
+#include "util/ray.glsl"
 #include "util/util.glsl"
 #include "common/shared.hpp"
 
@@ -49,113 +41,117 @@ indexBuffer;
 #include "common/lod_coverage.glsl"
 #include "common/seamless_glass.glsl"
 
-// Incoming main-path payload (what the raygen sent along with the ray): ray cone and path state bits.
-layout(location = 0) rayPayloadInEXT PrismHit prismHit;
+
+layout(location = 0) rayPayloadInEXT MainRay mainRay;
 hitAttributeEXT vec2 attribs;
 
 void main() {
     if (VPT_LOD_COVERED(ubo)) {
         ignoreIntersectionEXT;
+        return;
     }
+    uint instanceID = gl_InstanceCustomIndexEXT;
+    uint geometryID = gl_GeometryIndexEXT;
+    uint geometryBufferIndex = getGeometryBufferIndex(instanceID, geometryID);
 
-    uint geometry = getGeometryBufferIndex(gl_InstanceCustomIndexEXT, gl_GeometryIndexEXT);
     uint i0, i1, i2;
     MaterialVertex m0, m1, m2;
-    loadTriangleIndices(geometry, gl_PrimitiveID, i0, i1, i2);
-    loadTriangleMaterial(geometry, i0, i1, i2, m0, m1, m2);
+    loadTriangleIndices(geometryBufferIndex, gl_PrimitiveID, i0, i1, i2);
+    loadTriangleMaterial(geometryBufferIndex, i0, i1, i2, m0, m1, m2);
 
-    vec3 bary = vec3(1.0 - (attribs.x + attribs.y), attribs.x, attribs.y);
-    uint flags = m0.packedData;
-    uint albedoID = m0.textureID;
-    uint alphaMode = getAlphaMode(flags);
-    bool textured = hasTexture(flags);
-    bool glass = isGlassSurface(flags);
-    // Seamless glass is laid out on the block grid, which a block held in hand is not on.
-    bool gridGlass = glass && !isHeldSurface(flags);
+    vec3 baryCoords = vec3(1.0 - (attribs.x + attribs.y), attribs.x, attribs.y);
+    uint packedData = m0.packedData;
+    uint textureID = m0.textureID;
+    uint alphaMode = getAlphaMode(packedData);
 
-    float alpha = 1.0;
-    if (hasColorLayer(flags)) {
-        alpha = (bary.x * m0.colorLayer + bary.y * m1.colorLayer + bary.z * m2.colorLayer).a;
-    }
-
+    float alpha = hasColorLayer(packedData) ?
+                      (baryCoords.x * m0.colorLayer + baryCoords.y * m1.colorLayer + baryCoords.z * m2.colorLayer).a :
+                      1.0;
     vec2 uv = vec2(0.0);
     float lod = 0.0;
-    if (textured) {
-        uv = bary.x * m0.textureUV + bary.y * m1.textureUV + bary.z * m2.textureUV;
+    if (hasTexture(packedData)) {
+        uv = baryCoords.x * m0.textureUV + baryCoords.y * m1.textureUV + baryCoords.z * m2.textureUV;
         PositionVertex p0, p1, p2;
-        loadTrianglePositions(geometry, i0, i1, i2, p0, p1, p2);
-
-        if (gridGlass && seamlessGlassHidesFace(p0.pos, p1.pos, p2.pos, flags)) {
-            ignoreIntersectionEXT;
+        loadTrianglePositions(geometryBufferIndex, i0, i1, i2, p0, p1, p2);
+        // Seamless glass works from the block grid; a held block is not on it.
+        if (isGlassSurface(packedData) && !isHeldSurface(packedData)) {
+            if (seamlessGlassHidesFace(p0.pos, p1.pos, p2.pos, packedData)) {
+                ignoreIntersectionEXT;
+                return;
+            }
         }
 #if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
-        // Experimental Bedrock profile (see pt/pt_glass.glsl). Along the camera's path, glass, ice, slime and honey
-        // are entered only through faces turned towards the ray and left only through faces turned away; the faces
-        // in between (a slime/honey block's inner cube, the far shell once outside) are skipped, as Bedrock skips
-        // them in its view traversal. Shading them one after another used up the camera's step budget, so looking
-        // through a wall of slime or honey ended in black.
-        bool cameraPath = rayBounce(prismHit) == 0u || rayCameraPath(prismHit) || prismHit.pad0 == RAY_VIEW_BOUNCE_MARK;
-        if ((glass || isBlendSurface(flags)) && !isHeldSurface(flags) && cameraPath) {
-            bool facesRay = dot(cross(p1.pos - p0.pos, p2.pos - p0.pos), gl_ObjectRayDirectionEXT) < 0.0;
-            if (rayInGlass(prismHit) == facesRay) {
+        // The experimental Bedrock profile (see default.rchit): what the camera sees goes into glass, ice, slime or
+        // honey only by a face turned towards it and out only by one turned away; the faces in between (the inner
+        // cube of a slime or honey block, the far shell once out) are left out of its way, as Bedrock leaves them
+        // out of its view's traversal. Met one by one by the hit shader, they used up the camera's steps: through a
+        // wall of honey or slime the view ran out of them and ended dark.
+        if ((isGlassSurface(packedData) || isBlendSurface(packedData)) && !isHeldSurface(packedData) &&
+            (rayBounce(mainRay) == 0u || rayCameraPath(mainRay) || mainRay.pad0 == RAY_VIEW_BOUNCE_MARK)) {
+            bool towards = dot(cross(p1.pos - p0.pos, p2.pos - p0.pos), gl_ObjectRayDirectionEXT) < 0.0;
+            if (rayInGlass(mainRay) == towards) {
                 ignoreIntersectionEXT;
+                return;
             }
         }
 #endif
 
-        float footprint = prismHit.coneWidth + gl_HitTEXT * prismHit.coneSpread;
-        vec3 dPdu, dPdv;
-        computedposduDv(p0.pos, p1.pos, p2.pos, m0.textureUV, m1.textureUV, m2.textureUV, dPdu, dPdv);
-        if (gridGlass) {
-            vec3 objectPos = bary.x * p0.pos + bary.y * p1.pos + bary.z * p2.pos;
-            uv = seamlessGlassUV(uv, objectPos, dPdu, dPdv, flags);
+        float coneRadiusWorld = mainRay.coneWidth + gl_HitTEXT * mainRay.coneSpread;
+        vec3 dposdu, dposdv;
+        computedposduDv(p0.pos, p1.pos, p2.pos, m0.textureUV, m1.textureUV, m2.textureUV, dposdu, dposdv);
+        if (isGlassSurface(packedData) && !isHeldSurface(packedData)) {
+            vec3 objectPos = baryCoords.x * p0.pos + baryCoords.y * p1.pos + baryCoords.z * p2.pos;
+            uv = seamlessGlassUV(uv, objectPos, dposdu, dposdv, packedData);
         }
-        lod = lodWithCone(textures[nonuniformEXT(albedoID)], uv, footprint, dPdu, dPdv);
+        lod = lodWithCone(textures[nonuniformEXT(textureID)], uv, coneRadiusWorld, dposdu, dposdv);
 
-        // Glass is read at full resolution: coarser mips smear a pane's frame into its clear centre.
-        vec4 texel = sampleTexture(textures[nonuniformEXT(albedoID)], uv, glass ? 0.0 : lod, false);
+        // Glass at its full-resolution alpha: mip levels blend a pane's frame into its clear middle.
+        vec4 texel = sampleTexture(textures[nonuniformEXT(textureID)], uv, isGlassSurface(packedData) ? 0.0 : lod, false);
         alpha *= texel.a;
-        if (alphaMode == ALPHA_MODE_ADDITIVE && !(max(texel.r, max(texel.g, texel.b)) >= 0.1)) {
-            // Additive texels this dark add nothing visible.
-            alpha = 0.0;
+        if (alphaMode == ALPHA_MODE_ADDITIVE) {
+            alpha = max(texel.r, max(texel.g, texel.b)) >= 0.1 ? alpha : 0.0;
         }
         if (alphaMode == ALPHA_MODE_DECAL) {
-            // Decals fade out where they are bright (luma above one half is fully gone).
             alpha *= clamp(1.0 - 2.0 * dot(texel.rgb, vec3(0.2126, 0.7152, 0.0722)), 0.0, 1.0);
         }
     }
 
-    // Glass, clear parts included, is always a hit (shaded as see-through glass with alpha 0) so the shading can tint
-    // the view by the glass colour. Skipping it at random by alpha like other see-through surfaces let most rays pass
-    // untinted and made stained glass look almost clear.
-    if (glass) { return; }
+    // Glass is always kept as a hit, clear parts included (shaded as fully see-through glass, alpha 0): the hit shader
+    // sees through it and tints the view by the glass's colour. Skipped at random by its alpha instead, as other
+    // see-through surfaces are, most rays missed tinted or stained glass and it looked nearly clear.
+    if (isGlassSurface(packedData)) {
+        return;
+    }
 
-    bool randomAlpha = alphaMode == ALPHA_MODE_STOCHASTIC || alphaMode == ALPHA_MODE_DECAL;
-    if (randomAlpha && alpha >= 0.05 && alpha < 0.999) {
+    if ((alphaMode == ALPHA_MODE_STOCHASTIC || alphaMode == ALPHA_MODE_DECAL) && alpha >= 0.05 && alpha < 0.999) {
         uint seed = xxhash32(uvec3(gl_LaunchIDEXT.xy, ubo.seed ^ uint(gl_PrimitiveID)));
         if (rand(seed) >= alpha) {
             ignoreIntersectionEXT;
+            return;
         }
     }
-    if (resolveSurfaceAlpha(alpha, alphaMode) < 0.05) {
+    alpha = resolveSurfaceAlpha(alpha, alphaMode);
+    if (alpha < 0.05) {
         ignoreIntersectionEXT;
+        return;
     }
 
-    // Once the ray is past a boat's water patch (world/hit/water_mask.rchit) the water inside the boat does not exist,
-    // as in vanilla. Chunk water carries this in its vertex flags rather than a flag texture, so test it first.
-    bool insideBoat = rayInsideBoat(prismHit);
-    if (insideBoat && isWaterSurface(flags)) {
+    // Past a boat's water patch (world/water_mask.rchit) the water inside the boat is not there, as in vanilla.
+    // Water from chunks is marked in its vertices, not in a flag texture, so this has to come first.
+    if (rayInsideBoat(mainRay) && isWaterSurface(packedData)) {
         ignoreIntersectionEXT;
+        return;
     }
 
-    if (!textured) { return; }
-    int flagTextureID = mapping.entries[albedoID].flag;
+    if (!hasTexture(packedData)) { return; }
+
+    int flagTextureID = mapping.entries[textureID].flag;
     if (flagTextureID < 0) { return; }
 
-    // Bit 0 of the flag texture's red channel marks water-like texels.
-    ivec4 texelFlags = ivec4(round(sampleTexture(textures[nonuniformEXT(flagTextureID)], uv, ceil(lod), false) * 255.0));
-    bool waterTexel = (texelFlags.r & 0x1) > 0;
-    if (waterTexel && (rayIgnoreWaterSelf(prismHit) || insideBoat)) {
+    ivec4 flags = ivec4(round(sampleTexture(textures[nonuniformEXT(flagTextureID)], uv, ceil(lod), false) * 255.0));
+    if ((flags.r & 0x1) > 0 && rayIgnoreWaterSelf(mainRay)) {
         ignoreIntersectionEXT;
+        return;
     }
+    if (rayInsideBoat(mainRay) && (flags.r & 0x1) > 0) { ignoreIntersectionEXT; }
 }

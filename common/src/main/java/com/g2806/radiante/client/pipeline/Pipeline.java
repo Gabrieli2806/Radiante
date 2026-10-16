@@ -1616,6 +1616,9 @@ public class Pipeline {
      */
     public static native void prewarmStatus(int[] out);
 
+    /** GPU time of the world pipeline over the last 60 frames, with its main stages; empty before the first. */
+    public static native String gpuStats();
+
     public static final int PREWARM_IDLE = 0;
     public static final int PREWARM_RUNNING = 1;
     public static final int PREWARM_DONE = 2;

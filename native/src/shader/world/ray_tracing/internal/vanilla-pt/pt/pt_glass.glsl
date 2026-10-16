@@ -116,8 +116,8 @@ bool ptBedrockGlassHit(uint textureID,
                                 (water ? 1u : 0u) + (inside ? 2u : 0u) + (parentWater ? 4u : 0u));
             mainRay.hasPrevScenePos = 0u;
             ptStoreMaterial(vec4(1.0), vec3(0.04), 1.0, 0.0, 1.0, 1.0, 0.0);
-            // The same medium bits in the auxiliary pair, as this hit has always reported them: the first-hit outputs
-            // read the pair of the camera ray's last step, which is this one when its steps run out here.
+            // The same medium bits through the auxiliary pair, where the raygen reads them today. Three small
+            // integers fit exactly in a half float.
             ptStoreAux(vec2(0.0, (water ? 1.0 : 0.0) + (inside ? 2.0 : 0.0) + (parentWater ? 4.0 : 0.0)));
             raySetNoisy(mainRay, false);
             raySetContinue(mainRay, true);

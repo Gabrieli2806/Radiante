@@ -1,25 +1,37 @@
 #ifndef VPT_PT_SHADE_DEFAULT_GLSL
 #define VPT_PT_SHADE_DEFAULT_GLSL
 
-// The default surface shading: material, water and glass media, parallax, direct light and the next bounce, for the
-// default group, the four text groups and every entity layer (their closest hits only record the hit,
-// world/hit/default.rchit and no_height.rchit). It runs in the ray generation shader: ptShadeRecorded
-// (pt/pt_trace.glsl) fills g_hit from the recorded hit and calls ptShadeDefault. The pieces it is built from live in
-// pt_material, pt_parallax, pt_direct, pt_media and pt_glass, and every value of the hit (ray, distance, triangle,
-// transforms) is read through g_hit (pt_hit_context.glsl).
-//
-// The raygen (world.rgen) already has: shared.hpp, disney, labpbr, random, ray_cone, ray, util, constants, and from
-// pt_bindings.glsl the acceleration structure, set 1 binding 1, the world / last world / sky uniforms, transLUT,
-// skyFull, celestial, volumetric_cloud, water_medium, both payloads and mainRay. Only the libraries and descriptors
-// the shading adds are declared below.
+// The default surface shading: material, water and glass media, parallax, direct light and the next bounce, as the
+// closest-hit shaders of the default, text and entity groups run it. default.rchit and no_height.rchit are thin
+// wrappers that set PT_PARALLAX_ALLOWED and include this file. The pieces it is built from live in pt_material,
+// pt_parallax, pt_direct, pt_media and pt_glass, and every value of the hit (ray, distance, triangle, transforms)
+// is read through g_hit (pt_hit_context.glsl), so the same source can later shade in raygen.
+// The wrapper supplies #version and the extensions.
 
+#ifndef PT_PARALLAX_ALLOWED
+#    error "pt_shade_default.glsl: the including shader must define PT_PARALLAX_ALLOWED (1 or 0)"
+#endif
+
+#include "common/shared.hpp"
+#include "util/disney.glsl"
 #include "common/bedrock_solar_brdf.glsl"
 #include "util/alpha_mode.glsl"
 #include "common/fft_water.glsl"
 #include "util/height_map.glsl"
+#include "util/random.glsl"
+#include "util/ray_cone.glsl"
+#include "util/ray.glsl"
 #include "util/sampling_helpers.glsl"
+#include "util/util.glsl"
 
 layout(set = 0, binding = 0) uniform sampler2D textures[];
+
+layout(set = 1, binding = 0) uniform accelerationStructureEXT topLevelAS;
+
+layout(set = 1, binding = 1) readonly buffer BLASOffsets {
+    uint offsets[];
+}
+blasOffsets;
 
 layout(set = 1, binding = 2) readonly buffer IndexBufferAddr {
     uint64_t addrs[];
@@ -31,11 +43,6 @@ layout(set = 1, binding = 3) readonly buffer LastIndexBufferAddr {
 }
 lastIndexBufferAddrs;
 
-layout(set = 1, binding = 6) readonly buffer LastPositionBufferAddr {
-    uint64_t addrs[];
-}
-lastPositionBufferAddrs;
-
 layout(set = 1, binding = 8) readonly buffer LastObjToWorldMat {
     mat4 mat[];
 }
@@ -45,12 +52,34 @@ layout(set = 1, binding = 7) readonly buffer TextureMappingBuffer {
     TextureMapping mapping;
 };
 
+layout(set = 1, binding = 6) readonly buffer LastPositionBufferAddr {
+    uint64_t addrs[];
+}
+lastPositionBufferAddrs;
+
+layout(set = 2, binding = 0) uniform WorldUniform {
+    WorldUBO worldUBO;
+};
+
+layout(set = 2, binding = 2) uniform SkyUniform {
+    SkyUBO skyUBO;
+};
+
+#include "common/celestial.glsl"
+
+layout(set = 5, binding = 0) uniform sampler2D transLUT;
+layout(set = 5, binding = 2) uniform samplerCube skyFull;
+
+#include "common/volumetric_cloud.glsl"
+
 layout(std430, buffer_reference, buffer_reference_align = 8) readonly buffer IndexBuffer {
     uint indices[];
 }
 indexBuffer;
 
 #include "util/vertex.glsl"
+#include "common/constants.glsl"
+#include "common/water_medium.glsl"
 #include "common/rain_wetness.glsl"
 #include "common/seamless_glass.glsl"
 #include "common/bedrock_water.glsl"
@@ -58,6 +87,13 @@ indexBuffer;
 #ifndef VPT_BOUNCE_LIGHT_BOOST
 #    define VPT_BOUNCE_LIGHT_BOOST 1.0
 #endif
+
+#ifndef PT_IN_HIT_STAGE
+// Until the raygen owns the path state, the payloads below are a closest hit's, so only a hit stage can include this.
+#    error "pt_shade_default.glsl: only a closest-hit wrapper (PT_IN_HIT_STAGE) includes this file for now"
+#endif
+layout(location = 0) rayPayloadInEXT MainRay mainRay;
+layout(location = 1) rayPayloadEXT ShadowRay shadowRay;
 
 #include "pt/pt_hit_context.glsl"
 #include "pt/pt_side_channels.glsl"
@@ -78,22 +114,9 @@ const float MIRROR_MIN_METALLIC = 0.5;
 // Under how rough a Bedrock pack's full metal is a mirror in the experimental Bedrock profile.
 const float BEDROCK_MIRROR_ROUGHNESS = 0.01;
 
-// The shading's globals start every hit at the values a closest-hit invocation used to start with. They live as long
-// as the pixel here, so each hit puts them back first; otherwise a hit could see what the previous one left
-// (g_hitIsGlass and g_textureLodUnclamped are only set on textured hits). The side channels (g_step) are cleared for
-// hits and misses alike, by ptShadeRecorded.
-void ptBeginRaygenShade() {
-    g_hitIsGlass = false;
-    g_viewBounce = false;
-    g_frontNormal = vec3(0.0, 1.0, 0.0);
-    g_textureLodUnclamped = 0.0;
-    gParallaxDetectEdges = false;
-}
-
 // The old closest-hit main(), unchanged in order, reading the hit through g_hit and handing its results back
 // through pt_side_channels.glsl. viewMark: the ray belongs to a view chain (traced with RAY_VIEW_BOUNCE_MARK).
-// parallaxAllowed: the hit's group may take height-map parallax (false for entity_solid_z_offset_forward).
-void ptShadeDefault(bool viewMark, bool parallaxAllowed) {
+void ptShadeDefault(bool viewMark) {
     uint geometryBufferIndex = g_hit.geometryBufferIndex;
     MaterialVertex m0 = g_hit.m0;
     MaterialVertex m1 = g_hit.m1;
@@ -147,9 +170,13 @@ void ptShadeDefault(bool viewMark, bool parallaxAllowed) {
     vec3 dPdvWorld = objectToWorld * dposdv;
     bool isWaterMaterial = false;
     bool hasFftWaterSurface = false;
-    // Height-map parallax runs only for the groups that allow it (entity_solid_z_offset_forward, drawn with a forward
-    // depth offset, never takes it), and then only when the pack attribute turns it on.
-    bool parallaxEnabled = parallaxAllowed && VPT_ENABLE_PARALLAX != 0;
+    // Height-map parallax runs only for the groups whose wrapper allows it (no_height.rchit, the entity group that
+    // is drawn with a forward depth offset, never takes it), and then only when the pack attribute turns it on.
+#if PT_PARALLAX_ALLOWED
+    bool parallaxEnabled = VPT_ENABLE_PARALLAX != 0;
+#else
+    bool parallaxEnabled = false;
+#endif
     bool useRealisticWaterSurface = VPT_WATER_SURFACE_MODE == 1u;
 
     if (useTexture) {
@@ -353,7 +380,6 @@ void ptShadeDefault(bool viewMark, bool parallaxAllowed) {
             seenEmission * mainRay.throughput;
         emissionRadiance += currentSurface.tint * albedoEmission * mainRay.throughput;
         mainRay.radiance += emissionRadiance;
-        g_seenEmission += emissionRadiance;
 
         SampledSurface litSurface = currentSurface;
         vec3 directLight =
@@ -560,5 +586,13 @@ void ptShadeDefault(bool viewMark, bool parallaxAllowed) {
 
     raySetStop(mainRay, true);
 }
+
+#ifdef PT_IN_HIT_STAGE
+void main() {
+    ptHitContextFromBuiltins();
+    // The view mark is read as the ray arrives: the shading later writes its own data over pad0 (ptStoreAux).
+    ptShadeDefault(mainRay.pad0 == RAY_VIEW_BOUNCE_MARK);
+}
+#endif
 
 #endif // VPT_PT_SHADE_DEFAULT_GLSL

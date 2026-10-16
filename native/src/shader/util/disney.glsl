@@ -414,4 +414,60 @@ vec3 DisneySample(LabPBRMat mat, vec3 V, vec3 N, out vec3 L, out float pdf, inou
     return DisneyEval(mat, V, N, L, pdf);
 }
 
+// Samples only the rough glass transmission lobe (for the camera seeing through glass). Retries up to four
+// microfacet normals, two random numbers each, until one refracts instead of reflecting totally. Returns zero when
+// none does or the material does not transmit.
+vec3 DisneySampleSpecularRefraction(LabPBRMat mat, vec3 V, vec3 N, out vec3 L, out float pdf, inout uint seed) {
+    pdf = 0.0;
+    L = vec3(0.0);
+
+    vec3 tangent, bitangent;
+    Onb(N, tangent, bitangent);
+
+    vec3 wo = ToLocal(tangent, bitangent, N, V);
+    float cosView = abs(wo.z);
+    if (cosView <= 1e-6 || mat.transmission <= 0.0 || mat.metallic >= 1.0) { return vec3(0.0); }
+
+    float alpha = vptReflectionAlpha(mat.roughness);
+    float eta = (wo.z > 0.0) ? (1.0 / mat.ior) : mat.ior;
+    vec3 wh = vec3(0.0);
+    vec3 wi = vec3(0.0);
+
+    for (int tries = 0; tries < 4; ++tries) {
+        float xiA = rand(seed);
+        float xiB = rand(seed);
+        wh = SampleGGXVNDF(wo, alpha, alpha, xiA, xiB);
+        if (wh.z < 0.0) wh = -wh;
+
+        wi = refract(-wo, wh, eta);
+        if (dot(wi, wi) > 1e-6) {
+            wi = normalize(wi);
+            break;
+        }
+    }
+
+    if (dot(wi, wi) <= 1e-6) { return vec3(0.0); }
+
+    float cosViewHalf = abs(dot(wo, wh));
+    float fresnel = DielectricFresnel(cosViewHalf, eta);
+    float distribution = GTR2Aniso(wh.z, wh.x, wh.y, alpha, alpha);
+    float maskView = SmithGAniso(cosView, wo.x, wo.y, alpha, alpha);
+    float maskBoth = maskView * SmithGAniso(abs(wi.z), wi.x, wi.y, alpha, alpha);
+
+    float halfDenom = dot(wi, wh) + dot(wo, wh) * eta;
+    halfDenom *= halfDenom;
+    if (halfDenom <= 1e-10) { return vec3(0.0); }
+
+    float dwhDwi = abs(dot(wi, wh)) / halfDenom;
+    pdf = maskView * max(0.0, cosViewHalf) * distribution * dwhDwi / cosView;
+    if (pdf <= 1e-6) { return vec3(0.0); }
+
+    vec3 transmitted = pow(max(mat.albedo, vec3(0.0)), vec3(0.5)) * (1.0 - fresnel) * distribution * maskBoth *
+                       abs(dot(wo, wh)) * dwhDwi * (eta * eta) / max(abs(wi.z * wo.z), 1e-6);
+    vec3 value = transmitted * ((1.0 - mat.metallic) * mat.transmission);
+
+    L = ToWorld(tangent, bitangent, N, wi);
+    return value * abs(wi.z);
+}
+
 #endif

@@ -30,7 +30,6 @@ struct Vertex {
     //   bits 8-11   the alpha mode (the low four bits of PBRVertex::alphaMode)
     //   bits 12-15  the coordinate system
     //   bits 17-26  the surface flags Java sets in alphaMode above the mode (below)
-    //   bit 27      the boat's water patch, set by the entity builder from the geometry type (not by Java's flags)
     static constexpr uint32_t useColorLayerBit = 1u << 0u;
     static constexpr uint32_t useTextureBit = 1u << 1u;
     static constexpr uint32_t useOverlayBit = 1u << 2u;
@@ -69,8 +68,6 @@ struct Vertex {
     // redstone ore): it neither glows nor casts light.
     static constexpr uint32_t alphaModeUnlitFlag = 0x2000u;
     static constexpr uint32_t unlitSurfaceBit = 1u << 26u;
-    // The patch over a boat's inside (World::BOAT_WATER_MASK geometry): shadow and visibility rays pass through it.
-    static constexpr uint32_t boatWaterMaskBit = 1u << 27u;
     // Not a surface: the four corners of a light Bedrock RTX adds at a small light block (a torch, a lantern...),
     // read into the section's light list and never traced. Colour, strength (albedoEmission) and radius (norm.x)
     // are the light's. Never packed into the material word.

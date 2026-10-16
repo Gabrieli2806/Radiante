@@ -2,6 +2,13 @@
 #ifndef VPT_END_PORTAL_GLSL
 #define VPT_END_PORTAL_GLSL
 
+// Clip-space position to projective texture coordinates: xy become (x + w, y + w) / 2 so that textureProj's
+// divide by w lands them in [0, 1]; z and w pass through.
+vec4 projectPosition(vec4 position) {
+    vec4 halved = position * 0.5;
+    return vec4(halved.x + halved.w, halved.y + halved.w, position.z, position.w);
+}
+
 // How densely the star sheet repeats across a block. Vanilla projects the stars from the camera, so they slide over
 // the block as the view turns; a path tracer also sees the portal in reflections, where a screen projection makes
 // no sense, so the sheet is pinned to world space instead. 0.25 made the stars about half their vanilla size at

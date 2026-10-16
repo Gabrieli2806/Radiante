@@ -236,55 +236,46 @@ The built-in pack is `vanilla-pt`, in
 `native/src/shader/world/ray_tracing/internal/vanilla-pt/`. It is installed as a zip next to the library and
 loaded as a shader pack, like any external one.
 
-### Hit shaders only record
+### Hit shaders shade
 
-The central design rule: **closest hit shaders do not shade.** Each `world/hit/*.rchit` is a small stub around
-`world/hit/record_hit.glsl` that writes down what was hit, and `world/hit/record_miss.rmiss` writes down a miss.
-The ray generation shader (`world/world.rgen`) then rebuilds the hit (`pt/pt_hit_context.glsl`) and shades it
-itself (`ptShadeRecorded`). Any-hit shaders (`*.rahit`) still do alpha testing and the like, and the shadow rays keep
-their own `shadow.rahit` / `shadow.rmiss`.
+Each surface kind has its own closest hit shader in `world/` (`default.rchit`, `no_height.rchit`, `clouds.rchit`,
+`end_portal.rchit`, `end_gateway.rchit`, `water_mask.rchit`, `world_no_reflect.rchit`, `transparent_only.rchit`) and
+shades the surface where it is hit: material, direct light, the next bounce's direction. The ray generation shader
+(`world/world.rgen`) only drives the path: it sets up the camera ray, traces, reads back what the hit shader left in
+the payload, and decides whether to go on. Misses (`world.rmiss`, `world_no_volumetric.rmiss`, `hand.rmiss`) draw the
+sky. Any-hit shaders (`*.rahit`) do alpha testing; shadow rays use `shadow.rahit` / `shadow.rmiss`.
 
 ```
- world.rgen ── ptTraceMain ──▶ TLAS ──▶ record_hit (*.rchit)  ─┐
-     ▲                                  record_miss (.rmiss)  ─┤ PrismHit payload
-     └──────── ptShadeRecorded ◀───────────────────────────────┘
-               switch on PT_KIND_*: default / special shading,
-               direct light, next bounce, SHaRC query
+ world.rgen ── traceRayEXT ──▶ TLAS ──▶ default.rchit / clouds.rchit / ...  (shade, write MainRay)
+     ▲                                  world.rmiss / hand.rmiss          (sky)
+     └──────── reads radiance, throughput, next direction ◀───────────────┘
 ```
 
-`pt/pt_trace.glsl` is the *one* place a main-path ray is traced, because the compiler inlines every function and
-each traced call site would otherwise drag in its own copy of the whole surface shading.
+This keeps every shader small. A design where the hit shaders only record the hit and the raygen shades it was tried
+and measured: with the whole shading inlined into one raygen and all of a pixel's traces funnelled through one loop,
+the world pass took about 2.5x as long on an RTX 5070 (13 ms against 5 ms per frame at 1280x720 with DLSS), so it was
+dropped.
 
-### Payload layout
+### Payload
 
-The main-path payload (location 0) is `PrismHit` in `pt/pt_payload.glsl`, 20 dwords (80 bytes):
-
-| Direction | Fields |
-| --- | --- |
-| in | `coneWidth`, `coneSpread` (ray cone, for texture LOD in any-hit), `stateBits` (bounce, inside boat, camera path, in glass, ignore water), `pad0` (view bounce mark) |
-| out | `hitT` (`INF_DISTANCE` on a miss), `kind` (`PT_KIND_*` in bits 0-7, front face bit 8), `instanceCustomIndex`, `geometryBufferIndex`, `primitiveIndex`, `barycentrics`, the three columns of `mat3(gl_ObjectToWorld3x4EXT)` |
-
-The kind selects the shading: `DEFAULT` (default group, text groups, every entity layer), `NO_HEIGHT`, `CLOUDS`,
-`END_PORTAL`, `END_GATEWAY`, `WATER_MASK`, `NO_REFLECT`, `SHEET` (lightning, beacon beam). Per-geometry buffer
-addresses are not in the payload; the raygen looks them up itself. Shadow and visibility rays use `ShadowRay` at
-location 1 (`util/ray_payloads.glsl`).
+The main-path payload (location 0) is `MainRay` in `util/ray_payloads.glsl`: origin and direction, the radiance and
+throughput carried so far, the ray cone (texture LOD), the previous scene position (motion vectors), the normal, the
+direct light, the random seed and a word of state bits (bounce, inside a boat, camera path, in glass, ignore water).
+Shadow and visibility rays use `ShadowRay` at location 1.
 
 ### Where the shading lives (`pt/*.glsl`)
 
 | File | Role |
 | --- | --- |
-| `pt_bindings.glsl` | every descriptor and payload the raygen declares |
-| `pt_segment.glsl` | a stretch of path: the camera ray to its first scattering surface, or the bounces after it |
-| `pt_primary.glsl` / `pt_bounce.glsl` | camera ray set-up; bounce settings, reflection/refraction split |
-| `pt_trace.glsl` | the single main-path trace, SER, dispatch to the shading |
-| `pt_hit_context.glsl` | `g_hit`: the hit rebuilt from the record |
+| `pt_bindings.glsl` | every descriptor and payload the shaders declare |
+| `pt_primary.glsl` / `pt_bounce.glsl` | camera ray set-up and trace; bounces, reflection/refraction split |
+| `pt_hit_context.glsl` | the hit (position, normal, UVs) rebuilt from the triangle |
 | `pt_material.glsl` | textures, LabPBR, Bedrock MER and height maps, glint, rain |
-| `pt_shade_default.glsl` / `pt_shade_special.glsl` | default shading; clouds, portals, sheets and other special groups |
+| `pt_shade_default.glsl` | the default shading the closest hit shaders include |
 | `pt_direct.glsl` | sun/moon shadow ray, block lights, sky, motion vectors |
 | `pt_glass.glsl`, `pt_media.glsl`, `pt_parallax.glsl` | glass, water medium, height-map parallax |
-| `pt_miss.glsl` | sky, sun and moon, End void, clouds on a miss |
 | `pt_fog.glsl`, `pt_volumetric.glsl`, `pt_froxel.glsl` | fog settings, per-pixel volumetric march, froxel fog |
-| `pt_sharc*.glsl` | SHaRC query, pre-shade order and update paths |
+| `pt_sharc.glsl`, `pt_sharc_update.glsl` | SHaRC query and update paths |
 | `pt_outputs.glsl`, `pt_side_channels.glsl` | glow outlines; what shading hands back besides the path state |
 
 Shared code (atmosphere, water, block light, clouds, LOD coverage) is in `vanilla-pt/common/`, and generic helpers
@@ -292,12 +283,10 @@ Shared code (atmosphere, water, block light, clouds, LOD coverage) is in `vanill
 
 ### Shader Execution Reordering
 
-On devices with `GL_NV_shader_invocation_reorder`, and with the player's toggle on (`VPT_SER` and
-`VPT_SER_SUPPORTED`, giving `PT_SER_ACTIVE`), bounce rays are traced into a hit object, regrouped with
-`reorderThreadNV`, and only then is the recording shader run and the hit shaded in the raygen. The hint is the lobe
-the ray arrived by (2 bits: diffuse, reflection, refraction); the hit object already sorts by hit group, which is the
-shading kind. The first bounce and water-related bounces are not reordered (`PT_SER_REORDER_ALL_BOUNCES`, off).
-Reordering moves the work, not the pixel: `gl_LaunchIDEXT` and every image coordinate stay the same.
+On devices with `GL_NV_shader_invocation_reorder` (`VPT_SER_SUPPORTED`) and with the player's toggle on, scattered
+bounce rays are traced into a hit object and regrouped with `reorderThreadNV` before their closest hit shader runs
+(`VPT_TRACE_PATH_REORDERED` in `world.rgen`), so threads that run the same hit shader run together. Reordering moves
+the work, not the pixel: `gl_LaunchIDEXT` and every image coordinate stay the same.
 
 ### SHaRC radiance cache
 
@@ -313,12 +302,12 @@ The native side (`ray_tracing_module.cpp`, descriptor set 4) owns the hash, accu
 reads `sharc_scene_scale`, `sharc_accumulation_frame_num`, `sharc_stale_frame_num_max`,
 `sharc_update_downsample_factor` and `sharc_debug_mode`.
 
-**Pre-shade** (`pt_sharc_preshade.glsl`, `VPT_SHARC_PRESHADE`, off by default) asks the cache *before* shading a
-deep bounce's surface; on a cache hit the path ends there, and material, direct light and BSDF sampling are never
-computed. Lookups and updates are filed under the triangle's geometric normal, turned to face the ray. Because the
-same bounce adds a different amount of light than in the normal order, it stays opt-in until a parity run signs it
-off.
+### Measuring
 
+F3 shows the GPU time of the world pipeline, averaged over 60 frames, with its larger stages
+(`PrismRT GPU: 5.10 ms (world 3.10, sharc 0.62, DLSS 0.56, ...)`), from timestamp queries (`render/gpu_profiler.*`).
+With the environment variable `RADIANTE_GPU_PROFILE` set, every stage is also logged every 300 frames
+(`[gpu profile]`).
 ## Denoising, upscaling and post
 
 The world pipeline is a chain of **modules** (`render/modules/world/`), each a `WorldModule` with a per-slot

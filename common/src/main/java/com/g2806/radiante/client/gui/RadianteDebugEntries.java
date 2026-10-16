@@ -27,8 +27,9 @@ public final class RadianteDebugEntries {
     public static final Identifier REFLEX = Identifier.fromNamespaceAndPath("radiante", "reflex");
     public static final Identifier FRAME_GENERATION = Identifier.fromNamespaceAndPath("radiante", "frame_generation");
     public static final Identifier HDR = Identifier.fromNamespaceAndPath("radiante", "hdr");
+    public static final Identifier GPU_TIME = Identifier.fromNamespaceAndPath("radiante", "gpu_time");
     /** Shown in the overlay until the player hides them. */
-    public static final List<Identifier> ALL = List.of(UPSCALER, REFLEX, FRAME_GENERATION, HDR);
+    public static final List<Identifier> ALL = List.of(UPSCALER, GPU_TIME, REFLEX, FRAME_GENERATION, HDR);
 
     private RadianteDebugEntries() {
     }
@@ -38,6 +39,16 @@ public final class RadianteDebugEntries {
             @Override
             void lines(DebugScreenDisplayer displayer) {
                 displayer.addLine("Upscaler: " + Pipeline.describeUpscaler());
+            }
+        });
+        DebugScreenEntriesInvoker.radiante$register(GPU_TIME, new Entry() {
+            @Override
+            void lines(DebugScreenDisplayer displayer) {
+                // Measured on the GPU with timestamps: what the frame costs there, whatever the CPU is doing.
+                String stats = Pipeline.gpuStats();
+                if (stats != null && !stats.isEmpty()) {
+                    displayer.addLine("PrismRT GPU: " + stats);
+                }
             }
         });
         DebugScreenEntriesInvoker.radiante$register(REFLEX, new Entry() {

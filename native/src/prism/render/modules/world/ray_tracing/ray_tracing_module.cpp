@@ -149,9 +149,9 @@ constexpr BindingSpec kSceneBindings[] = {
     {kStorageBuffer, kAllStages},                                           // 1 each instance's first geometry
     {kStorageBuffer, kTraceStages},                                         // 2 index buffer addresses
     {kStorageBuffer, kTraceStages},                                         // 3 last frame's index buffer addresses
-    {kStorageBuffer, kTraceStages},                                         // 4 position buffer addresses
-    {kStorageBuffer, kTraceStages},                                         // 5 material buffer addresses
-    {kStorageBuffer, kTraceStages},                                         // 6 last frame's position addresses
+    {kStorageBuffer, kHitStages},                                           // 4 position buffer addresses
+    {kStorageBuffer, kHitStages},                                           // 5 material buffer addresses
+    {kStorageBuffer, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR},                  // 6 last frame's position addresses
     {kStorageBuffer, kAllStages},                                           // 7 the texture mapping
     {kStorageBuffer, kTraceStages},                                         // 8 each instance's last transform
     {kStorageBuffer, kAllStages},                                           // 9 the chunks' packed data

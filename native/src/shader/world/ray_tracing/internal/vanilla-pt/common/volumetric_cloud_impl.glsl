@@ -997,4 +997,11 @@ VolumetricCloudResult applyVolumetricCloudBudgeted(
     return result;
 }
 
+VolumetricCloudResult applyVolumetricCloud(vec3 rayOrigin, vec3 rayDir, vec3 skyBackgroundRadiance) {
+    return applyVolumetricCloudBudgeted(rayOrigin, rayDir, skyBackgroundRadiance,
+                                        VPT_VOLUMETRIC_CLOUD_VIEW_STEPS,
+                                        VPT_VOLUMETRIC_CLOUD_LIGHT_STEPS,
+                                        VPT_VOLUMETRIC_CLOUD_AMBIENT_STEPS);
+}
+
 #endif

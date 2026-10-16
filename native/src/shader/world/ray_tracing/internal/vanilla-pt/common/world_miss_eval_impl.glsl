@@ -1,21 +1,24 @@
-#ifndef VPT_PT_MISS_GLSL
-#define VPT_PT_MISS_GLSL
+#include "common/shared.hpp"
+#include "util/ray.glsl"
+#include "util/util.glsl"
 
-// What a main-path ray that hits nothing sees: the sky (overworld sky model with the sun and moon sprites, their
-// halos, biome haze on bounced rays, volumetric clouds, the sky light boost), the End's void, or nothing in the
-// Nether, plus the water a ray leaves the world through. ptEvalMiss adds it to the path's radiance, sets the star
-// visibility the raygen draws the stars with (g_step.starVisibility, pt/pt_side_channels.glsl), and ends the path.
-//
-// This was the body of the world and world_no_volumetric miss shaders, moved here unchanged. The misses now only
-// record that nothing was hit (world/hit/record_miss.rmiss) and ptShadeRecorded (pt/pt_trace.glsl) calls this with
-// the origin and direction it traced: in a miss shader gl_WorldRayOriginEXT was that origin, not moved by tMin, and
-// gl_WorldRayDirectionEXT that direction, unnormalised, so both see the same values. The world_no_volumetric miss
-// left out the volumetric clouds at compile time; one function serves both misses, so it is a parameter. The star
-// visibility went back through the payload (directLightRadiance.x) and is a side channel now.
-//
-// Needs before it: common/shared.hpp, util/ray.glsl, util/util.glsl, the set 0 textures, transLUT and skyFull
-// (set 5 bindings 0 and 2), worldUBO and skyUBO (set 2 bindings 0 and 2), pt/pt_side_channels.glsl, and the global
-// `MainRay mainRay` holding the ray that missed.
+layout(set = 0, binding = 0) uniform sampler2D textures[];
+layout(set = 5, binding = 0) uniform sampler2D transLUT;
+layout(set = 5, binding = 2) uniform samplerCube skyFull;
+
+layout(set = 2, binding = 0) uniform WorldUniform {
+    WorldUBO worldUBO;
+};
+
+layout(set = 2, binding = 1) uniform LastWorldUniform {
+    WorldUBO lastWorldUbo;
+};
+
+layout(set = 2, binding = 2) uniform SkyUniform {
+    SkyUBO skyUBO;
+};
+
+layout(location = 0) rayPayloadInEXT MainRay mainRay;
 
 #include "common/volumetric_cloud.glsl"
 #include "common/biome_fog_light.glsl"
@@ -43,6 +46,14 @@ void makeBasis(in vec3 n, out vec3 t, out vec3 b) {
     b = normalize(b);
 }
 
+vec4 sampleTextureLod0(sampler2D tex, vec2 uv) {
+    ivec2 texSize = textureSize(tex, 0);
+    if (texSize.x <= 0 || texSize.y <= 0) return vec4(0.0);
+    vec2 halfTexel = 0.5 / vec2(texSize);
+    vec2 clampedUv = clamp(uv, halfTexel, vec2(1.0) - halfTexel);
+    return sampleTexture(tex, clampedUv, 0.0, false);
+}
+
 vec4 sampleSpriteLod0(sampler2D tex, vec2 uv01, vec4 uvRect) {
     // The sun and the moon phases live in one runtime-stitched atlas, so each is a rectangle inside it rather
     // than a texture of its own or a tile of a fixed grid. Half a texel is trimmed off every edge so the sampler
@@ -65,6 +76,20 @@ vec4 sampleSpriteNearest(sampler2D tex, vec2 uv01, vec4 uvRect) {
     vec2 atlasUv = mix(uvRect.xy, uvRect.zw, clamp(uv01, 0.0, 0.9999));
     ivec2 texel = clamp(ivec2(atlasUv * vec2(texSize)), ivec2(0), texSize - 1);
     return texelFetch(tex, texel, 0);
+}
+
+vec4 sampleAtlasLod0(sampler2D tex, vec2 uv01, uvec2 tileCount, uvec2 tile) {
+    ivec2 texSize = textureSize(tex, 0);
+    if (texSize.x <= 0 || texSize.y <= 0) return vec4(0.0);
+
+    vec2 invTileCount = 1.0 / vec2(tileCount);
+    vec2 tileMin = vec2(tile) * invTileCount;
+    vec2 tileMax = tileMin + invTileCount;
+    vec2 halfTexel = 0.5 / vec2(texSize);
+    vec2 minUv = tileMin + halfTexel;
+    vec2 maxUv = tileMax - halfTexel;
+    vec2 atlasUv = mix(minUv, maxUv, clamp(uv01, 0.0, 1.0));
+    return sampleTexture(tex, atlasUv, 0.0, false);
 }
 
 // The sun and moon sprites' frame. Vanilla keeps one edge along the axis the sky turns around, so the squares
@@ -214,15 +239,11 @@ vec3 waterMissRadiance(vec3 backgroundRadiance) {
     return backgroundRadiance * transmittance + scatter * max(waterMediumBounceAmbient(mediumBounce), 0.0);
 }
 
-/**
- * The miss of mainRay, traced from `origin` along `direction` (the trace's own values). allowVolumetricCloud: the
- * world miss (index 1) draws the volumetric clouds of cloud mode 2, world_no_volumetric (index 3) does not.
- */
-void ptEvalMiss(vec3 origin, vec3 direction, bool allowVolumetricCloud) {
-    g_step.starVisibility = 1.0;
+void main() {
+    mainRay.directLightRadiance.x = 1.0;
     // Stars are drawn over the sky afterwards; they cannot be seen through water.
     if (rayInWater(mainRay) || skyUBO.cameraSubmersionType == 1) {
-        g_step.starVisibility = 0.0;
+        mainRay.directLightRadiance.x = 0.0;
     }
 
     if (skyUBO.cameraSubmersionType == 0 || skyUBO.cameraSubmersionType == 2 || skyUBO.fogControls.x >= 0.999) {
@@ -236,7 +257,7 @@ void ptEvalMiss(vec3 origin, vec3 direction, bool allowVolumetricCloud) {
             // The End: a deep violet void, its own fog colour at the horizon darkening overhead, with faint stars
             // where the camera looks. Rays bouncing off the islands gather it as a dim, cool ambient light, so the
             // end stone is softly lit from above instead of flat.
-            mainRay.radiance += waterMissRadiance(endSkyRadiance(normalize(direction),
+            mainRay.radiance += waterMissRadiance(endSkyRadiance(normalize(gl_WorldRayDirectionEXT),
                                                rayBounce(mainRay) == 0u || rayCameraPath(mainRay))) *
                                 mainRay.throughput;
             raySetStop(mainRay, true);
@@ -250,7 +271,7 @@ void ptEvalMiss(vec3 origin, vec3 direction, bool allowVolumetricCloud) {
         default: break;
     }
 
-    vec3 rayDir = normalize(direction);
+    vec3 rayDir = normalize(gl_WorldRayDirectionEXT);
     vec3 sunDir = celestialSunDirection();
     float progress = skyUBO.rainGradient;
     vec3 rainyRadiance = mix(vec3(0.0), vec3(0.1), smoothstep(-0.3, 0.3, sunDir.y));
@@ -305,18 +326,15 @@ void ptEvalMiss(vec3 origin, vec3 direction, bool allowVolumetricCloud) {
         backgroundRadiance = backgroundRadiance * hazeTransmittance + hazeAdditive;
     }
 
-    if (allowVolumetricCloud && VPT_CLOUD_MODE == 2u) {
-        // Bounced rays that may see the clouds march them with the cheaper indirect budget, the rest with the full
-        // one (applyVolumetricCloud's step counts). One call with the step counts chosen first, rather than one call
-        // per budget: the compiler inlines every call, and the cloud march is large, so two calls put two copies of
-        // it into the shader (into the ray generation shader too, once that evaluates the misses). Same counts, same
-        // result.
-        bool indirectCloud = rayUseIndirectVolumetricCloud(mainRay);
-        VolumetricCloudResult cloudResult = applyVolumetricCloudBudgeted(
-            origin, rayDir, backgroundRadiance,
-            indirectCloud ? int(VPT_INDIRECT_VOLUMETRIC_CLOUD_VIEW_STEPS) : int(VPT_VOLUMETRIC_CLOUD_VIEW_STEPS),
-            indirectCloud ? int(VPT_INDIRECT_VOLUMETRIC_CLOUD_LIGHT_STEPS) : int(VPT_VOLUMETRIC_CLOUD_LIGHT_STEPS),
-            indirectCloud ? int(VPT_INDIRECT_VOLUMETRIC_CLOUD_AMBIENT_STEPS) : int(VPT_VOLUMETRIC_CLOUD_AMBIENT_STEPS));
+#if VPT_ALLOW_VOLUMETRIC_CLOUD_MISS
+    if (VPT_CLOUD_MODE == 2u) {
+        VolumetricCloudResult cloudResult =
+            rayUseIndirectVolumetricCloud(mainRay) ?
+                applyVolumetricCloudBudgeted(gl_WorldRayOriginEXT, rayDir, backgroundRadiance,
+                                             VPT_INDIRECT_VOLUMETRIC_CLOUD_VIEW_STEPS,
+                                             VPT_INDIRECT_VOLUMETRIC_CLOUD_LIGHT_STEPS,
+                                             VPT_INDIRECT_VOLUMETRIC_CLOUD_AMBIENT_STEPS) :
+                applyVolumetricCloud(gl_WorldRayOriginEXT, rayDir, backgroundRadiance);
         backgroundRadiance = cloudResult.color;
         vec3 clampedBackground = max(backgroundRadiance, vec3(0.0));
         vec3 cloudOnly = max(cloudResult.color - clampedBackground * cloudResult.transmittance, vec3(0.0));
@@ -324,8 +342,9 @@ void ptEvalMiss(vec3 origin, vec3 direction, bool allowVolumetricCloud) {
         float cloudLum = volumetricCloudLuminance(cloudOnly);
         float cloudPresence = cloudLum / max(backgroundLum + cloudLum, 1e-4);
         float starVisibility = min(cloudResult.transmittance, 1.0 - cloudPresence * 1.35);
-        g_step.starVisibility = cloudSaturate(starVisibility);
+        mainRay.directLightRadiance.x = cloudSaturate(starVisibility);
     }
+#endif
 
     // The sky lighting the world (every bounce after the first): Bedrock RTX's shade under a building is lit well
     // by the open sky around it, not left in deep shadow.
@@ -343,5 +362,3 @@ void ptEvalMiss(vec3 origin, vec3 direction, bool allowVolumetricCloud) {
     raySetStop(mainRay, true);
     mainRay.hitT = INF_DISTANCE;
 }
-
-#endif // VPT_PT_MISS_GLSL

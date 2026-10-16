@@ -51,7 +51,7 @@ float vptPointLightFalloff(VptPackedLight light, vec3 scenePos) {
 
 // The light of an exact light (radiance.w 1) on the scale of the others, which the shaders multiply by
 // VPT_INDIRECT_LIGHT_STRENGTH and the Emission Brightness setting: what its surface shows, which is its radiance
-// times VPT_BEDROCK_SEEN_EMISSION and the same setting (pt/pt_shade_default.glsl).
+// times VPT_BEDROCK_SEEN_EMISSION and the same setting (default.rchit).
 float vptExactLightScale() {
 #ifdef VPT_INDIRECT_LIGHT_STRENGTH
     return VPT_BEDROCK_SEEN_EMISSION / max(VPT_INDIRECT_LIGHT_STRENGTH, 1e-3);

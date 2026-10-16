@@ -212,7 +212,7 @@ vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, v
 #define VPT_RESTIR_MAX_M (20.0 * float(VPT_RESTIR_CANDIDATES))
 
 // The world raygen declares both of these itself (pt/pt_bindings.glsl), and one module cannot declare a binding
-// twice, so they are only declared here for a shader that has not.
+// twice, so they are only declared here for a shader that has not (the closest-hit shaders).
 #ifndef PT_DECLARES_RESTIR_IMAGE
 layout(set = 5, binding = VPT_RESTIR_BINDING, rgba32f) uniform image2DArray vptRestirImage;
 #endif

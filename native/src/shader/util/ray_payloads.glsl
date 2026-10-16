@@ -1,14 +1,42 @@
 #ifndef RAY_PAYLOAD_GLSL
 #define RAY_PAYLOAD_GLSL
 
-// Data carried along rays. The members are grouped as a vec3 followed by a scalar so each group fills one 16-byte
-// slot; the member order is the layout every shader of the pack agrees on and must not change. The T_* types come
-// from common/mapping.hpp so the C++ side can mirror the same structs.
-
 #include "common/mapping.hpp"
 
-// The state of one camera path: where its current segment starts and goes, what it has gathered so far, and the
-// ray cone used for texture level-of-detail. stateBits holds the bounce count and the flags in util/ray.glsl.
+// What a closest-hit or miss shader found, written for the raygen to shade from (the raygen-shading migration).
+// The raygen cannot see the vertex/material address tables or the hit built-ins, so the hit shader copies here
+// everything the shading needs to rebuild the hit: which triangle, where on it, the buffer addresses to load its
+// vertices from, and the object-to-world rotation. The hit position itself is origin + direction * hitT.
+// While MainRay is still the payload this block rides along at its end (see rayRecordedBit in util/ray.glsl);
+// once the shading has moved, the payload becomes this record plus the any-hits' inputs.
+struct PrismHitRecord {
+    T_FLOAT hitT;                 // gl_HitTEXT; the miss writes INF_DISTANCE and nothing else
+    T_UINT kind;                  // PT_KIND_* in bits 0-7, PT_KIND_FRONT_FACE_BIT for a front-face hit
+    T_UINT instanceCustomIndex;   // gl_InstanceCustomIndexEXT (also indexes the last object-to-world matrices)
+    T_UINT geometryBufferIndex;   // getGeometryBufferIndex(instanceCustomIndex, gl_GeometryIndexEXT)
+    T_UINT primitiveIndex;        // gl_PrimitiveID
+    T_VEC2 barycentrics;          // the triangle hit attributes
+    uvec2 positionAddress;        // positionBufferAddrs.addrs[geometryBufferIndex], tagged form kept as is
+    uvec2 materialAddress;        // materialBufferAddrs.addrs[geometryBufferIndex]
+    uvec2 lastPositionAddress;    // lastPositionBufferAddrs.addrs[geometryBufferIndex] (previous-frame positions)
+    T_VEC3 objectToWorld0;        // rows of mat3(gl_ObjectToWorld3x4EXT); no translation is needed because the
+    T_VEC3 objectToWorld1;        // raygen already knows the world-space hit position
+    T_VEC3 objectToWorld2;
+};
+
+// Which raygen shading branch a recorded hit takes. One value per closest-hit body the pack has; the hit group
+// names in configs.json stay as they are and only choose which recording stub runs.
+const uint PT_KIND_DEFAULT = 0u;     // default.rchit: chunks, entities, LOD, the text groups
+const uint PT_KIND_NO_HEIGHT = 1u;   // no_height.rchit: the default shading without parallax
+const uint PT_KIND_CLOUDS = 2u;
+const uint PT_KIND_END_PORTAL = 3u;
+const uint PT_KIND_END_GATEWAY = 4u;
+const uint PT_KIND_WATER_MASK = 5u;
+const uint PT_KIND_NO_REFLECT = 6u;
+const uint PT_KIND_SHEET = 7u;       // transparent_only.rchit: lightning, beacon beam
+const uint PT_KIND_MASK = 0xFFu;
+const uint PT_KIND_FRONT_FACE_BIT = 1u << 8u;
+
 struct MainRay {
     T_VEC3 origin;
     T_FLOAT hitT;
@@ -30,9 +58,12 @@ struct MainRay {
 
     T_VEC3 directLightRadiance;
     T_UINT pad0;
+
+    // Transitional: filled by the recording hit stubs once they exist and only meaningful when rayRecordedBit
+    // is set. Appended last so every field above keeps its offset.
+    PrismHitRecord rec;
 };
 
-// The material of the last surface shaded, as the bounce logic needs it to continue the path.
 struct MaterialInfo {
     T_VEC4 albedoValue;
     T_VEC3 f0;
@@ -43,16 +74,14 @@ struct MaterialInfo {
     T_FLOAT emission;
 };
 
-// A visibility ray towards a light. Any-hit shaders along the way multiply throughput by what they let through.
 struct ShadowRay {
     T_VEC3 radiance;
     T_UINT insideBoat;
     T_VEC3 throughput;
     T_UINT pad0;
 #if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
-    // Any-hit shaders run in no particular order, so the water boundary nearest the origin is tracked on its own
-    // instead of folding it into the glass throughput, and its factor is applied once, after traversal has shown
-    // the sky is visible.
+    // Any-hit order is unspecified. Keep the nearest boundary's factor separate from
+    // glass throughput and apply it once, after traversal proves celestial visibility.
     T_VEC3 waterTransmission;
     T_FLOAT nearestWaterT;
 #endif

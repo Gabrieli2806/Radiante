@@ -12,8 +12,7 @@
 #endif
 
 // Shader Execution Reordering (NVIDIA RTX 40 and newer): each path ray is traced into a hit object, the GPU regroups
-// the threads by what they hit, and only then are the hits recorded and shaded, so neighbours in a warp shade the
-// same material.
+// the threads by what they hit, and only then runs the hit shaders, so neighbours in a warp shade the same material.
 // VPT_SER is the player's toggle; VPT_SER_SUPPORTED is set by the renderer when the device has the feature.
 #ifndef VPT_SER
 #    define VPT_SER 0
@@ -23,17 +22,12 @@
 #endif
 #if VPT_SER != 0 && VPT_SER_SUPPORTED != 0
 #    extension GL_NV_shader_invocation_reorder : require
-// The bounce rays are traced into a hit object and regrouped before shading (ptTraceMain, pt/pt_trace.glsl).
-#    define PT_SER_ACTIVE 1
+#    define VPT_TRACE_PATH(flags, mask, sbtOffset, sbtStride, missIndex, origin, tMin, dir, tMax) traceRayEXT(topLevelAS, flags, mask, sbtOffset, sbtStride, missIndex, origin, tMin, dir, tMax, 0)
+// Bounce rays, where the paths have scattered in every direction, are regrouped by what they hit before shading.
+#    define VPT_TRACE_PATH_REORDERED(flags, mask, sbtOffset, sbtStride, missIndex, origin, tMin, dir, tMax) { hitObjectNV vptHitObject; hitObjectTraceRayNV(vptHitObject, topLevelAS, flags, mask, sbtOffset, sbtStride, missIndex, origin, tMin, dir, tMax, 0); reorderThreadNV(vptHitObject); hitObjectExecuteShaderNV(vptHitObject, 0); }
 #else
-#    define PT_SER_ACTIVE 0
-#endif
-// Experiment, off: also reorder the first bounce and the bounces that start in water or skip their own water face
-// (pt/pt_segment.glsl). Those were excluded because water could come out white with reordering, back when the hit
-// shaders handed the material over through an image; shading now runs in the raygen after the reorder, so the cause
-// may be gone. Stays off until an A/B with SER off shows the same image.
-#ifndef PT_SER_REORDER_ALL_BOUNCES
-#    define PT_SER_REORDER_ALL_BOUNCES 0
+#    define VPT_TRACE_PATH_REORDERED(flags, mask, sbtOffset, sbtStride, missIndex, origin, tMin, dir, tMax) traceRayEXT(topLevelAS, flags, mask, sbtOffset, sbtStride, missIndex, origin, tMin, dir, tMax, 0)
+#    define VPT_TRACE_PATH(flags, mask, sbtOffset, sbtStride, missIndex, origin, tMin, dir, tMax) traceRayEXT(topLevelAS, flags, mask, sbtOffset, sbtStride, missIndex, origin, tMin, dir, tMax, 0)
 #endif
 
 #if USE_SHARC
@@ -78,36 +72,6 @@
 #ifndef VPT_CACHE_DEEP_BOUNCES
 #    define VPT_CACHE_DEEP_BOUNCES 0
 #endif
-// When a bounce asks the SHaRC radiance cache for the light at the surface it reached.
-// Legacy (the default): after the surface is shaded, as it always was. The shading's emission and direct light, and
-// the throughput through its BSDF, are then part of what the bounce adds, which is the deep-bounce brightness the
-// look was calibrated with.
-// Pre-shade (the sharc_preshade attribute, experimental): before the surface is shaded (pt/pt_sharc_preshade.glsl).
-// A hit the cache answers skips the material, the direct light (the sun's shadow ray and every block light ray) and
-// the BSDF, so deep bounces get cheaper, but the light they add changes. It stays opt-in until a parity run against
-// the Bedrock reference signs it off.
-#ifndef VPT_SHARC_PRESHADE
-#    define VPT_SHARC_PRESHADE 0
-#endif
-#define PT_SHARC_QUERY_ORDER_LEGACY 0
-#define PT_SHARC_QUERY_ORDER_PRESHADE 1
-#ifndef PT_SHARC_QUERY_ORDER
-#    if VPT_SHARC_PRESHADE != 0
-#        define PT_SHARC_QUERY_ORDER PT_SHARC_QUERY_ORDER_PRESHADE
-#    else
-#        define PT_SHARC_QUERY_ORDER PT_SHARC_QUERY_ORDER_LEGACY
-#    endif
-#endif
-#if USE_SHARC && PT_SHARC_QUERY_ORDER == PT_SHARC_QUERY_ORDER_PRESHADE
-#    define PT_SHARC_PRESHADE 1
-#else
-#    define PT_SHARC_PRESHADE 0
-#endif
-// Scale on the cached light a pre-shade hit adds. 1 until a parity run measures what brings the deep bounces back to
-// the reference; not a pack attribute until then.
-#ifndef VPT_SHARC_PRESHADE_GAIN
-#    define VPT_SHARC_PRESHADE_GAIN 1.0
-#endif
 // The pack attribute always defines it; the fallback is for a build without it. It has to come before any include:
 // common/block_light_data.glsl picks the scale of exact and point lights by whether it is defined when it is
 // included (vptExactLightScale / vptPointLightScale), so a later fallback would leave the lights on another scale
@@ -146,40 +110,17 @@
 // clang-format on
 #endif
 
-// The raygen library (pt/): blocks of what used to be here, in the original order. pt_trace and pt_segment hold
-// the one main-path trace and the loop body around it that the camera rays and the bounces share.
+// The raygen library (pt/): each file is a verbatim block of what used to be here, in the original order.
 #include "pt/pt_bindings.glsl"
 
 #include "pt/pt_fog.glsl"
 #include "pt/pt_volumetric.glsl"
 #include "pt/pt_froxel.glsl"
 #include "pt/pt_sharc.glsl"
-// The surface shading of every main-path hit group and the miss evaluation run in this shader, on the hits and
-// misses the closest-hit and miss shaders only record; each is called once, from ptShadeRecorded (pt_trace).
-#include "pt/pt_shade_default.glsl"
-#include "pt/pt_shade_special.glsl"
-#include "pt/pt_miss.glsl"
-// The cache lookup before shading (pre-shade order only; empty otherwise). It reads the hit context and the water
-// medium of the shading above, and ptShadeRecorded (pt_trace) calls it.
-#include "pt/pt_sharc_preshade.glsl"
-#include "pt/pt_trace.glsl"
 #include "pt/pt_primary.glsl"
 #include "pt/pt_bounce.glsl"
-#include "pt/pt_segment.glsl"
 #include "pt/pt_sharc_update.glsl"
 #include "pt/pt_outputs.glsl"
-
-// The stages of the pixel's path loop in main(), in the order they run.
-#define PT_PHASE_WORLD_PRIMARY 0           // the world's camera ray
-#define PT_PHASE_HAND_PRIMARY 1            // the hand's camera ray (every pixel; a miss ends it at once)
-#define PT_PHASE_GLASS_REFLECTION 2        // the reflection a pane the camera looked through asked for
-#define PT_PHASE_FIRST_HIT 3               // no trace: the first-hit outputs and the choice of what follows
-#define PT_PHASE_SPLIT_REFLECTION 4        // transparent split, reflection branch
-#define PT_PHASE_SPLIT_AFTER_REFLECTION 5  // no trace: set up the refraction branch
-#define PT_PHASE_SPLIT_REFRACTION 6        // transparent split, refraction branch
-#define PT_PHASE_SPLIT_DONE 7              // no trace: the two branches combined
-#define PT_PHASE_SECONDARY 8               // the bounces of a transparent first hit without the split
-#define PT_PHASE_AVERAGED 9                // the averaged bounces (one sample per segment)
 
 void main() {
     ivec2 pixel = ivec2(gl_LaunchIDEXT.xy);
@@ -263,341 +204,257 @@ void main() {
     bool sharcDebugCacheHit = false;
 #    endif
 
-    // The first hit's material and the emission its shading added to the path, kept per camera ray (world and hand)
-    // as each primary segment ends: the glass reflection traced after them shades surfaces of its own and overwrote
-    // g_lastMaterial before the first-hit outputs read it.
-    MaterialInfo worldFirstHitMat;
-    MaterialInfo selectedFirstHitMat;
-    vec3 worldSeenEmission = vec3(0.0);
-    vec3 firstHitSeenEmission = vec3(0.0);
-    g_seenEmission = vec3(0.0);
-
     MainRay worldRay;
     initMainRay(origin, direction, worldUBO.seed, coneSpreadFromFov(fovY, fovX, resolution), worldRay);
     FirstHitPayload worldFirstHit;
     g_glassReflection = false;
+    tracePrimary(eyePos, orgDirection, rayFlags, 0, worldRay, worldFirstHit);
+    bool worldGlassReflection = g_glassReflection;
+    vec3 worldPassThroughTint = g_passThroughTint;
+    vec3 worldPassThroughRadiance = g_passThroughRadiance;
+    float worldPassThroughDistance = g_passThroughDistance;
 
-    // Written by the path loop below, read after it or by a later stage of it.
-    bool worldGlassReflection;
-    vec3 worldPassThroughTint;
-    vec3 worldPassThroughRadiance;
-    float worldPassThroughDistance;
+
+    // Minecraft draws the hand with a fixed field of view of its own, so it keeps its size when the FOV setting
+    // changes (GameRenderer.render3dHud builds its projection from cameraState.hudFov). The rays that look for the
+    // hand carry the same frustum; everything else keeps the world's.
     vec3 handDirection = orgDirection;
+    if (worldUBO.handFovScale > 0.0 && abs(worldUBO.handFovScale - 1.0) > 1e-4) {
+        handDirection = normalize(vec3(worldUBO.cameraEffectedViewMatInv *
+                                       vec4(viewNear.xy * worldUBO.handFovScale, viewNear.z, 0.0)));
+    }
+
     MainRay handRay;
+    initMainRay(origin, handDirection, worldUBO.seed ^ 0x9E3779B9u, coneSpreadFromFov(fovY, fovX, resolution),
+                handRay);
     FirstHitPayload handFirstHit;
+    tracePrimary(eyePos, handDirection, rayFlags, 1, handRay, handFirstHit);
+    vec3 handPassThroughTint = g_passThroughTint;
+    vec3 handPassThroughRadiance = g_passThroughRadiance;
+    float handPassThroughDistance = g_passThroughDistance;
+
     int isHand = 0;
-    FirstHitPayload selectedFirstHit;
+    g_glassReflection = worldGlassReflection;
+    FirstHitPayload selectedFirstHit = worldFirstHit;
+    mainRay = worldRay;
+    g_passThroughTint = worldPassThroughTint;
+    g_passThroughRadiance = worldPassThroughRadiance;
+    g_passThroughDistance = worldPassThroughDistance;
+    if (handFirstHit.surfaceDepth != INF_DISTANCE) {
+        isHand = 1;
+        selectedFirstHit = handFirstHit;
+        mainRay = handRay;
+        g_passThroughTint = handPassThroughTint;
+        g_passThroughRadiance = handPassThroughRadiance;
+        g_passThroughDistance = handPassThroughDistance;
+    }
+
+    // The glass's reflection of the world, traced from where the camera's ray met it (see default.rchit). Added to
+    // the picture and, as it is not part of the surface behind, to the channel the denoiser leaves as it is.
     vec3 glassReflectionRadiance = vec3(0.0);
-    MainRay glassReflectionSaved;
-    bool hitSky = false;
-    float postStarCloudTransmittance = 1.0;
-    int startBounce = 0;
-    vec3 cameraDelta = vec3(0.0);
-    MainRay firstHitRay;
-    bool traceRefraction = true;
-    float branchWeight = 1.0;
-    int averagedSamples = 1;
-    int averagedIndex = 0;
-    MainRay averagedStart;
-    vec3 averagedRadiance = vec3(0.0);
-
-    // The pixel's path loop. Every main-path trace of the pixel happens in the one ptRunSegment call at its top (one
-    // trace site in the compiled raygen, see pt/pt_trace.glsl and pt/pt_segment.glsl). The stages run in the order
-    // the old straight-line code called tracePrimary / traceSecondary: the world's camera ray, the hand's, the glass
-    // reflection, then the bounces after the first hit. Each block below takes what the segment just traced left,
-    // runs the code that used to sit between those calls, and either starts the next segment (continue) or moves the
-    // phase on and falls through to the next block. So every trace, rand() draw and image write happens in the same
-    // order as before.
-    int phase = PT_PHASE_WORLD_PRIMARY;
-    PtSegment segment = ptPrimarySegment(0, orgDirection);
-    MainRay segmentRay = worldRay;
-    FirstHitPayload segmentFirstHit;
-    bool segmentHasSecondHit;
-    float segmentSecondHitDistance;
-    for (;;) {
-        ptRunSegment(segment, eyePos, rayFlags, segmentRay, segmentFirstHit,
+    if (g_glassReflection && isHand == 0) {
+        MainRay saved = mainRay;
+        MainRay reflection = mainRay;
+        resetMainRay(reflection, selectedFirstHit.startBounce);
+        reflection.origin = g_glassReflectionOrigin + g_glassReflectionDirection * 0.002;
+        reflection.direction = g_glassReflectionDirection;
+        reflection.radiance = vec3(0.0);
+        reflection.throughput = g_glassReflectionWeight;
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+        raySetInWater(reflection, (g_glassReflectionMedium & 1u) != 0u);
+        raySetInGlass(reflection, (g_glassReflectionMedium & 2u) != 0u);
+        raySetGlassParentWater(reflection, (g_glassReflectionMedium & 4u) != 0u);
+#endif
+        reflection.seed = xxhash32(uvec3(saved.seed, 0x51ED27u, worldUBO.seed));
+        raySetLobeType(reflection, 1u);
+        raySetCameraPath(reflection, false);
+        raySetIgnoreWaterSelf(reflection, false);
+        bool reflectionHit;
+        float reflectionDistance;
+        traceSecondary(reflection, selectedFirstHit.startBounce, 0,
 #    if SHARC_QUERY && USE_SHARC
-                     sharcParameters, sharcDebugBounceCount, sharcDebugCacheHit,
+                      sharcParameters, sharcDebugBounceCount, sharcDebugCacheHit,
 #    endif
-                     segmentHasSecondHit, segmentSecondHitDistance);
-
-        if (phase == PT_PHASE_WORLD_PRIMARY) {
-            worldRay = segmentRay;
-            worldFirstHit = segmentFirstHit;
-            worldGlassReflection = g_glassReflection;
-            worldPassThroughTint = g_passThroughTint;
-            worldPassThroughRadiance = g_passThroughRadiance;
-            worldPassThroughDistance = g_passThroughDistance;
-            worldFirstHitMat = g_lastMaterial;
-            worldSeenEmission = g_seenEmission;
-            g_seenEmission = vec3(0.0);
-
-            // Minecraft draws the hand with a fixed field of view of its own, so it keeps its size when the FOV setting
-            // changes (GameRenderer.render3dHud builds its projection from cameraState.hudFov). The rays that look for
-            // the hand carry the same frustum; everything else keeps the world's.
-            if (worldUBO.handFovScale > 0.0 && abs(worldUBO.handFovScale - 1.0) > 1e-4) {
-                handDirection = normalize(vec3(worldUBO.cameraEffectedViewMatInv *
-                                               vec4(viewNear.xy * worldUBO.handFovScale, viewNear.z, 0.0)));
-            }
-
-            initMainRay(origin, handDirection, worldUBO.seed ^ 0x9E3779B9u, coneSpreadFromFov(fovY, fovX, resolution),
-                        handRay);
-            segment = ptPrimarySegment(1, handDirection);
-            segmentRay = handRay;
-            phase = PT_PHASE_HAND_PRIMARY;
-            continue;
-        }
-
-        if (phase == PT_PHASE_HAND_PRIMARY) {
-            handRay = segmentRay;
-            handFirstHit = segmentFirstHit;
-            vec3 handPassThroughTint = g_passThroughTint;
-            vec3 handPassThroughRadiance = g_passThroughRadiance;
-            float handPassThroughDistance = g_passThroughDistance;
-
-            MaterialInfo handFirstHitMat = g_lastMaterial;
-            vec3 handSeenEmission = g_seenEmission;
-
-            isHand = 0;
-            g_glassReflection = worldGlassReflection;
-            selectedFirstHitMat = worldFirstHitMat;
-            firstHitSeenEmission = worldSeenEmission;
-            selectedFirstHit = worldFirstHit;
-            mainRay = worldRay;
-            g_passThroughTint = worldPassThroughTint;
-            g_passThroughRadiance = worldPassThroughRadiance;
-            g_passThroughDistance = worldPassThroughDistance;
-            if (handFirstHit.surfaceDepth != INF_DISTANCE) {
-                isHand = 1;
-                selectedFirstHit = handFirstHit;
-                mainRay = handRay;
-                g_passThroughTint = handPassThroughTint;
-                g_passThroughRadiance = handPassThroughRadiance;
-                g_passThroughDistance = handPassThroughDistance;
-                selectedFirstHitMat = handFirstHitMat;
-                firstHitSeenEmission = handSeenEmission;
-            }
-
-            // The glass's reflection of the world, traced from where the camera's ray met it (see pt/pt_glass.glsl).
-            // Added to the picture and, as it is not part of the surface behind, to the channel the denoiser leaves as
-            // it is.
+                      reflectionHit, reflectionDistance);
+        glassReflectionRadiance = mainRay.radiance;
+        if (any(isnan(glassReflectionRadiance)) || any(isinf(glassReflectionRadiance))) {
             glassReflectionRadiance = vec3(0.0);
-            if (g_glassReflection && isHand == 0) {
-                glassReflectionSaved = mainRay;
-                MainRay reflection = mainRay;
-                resetMainRay(reflection, selectedFirstHit.startBounce);
-                reflection.origin = g_glassReflectionOrigin + g_glassReflectionDirection * 0.002;
-                reflection.direction = g_glassReflectionDirection;
-                reflection.radiance = vec3(0.0);
-                reflection.throughput = g_glassReflectionWeight;
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
-                raySetInWater(reflection, (g_glassReflectionMedium & 1u) != 0u);
-                raySetInGlass(reflection, (g_glassReflectionMedium & 2u) != 0u);
-                raySetGlassParentWater(reflection, (g_glassReflectionMedium & 4u) != 0u);
-#endif
-                reflection.seed = xxhash32(uvec3(glassReflectionSaved.seed, 0x51ED27u, worldUBO.seed));
-                raySetLobeType(reflection, 1u);
-                raySetCameraPath(reflection, false);
-                raySetIgnoreWaterSelf(reflection, false);
-                segment = ptBounceSegment(selectedFirstHit.startBounce, 0);
-                segmentRay = reflection;
-                phase = PT_PHASE_GLASS_REFLECTION;
-                continue;
-            }
-            phase = PT_PHASE_FIRST_HIT;
         }
+        mainRay = saved;
+    }
 
-        if (phase == PT_PHASE_GLASS_REFLECTION) {
-            glassReflectionRadiance = mainRay.radiance;
-            if (any(isnan(glassReflectionRadiance)) || any(isinf(glassReflectionRadiance))) {
-                glassReflectionRadiance = vec3(0.0);
-            }
-            mainRay = glassReflectionSaved;
-            // The reflection's own hits are not the first hit: the path after it goes on from the surface behind.
-            g_lastMaterial = selectedFirstHitMat;
-            phase = PT_PHASE_FIRST_HIT;
-        }
-
-        if (phase == PT_PHASE_FIRST_HIT) {
-            hitSky = selectedFirstHit.hitSky;
+    bool hitSky = selectedFirstHit.hitSky;
 #if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
-            // Stars are drawn only where the view ends in the sky: they have no medium of their own to fade them.
-            postStarCloudTransmittance = hitSky ? clamp(selectedFirstHit.starVisibility, 0.0, 1.0) : 0.0;
+    // Stars are drawn only where the view ends in the sky: they have no medium of their own to fade them.
+    float postStarCloudTransmittance = hitSky ? clamp(mainRay.directLightRadiance.x, 0.0, 1.0) : 0.0;
 #else
-            postStarCloudTransmittance = hitSky ? clamp(selectedFirstHit.starVisibility, 0.0, 1.0) : 1.0;
+    float postStarCloudTransmittance = hitSky ? clamp(mainRay.directLightRadiance.x, 0.0, 1.0) : 1.0;
 #endif
-            float viewDepth = selectedFirstHit.viewDepth;
-            startBounce = selectedFirstHit.startBounce;
-            firstHitIncomingDirection = selectedFirstHit.incomingDirection;
-            firstHitOutgoingDirection = selectedFirstHit.outgoingDirection;
-            firstHitNormal = selectedFirstHit.normal;
-            firstHitWorldPos = selectedFirstHit.worldPos;
-            surfaceDepth = selectedFirstHit.surfaceDepth;
+    float viewDepth = selectedFirstHit.viewDepth;
+    int startBounce = selectedFirstHit.startBounce;
+    firstHitIncomingDirection = selectedFirstHit.incomingDirection;
+    firstHitOutgoingDirection = selectedFirstHit.outgoingDirection;
+    firstHitNormal = selectedFirstHit.normal;
+    firstHitWorldPos = selectedFirstHit.worldPos;
+    surfaceDepth = selectedFirstHit.surfaceDepth;
 
-            imageStore(firstHitDepthImage, pixel, vec4(selectedFirstHit.firstHitLinearDepth));
+    imageStore(firstHitDepthImage, pixel, vec4(selectedFirstHit.firstHitLinearDepth));
 
-            dvec3 currCameraPos = worldUBO.cameraPos.xyz;
-            dvec3 lastCameraPos = lastWorldUBO.cameraPos.xyz;
-            cameraDelta = vec3(currCameraPos - lastCameraPos);
-            mat4 prevRelativeMVP = lastWorldUBO.cameraProjMat * lastWorldUBO.cameraEffectedViewMat;
+    dvec3 currCameraPos = worldUBO.cameraPos.xyz;
+    dvec3 lastCameraPos = lastWorldUBO.cameraPos.xyz;
+    vec3 cameraDelta = vec3(currCameraPos - lastCameraPos);
+    mat4 prevRelativeMVP = lastWorldUBO.cameraProjMat * lastWorldUBO.cameraEffectedViewMat;
 
-            if (hitSky) {
-                mainRay.radiance += glassReflectionRadiance;
-                imageStore(outputImage, pixel, vec4(storedRadiance(mainRay.radiance), 1.0));
-                // The sky's albedo guide is its colour, and what the denoiser takes for the light on it is the picture
-                // divided by that guide. Tone mapped, the guide made that light at least 1 however dark the sky was,
-                // and at dusk, at night or in fog - where the light on a block is a fraction of that - it bled into the
-                // pixels along every silhouette: a pale rim on the edges of blocks and of the hand. Dividing by the
-                // brightest channel instead keeps the sky's light on the scale of what is next to it.
-                float skyLevel =
-                    max(max(mainRay.radiance.r, max(mainRay.radiance.g, mainRay.radiance.b)), SKY_GUIDE_MIN_LEVEL);
-                imageStore(diffuseAlbedoImage, pixel, vec4(clamp(mainRay.radiance / skyLevel, 0.0, 1.0), 0));
-                imageStore(specularAlbedoImage, pixel, vec4(0));
-                imageStore(normalRoughnessImage, pixel, vec4(0.0));
+    if (hitSky) {
+        mainRay.radiance += glassReflectionRadiance;
+        imageStore(outputImage, pixel, vec4(storedRadiance(mainRay.radiance), 1.0));
+        // The sky's albedo guide is its colour, and what the denoiser takes for the light on it is the picture
+        // divided by that guide. Tone mapped, the guide made that light at least 1 however dark the sky was, and at
+        // dusk, at night or in fog - where the light on a block is a fraction of that - it bled into the pixels
+        // along every silhouette: a pale rim on the edges of blocks and of the hand. Dividing by the brightest
+        // channel instead keeps the sky's light on the scale of what is next to it.
+        float skyLevel = max(max(mainRay.radiance.r, max(mainRay.radiance.g, mainRay.radiance.b)), SKY_GUIDE_MIN_LEVEL);
+        imageStore(diffuseAlbedoImage, pixel, vec4(clamp(mainRay.radiance / skyLevel, 0.0, 1.0), 0));
+        imageStore(specularAlbedoImage, pixel, vec4(0));
+        imageStore(normalRoughnessImage, pixel, vec4(0.0));
 
-                imageStore(linearDepthImage, pixel, vec4(INF_DISTANCE));
-                vec2 motionVec = computeCameraMotionVector(prevRelativeMVP, pixelCenter, vec4(orgDirection, 0.0));
-                imageStore(motionVectorImage, pixel, vec4(motionVec, vec2(0.0)));
+        imageStore(linearDepthImage, pixel, vec4(INF_DISTANCE));
+        vec2 motionVec = computeCameraMotionVector(prevRelativeMVP, pixelCenter, vec4(orgDirection, 0.0));
+        imageStore(motionVectorImage, pixel, vec4(motionVec, vec2(0.0)));
 
-                psrHitSky = true;
-                break;
-            }
+        psrHitSky = true;
+    } else {
+        psrHitSky = false;
 
-            psrHitSky = false;
-
-            hasSecondHit = false;
-            distFirstToSecond = 0.0;
-            firstHitEmission = vec3(0.0);
-            firstHitDirectRadiance = vec3(0.0);
-            firstHitIndirectRadiance = vec3(0.0);
-            transparentReflectionRadiance = vec3(0.0);
-            transparentRefractionRadiance = vec3(0.0);
-            hasTransparentReflection = false;
-            hasTransparentRefraction = false;
-            hasTransparentReflectionSecondHit = false;
-            transparentReflectionSecondHitDistance = 0.0;
-            useTransparentSplit = false;
+        hasSecondHit = false;
+        distFirstToSecond = 0.0;
+        firstHitEmission = vec3(0.0);
+        firstHitDirectRadiance = vec3(0.0);
+        firstHitIndirectRadiance = vec3(0.0);
+        transparentReflectionRadiance = vec3(0.0);
+        transparentRefractionRadiance = vec3(0.0);
+        hasTransparentReflection = false;
+        hasTransparentRefraction = false;
+        hasTransparentReflectionSecondHit = false;
+        transparentReflectionSecondHitDistance = 0.0;
+        useTransparentSplit = false;
 #    if USE_SHARC && SHARC_QUERY
-            sharcDebugBounceCount = 0;
-            sharcDebugCacheHit = false;
+        sharcDebugBounceCount = 0;
+        sharcDebugCacheHit = false;
 #    endif
 
-            // The material of the selected camera ray's first hit, kept when its segment ended: the glass reflection
-            // traced since shades surfaces of its own, and reading the last material shaded put the reflection's
-            // last surface into every first-hit guide (albedo, specular, roughness), the emission and the split test.
-            firstHitMat = selectedFirstHitMat;
-            firstHitWaterSurface = selectedFirstHit.aux.y > 0.5;
-            imageStore(diffuseAlbedoImage, pixel,
-                       vec4(firstHitMat.albedoValue.rgb * firstHitMat.albedoValue.a, firstHitMat.metallic));
-            vec3 specularGuide = firstHitMat.f0;
+        firstHitMat = rayLoadMaterial(mainRay);
+        firstHitWaterSurface = rayLoadAux(mainRay).y > 0.5;
+        imageStore(diffuseAlbedoImage, pixel,
+                   vec4(firstHitMat.albedoValue.rgb * firstHitMat.albedoValue.a, firstHitMat.metallic));
+        vec3 specularGuide = firstHitMat.f0;
 #if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
-            // The denoiser's specular guide as the reflectance in the view's direction, not at normal incidence.
-            float guideNoV = abs(dot(-firstHitIncomingDirection, firstHitNormal));
-            if (firstHitWaterSurface) {
-                // The same interface weight as initTransparent, total internal reflection included. Aux holds the
-                // medium the ray came in through, from before the shading swapped it.
-                float guideEta = selectedFirstHit.aux.y > 1.5 ? firstHitMat.ior : 1.0 / firstHitMat.ior;
-                specularGuide = vec3(vptInterfaceFresnel(guideNoV, guideEta));
-            } else if (firstHitMat.transmission <= 1e-6) {
-                // Opaque glass borders and other shaded surfaces keep their own normals and roughness; the guide
-                // follows their directional reflectance.
-                specularGuide = reflectionAlbedoGuide(firstHitMat.f0, firstHitMat.roughness, guideNoV);
-            }
+        // The denoiser's specular guide as the reflectance in the view's direction, not at normal incidence.
+        float guideNoV = abs(dot(-firstHitIncomingDirection, firstHitNormal));
+        if (firstHitWaterSurface) {
+            // The same interface weight as initTransparent, total internal reflection included. Aux holds the
+            // medium the ray came in through, from before the hit shader swapped it.
+            float guideEta = rayLoadAux(mainRay).y > 1.5 ? firstHitMat.ior : 1.0 / firstHitMat.ior;
+            specularGuide = vec3(vptInterfaceFresnel(guideNoV, guideEta));
+        } else if (firstHitMat.transmission <= 1e-6) {
+            // Opaque glass borders and other shaded surfaces keep their own normals and roughness; the guide
+            // follows their directional reflectance.
+            specularGuide = reflectionAlbedoGuide(firstHitMat.f0, firstHitMat.roughness, guideNoV);
+        }
 #endif
-            imageStore(specularAlbedoImage, pixel, vec4(specularGuide, 0.0));
+        imageStore(specularAlbedoImage, pixel, vec4(specularGuide, 0.0));
 
-            imageStore(normalRoughnessImage, pixel, vec4(mainRay.normal, firstHitMat.roughness));
+        imageStore(normalRoughnessImage, pixel, vec4(mainRay.normal, firstHitMat.roughness));
 
-            imageStore(linearDepthImage, pixel, vec4(viewDepth));
+        imageStore(linearDepthImage, pixel, vec4(viewDepth));
 
-            {
-                vec3 originRelativeToPrevCam = origin + orgDirection * selectedFirstHit.tracedDistance + cameraDelta;
-                if (mainRay.hasPrevScenePos > 0u) { originRelativeToPrevCam = mainRay.prevScenePos; }
-                // The held item and arm are fixed to the camera, not the world: they turn and move with it. Their world
-                // position would send the upscaler's history looking for them where the world was, and they smeared
-                // into ghosts whenever the camera turned. They are not fixed to the screen either, though: view bobbing
-                // sways the view while they stay put, so a map in hand drifts across the screen with every step, and a
-                // zero motion vector tore it apart while walking. Where the hand sat last frame is the same point in
-                // the camera's own (unbobbed) frame; last frame's bobbed projection then says where that was on screen.
-                // The held item also moves by itself: a map held in both hands rises and sinks as the view tilts, and
-                // arms swing. Last frame's vertices of the hand say where it really was, but only roughly - a little
-                // off from frame to frame even when the hand is still. Following them on every small difference, or
-                // dropping the history on large ones, left whatever was held grainy: the upscaler kept starting over.
-                // So the hand is taken as fixed to the camera unless it clearly moved against it. The hand is traced
-                // with a field of view of its own (handFovScale): where a point of it shows on screen is the world
-                // projection with x and y divided by that scale. Projecting it as world geometry - and taking the point
-                // along the world ray rather than the hand ray - put its motion vectors off by as much as the view
-                // moved, so everything held smeared and went grainy in motion.
-                vec2 motionVec;
-                if (isHand == 1) {
-                    vec3 handPos = origin + handDirection * selectedFirstHit.tracedDistance;
-                    vec3 handInView = mat3(worldUBO.cameraViewMat) * handPos;
-                    vec3 fixedInCamera = transpose(mat3(lastWorldUBO.cameraViewMat)) * handInView;
-                    motionVec = handMotionVector(prevRelativeMVP, pixelCenter, fixedInCamera);
-                    if (mainRay.hasPrevScenePos > 0u) {
-                        vec2 realMotion = handMotionVector(prevRelativeMVP, pixelCenter, mainRay.prevScenePos);
-                        // Moved against the camera by a few pixels or more (a swing, a map tilting with the pitch):
-                        // follow it. A jump larger than any hand makes in a frame is a mismatch between last frame's
-                        // vertices and this frame's (another item, another pose), not motion; the camera-fixed guess
-                        // stands then.
-                        float moved = length(realMotion - motionVec);
-                        float screen = float(max(gl_LaunchSizeEXT.x, gl_LaunchSizeEXT.y));
-                        if (moved > max(3.0, screen * 0.004) && moved < screen * 0.15) {
-                            motionVec = realMotion;
-                        }
+        {
+            vec3 originRelativeToPrevCam = origin + orgDirection * selectedFirstHit.tracedDistance + cameraDelta;
+            if (mainRay.hasPrevScenePos > 0u) { originRelativeToPrevCam = mainRay.prevScenePos; }
+            // The held item and arm are fixed to the camera, not the world: they turn and move with it. Their world
+            // position would send the upscaler's history looking for them where the world was, and they smeared
+            // into ghosts whenever the camera turned. They are not fixed to the screen either, though: view bobbing
+            // sways the view while they stay put, so a map in hand drifts across the screen with every step, and a
+            // zero motion vector tore it apart while walking. Where the hand sat last frame is the same point in the
+            // camera's own (unbobbed) frame; last frame's bobbed projection then says where that was on screen.
+            // The held item also moves by itself: a map held in both hands rises and sinks as the view tilts, and
+            // arms swing. Last frame's vertices of the hand say where it really was, but only roughly - a little
+            // off from frame to frame even when the hand is still. Following them on every small difference, or
+            // dropping the history on large ones, left whatever was held grainy: the upscaler kept starting over.
+            // So the hand is taken as fixed to the camera unless it clearly moved against it.
+            // The hand is traced with a field of view of its own (handFovScale): where a point of it shows on
+            // screen is the world projection with x and y divided by that scale. Projecting it as world geometry
+            // - and taking the point along the world ray rather than the hand ray - put its motion vectors off by
+            // as much as the view moved, so everything held smeared and went grainy in motion.
+            vec2 motionVec;
+            if (isHand == 1) {
+                vec3 handPos = origin + handDirection * selectedFirstHit.tracedDistance;
+                vec3 handInView = mat3(worldUBO.cameraViewMat) * handPos;
+                vec3 fixedInCamera = transpose(mat3(lastWorldUBO.cameraViewMat)) * handInView;
+                motionVec = handMotionVector(prevRelativeMVP, pixelCenter, fixedInCamera);
+                if (mainRay.hasPrevScenePos > 0u) {
+                    vec2 realMotion = handMotionVector(prevRelativeMVP, pixelCenter, mainRay.prevScenePos);
+                    // Moved against the camera by a few pixels or more (a swing, a map tilting with the pitch):
+                    // follow it. A jump larger than any hand makes in a frame is a mismatch between last frame's
+                    // vertices and this frame's (another item, another pose), not motion; the camera-fixed guess
+                    // stands then.
+                    float moved = length(realMotion - motionVec);
+                    float screen = float(max(gl_LaunchSizeEXT.x, gl_LaunchSizeEXT.y));
+                    if (moved > max(3.0, screen * 0.004) && moved < screen * 0.15) {
+                        motionVec = realMotion;
                     }
-                } else {
-                    motionVec =
-                        computeCameraMotionVector(prevRelativeMVP, pixelCenter, vec4(originRelativeToPrevCam, 1.0));
                 }
-                imageStore(motionVectorImage, pixel, vec4(motionVec, 0.0, 0.0));
+            } else {
+                motionVec = computeCameraMotionVector(prevRelativeMVP, pixelCenter, vec4(originRelativeToPrevCam, 1.0));
             }
+            imageStore(motionVectorImage, pixel, vec4(motionVec, 0.0, 0.0));
+        }
 
-            // (Bedrock RTX adds no light of its own: its constant ambient is zero, read from the running game.)
+        // (Bedrock RTX adds no light of its own: its constant ambient is zero, read from the running game.)
 #if !defined(VPT_BEDROCK_ORIGINAL) || VPT_BEDROCK_ORIGINAL == 0
-            if (startBounce == 1) {
-                mainRay.radiance += VPT_BASIC_RADIANCE * firstHitMat.albedoValue.rgb * firstHitMat.albedoValue.a *
-                                    mainRay.throughput;
-            }
+        if (startBounce == 1) {
+            mainRay.radiance += VPT_BASIC_RADIANCE * firstHitMat.albedoValue.rgb * firstHitMat.albedoValue.a * mainRay.throughput;
+        }
 #endif
 
-            psrHitPosition = firstHitWorldPos;
+        psrHitPosition = firstHitWorldPos;
 
-            isFirstHitNoisy = rayIsNoisy(mainRay);
-            isFirstHitDiffuse = false;
-            isFirstHitRefraction = false;
-            isFirstHitTransparent = false;
-            firstHitDirectRadiance = vec3(0.0);
-            firstHitIndirectRadiance = vec3(0.0);
-            if (isFirstHitNoisy) {
-                // Same strength as the shading gives a glowing surface; see pt/pt_shade_default.glsl.
+        isFirstHitNoisy = rayIsNoisy(mainRay);
+        isFirstHitDiffuse = false;
+        isFirstHitRefraction = false;
+        isFirstHitTransparent = false;
+        firstHitDirectRadiance = vec3(0.0);
+        firstHitIndirectRadiance = vec3(0.0);
+        if (isFirstHitNoisy) {
+            // Same strength as the hit shaders give a glowing surface; see default.rchit.
 #if VPT_BEDROCK_SPECULAR
-                // Its colour a tenth of the way to grey, as Bedrock RTX shows a glow (block_light.glsl).
-                vec3 glowColour = mix(firstHitMat.albedoValue.rgb,
-                                      vec3(dot(firstHitMat.albedoValue.rgb, vec3(0.2126, 0.7152, 0.0722))), 0.1);
-                firstHitEmission = glowColour * firstHitMat.emission * worldUBO.emissionBrightness *
-                                   VPT_BEDROCK_SEEN_EMISSION;
+            // Its colour a tenth of the way to grey, as Bedrock RTX shows a glow (block_light.glsl).
+            vec3 glowColour = mix(firstHitMat.albedoValue.rgb,
+                                  vec3(dot(firstHitMat.albedoValue.rgb, vec3(0.2126, 0.7152, 0.0722))), 0.1);
+            firstHitEmission = glowColour * firstHitMat.emission * worldUBO.emissionBrightness *
+                               VPT_BEDROCK_SEEN_EMISSION;
 #else
-                firstHitEmission = firstHitMat.albedoValue.rgb * firstHitMat.emission *
-                                   worldUBO.emissionBrightness * 16.0 * VPT_DIRECT_LIGHT_STRENGTH;
+            firstHitEmission = firstHitMat.albedoValue.rgb * firstHitMat.emission *
+                               worldUBO.emissionBrightness * 16.0 * VPT_DIRECT_LIGHT_STRENGTH;
 #endif
-                if (rayLobeType(mainRay) == 0u) {
-                    isFirstHitDiffuse = true;
-                    firstHitDirectRadiance = mainRay.directLightRadiance;
-                } else if (rayLobeType(mainRay) == 2u) {
-                    isFirstHitTransparent = true;
-                    float incomingSign = dot(firstHitIncomingDirection, firstHitNormal);
-                    float outgoingSign = dot(firstHitOutgoingDirection, firstHitNormal);
-                    isFirstHitRefraction = incomingSign * outgoingSign > 0.0;
-                }
+            if (rayLobeType(mainRay) == 0u) {
+                isFirstHitDiffuse = true;
+                firstHitDirectRadiance = mainRay.directLightRadiance;
+            } else if (rayLobeType(mainRay) == 2u) {
+                isFirstHitTransparent = true;
+                float incomingSign = dot(firstHitIncomingDirection, firstHitNormal);
+                float outgoingSign = dot(firstHitOutgoingDirection, firstHitNormal);
+                isFirstHitRefraction = incomingSign * outgoingSign > 0.0;
             }
+        }
 
-            if (isFirstHitNoisy && isFirstHitTransparent) {
+        if (isFirstHitNoisy) {
+            if (isFirstHitTransparent) {
                 // Only for glass. A translucent solid (ice) is mostly shaded as a surface and only partly let
                 // through; recomposing the frames that happened to go through as pure glass made it flicker.
                 // Water too: its surface is traced as a reflection and a refraction each frame, so what lies under
                 // shallow water stays sharp instead of the denoiser blending a random pick of the two. (Sheets of
-                // water seen side on are passed straight through before this, see pt/pt_shade_default.glsl.)
+                // water seen side on are passed straight through before this, see default.rchit.)
                 useTransparentSplit = VPT_TRANSPARENT_SPLIT_MODE == VPT_TRANSPARENT_SPLIT_MODE_DETERMINISTIC &&
                                       firstHitMat.transmission > 0.95;
 
@@ -606,8 +463,8 @@ void main() {
                     // refraction, swapping every frame, each at twice its weight - one ray per pixel instead of two,
                     // as Bedrock RTX does for water and glass. The branch left out counts as traced and black.
                     bool traceReflection = true;
-                    traceRefraction = true;
-                    branchWeight = 1.0;
+                    bool traceRefraction = true;
+                    float branchWeight = 1.0;
                     if (VPT_TRANSPARENT_CHECKERBOARD != 0 && isHand == 0) {
                         traceReflection = checkerboardCell(pixel);
                         traceRefraction = !traceReflection;
@@ -621,116 +478,70 @@ void main() {
                     // not counted as in the water. Water seen from above had no depth to its colour, and where
                     // the view then left a thin body of water through its side - the top of a waterfall - that
                     // side counted as going into water, and all the world behind it turned deep-sea dark.
-                    firstHitRay = mainRay;
+                    MainRay firstHitRay = mainRay;
                     MainRay transparentReflectionRay;
                     if (traceReflection &&
-                        initTransparent(firstHitRay, selectedFirstHit.aux, firstHitMat, firstHitIncomingDirection,
-                                        firstHitNormal, firstHitWorldPos, 0x9E3779B9u, true, transparentReflectionRay)) {
+                        initTransparent(firstHitRay, firstHitMat, firstHitIncomingDirection, firstHitNormal,
+                                        firstHitWorldPos, 0x9E3779B9u, true, transparentReflectionRay)) {
                         transparentReflectionRay.throughput *= branchWeight;
-                        segment = ptBounceSegment(startBounce, isHand);
-                        segmentRay = transparentReflectionRay;
-                        phase = PT_PHASE_SPLIT_REFLECTION;
-                        continue;
+                        traceTransparent(transparentReflectionRay, startBounce, isHand,
+#    if SHARC_QUERY && USE_SHARC
+                                         sharcParameters, sharcDebugBounceCount, sharcDebugCacheHit,
+#    endif
+                                         hasTransparentReflectionSecondHit, transparentReflectionSecondHitDistance);
+                        transparentReflectionRadiance = transparentReflectionRay.radiance;
+                        hasTransparentReflection = true;
                     }
-                    phase = PT_PHASE_SPLIT_AFTER_REFLECTION;
+                    // The two branches replace the ray's own radiance; what the glass in front added goes with them.
+                    transparentReflectionRadiance += g_passThroughRadiance;
+
+                    MainRay transparentRefractionRay;
+                    if (traceRefraction &&
+                        initTransparent(firstHitRay, firstHitMat, firstHitIncomingDirection, firstHitNormal,
+                                        firstHitWorldPos, 0x3C6EF372u, false, transparentRefractionRay)) {
+                        transparentRefractionRay.throughput *= branchWeight;
+                        bool hasTransparentRefractionSecondHit = false;
+                        float transparentRefractionSecondHitDistance = 0.0;
+                        traceTransparent(transparentRefractionRay, startBounce, isHand,
+#    if SHARC_QUERY && USE_SHARC
+                                         sharcParameters, sharcDebugBounceCount, sharcDebugCacheHit,
+#    endif
+                                         hasTransparentRefractionSecondHit, transparentRefractionSecondHitDistance);
+                        transparentRefractionRadiance = transparentRefractionRay.radiance;
+                        hasTransparentRefraction = true;
+                    }
+
+                    mainRay.radiance = transparentReflectionRadiance + transparentRefractionRadiance;
+                    mainRay.directLightRadiance = vec3(0.0);
                 } else {
-                    segment = ptBounceSegment(startBounce, isHand);
-                    segmentRay = mainRay;
-                    phase = PT_PHASE_SECONDARY;
-                    continue;
+                    traceSecondary(mainRay, startBounce, isHand,
+#    if SHARC_QUERY && USE_SHARC
+                                  sharcParameters, sharcDebugBounceCount, sharcDebugCacheHit,
+#    endif
+                                  hasSecondHit, distFirstToSecond);
                 }
             } else {
-                // Diffuse and other scattering first hits, and those that end the path (stopped, emissive only,
-                // the end of a mirror chain): the averaged bounces, VPT_HAND_SAMPLES of them for the hand.
-                averagedSamples = isHand == 1 ? VPT_HAND_SAMPLES : 1;
-                averagedIndex = 0;
-                averagedStart = mainRay;
-                segment = ptBounceSegment(startBounce, isHand);
-                segmentRay = averagedStart;
-                phase = PT_PHASE_AVERAGED;
-                continue;
+                traceSecondaryAveraged(isHand == 1 ? VPT_HAND_SAMPLES : 1, startBounce, isHand,
+#    if SHARC_QUERY && USE_SHARC
+                              sharcParameters, sharcDebugBounceCount, sharcDebugCacheHit,
+#    endif
+                              hasSecondHit, distFirstToSecond);
+
+                if (isFirstHitDiffuse) { firstHitIndirectRadiance = mainRay.radiance - firstHitDirectRadiance; }
             }
-        }
-
-        if (phase == PT_PHASE_SPLIT_REFLECTION) {
-            transparentReflectionRadiance = segmentRay.radiance;
-            hasTransparentReflectionSecondHit = segmentHasSecondHit;
-            transparentReflectionSecondHitDistance = segmentSecondHitDistance;
-            hasTransparentReflection = true;
-            phase = PT_PHASE_SPLIT_AFTER_REFLECTION;
-        }
-
-        if (phase == PT_PHASE_SPLIT_AFTER_REFLECTION) {
-            // The two branches replace the ray's own radiance; what the glass in front added goes with them.
-            transparentReflectionRadiance += g_passThroughRadiance;
-
-            MainRay transparentRefractionRay;
-            if (traceRefraction &&
-                initTransparent(firstHitRay, selectedFirstHit.aux, firstHitMat, firstHitIncomingDirection,
-                                firstHitNormal, firstHitWorldPos, 0x3C6EF372u, false, transparentRefractionRay)) {
-                transparentRefractionRay.throughput *= branchWeight;
-                segment = ptBounceSegment(startBounce, isHand);
-                segmentRay = transparentRefractionRay;
-                phase = PT_PHASE_SPLIT_REFRACTION;
-                continue;
-            }
-            phase = PT_PHASE_SPLIT_DONE;
-        }
-
-        if (phase == PT_PHASE_SPLIT_REFRACTION) {
-            transparentRefractionRadiance = segmentRay.radiance;
-            hasTransparentRefraction = true;
-            phase = PT_PHASE_SPLIT_DONE;
-        }
-
-        if (phase == PT_PHASE_SPLIT_DONE) {
-            mainRay.radiance = transparentReflectionRadiance + transparentRefractionRadiance;
-            mainRay.directLightRadiance = vec3(0.0);
-            break;
-        }
-
-        if (phase == PT_PHASE_SECONDARY) {
-            mainRay = segmentRay;
-            hasSecondHit = segmentHasSecondHit;
-            distFirstToSecond = segmentSecondHitDistance;
-            break;
-        }
-
-        // PT_PHASE_AVERAGED: the same bounces again from the same first hit, each sample going on with the random
-        // sequence where the one before left it; only the first sample's second hit is reported.
-        if (averagedIndex == 0) {
-            hasSecondHit = segmentHasSecondHit;
-            distFirstToSecond = segmentSecondHitDistance;
-            averagedRadiance = segmentRay.radiance;
         } else {
-            averagedRadiance += segmentRay.radiance;
+            traceSecondaryAveraged(isHand == 1 ? VPT_HAND_SAMPLES : 1, startBounce, isHand,
+#    if SHARC_QUERY && USE_SHARC
+                          sharcParameters, sharcDebugBounceCount, sharcDebugCacheHit,
+#    endif
+                          hasSecondHit, distFirstToSecond);
         }
-        averagedIndex++;
-        if (averagedIndex < averagedSamples) {
-            uint seed = segmentRay.seed;
-            segmentRay = averagedStart;
-            segmentRay.seed = seed;
-            continue;
-        }
-        segmentRay.radiance = averagedRadiance / float(max(averagedSamples, 1));
-        mainRay = segmentRay;
-        // Only ever set for a noisy diffuse first hit.
-        if (isFirstHitDiffuse) { firstHitIndirectRadiance = mainRay.radiance - firstHitDirectRadiance; }
-        break;
     }
 
-    // What the NRD channels take of a non-split first hit: the path's radiance before the fog below (compose.comp
-    // fogs the denoised light itself, so fogging it here as well counted the fog twice), without the glass's
-    // reflection (it goes to the emission image, which compose adds once) and without the emission the shading added
-    // where the path was seen (that also goes to the emission image, in place of an estimate made apart from it).
-    vec3 nrdRadiance = mainRay.radiance;
     if (!hitSky) { mainRay.radiance += glassReflectionRadiance; }
     if (isnan(mainRay.radiance.r) || isinf(mainRay.radiance.r)) { mainRay.radiance = vec3(0.0, 0.0, 0.0); }
     if (isnan(mainRay.radiance.g) || isinf(mainRay.radiance.g)) { mainRay.radiance = vec3(0.0, 0.0, 0.0); }
     if (isnan(mainRay.radiance.b) || isinf(mainRay.radiance.b)) { mainRay.radiance = vec3(0.0, 0.0, 0.0); }
-    if (any(isnan(nrdRadiance)) || any(isinf(nrdRadiance))) { nrdRadiance = vec3(0.0); }
-    if (any(isnan(firstHitSeenEmission)) || any(isinf(firstHitSeenEmission))) { firstHitSeenEmission = vec3(0.0); }
-    nrdRadiance = max(nrdRadiance - firstHitSeenEmission, vec3(0.0));
 
     float densityAir = 0.0000;
     float densityFog = 2.0 / (worldUBO.fogEnd - worldUBO.fogStart);
@@ -765,10 +576,10 @@ void main() {
             composeFogTransmittance = transmittance;
             composeFogAdditive = additive;
         }
-    } else {
+    } else if (!raySkipFog(mainRay)) {
         if (skyUBO.cameraSubmersionType == 1 && waterMediumActive()) {
             // A Bedrock pack's water: the camera's stretch of it absorbs and scatters like every other one. Its
-            // first stretch only: past the first surface the shading fogs the water, and fogging up to the
+            // first stretch only: past the first surface the hit shaders fog the water, and fogging up to the
             // first solid surface here counted the water behind a pane or a particle twice. A ray that hits nothing
             // has water without a far side (it used to count as none, showing the bright open sky deep under water).
             float waterDistance = selectedFirstHit.cameraWaterDistance;
@@ -906,7 +717,7 @@ void main() {
     }
 
     // With volumetric fog on, the overworld's biome fog is part of that march instead (see integrateVolumetricFog).
-    if (skyUBO.hasBlindnessOrDarkness == 0 && biomeHazeActive()
+    if (!raySkipFog(mainRay) && skyUBO.hasBlindnessOrDarkness == 0 && biomeHazeActive()
         && !(useVolumetricFog && worldUBO.skyType == 1)) {
         float hazeTransmittance;
         vec3 hazeAdditive;
@@ -965,8 +776,7 @@ void main() {
                        vec4(storedRadiance(transparentRefractionRadiance), hasTransparentRefraction ? 1.0 : -1.0));
         } else if (isFirstHitDiffuse) {
             imageStore(firstHitDiffuseDirectLightImage, ivec2(pixel), vec4(storedRadiance(firstHitDirectRadiance), 1.0));
-            imageStore(firstHitDiffuseIndirectLightImage, ivec2(pixel),
-                       vec4(storedRadiance(max(firstHitIndirectRadiance - firstHitSeenEmission, vec3(0.0))), 1.0));
+            imageStore(firstHitDiffuseIndirectLightImage, ivec2(pixel), vec4(storedRadiance(firstHitIndirectRadiance), 1.0));
             imageStore(firstHitSpecularImage, ivec2(pixel), vec4(vec3(0.0), 1.0));
             imageStore(firstHitClearImage, ivec2(pixel), vec4(vec3(0.0), 0.0));
             imageStore(firstHitRefractionImage, ivec2(pixel), vec4(vec3(0.0), 0.0));
@@ -975,11 +785,11 @@ void main() {
             imageStore(firstHitDiffuseIndirectLightImage, ivec2(pixel), vec4(vec3(0.0), 1.0));
             imageStore(firstHitSpecularImage, ivec2(pixel), vec4(vec3(0.0), 1.0));
             imageStore(firstHitClearImage, ivec2(pixel), vec4(vec3(0.0), 0.0));
-            imageStore(firstHitRefractionImage, ivec2(pixel), vec4(storedRadiance(nrdRadiance), 1.0));
+            imageStore(firstHitRefractionImage, ivec2(pixel), vec4(storedRadiance(mainRay.radiance), 1.0));
         } else {
             imageStore(firstHitDiffuseDirectLightImage, ivec2(pixel), vec4(vec3(0.0), 1.0));
             imageStore(firstHitDiffuseIndirectLightImage, ivec2(pixel), vec4(vec3(0.0), 1.0));
-            imageStore(firstHitSpecularImage, ivec2(pixel), vec4(storedRadiance(nrdRadiance), 1.0));
+            imageStore(firstHitSpecularImage, ivec2(pixel), vec4(storedRadiance(mainRay.radiance), 1.0));
             imageStore(firstHitClearImage, ivec2(pixel), vec4(vec3(0.0), 0.0));
             imageStore(firstHitRefractionImage, ivec2(pixel), vec4(vec3(0.0), isFirstHitTransparent ? -1.0 : 0.0));
         }
@@ -1117,9 +927,6 @@ void main() {
                              firstHitMat.albedoValue.a;
     }
 #endif
-    // The emission image of a non-split first hit is the emission its denoised channels were stored without, so
-    // compose counts it once (the light meter above keeps the estimate it always used).
-    if (!psrHitSky && isFirstHitNoisy && !useTransparentSplit) { firstHitEmission = firstHitSeenEmission; }
     firstHitEmission += nightVisionAmbient;
     if (skyUBO.hasBlindnessOrDarkness > 0 && composeFogTransmittance >= 0.0) {
         // The emission channel skips the fog above; without this, glowing blocks shone through the dark.
@@ -1131,7 +938,7 @@ void main() {
     if (composeFogIsRgb) { composeFogTransmittance = -2.0; }
 #endif
     bool applyVolumetricCompose =
-        useVolumetricFog && skyUBO.cameraSubmersionType != 1 && worldUBO.skyType == 1 &&
+        useVolumetricFog && !raySkipFog(mainRay) && skyUBO.cameraSubmersionType != 1 && worldUBO.skyType == 1 &&
         skyUBO.hasBlindnessOrDarkness == 0;
     if (applyVolumetricCompose) {
         // Only as far as the first surface, as the biome haze: a ray carried on off water or glass crosses its own
@@ -1212,8 +1019,6 @@ void main() {
         imageStore(outputImage, ivec2(pixel), vec4(glowRadiance, 1.0));
         return;
     }
-    // Clamped like every other radiance store: the sun or a beacon core seen directly can exceed the half-float
-    // range, and an inf there showed as a black dot.
-    imageStore(outputImage, ivec2(pixel), vec4(storedRadiance(mainRay.radiance + nightVisionAmbient), 1.0));
+    imageStore(outputImage, ivec2(pixel), vec4(mainRay.radiance + nightVisionAmbient, 1.0));
 #endif
 }

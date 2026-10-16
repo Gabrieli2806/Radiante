@@ -333,10 +333,6 @@ public class RadianteOptionsScreen extends Screen {
         return component != UpscalerDownloads.Component.DLSS || RadianteRenderer.isNvidiaGpu();
     }
 
-    /**
-     * The bottom-bar button for the upscaler of the pipeline in the selector: Install when it is not downloaded,
-     * Restart when it is downloaded but not loaded yet, Delete when it is in use. None for FSR and the others.
-     */
     /** Development: opens the settings looking at a pipeline, as if picked in the selector. */
     public static RadianteOptionsScreen showingPreset(Screen parent, net.minecraft.client.Options options, Presets preset) {
         RadianteOptionsScreen screen = new RadianteOptionsScreen(parent, options);
@@ -344,9 +340,11 @@ public class RadianteOptionsScreen extends Screen {
         return screen;
     }
 
-    /** The Pipeline row: Install and Delete for its upscaler show at the bottom once it was clicked. */
-    private static final String PIPELINE_OPTION_KEY = "options.radiante.preset";
-
+    /**
+     * The bottom-bar button for the upscaler of the pipeline in the selector: Install when it is not downloaded,
+     * Restart when it is downloaded but not loaded yet, Delete when it is in use. None for FSR and the others. Always
+     * shown: picking a pipeline reopens the screen, which drops the focus a row-anchored button would wait for.
+     */
     private SettingsLayout.Extra upscalerFooterButton() {
         Presets shown = this.shownPreset != null ? this.shownPreset : this.pendingPreset;
         UpscalerDownloads.Component component = shown == null ? null : downloadFor(shown);
@@ -366,7 +364,7 @@ public class RadianteOptionsScreen extends Screen {
         if (!UpscalerDownloads.isInstalled(component)) {
             return new SettingsLayout.Extra(Component.translatable("options.radiante.download.button.install", name,
                 Math.round(component.downloadBytes / 1_000_000.0)),
-                manageTooltip, () -> openUpscalerScreen(component), !inWorld, PIPELINE_OPTION_KEY);
+                manageTooltip, () -> openUpscalerScreen(component), !inWorld, null);
         }
         if (!Pipeline.isPresetAvailable(shown.key)) {
             return new SettingsLayout.Extra(Component.translatable("options.radiante.download.button.restart", name),
@@ -377,7 +375,7 @@ public class RadianteOptionsScreen extends Screen {
                 }, true, null);
         }
         return new SettingsLayout.Extra(Component.translatable("options.radiante.download.button.delete", name),
-            manageTooltip, () -> openUpscalerScreen(component), !inWorld, PIPELINE_OPTION_KEY);
+            manageTooltip, () -> openUpscalerScreen(component), !inWorld, null);
     }
 
     /** Downloads, deletes or reports on an upscaler, coming back to these settings afterwards. */

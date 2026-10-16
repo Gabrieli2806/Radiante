@@ -1,10 +1,9 @@
 #ifndef VPT_PT_PRIMARY_GLSL
 #define VPT_PT_PRIMARY_GLSL
 
-// The camera's ray: path state set-up and the trace distance and masks per step. prepareSecondary sits here too,
-// beside preparePrimary, as it did in world.rgen. The primary loop itself (through glass, water sides and mirrors up
-// to the first surface that scatters, once tracePrimary) is the PT_STEP_PRIMARY half of ptRunSegment
-// (pt_segment.glsl), so that it shares the one main-path trace with the bounces.
+// The camera's ray: path state set-up, the trace distance and masks per step, and the primary loop through glass,
+// water sides and mirrors up to the first surface that scatters (tracePrimary). prepareSecondary sits here too,
+// beside preparePrimary, as it did in world.rgen. Moved verbatim out of world.rgen.
 
 struct FirstHitPayload {
     bool hitSky;
@@ -20,11 +19,6 @@ struct FirstHitPayload {
     vec3 outgoingDirection;
     vec3 normal;
     vec3 worldPos;
-    // The side channels of the camera ray's last step (pt/pt_side_channels.glsl), for the first-hit outputs, which
-    // run after the hand's ray and the glass reflection have been traced: the auxiliary pair of the first hit (water
-    // flag and origin bias, Bedrock medium bits), and, when the view ended in the sky, the stars' visibility.
-    vec2 aux;
-    float starVisibility;
 };
 
 void initMainRay(vec3 origin, vec3 direction, uint seed, float coneSpread, out MainRay ray) {
@@ -43,6 +37,7 @@ void initMainRay(vec3 origin, vec3 direction, uint seed, float coneSpread, out M
     raySetContinue(ray, false);
     raySetPassThrough(ray, false);
     raySetNoisy(ray, false);
+    raySetSkipFog(ray, false);
     ray.prevScenePos = vec3(0.0);
     ray.hasPrevScenePos = 0u;
     ray.normal = vec3(0.0);
@@ -58,6 +53,7 @@ void resetMainRay(inout MainRay ray, int bounce) {
     raySetContinue(ray, false);
     raySetPassThrough(ray, false);
     raySetNoisy(ray, false);
+    raySetSkipFog(ray, false);
     ray.prevScenePos = vec3(0.0);
     ray.hasPrevScenePos = 0u;
     ray.normal = vec3(0.0);
@@ -144,6 +140,112 @@ void prepareSecondary(int bounce, int isHand, out float len, out uint mask) {
         len = 384.0;
         mask = WORLD_MASK | PLAYER_MASK | FISHING_BOBBER_MASK;
     }
+}
+
+void tracePrimary(vec3 eyePos,
+                  vec3 orgDirection,
+                  uint rayFlags,
+                  int isHand,
+                  inout MainRay rayState,
+                  out FirstHitPayload firstHit) {
+    firstHit.hitSky = false;
+    firstHit.surfaceDepth = INF_DISTANCE;
+    firstHit.viewDepth = INF_DISTANCE;
+    firstHit.firstHitLinearDepth = INF_DISTANCE;
+    firstHit.tracedDistance = 0.0;
+    firstHit.cameraWaterDistance = INF_DISTANCE;
+    firstHit.startBounce = 0;
+    firstHit.incomingDirection = vec3(0.0);
+    firstHit.outgoingDirection = vec3(0.0);
+    firstHit.normal = vec3(0.0);
+    firstHit.worldPos = vec3(0.0);
+
+    bool surfaceDepthSampled = false;
+    bool cameraPath = true;
+    for (int step = 0; step < VPT_PRIMARY_TRACE_STEP_LIMIT; ++step) {
+        resetMainRay(rayState, step);
+        raySetCameraPath(rayState, cameraPath);
+        // What the glass passed through so far lets through: the air past it is seen through it too.
+        g_passThroughTint = rayState.throughput;
+        g_passThroughRadiance = rayState.radiance;
+        g_passThroughDistance = firstHit.tracedDistance;
+
+        float len;
+        uint mask;
+        uint missId;
+        preparePrimary(step, isHand, len, mask, missId);
+        // In first person the player's own model stays out of the view for as long as the view runs straight on.
+        // Past a cloud's face, a pane or a raindrop it was looked for again, and whatever of it lay beyond showed:
+        // rising into a cloud, with its underside between the eyes and the body, the body from within, black.
+        // Only a view turned back by a mirror shows the player.
+        if (isHand == 0 && step > 0 && worldUBO.isFirstPerson > 0 &&
+            dot(rayState.direction, orgDirection) > 0.9999) {
+            mask &= ~PLAYER_MASK;
+        }
+
+        vec3 tracedOrigin = rayState.origin;
+        vec3 tracedDirection = rayState.direction;
+        mainRay = rayState;
+        VPT_TRACE_PATH(rayFlags, mask, 1, 1, missId, mainRay.origin, 0.0001, mainRay.direction, len);
+        rayState = mainRay;
+        if (step == 0) {
+            firstHit.cameraWaterDistance = rayState.hitT;
+        }
+        if (rayIsPassThrough(rayState) && !g_glassReflection &&
+            max(rayState.directLightRadiance.r, max(rayState.directLightRadiance.g, rayState.directLightRadiance.b)) >
+                1e-4 && dot(rayState.normal, rayState.normal) > 0.5) {
+            g_glassReflection = true;
+            g_glassReflectionOrigin = tracedOrigin + tracedDirection * rayState.hitT;
+            g_glassReflectionDirection = normalize(rayState.normal);
+            g_glassReflectionWeight = rayState.directLightRadiance;
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+            g_glassReflectionMedium = uint(round(rayLoadAux(rayState).y));
+#endif
+        }
+        cameraPath = cameraPath && rayIsPassThrough(rayState);
+        raySetCameraPath(rayState, false);
+
+        if (!surfaceDepthSampled && !rayIsPassThrough(rayState)) {
+            firstHit.surfaceDepth = firstHit.tracedDistance + rayState.hitT;
+            surfaceDepthSampled = true;
+            if (rayState.hitT != INF_DISTANCE) {
+                vec3 hitPos = eyePos + orgDirection * (firstHit.tracedDistance + rayState.hitT);
+                hitPos -= worldUBO.cameraViewMatInv[3].xyz;
+                firstHit.firstHitLinearDepth = -(mat3(worldUBO.cameraEffectedViewMat) * hitPos).z;
+            }
+        }
+
+        if (rayState.hitT == INF_DISTANCE) {
+            firstHit.hitSky = true;
+            firstHit.startBounce = step + 1;
+            return;
+        }
+
+        firstHit.tracedDistance += rayState.hitT;
+        firstHit.startBounce = step + 1;
+
+        if (rayShouldContinue(rayState)) {
+            // Out of steps still going (a room of mirrors facing each other, glass behind glass): the view ends
+            // there, dark, as a surface at that distance. Left as it was it counted as open sky, and the stars
+            // drawn over the sky afterwards showed in the mirrors at night.
+            if (step == VPT_PRIMARY_TRACE_STEP_LIMIT - 1 && !surfaceDepthSampled) {
+                firstHit.surfaceDepth = firstHit.tracedDistance;
+                surfaceDepthSampled = true;
+                vec3 endPos = eyePos + orgDirection * firstHit.tracedDistance - worldUBO.cameraViewMatInv[3].xyz;
+                firstHit.firstHitLinearDepth = -(mat3(worldUBO.cameraEffectedViewMat) * endPos).z;
+            }
+            continue;
+        }
+
+        firstHit.incomingDirection = tracedDirection;
+        firstHit.outgoingDirection = rayState.direction;
+        firstHit.normal = rayState.normal;
+        firstHit.worldPos = tracedOrigin + tracedDirection * rayState.hitT;
+        break;
+    }
+
+    vec3 virtualOrigin = eyePos + orgDirection * firstHit.tracedDistance;
+    firstHit.viewDepth = -(worldUBO.cameraEffectedViewMat * vec4(virtualOrigin, 1.0)).z;
 }
 
 #endif // VPT_PT_PRIMARY_GLSL

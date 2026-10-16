@@ -1,6 +1,7 @@
 #include "prism/all_extern.hpp"
 #include "prism/middleware/jni_support.hpp"
 #include "prism/render/buffers.hpp"
+#include "prism/render/gpu_profiler.hpp"
 #include "prism/render/modules/world/ray_tracing/ray_tracing_module.hpp"
 #include "prism/render/modules/world/shader_pack/shader_pack.hpp"
 #include "prism/render/pipeline.hpp"
@@ -148,6 +149,12 @@ JNIEXPORT void JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_prewarmS
         };
         env->SetIntArrayRegion(out, 0, 5, values);
     });
+}
+
+// The GPU time of the world pipeline, averaged over the last 60 frames, per stage (GpuProfiler::summary), for F3.
+JNIEXPORT jstring JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_gpuStats(JNIEnv *env, jclass) {
+    const std::string summary = GpuProfiler::summary();
+    return env->NewStringUTF(summary.c_str());
 }
 
 } // extern "C"

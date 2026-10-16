@@ -522,7 +522,7 @@ bool ptParallaxEdgePassThrough(inout HeightMapHit initialHit, vec3 baseGeoNormal
         shadowRay.throughput = vec3(1.0);
         shadowRay.insideBoat = 0u;
         shadowRay.pad0 = BLOCK_LIGHT_QUERY;
-        traceRayEXT(topLevelAS, VPT_SHADOW_RAY_FLAGS, WORLD_MASK, 0, 0, 0, edgePos - outward * 0.005, 0.0001, outward,
+        traceRayEXT(topLevelAS, gl_RayFlagsNoneEXT, WORLD_MASK, 0, 0, 0, edgePos - outward * 0.005, 0.0001, outward,
                     0.02, 1);
         shadowRay.pad0 = 0u;
         bool outerEdge = shadowRay.radiance.r < 0.5;

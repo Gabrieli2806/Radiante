@@ -260,12 +260,6 @@
             "define": "VPT_CACHE_DEEP_BOUNCES"
         },
         {
-            "name": "render_pipeline.module.ray_tracing.attribute.sharc_preshade",
-            "type": "bool",
-            "default_value": "render_pipeline.false",
-            "define": "VPT_SHARC_PRESHADE"
-        },
-        {
             "name": "render_pipeline.module.ray_tracing.attribute.seamless_glass",
             "type": "bool",
             "default_value": "render_pipeline.true",
@@ -709,6 +703,16 @@
             "width": 128,
             "height": 128,
             "sampled_binding": 2
+        },
+        {
+            "name": "material_state",
+            "type": "intermediate",
+            "dimension": "2d_array",
+            "format": "R16G16B16A16_SFLOAT",
+            "width": "RENDER_WIDTH",
+            "height": "RENDER_HEIGHT",
+            "depth": 3,
+            "storage_binding": 3
         },
         {
             "name": "post_motion",
@@ -1269,10 +1273,14 @@
                     "out:fog_image",
                     "out:first_hit_refraction",
                     "post_star_cloud_transmittance",
+                    "material_state",
                     "restir_reservoir",
                     "froxel_light",
                     "out:fog_transmission"
                 ]
+            },
+            "definitions": {
+                "VPT_MATERIAL_STATE_BINDING": "3"
             },
             "rgen": "world/world.rgen",
             "default_hit_group": "default",
@@ -1280,93 +1288,99 @@
                 "default": {
                     "type": "triangle",
                     "shaders": {
-                        "rchit": "world/hit/default.rchit",
+                        "rchit": "world/default.rchit",
                         "rahit": "world/default.rahit"
                     }
                 },
                 "entity_solid_z_offset_forward": {
                     "type": "triangle",
                     "shaders": {
-                        "rchit": "world/hit/no_height.rchit",
+                        "rchit": "world/no_height.rchit",
                         "rahit": "world/default.rahit"
                     }
                 },
                 "shadow": {
                     "type": "triangle",
                     "shaders": {
+                        "rchit": "world/shadow.rchit",
                         "rahit": "world/shadow.rahit"
                     }
                 },
                 "clouds": {
                     "type": "triangle",
                     "shaders": {
-                        "rchit": "world/hit/clouds.rchit",
+                        "rchit": "world/clouds.rchit",
                         "rahit": "world/clouds.rahit"
                     }
                 },
                 "end_gateway": {
                     "type": "triangle",
                     "shaders": {
-                        "rchit": "world/hit/end_gateway.rchit"
+                        "rchit": "world/end_gateway.rchit",
+                        "rahit": "world/end_gateway.rahit"
                     }
                 },
                 "end_portal": {
                     "type": "triangle",
                     "shaders": {
-                        "rchit": "world/hit/end_portal.rchit"
+                        "rchit": "world/end_portal.rchit",
+                        "rahit": "world/end_portal.rahit"
                     }
                 },
                 "water_mask": {
                     "type": "triangle",
                     "shaders": {
-                        "rchit": "world/hit/water_mask.rchit",
+                        "rchit": "world/water_mask.rchit",
                         "rahit": "world/water_mask.rahit"
                     }
                 },
                 "world_no_reflect": {
                     "type": "triangle",
                     "shaders": {
-                        "rchit": "world/hit/no_reflect.rchit"
+                        "rchit": "world/world_no_reflect.rchit",
+                        "rahit": "world/world_no_reflect.rahit"
                     }
                 },
                 "text_see_through": {
                     "type": "triangle",
                     "shaders": {
-                        "rchit": "world/hit/default.rchit",
+                        "rchit": "world/default.rchit",
                         "rahit": "world/text.rahit"
                     }
                 },
                 "text_intensity_see_through": {
                     "type": "triangle",
                     "shaders": {
-                        "rchit": "world/hit/default.rchit",
+                        "rchit": "world/default.rchit",
                         "rahit": "world/text.rahit"
                     }
                 },
                 "text_polygon_offset": {
                     "type": "triangle",
                     "shaders": {
-                        "rchit": "world/hit/default.rchit",
+                        "rchit": "world/default.rchit",
                         "rahit": "world/text.rahit"
                     }
                 },
                 "text_intensity_polygon_offset": {
                     "type": "triangle",
                     "shaders": {
-                        "rchit": "world/hit/default.rchit",
+                        "rchit": "world/default.rchit",
                         "rahit": "world/text.rahit"
                     }
                 },
                 "lightning": {
                     "type": "triangle",
                     "shaders": {
-                        "rchit": "world/hit/sheet.rchit"
+                        "rchit": "world/transparent_only.rchit",
+                        "rahit": "world/transparent_only.rahit"
                     }
                 },
                 "beacon_beam": {
                     "type": "triangle",
                     "shaders": {
-                        "rchit": "world/hit/sheet.rchit"
+                        "rchit": "world/transparent_only.rchit",
+                        "rahit": "world/transparent_only.rahit"
                     }
                 }
             },
@@ -1377,15 +1391,15 @@
                 },
                 {
                     "name": "world",
-                    "shader": "world/hit/record_miss.rmiss"
+                    "shader": "world/world.rmiss"
                 },
                 {
                     "name": "hand",
-                    "shader": "world/hit/record_miss.rmiss"
+                    "shader": "world/hand.rmiss"
                 },
                 {
                     "name": "world_no_volumetric",
-                    "shader": "world/hit/record_miss.rmiss"
+                    "shader": "world/world_no_volumetric.rmiss"
                 }
             ]
         },

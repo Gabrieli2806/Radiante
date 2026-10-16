@@ -14,8 +14,8 @@ void traceSharcUpdate(
 
     initMainRay(origin, direction, worldUBO.seed ^ sharcConfig.frameIndex, coneSpreadFromFov(fovY, fovX, resolution),
                     mainRay);
-    // Every surface these paths reach stands for the light that leaves it (the shading samples block lights on
-    // every bounce of them, see pt/pt_shade_default.glsl).
+    // Every surface these paths reach stands for the light that leaves it (the hit shaders sample block lights on
+    // every bounce of them, see default.rchit).
     raySetCacheUpdate(mainRay, true);
 
     for (int b = 0; b < VPT_NUM_RAY_BOUNCES; ++b) {
@@ -33,16 +33,15 @@ void traceSharcUpdate(
 
         vec3 tracedOrigin = mainRay.origin;
         vec3 tracedDirection = mainRay.direction;
-        // Through ptStep like every other main-path trace (pt_trace.glsl), so recorded hits get shaded here too.
-        ptStep(mainRay, StepParams(PT_STEP_CACHE_UPDATE, rayFlags, mask, VPT_WORLD_NO_VOLUMETRIC_MISS_INDEX, 0.0001,
-                                   len, false, 0u));
+        VPT_TRACE_PATH(rayFlags, mask, 1, 1, VPT_WORLD_NO_VOLUMETRIC_MISS_INDEX, mainRay.origin, 0.0001,
+                       mainRay.direction, len);
 
         if (mainRay.hitT == INF_DISTANCE) {
             SharcUpdateMiss(sharcParameters, sharcState, mainRay.radiance);
             break;
         }
 
-        MaterialInfo mat = g_lastMaterial;
+        MaterialInfo mat = rayLoadMaterial(mainRay);
         if (mat.transmission > 0.95) {
             mainRay.throughput = vec3(1.0);
             mainRay.radiance = vec3(0.0);
@@ -52,13 +51,7 @@ void traceSharcUpdate(
 
         SharcHitData sharcHitData;
         sharcHitData.positionWorld = tracedOrigin + tracedDirection * mainRay.hitT + vec3(worldUBO.cameraPos.xyz);
-#if PT_SHARC_PRESHADE
-        // Filed under the triangle's own normal, the one the pre-shade lookups ask with (they run before the shading
-        // normal exists): a cell stored under one normal is not found under another.
-        sharcHitData.normalWorld = ptSharcHitNormal();
-#else
         sharcHitData.normalWorld = mainRay.normal;
-#endif
         bool accepted = SharcUpdateHit(sharcParameters, sharcState, sharcHitData, mainRay.radiance, rand(mainRay.seed));
         if (!accepted) { break; }
 

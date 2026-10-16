@@ -18,8 +18,9 @@ namespace {
 constexpr uint32_t SLOTS = 8;
 // Timestamps one frame can write; marks past that are not timed.
 constexpr uint32_t PER_SLOT = 96;
-// Frames averaged into one report.
-constexpr uint32_t REPORT_FRAMES = 300;
+// Frames averaged into one summary (the F3 line); every fifth summary is also logged when RADIANTE_GPU_PROFILE is set.
+constexpr uint32_t REPORT_FRAMES = 60;
+constexpr uint32_t LOG_EVERY = 5;
 
 struct NameHash {
     using is_transparent = void;
@@ -47,6 +48,9 @@ struct State {
     std::vector<uint32_t> order;
     double totalMs = 0.0;
     uint32_t frames = 0;
+    uint32_t reports = 0;
+    // The last summary, for the F3 screen. Written and read on the render thread, like everything here.
+    std::string summary;
 };
 
 State &state() {
@@ -64,14 +68,32 @@ uint32_t nameId(State &s, std::string_view name) {
     return id;
 }
 
+// "struct DLSSModuleContext" -> "DLSS", "rt:world" -> "world": the short name the F3 line shows.
+std::string_view shortName(std::string_view name) {
+    for (std::string_view prefix : {"struct ", "class ", "rt:"}) {
+        if (name.starts_with(prefix)) name.remove_prefix(prefix.size());
+    }
+    if (name.ends_with("ModuleContext")) name.remove_suffix(std::string_view("ModuleContext").size());
+    return name;
+}
+
 void report(State &s) {
+    std::ostringstream brief;
+    brief << std::fixed << std::setprecision(2) << s.totalMs / s.frames << " ms";
     std::ostringstream line;
     line << "[gpu profile] " << std::fixed << std::setprecision(3) << s.totalMs / s.frames << " ms in all:";
+    bool first = true;
     for (uint32_t id : s.order) {
         const double ms = s.sums[id] / s.frames;
         if (ms >= 0.005) line << " " << s.names[id] << "=" << ms;
+        if (ms >= 0.05 && s.names[id] != "rt:before") {
+            brief << (first ? " (" : ", ") << shortName(s.names[id]) << " " << ms;
+            first = false;
+        }
     }
-    std::cout << line.str() << std::endl;
+    if (!first) brief << ")";
+    s.summary = brief.str();
+    if (verbose() && ++s.reports % LOG_EVERY == 0) std::cout << line.str() << std::endl;
 
     for (uint32_t id : s.order) {
         s.sums[id] = 0.0;
@@ -122,9 +144,17 @@ bool createPool(State &s, VkDevice device, VkPhysicalDevice physicalDevice) {
 
 } // namespace
 
-bool enabled() {
+bool verbose() {
     static const bool requested = std::getenv("RADIANTE_GPU_PROFILE") != nullptr;
-    return requested && !state().failed;
+    return requested;
+}
+
+bool enabled() {
+    return !state().failed;
+}
+
+std::string summary() {
+    return state().summary;
 }
 
 void beginFrame(VkDevice device, VkPhysicalDevice physicalDevice, VkCommandBuffer commandBuffer, uint32_t frameIndex) {

@@ -100,7 +100,6 @@ render_pipeline.module.ray_tracing.attribute.post_dof_auto_focus=DOF Autofocus
 render_pipeline.module.ray_tracing.attribute.post_dof_focus_distance=DOF Focus Distance
 render_pipeline.module.ray_tracing.attribute.post_dof_focus_range=DOF Focus Range
 render_pipeline.module.ray_tracing.attribute.cache_deep_bounces=Cache Deep Bounces
-render_pipeline.module.ray_tracing.attribute.sharc_preshade=Cache Before Shading (experimental)
 render_pipeline.module.ray_tracing.attribute.bedrock_one_bounce=Bedrock One Bounce
 render_pipeline.module.ray_tracing.attribute.transparent_checkerboard=Glass/Water Checkerboard
 render_pipeline.module.ray_tracing.attribute.exposure_day_scale=Daytime Exposure

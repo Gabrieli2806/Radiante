@@ -1,16 +1,11 @@
 #ifndef VPT_PT_BOUNCE_GLSL
 #define VPT_PT_BOUNCE_GLSL
 
-// The bounces after the first hit: the split into reflection and refraction at transparent surfaces and the bounce
-// settings. The bounce loop with the SHaRC query and Russian roulette (once traceSecondary) is the PT_STEP_BOUNCE
-// half of ptRunSegment (pt_segment.glsl); the hand's averaged samples and the split's two branches are segments that
-// world.rgen's single path loop runs one after another.
+// The bounces after the first hit: the split into reflection and refraction at transparent surfaces, the bounce loop
+// with the SHaRC query and Russian roulette (traceSecondary), and the averaged variant for the hand. Moved verbatim
+// out of world.rgen.
 
-// rayState is the path as it left the first hit, aux that hit's auxiliary pair (FirstHitPayload.aux): the water
-// flag (y > 0.5), in the experimental Bedrock profile whether the view came from inside the water (y > 1.5), and the
-// origin bias (x).
 bool initTransparent(MainRay rayState,
-                     vec2 aux,
                      MaterialInfo mat,
                      vec3 incomingDirection,
                      vec3 normal,
@@ -21,11 +16,11 @@ bool initTransparent(MainRay rayState,
     vec3 incident = normalize(incomingDirection);
     vec3 viewDir = -incident;
     float eta = dot(viewDir, normal) > 0.0 ? (1.0 / mat.ior) : mat.ior;
-    vec2 branchAux = aux;
+    vec2 branchAux = rayLoadAux(rayState);
     bool isWaterSurface = branchAux.y > 0.5;
     // Bedrock compatibility: a glass block is seen straight through, undistorted, with a Fresnel reflection of the
     // world on its face (as Bedrock RTX shows it); the view behind goes on as a camera view, through the far face
-    // as through a pane (pt/pt_shade_default.glsl). Water keeps its refraction.
+    // as through a pane (default.rchit). Water keeps its refraction.
     bool bedrockGlass = VPT_FRESNEL_MODEL != 0 && !isWaterSurface;
     if (bedrockGlass) { eta = 1.0 / mat.ior; }
 #if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
@@ -41,8 +36,8 @@ bool initTransparent(MainRay rayState,
     if (dot(branchDirection, branchDirection) <= 1e-6) { return false; }
     branchDirection = normalize(branchDirection);
 
-    // Water is coloured by its medium on the way through (see pt/pt_shade_default.glsl), so its surface lets light
-    // through untinted; glass takes its colour here.
+    // Water is coloured by its medium on the way through (see default.rchit), so its surface lets light through
+    // untinted; glass takes its colour here.
     vec3 refractionTint = isWaterSurface && waterMediumActive() ?
                               vec3(1.0) :
                               clamp(viewGlassTint(mat.albedoValue.rgb, mat.albedoValue.a), vec3(0.0), vec3(1.0));
@@ -68,8 +63,7 @@ bool initTransparent(MainRay rayState,
     raySetLobeType(branchRay, isReflection ? 1u : 2u);
     if (bedrockGlass && !isReflection) { raySetCameraPath(branchRay, true); }
     raySetIgnoreWaterSelf(branchRay, isWaterSurface);
-    // The same rule as a water hit's own bounce (see pt/pt_shade_default.glsl): off the top by direction, through a
-    // side by swap.
+    // The same rule as a water hit's own bounce (see default.rchit): off the top by direction, through a side by swap.
     if (isWaterSurface) {
 #if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
         bool incomingWater = branchAux.y > 1.5;
@@ -117,13 +111,180 @@ bool checkerboardCell(ivec2 pixel) {
     return ((pixel.x + pixel.y + int(worldUBO.frameCounter & 1u)) & 1) == 0;
 }
 
+void traceSecondary(inout MainRay rayState,
+                   int startBounce,
+                   int isHand,
+#if SHARC_QUERY && USE_SHARC
+                   SharcParameters sharcParameters,
+                   inout int sharcDebugBounceCount,
+                   inout bool sharcCacheHit,
+#endif
+                   out bool hasSecondHit,
+                   out float secondHitDistance) {
+    bool isPrimaryCameraPath = true;
+    hasSecondHit = false;
+    secondHitDistance = 0.0;
+
+    // Bounces off a mirror or through clear glass do not count against the budget, up to MIRROR_EXTRA_BOUNCES more:
+    // two mirrors facing each other used up the few bounces in the first reflections, and the mirror seen inside the
+    // mirror came out black.
+    int extraBounces = 0;
+    bool viewChain = false;
+    int budget = VPT_NUM_RAY_BOUNCES;
+    // Bedrock RTX's budget everywhere (VPT_BEDROCK_ONE_BOUNCE): one bounce traced past the first surface, the rest of
+    // the light from the radiance cache where it lands (below). Mirrors and clear glass still get their extra bounces.
+    if (VPT_BEDROCK_ONE_BOUNCE != 0) { budget = min(budget, startBounce + 1); }
+    for (int b = startBounce; b < budget + extraBounces; b++) {
+        if (rayShouldStop(rayState)) break;
+
+        uint mask;
+        float len;
+        uint leavingLobeType = rayLobeType(rayState);
+        uint firstBounceLobeType = b == startBounce ? leavingLobeType : 0u;
+        // Still what the camera sees, off or through one mirror-like surface after another: a window, then the
+        // water behind it. It ends at the first surface the ray scatters from.
+        viewChain = (b == startBounce || viewChain) && leavingLobeType != 0u;
+        resetMainRay(rayState, b);
+        prepareSecondary(b, isHand, len, mask);
+        // What such a ray ends in is seen, not gathered as light; see the miss shader and the water medium.
+        if (viewChain) { rayState.pad0 = RAY_VIEW_BOUNCE_MARK; }
+
+        vec3 tracedOrigin = rayState.origin;
+        vec3 tracedDirection = rayState.direction;
+        mainRay = rayState;
+        uint missId = VPT_WORLD_NO_VOLUMETRIC_MISS_INDEX;
+        bool allowIndirectCloudMiss =
+            (firstBounceLobeType == 1u || firstBounceLobeType == 2u) &&
+            rayUseIndirectVolumetricCloud(rayState);
+        if (b == startBounce && VPT_CAPTURE_VOLUMETRIC_CLOUD_INDIRECT != 0 && allowIndirectCloudMiss) {
+            missId = VPT_WORLD_MISS_INDEX;
+        }
+        // The first bounce (reflections and refraction seen straight from the camera, water among them) is traced as
+        // usual; the later, scattered ones are reordered.
+        // Known issue: with reordering, water can come out white. Experimental, off by default.
+        if (b > startBounce && !rayInWater(rayState) && !rayIgnoreWaterSelf(rayState)) {
+            VPT_TRACE_PATH_REORDERED(VPT_RAY_FLAGS, mask, 1, 1, missId, mainRay.origin, 0.001, mainRay.direction, len);
+        } else {
+            VPT_TRACE_PATH(VPT_RAY_FLAGS, mask, 1, 1, missId, mainRay.origin, 0.001, mainRay.direction, len);
+        }
+        rayState = mainRay;
+        raySetIgnoreWaterSelf(rayState, false);
+
+        if (b == startBounce) {
+            secondHitDistance = rayState.hitT;
+            hasSecondHit = rayState.hitT != INF_DISTANCE;
+        }
+
+        if (rayState.hitT != INF_DISTANCE) {
+            MaterialInfo hitMat = rayLoadMaterial(rayState);
+            vec3 hitWorldPos = tracedOrigin + tracedDirection * rayState.hitT;
+#if SHARC_QUERY && USE_SHARC
+            vec3 positionWorld = hitWorldPos + vec3(worldUBO.cameraPos.xyz);
+            // With one bounce (VPT_BEDROCK_ONE_BOUNCE) a diffuse bounce off the first surface already lands where the
+            // camera does not look: the cache answers there, as Bedrock's irradiance cache does.
+            bool cacheFirstBounce = VPT_BEDROCK_ONE_BOUNCE != 0 && b == startBounce && leavingLobeType == 0u;
+            // Not where the ray only passed through (glass crossed by light on its way): nothing is cached there,
+            // and what another surface in the same cell holds is not what lies behind the glass.
+            if (!rayIsPassThrough(rayState) &&
+                sharcAllowQuery(isPrimaryCameraPath && !cacheFirstBounce,
+                                (VPT_CACHE_DEEP_BOUNCES != 0 && b > startBounce) || cacheFirstBounce, rayState.hitT,
+                                hitMat.roughness, rayLobeType(rayState), sharcParameters, positionWorld)) {
+                SharcHitData sharcHitData;
+                sharcHitData.positionWorld = positionWorld;
+                sharcHitData.normalWorld = rayState.normal;
+                vec3 cachedRadiance = vec3(0.0);
+                if (SharcGetCachedRadiance(sharcParameters, sharcHitData, cachedRadiance, false)) {
+                    sharcCacheHit = true;
+                    rayState.radiance += cachedRadiance * rayState.throughput;
+                    break;
+                }
+            }
+            sharcDebugBounceCount = max(sharcDebugBounceCount, b + 1);
+#endif
+            // Seen straight through (the side of a waterfall the view crosses, see default.rchit): not a bounce.
+            bool passedThrough = rayIsPassThrough(rayState);
+            bool isPerfectMirrorOrTransparent =
+                passedThrough || ((hitMat.roughness < 0.02) && (rayLobeType(rayState) != 0u));
+            if (!isPerfectMirrorOrTransparent) { isPrimaryCameraPath = false; }
+            if ((passedThrough || (hitMat.roughness < 0.08 && rayLobeType(rayState) != 0u)) &&
+                extraBounces < MIRROR_EXTRA_BOUNCES) {
+                extraBounces++;
+            }
+        }
+
+        // A chain of mirrors seen from the camera is not cut short at random: the reflection inside a reflection
+        // would come out speckled. Its length is bounded by the mirror bounces allowed.
+        if (b > 2 && !isPrimaryCameraPath) {
+            float maxComponent = max(rayState.throughput.r, max(rayState.throughput.g, rayState.throughput.b));
+            float rrProbability = min(maxComponent, 0.9);
+            if (rand(rayState.seed) > rrProbability) { break; }
+            rayState.throughput /= rrProbability;
+        }
+    }
+
+    mainRay = rayState;
+}
+
+void traceTransparent(inout MainRay transparentRay,
+                      int startBounce,
+                      int isHand,
+#if USE_SHARC && SHARC_QUERY
+                      SharcParameters sharcParameters,
+                      inout int sharcDebugBounceCount,
+                      inout bool sharcDebugCacheHit,
+#endif
+                      out bool hasTransparentSecondHit,
+                      out float transparentSecondHitDistance) {
+    traceSecondary(transparentRay, startBounce, isHand,
+#if USE_SHARC && SHARC_QUERY
+                  sharcParameters, sharcDebugBounceCount, sharcDebugCacheHit,
+#endif
+                  hasTransparentSecondHit, transparentSecondHitDistance);
+}
+
 #ifndef VPT_HAND_SAMPLES
 #    define VPT_HAND_SAMPLES 3
 #endif
 
-// The held item and hand average VPT_HAND_SAMPLES bounce paths from the same first hit (world.rgen,
-// PT_PHASE_AVERAGED). They sit right in front of the camera, big on screen, and a map or a block held up shows every
-// speck of one-sample noise that the upscaler has not yet smoothed over. The first hit and its direct light are
-// shared; only the bounces after it are taken again. The pixels are few, so the extra paths cost little.
+/**
+ * traceSecondary, several times from the same first hit, averaged. For the held item and hand: they sit right in
+ * front of the camera, big on screen, and a map or a block held up shows every speck of one-sample noise that the
+ * upscaler has not yet smoothed over. The first hit and its direct light are shared; only the bounces after it are
+ * taken again. The pixels are few, so the extra paths cost little.
+ */
+void traceSecondaryAveraged(int samples,
+                            int startBounce,
+                            int isHand,
+#if USE_SHARC && SHARC_QUERY
+                            SharcParameters sharcParameters,
+                            inout int sharcDebugBounceCount,
+                            inout bool sharcDebugCacheHit,
+#endif
+                            out bool hasSecondHit,
+                            out float secondHitDistance) {
+    MainRay start = mainRay;
+    MainRay path = start;
+    traceSecondary(path, startBounce, isHand,
+#if USE_SHARC && SHARC_QUERY
+                  sharcParameters, sharcDebugBounceCount, sharcDebugCacheHit,
+#endif
+                  hasSecondHit, secondHitDistance);
+    vec3 radiance = path.radiance;
+    for (int i = 1; i < samples; ++i) {
+        uint seed = path.seed;
+        path = start;
+        path.seed = seed;
+        bool extraHit;
+        float extraDistance;
+        traceSecondary(path, startBounce, isHand,
+#if USE_SHARC && SHARC_QUERY
+                      sharcParameters, sharcDebugBounceCount, sharcDebugCacheHit,
+#endif
+                      extraHit, extraDistance);
+        radiance += path.radiance;
+    }
+    path.radiance = radiance / float(max(samples, 1));
+    mainRay = path;
+}
 
 #endif // VPT_PT_BOUNCE_GLSL

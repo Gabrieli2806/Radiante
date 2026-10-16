@@ -34,12 +34,12 @@ const uint BLEND_SURFACE_BIT = 1u << 25u;
 // A light block in a state that gives no light while drawing the sprites its lit states glow with (unlit redstone
 // ore): it does not glow.
 const uint UNLIT_SURFACE_BIT = 1u << 26u;
-// The patch over a boat's inside (set by the entity builder, gpu::Vertex::boatWaterMaskBit): it hides the water in
-// the boat from the main path and blocks no shadow or visibility ray.
-const uint BOAT_WATER_MASK_SURFACE_BIT = 1u << 27u;
 
 #ifndef CONST_ONLY
-// The per-geometry vertex buffer address tables (set 1 bindings 4 and 5).
+// The per-geometry vertex buffer address tables (set 1 bindings 4 and 5) are visible to the hit stages only. A ray
+// generation shader that shades a recorded hit defines VERTEX_NO_ADDRESS_TABLES: it is handed the two addresses with
+// the hit and loads through the address-taking functions below, without declaring tables it cannot see.
+#ifndef VERTEX_NO_ADDRESS_TABLES
 layout(set = 1, binding = 4) readonly buffer PositionBufferAddr {
     uint64_t addrs[];
 }
@@ -49,6 +49,7 @@ layout(set = 1, binding = 5) readonly buffer MaterialBufferAddr {
     uint64_t addrs[];
 }
 materialBufferAddrs;
+#endif
 
 layout(std430, buffer_reference, buffer_reference_align = 8) readonly buffer PositionBuffer {
     PositionVertex vertices[];
@@ -124,6 +125,14 @@ bool hasGlint(uint packedData) {
     return (packedData & USE_GLINT_BIT) != 0u;
 }
 
+bool hasNorm(uint packedData) {
+    return (packedData & USE_NORM_BIT) != 0u;
+}
+
+bool hasLight(uint packedData) {
+    return (packedData & USE_LIGHT_BIT) != 0u;
+}
+
 bool isHeldSurface(uint packedData) {
     return (packedData & HELD_SURFACE_BIT) != 0u;
 }
@@ -134,6 +143,10 @@ bool isRainSurface(uint packedData) {
 
 bool isPaneSurface(uint packedData) {
     return (packedData & PANE_SURFACE_BIT) != 0u;
+}
+
+bool isPlantSurface(uint packedData) {
+    return (packedData & PLANT_SURFACE_BIT) != 0u;
 }
 
 bool isGlassSurface(uint packedData) {
@@ -152,8 +165,8 @@ bool isWaterSurface(uint packedData) {
     return (packedData & WATER_SURFACE_BIT) != 0u;
 }
 
-bool isBoatWaterMaskSurface(uint packedData) {
-    return (packedData & BOAT_WATER_MASK_SURFACE_BIT) != 0u;
+bool hasNoHeightSurface(uint packedData) {
+    return (packedData & NO_HEIGHT_SURFACE_BIT) != 0u;
 }
 
 uint getAlphaMode(uint packedData) {
@@ -184,8 +197,10 @@ void loadTriangleIndices(uint geometryBufferIndex, uint primitiveID, out uint i0
     i2 = indexBuffer.indices[indexBaseID + 2u];
 }
 
-// Triangle loads. The index-based forms look the geometry's (possibly compact-tagged) buffer address up in the
-// tables; the address-taking forms (...At) load from that address.
+// Triangle loads. The address-taking forms (...At) work from a geometry's (possibly compact-tagged) buffer address,
+// which a ray generation shader is handed with a recorded hit; the index-based forms look the address up in the
+// tables (hit stages). Each index-based form is defined just before its address-taking form, as the single function
+// used to be, so the hit stages still declare their buffers in the same order.
 void loadTrianglePositionsAt(uint64_t positionAddress,
                              uint i0,
                              uint i1,
@@ -201,6 +216,7 @@ void loadTriangleMaterialAt(uint64_t materialAddress,
                             out MaterialVertex m1,
                             out MaterialVertex m2);
 
+#ifndef VERTEX_NO_ADDRESS_TABLES
 void loadTrianglePositions(uint geometryBufferIndex,
                            uint i0,
                            uint i1,
@@ -210,6 +226,7 @@ void loadTrianglePositions(uint geometryBufferIndex,
                            out PositionVertex p2) {
     loadTrianglePositionsAt(positionBufferAddrs.addrs[geometryBufferIndex], i0, i1, i2, p0, p1, p2);
 }
+#endif
 
 void loadTrianglePositionsAt(uint64_t positionAddress,
                              uint i0,
@@ -234,6 +251,7 @@ void loadTrianglePositionsAt(uint64_t positionAddress,
     p2 = positionBufferRef.vertices[i2];
 }
 
+#ifndef VERTEX_NO_ADDRESS_TABLES
 void loadTriangleMaterial(uint geometryBufferIndex,
                           uint i0,
                           uint i1,
@@ -243,6 +261,7 @@ void loadTriangleMaterial(uint geometryBufferIndex,
                           out MaterialVertex m2) {
     loadTriangleMaterialAt(materialBufferAddrs.addrs[geometryBufferIndex], i0, i1, i2, m0, m1, m2);
 }
+#endif
 
 void loadTriangleMaterialAt(uint64_t materialAddress,
                             uint i0,
@@ -282,6 +301,7 @@ void loadTriangleMaterialAt(uint64_t materialAddress,
     m2 = unpackMaterialVertex(materialBufferRef.vertices[i2]);
 }
 
+#ifndef VERTEX_NO_ADDRESS_TABLES
 void loadTriangle(uint geometryBufferIndex,
                   uint primitiveID,
                   out uint i0,
@@ -297,6 +317,7 @@ void loadTriangle(uint geometryBufferIndex,
     loadTrianglePositions(geometryBufferIndex, i0, i1, i2, p0, p1, p2);
     loadTriangleMaterial(geometryBufferIndex, i0, i1, i2, m0, m1, m2);
 }
+#endif // VERTEX_NO_ADDRESS_TABLES
 #endif // CONST_ONLY
 
 #endif
