@@ -130,6 +130,7 @@ void traceSecondary(inout MainRay rayState,
     // mirror came out black.
     int extraBounces = 0;
     bool viewChain = false;
+    bool clearView = false;
     int budget = VPT_NUM_RAY_BOUNCES;
     // Bedrock RTX's budget everywhere (VPT_BEDROCK_ONE_BOUNCE): one bounce traced past the first surface, the rest of
     // the light from the radiance cache where it lands (below). Mirrors and clear glass still get their extra bounces.
@@ -141,12 +142,15 @@ void traceSecondary(inout MainRay rayState,
         float len;
         uint leavingLobeType = rayLobeType(rayState);
         uint firstBounceLobeType = b == startBounce ? leavingLobeType : 0u;
-        // The surface this ray leaves is one the camera sees: the first hit, or one met along the view chain (the
-        // floor of a pool through its surface, a wall in a mirror).
-        bool fromSeenSurface = b == startBounce || viewChain;
         // Still what the camera sees, off or through one mirror-like surface after another: a window, then the
         // water behind it. It ends at the first surface the ray scatters from.
-        viewChain = fromSeenSurface && leavingLobeType != 0u;
+        viewChain = (b == startBounce || viewChain) && leavingLobeType != 0u;
+        // The surface this ray leaves is one the camera sees clearly: the first hit, or one seen through water or
+        // glass or in a smooth mirror (the floor of a pool, a wall in a mirror) - not one met by a glossy bounce off a
+        // rough surface, which is light gathered for that surface (see the extra bounce below).
+        bool fromSeenSurface = b == startBounce || clearView;
+        clearView = fromSeenSurface &&
+                    (leavingLobeType == 2u || (leavingLobeType == 1u && rayLoadMaterial(rayState).roughness < 0.08));
         resetMainRay(rayState, b);
         prepareSecondary(b, isHand, len, mask);
         // What such a ray ends in is seen, not gathered as light; see the miss shader and the water medium.
@@ -220,7 +224,7 @@ void traceSecondary(inout MainRay rayState,
             // of every pool and sea and everything reflected in them had their sunlight and nothing else - no sky,
             // no light off the walls - and water read far darker than Bedrock RTX's.
             // (Only where it scatters next: the chain then ends, so a hall of mirrors stays bounded.)
-            if (VPT_BEDROCK_ONE_BOUNCE != 0 && viewChain && !mirrorBounce && rayLobeType(rayState) == 0u) {
+            if (VPT_BEDROCK_ONE_BOUNCE != 0 && clearView && !mirrorBounce && rayLobeType(rayState) == 0u) {
                 extraBounces++;
             }
         }
