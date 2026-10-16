@@ -141,9 +141,12 @@ void traceSecondary(inout MainRay rayState,
         float len;
         uint leavingLobeType = rayLobeType(rayState);
         uint firstBounceLobeType = b == startBounce ? leavingLobeType : 0u;
+        // The surface this ray leaves is one the camera sees: the first hit, or one met along the view chain (the
+        // floor of a pool through its surface, a wall in a mirror).
+        bool fromSeenSurface = b == startBounce || viewChain;
         // Still what the camera sees, off or through one mirror-like surface after another: a window, then the
         // water behind it. It ends at the first surface the ray scatters from.
-        viewChain = (b == startBounce || viewChain) && leavingLobeType != 0u;
+        viewChain = fromSeenSurface && leavingLobeType != 0u;
         resetMainRay(rayState, b);
         prepareSecondary(b, isHand, len, mask);
         // What such a ray ends in is seen, not gathered as light; see the miss shader and the water medium.
@@ -180,9 +183,9 @@ void traceSecondary(inout MainRay rayState,
             vec3 hitWorldPos = tracedOrigin + tracedDirection * rayState.hitT;
 #if SHARC_QUERY && USE_SHARC
             vec3 positionWorld = hitWorldPos + vec3(worldUBO.cameraPos.xyz);
-            // With one bounce (VPT_BEDROCK_ONE_BOUNCE) a diffuse bounce off the first surface already lands where the
-            // camera does not look: the cache answers there, as Bedrock's irradiance cache does.
-            bool cacheFirstBounce = VPT_BEDROCK_ONE_BOUNCE != 0 && b == startBounce && leavingLobeType == 0u;
+            // With one bounce (VPT_BEDROCK_ONE_BOUNCE) a diffuse bounce off a surface the camera sees already lands
+            // where the camera does not look: the cache answers there, as Bedrock's irradiance cache does.
+            bool cacheFirstBounce = VPT_BEDROCK_ONE_BOUNCE != 0 && fromSeenSurface && leavingLobeType == 0u;
             // Not where the ray only passed through (glass crossed by light on its way): nothing is cached there,
             // and what another surface in the same cell holds is not what lies behind the glass.
             if (!rayIsPassThrough(rayState) &&
@@ -206,8 +209,18 @@ void traceSecondary(inout MainRay rayState,
             bool isPerfectMirrorOrTransparent =
                 passedThrough || ((hitMat.roughness < 0.02) && (rayLobeType(rayState) != 0u));
             if (!isPerfectMirrorOrTransparent) { isPrimaryCameraPath = false; }
+            bool mirrorBounce = false;
             if ((passedThrough || (hitMat.roughness < 0.08 && rayLobeType(rayState) != 0u)) &&
                 extraBounces < MIRROR_EXTRA_BOUNCES) {
+                extraBounces++;
+                mirrorBounce = true;
+            }
+            // One bounce is the budget of each surface the camera sees, not of the path: a surface seen through
+            // water or glass, or in a reflection, gets its own bounce as the first hit does. Ended here, the floor
+            // of every pool and sea and everything reflected in them had their sunlight and nothing else - no sky,
+            // no light off the walls - and water read far darker than Bedrock RTX's.
+            // (Only where it scatters next: the chain then ends, so a hall of mirrors stays bounded.)
+            if (VPT_BEDROCK_ONE_BOUNCE != 0 && viewChain && !mirrorBounce && rayLobeType(rayState) == 0u) {
                 extraBounces++;
             }
         }
