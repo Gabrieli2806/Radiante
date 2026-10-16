@@ -149,6 +149,23 @@ float celestialHalo(vec3 rayDir, vec3 bodyDir, float width, float strength) {
     return strength * exp(-(angle * angle) / (width * width));
 }
 
+// Where the sun and moon go down. Below this height of the view direction the sky shows the ground's haze, and a
+// disc drawn there read as a second sun sinking into the ground, blown out by the dusk exposure.
+#define CELESTIAL_HORIZON_Y (-0.015)
+
+// How much of a body's disc shows in this direction: cut along the horizon with a soft edge, so it sinks into it.
+float celestialHorizonCut(vec3 rayDir) {
+    return smoothstep(CELESTIAL_HORIZON_Y - 0.006, CELESTIAL_HORIZON_Y + 0.006, rayDir.y);
+}
+
+// How much of a body's halo is left in this direction: it fades while the body sets and is gone once the body is
+// under the horizon, and it lies over the sky only, not over the ground's haze below the horizon. The halo is part
+// of the sky round a body that can be seen, not a light of its own.
+float celestialHaloFade(vec3 bodyDir, vec3 rayDir) {
+    return smoothstep(CELESTIAL_HORIZON_Y - 0.02, CELESTIAL_HORIZON_Y + 0.06, bodyDir.y) *
+           smoothstep(CELESTIAL_HORIZON_Y - 0.03, CELESTIAL_HORIZON_Y + 0.03, rayDir.y);
+}
+
 vec4 evalMoonBillboard(vec3 rayDir) {
     vec3 moonDir = celestialMoonDirection();
     rayDir = normalize(rayDir);
@@ -291,7 +308,8 @@ void main() {
             bool hitGround = missIntersectSphere(pPlanet, rayDir, VPT_ATMOSPHERE_RG, tG0, tG1);
             bool blocked = hitGround && (tG1 > 1e-3);
             if (!blocked) {
-                vec3 sunRadiance = sunSample.rgb * (VPT_SUN_RADIANCE * worldUBO.sunBrightness) * transmittance * sunSample.a;
+                vec3 sunRadiance = sunSample.rgb * (VPT_SUN_RADIANCE * worldUBO.sunBrightness) * transmittance *
+                                   sunSample.a * celestialHorizonCut(rayDir);
                 backgroundRadiance += mix(sunRadiance, vec3(0.0), progress);
             }
         }
@@ -302,7 +320,10 @@ void main() {
             bool hitGround = missIntersectSphere(pPlanet, rayDir, VPT_ATMOSPHERE_RG, tG0, tG1);
             bool blocked = hitGround && (tG1 > 1e-3);
             if (!blocked) {
-                vec3 moonRadiance = moonSample.rgb * (VPT_MOON_RADIANCE * worldUBO.moonBrightness) * max(transmittance, vec3(0.03));
+                // The air reddens and dims the moon near the horizon much less than its own light would suggest: at
+                // the full attenuation a rising moon was lost in the twilight until it stood well up in the sky.
+                vec3 moonRadiance = moonSample.rgb * (VPT_MOON_RADIANCE * worldUBO.moonBrightness) *
+                                    mix(vec3(1.0), transmittance, 0.5) * celestialHorizonCut(rayDir);
                 backgroundRadiance += mix(moonRadiance, vec3(0.0), progress);
             }
         }
@@ -311,10 +332,20 @@ void main() {
     // A soft halo around the sun and moon, as Bedrock RTX draws: faint, and only where the camera looks, so it
     // adds nothing to the light bounced around the world.
     if (worldUBO.skyType == 1 && (rayBounce(mainRay) == 0u || rayCameraPath(mainRay))) {
-        backgroundRadiance += celestialHalo(rayDir, celestialSunDirection(), VPT_SUN_GLOW_WIDTH, VPT_SUN_GLOW) *
-                              (VPT_SUN_RADIANCE * worldUBO.sunBrightness) * (1.0 - progress);
-        backgroundRadiance += celestialHalo(rayDir, celestialMoonDirection(), 0.10, 0.10) *
-                              (VPT_MOON_RADIANCE * worldUBO.moonBrightness) * (1.0 - progress);
+        // Both reddened and dimmed by the air towards their body, and fading as it sets: at full strength under a
+        // set sun the halo was a white blot below the horizon, the brightest thing in the dusk sky.
+        float rHalo = clamp(VPT_ATMOSPHERE_RG + worldUBO.cameraViewMatInv[3].y + 70.0, VPT_ATMOSPHERE_RG,
+                            VPT_ATMOSPHERE_RT);
+        vec3 sunDirHalo = celestialSunDirection();
+        vec3 moonDirHalo = celestialMoonDirection();
+        vec3 sunHaloTint = sampleCloudAtmosphereTransmittance(rHalo, clamp(sunDirHalo.y, -1.0, 1.0));
+        vec3 moonHaloTint = mix(vec3(1.0), sampleCloudAtmosphereTransmittance(rHalo, clamp(moonDirHalo.y, -1.0, 1.0)), 0.5);
+        backgroundRadiance += celestialHalo(rayDir, sunDirHalo, VPT_SUN_GLOW_WIDTH, VPT_SUN_GLOW) *
+                              (VPT_SUN_RADIANCE * worldUBO.sunBrightness) * sunHaloTint *
+                              celestialHaloFade(sunDirHalo, rayDir) * (1.0 - progress);
+        backgroundRadiance += celestialHalo(rayDir, moonDirHalo, 0.10, 0.10) *
+                              (VPT_MOON_RADIANCE * worldUBO.moonBrightness) * moonHaloTint *
+                              celestialHaloFade(moonDirHalo, rayDir) * (1.0 - progress);
     }
 
     // Sky seen off water, glass or any bounce sits behind the same biome fog as the sky the camera sees; without it
