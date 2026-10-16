@@ -92,5 +92,5 @@ pipeline sin control visible. El pipeline vuelve a RT-DLSS si DLSS está cargado
 ## Nada de esto funcionó
 
 Pregunta en [Discord](https://discord.gg/DhBbAzugZ9) o abre un
-[issue](https://github.com/Gabrieli2806/Radiante-26.3-Fabric/issues) con tu `latest.log`, tu GPU,
+[issue](https://github.com/Gabrieli2806/Radiante/issues) con tu `latest.log`, tu GPU,
 tu sistema y el loader. Revisa antes el [ROADMAP](../../ROADMAP.md) por si ya es conocido.

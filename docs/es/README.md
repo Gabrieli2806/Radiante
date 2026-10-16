@@ -85,7 +85,7 @@ La lista completa y actualizada de trabajo pendiente está en
 
 ## Enlaces
 
-- [GitHub](https://github.com/Gabrieli2806/Radiante-26.3-Fabric) — código fuente y reportes de errores.
+- [GitHub](https://github.com/Gabrieli2806/Radiante) — código fuente y reportes de errores.
 - [Modrinth](https://modrinth.com/project/radiante) · [CurseForge](https://www.curseforge.com/minecraft/mc-mods/radiante)
 - [Discord](https://discord.gg/DhBbAzugZ9) — para preguntas, reportes y discutir cambios grandes antes de un PR.
 - [Ko-fi](https://ko-fi.com/gabrieli2806)

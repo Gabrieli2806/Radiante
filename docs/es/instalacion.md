@@ -8,7 +8,7 @@ de cliente: no hace falta en el servidor, y entrar a un servidor sin él funcion
 Hay un jar por loader (`radiante-fabric-…`, `radiante-neoforge-…`, `radiante-forge-…`), y cada uno
 sirve para Windows y Linux. Descárgalo de [Modrinth](https://modrinth.com/project/radiante),
 [CurseForge](https://www.curseforge.com/minecraft/mc-mods/radiante) o
-[GitHub](https://github.com/Gabrieli2806/Radiante-26.3-Fabric/releases).
+[GitHub](https://github.com/Gabrieli2806/Radiante/releases).
 
 ## Fabric
 

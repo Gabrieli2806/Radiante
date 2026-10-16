@@ -11,8 +11,8 @@
   "icon": "assets/radiante/icon.png",
   "contact": {
     "homepage": "https://modrinth.com/project/radiante",
-    "sources": "https://github.com/Gabrieli2806/Radiante-26.3-Fabric",
-    "issues": "https://github.com/Gabrieli2806/Radiante-26.3-Fabric/issues"
+    "sources": "https://github.com/Gabrieli2806/Radiante",
+    "issues": "https://github.com/Gabrieli2806/Radiante/issues"
   },
   "environment": "client",
   "entrypoints": {

@@ -1,7 +1,7 @@
 modLoader = "javafml"
 loaderVersion = "[1,)"
 license = "GPL-3.0"
-issueTrackerURL = "https://github.com/Gabrieli2806/Radiante-26.3-Fabric/issues"
+issueTrackerURL = "https://github.com/Gabrieli2806/Radiante/issues"
 
 [[mods]]
 modId = "radiante"

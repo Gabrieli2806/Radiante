@@ -92,5 +92,5 @@ otherwise. See [Settings](settings.md).
 ## None of this worked
 
 Ask on [Discord](https://discord.gg/DhBbAzugZ9) or open an
-[issue](https://github.com/Gabrieli2806/Radiante-26.3-Fabric/issues) with your `latest.log`, GPU,
+[issue](https://github.com/Gabrieli2806/Radiante/issues) with your `latest.log`, GPU,
 system and loader. Check the [ROADMAP](../../ROADMAP.md) first in case it is already known.

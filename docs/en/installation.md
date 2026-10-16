@@ -8,7 +8,7 @@ client-only: the server does not need it, and joining a server without it works 
 There is one jar per loader (`radiante-fabric-…`, `radiante-neoforge-…`, `radiante-forge-…`), and
 each works on Windows and Linux. Get it from [Modrinth](https://modrinth.com/project/radiante),
 [CurseForge](https://www.curseforge.com/minecraft/mc-mods/radiante) or
-[GitHub](https://github.com/Gabrieli2806/Radiante-26.3-Fabric/releases).
+[GitHub](https://github.com/Gabrieli2806/Radiante/releases).
 
 ## Fabric
 

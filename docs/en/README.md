@@ -84,7 +84,7 @@ The full, up-to-date backlog lives in [ROADMAP.md](../../ROADMAP.md), at the rep
 
 ## Links
 
-- [GitHub](https://github.com/Gabrieli2806/Radiante-26.3-Fabric) — source code and bug reports.
+- [GitHub](https://github.com/Gabrieli2806/Radiante) — source code and bug reports.
 - [Modrinth](https://modrinth.com/project/radiante) · [CurseForge](https://www.curseforge.com/minecraft/mc-mods/radiante)
 - [Discord](https://discord.gg/DhBbAzugZ9) — for questions, reports, and discussing large changes
   before a PR.
