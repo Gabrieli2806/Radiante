@@ -252,7 +252,12 @@ vec3 waterMissRadiance(vec3 backgroundRadiance) {
     uint mediumBounce = mainRay.pad0 == RAY_VIEW_BOUNCE_MARK || rayCameraPath(mainRay) ? min(bounce, 1u) : bounce;
     vec3 transmittance;
     vec3 scatter;
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+    waterMediumSegmentBedrock(INF_DISTANCE, waterMediumBounceDensity(mediumBounce), mainRay.origin, mainRay.direction,
+                              transmittance, scatter);
+#else
     waterMediumSegmentUnclamped(INF_DISTANCE, waterMediumBounceDensity(mediumBounce), transmittance, scatter);
+#endif
     return backgroundRadiance * transmittance + scatter * max(waterMediumBounceAmbient(mediumBounce), 0.0);
 }
 

@@ -23,7 +23,13 @@ void ptWaterMediumAtHit(uint bounce) {
             // straight down from the air: counted by bounces it passed for light filling the water, and a tank
             // behind glass glowed with the open sky along every long sight line through it.
             uint mediumBounce = g_viewBounce || rayCameraPath(mainRay) ? min(bounce, 1u) : bounce;
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+            float waterDistance = VPT_MEDIUM_DISTANCE_CLAMP != 0 ? min(g_hit.hitT, 50.0) : g_hit.hitT;
+            waterMediumSegmentBedrock(waterDistance, waterMediumBounceDensity(mediumBounce), g_hit.rayOrigin,
+                                      g_hit.rayDir, waterTransmittance, waterScatter);
+#else
             waterMediumSegment(g_hit.hitT, waterMediumBounceDensity(mediumBounce), waterTransmittance, waterScatter);
+#endif
             float waterAmbient = max(waterMediumBounceAmbient(mediumBounce), 0.0);
             if (waterAmbient > 0.0) {
                 // Some light still reaches under an overhang sideways through the water around it. Asked at a random

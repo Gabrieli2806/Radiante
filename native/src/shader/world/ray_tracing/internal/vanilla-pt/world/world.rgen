@@ -585,11 +585,17 @@ void main() {
             float waterDistance = selectedFirstHit.cameraWaterDistance;
             vec3 waterTransmittance;
             vec3 waterScatter;
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+            waterMediumSegmentBedrock(waterDistance >= INF_DISTANCE || VPT_MEDIUM_DISTANCE_CLAMP == 0 ?
+                                          waterDistance : min(waterDistance, 50.0),
+                                      VPT_WATER_DENSITY, vec3(0.0), orgDirection, waterTransmittance, waterScatter);
+#else
             if (waterDistance >= INF_DISTANCE) {
                 waterMediumSegmentUnclamped(waterDistance, VPT_WATER_DENSITY, waterTransmittance, waterScatter);
             } else {
                 waterMediumSegment(waterDistance, VPT_WATER_DENSITY, waterTransmittance, waterScatter);
             }
+#endif
             // Lit by the sky above: the camera's water under a roof or in a cave does not glow with it.
             waterScatter *= mix(0.35, 1.0, volumetricSkyVisibility(eyePos, false));
             waterScatter += waterGodRays(eyePos, orgDirection, waterDistance);
@@ -889,7 +895,13 @@ void main() {
             // z: the camera is under water. The eye holds the exposure it had there (exposure.comp): the water
             // darkens with depth on its own (water_medium.glsl), and an eye adapting to it brought the brightness
             // back as the camera sank - dimming, then opening up again.
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+            // Bedrock RTX's eye goes on metering under water: going in from a sunny pool, its picture brightens by
+            // about a stop over a second and a half (observed), and the water reads a bright blue.
+            float underWater = 0.0;
+#else
             float underWater = skyUBO.cameraSubmersionType == 1 ? 1.0 : 0.0;
+#endif
             // The picture a little under what the meter brings it to, by day and by night (settings); w: how far the
             // eye may open by day at most, so a sealed room stays dark instead of being opened up to its faint
             // leftover light.

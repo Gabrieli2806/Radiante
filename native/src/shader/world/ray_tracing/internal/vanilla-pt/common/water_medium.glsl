@@ -50,6 +50,11 @@ float waterMediumBounceDensity(uint bounce) {
 
 float waterMediumBounceAmbient(uint bounce) {
     if (skyUBO.cameraSubmersionType == 1) { return VPT_WATER_AMBIENT; }
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+    // Bedrock RTX's water glows with the light it scatters seen from above too: a deep pool is a lit blue down to
+    // its walls, where without it they were black behind the clear surface.
+    return VPT_WATER_AMBIENT;
+#endif
     // Seen from above, the water shows what is under it and nothing of its own: the scattered light is lit by the
     // open sky whether or not the water is (an indoor pool glowed sky blue), and Bedrock's water is clear.
     return bounce <= 1u ? 0.0 : 1.0;
@@ -111,5 +116,47 @@ void waterMediumSegment(float distance, float density, out vec3 transmittance, o
 #endif
     waterMediumSegmentUnclamped(distance, density, transmittance, inScatter);
 }
+
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+// How much brighter Bedrock RTX's water glows than single scattering of the sun and sky with an even phase would
+// make it, with the pack's coefficients as they stand (matched against Bedrock RTX side by side: Vanilla RTX, plains,
+// noon, pools seen from above and from under water).
+#    ifndef VPT_BEDROCK_WATER_SCATTER_GAIN
+#        define VPT_BEDROCK_WATER_SCATTER_GAIN 3.2
+#    endif
+const float BEDROCK_WATER_SKY_SHARE = 0.5;
+const float BEDROCK_WATER_SUN_SHARE = 1.6;
+
+// Bedrock RTX's water, per colour channel: the pack's absorption and scattering as they stand, the light scattered
+// along the stretch coming down from the surface through the water above it. Side by side with Bedrock the light
+// glows blue (the pack scatters blue most and lets it through furthest), where the luminance-and-hue rule above made
+// it teal-green and, under water, far darker.
+// origin and direction are the stretch's start and direction relative to the camera. How deep the start lies is
+// known while the camera is in the same water (its depth under the surface); from above, a stretch starts at the
+// surface the view came in through, or on what lies under it, and is taken as starting at the top.
+void waterMediumSegmentBedrock(float distance, float density, vec3 origin, vec3 direction, out vec3 transmittance,
+                               out vec3 inScatter) {
+    vec3 sigmaLight = max(skyUBO.waterExtinction.rgb, vec3(0.0));
+    vec3 sigmaT = sigmaLight * max(density, 0.0);
+    transmittance = exp(-sigmaT * max(distance, 0.0));
+    float startDepth = skyUBO.cameraSubmersionType == 1 ? max(waterCameraDepth() - origin.y, 0.0) : 0.0;
+    // Along the stretch the light's own way down through the water grows by how steeply the stretch goes down.
+    float descent = -normalize(direction).y;
+    vec3 sigmaCombined = max(sigmaT + sigmaLight * descent, sigmaT * 0.05 + 1e-4);
+    float span = min(max(distance, 0.0), 4096.0);
+    vec3 along = (vec3(1.0) - exp(-sigmaCombined * span)) / sigmaCombined;
+    vec3 sigmaS = sigmaLight * clamp(skyUBO.waterAlbedo.rgb, vec3(0.0), vec3(1.0));
+    vec3 zenith = texture(skyFull, vec3(0.0, 1.0, 0.0)).rgb;
+    vec3 horizon = texture(skyFull, normalize(vec3(0.7, 0.35, 0.6))).rgb;
+    // The sky's light counts for less than an even phase gives it and the sun's for more: the sky's comes in at a
+    // slant and much of it is turned back at the surface, and Bedrock's water glows a paler blue than the sky alone
+    // would make it (matched side by side, as the gain).
+    vec3 light = (zenith + horizon) * (0.25 * BEDROCK_WATER_SKY_SHARE) +
+                 volumetricCloudPrimaryLightRadiance() * (0.0795775 * BEDROCK_WATER_SUN_SHARE) *
+                     (1.0 - skyUBO.rainGradient * 0.65);
+    inScatter = VPT_BEDROCK_WATER_SCATTER_GAIN * sigmaS * max(light, vec3(0.0)) * exp(-sigmaLight * startDepth) *
+                along;
+}
+#endif
 
 #endif
