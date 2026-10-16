@@ -512,6 +512,13 @@ void main() {
                     }
 
                     mainRay.radiance = transparentReflectionRadiance + transparentRefractionRadiance;
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+                    // The water texture's own layer over the surface, lit where it was met (pt_shade_default.glsl).
+                    if (firstHitWaterSurface) {
+                        transparentRefractionRadiance += firstHitRay.directLightRadiance;
+                        mainRay.radiance += firstHitRay.directLightRadiance;
+                    }
+#endif
                     mainRay.directLightRadiance = vec3(0.0);
                 } else {
                     traceSecondary(mainRay, startBounce, isHand,

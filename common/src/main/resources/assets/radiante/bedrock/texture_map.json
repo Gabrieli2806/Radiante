@@ -1,5 +1,5 @@
 {
- "_comment": "Java block texture -> Bedrock texture path. color: the Bedrock colour texture has the same layout and may replace Java's.",
+ "_comment": "Java block texture -> Bedrock texture path. color: the Bedrock colour texture has the same layout and may replace Java's. mcmeta: written beside it when it does (an animated texture's frames).",
  "textures": {
   "acacia_door_bottom": {
    "bedrock": "textures/blocks/door_acacia_lower",
@@ -4088,6 +4088,16 @@
   "warped_wart_block": {
    "bedrock": "textures/blocks/warped_wart_block",
    "color": true
+  },
+  "water_flow": {
+   "bedrock": "textures/blocks/water_flow_grey",
+   "color": true,
+   "mcmeta": {"animation": {}}
+  },
+  "water_still": {
+   "bedrock": "textures/blocks/water_still_grey",
+   "color": true,
+   "mcmeta": {"animation": {"frametime": 2}}
   },
   "weathered_chiseled_copper": {
    "bedrock": "textures/blocks/weathered_chiseled_copper",

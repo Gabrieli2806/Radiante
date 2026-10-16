@@ -459,6 +459,25 @@ void ptShadeDefault(bool viewMark) {
                 fresnel = min(fresnel, 0.08);
             }
 #endif
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+            // The pack's water texture over the surface, seen from above: as far as a texel is opaque (the upper half
+            // of its alpha, Bedrock's rule for every blended face) it is a lit surface of its own colour, untinted,
+            // over what is seen through it. Bedrock RTX shows it so: a faint, pale pattern of the texture over every
+            // pool and sea, brightest where the texture's alpha peaks, that takes nothing away from the view through
+            // the water (1 to 4 blocks of it over white, side by side). Kept in directLightRadiance as well, for the
+            // ray generation, which traces the camera's view through the surface itself (initTransparent).
+            if (localBounce == 0) { mainRay.directLightRadiance = vec3(0.0); }
+            if (localBounce == 0 && !fromBelow && (bounce == 0u || rayCameraPath(mainRay) || g_viewBounce)) {
+                float waterOpacity = clamp(currentSurface.albedoValue.a * 2.0 - 1.0, 0.0, 1.0);
+                if (waterOpacity > 0.0) {
+                    vec3 layer = bedrockBlendedFaceLight(currentSurface.worldPos, baseGeoNormal, currentViewDir,
+                                                         currentSurface.albedoValue.rgb, waterOpacity) *
+                                 (1.0 - fresnel);
+                    mainRay.directLightRadiance = layer;
+                    mainRay.radiance += layer;
+                }
+            }
+#endif
             bool hasRefraction = dot(refractionDir, refractionDir) > 1e-6;
             bool chooseReflection = !hasRefraction ||
                                     (VPT_TRANSPARENT_SPLIT_MODE != VPT_TRANSPARENT_SPLIT_MODE_DETERMINISTIC &&

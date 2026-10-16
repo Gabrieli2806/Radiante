@@ -40,7 +40,7 @@ public final class BedrockPackConverter {
     /** Largest size a Bedrock texture set is converted at, in pixels per side; finer maps are averaged down to it. */
     private static final int MAX_DETAIL = 128;
     /** Stored as the zip comment; a pack converted by another version of the converter is converted again. */
-    private static final String CONVERTER_VERSION = "radiante-bedrock-converter 17";
+    private static final String CONVERTER_VERSION = "radiante-bedrock-converter 18";
 
     /** The converter's version, for the log and the settings screen; packs converted by another are converted again. */
     public static String converterVersion() {
@@ -164,6 +164,12 @@ public final class BedrockPackConverter {
                 try {
                     if (convertTexture(zip, root, entry.getKey(), bedrockPath, colorCompatible, zos)) {
                         converted++;
+                        // An animated texture (water) is animated by its .mcmeta, which has to come from the same
+                        // pack as the image: without it Java showed the pack's strip of frames as one tall texture.
+                        if (colorCompatible && info.has("mcmeta") && color(zip, root, bedrockPath) != null) {
+                            write(zos, "assets/minecraft/textures/block/" + entry.getKey() + ".png.mcmeta",
+                                info.get("mcmeta").toString().getBytes(StandardCharsets.UTF_8));
+                        }
                     }
                 } catch (Exception e) {
                     RadianteClient.LOGGER.debug("Skipped Bedrock texture {}: {}", bedrockPath, e.toString());

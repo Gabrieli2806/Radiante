@@ -206,6 +206,7 @@ void sampleSurfaceState(bool useTexture,
         }
     }
 
+    vec3 texelColour = albedoValue.rgb;
     vec3 tint = vptSurfaceColour(albedoValue.rgb * colorLayer) + glint;
     if (useOverlay) {
         vec4 overlayColor = sampleTexture(textures[nonuniformEXT(worldUBO.overlayTextureID)], overlayUV, 0, false);
@@ -289,8 +290,15 @@ void sampleSurfaceState(bool useTexture,
         // The biome's water colour, as vanilla tints it; the refraction takes its square root, so the surface reads
         // the colour lightly and depth (the pack's water medium, when there is one) does the rest.
         vec3 waterTint = clamp(colorLayer, vec3(0.05), vec3(1.0));
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+        // Bedrock RTX's own mode keeps the texel's colour, untinted, and its alpha: the faint, pale layer the pack's
+        // water texture draws over the surface (see the default closest-hit shader).
+        albedoValue.rgb = vptSurfaceColour(texelColour);
+        tint = albedoValue.rgb;
+#else
         albedoValue.rgb = waterTint;
         tint = waterTint;
+#endif
         mat.f0 = vec3(0.02);
         mat.albedo = waterTint;
         mat.roughness = 0.01;
