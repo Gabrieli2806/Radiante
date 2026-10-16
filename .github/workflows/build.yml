@@ -198,6 +198,7 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: Radiante ${{ needs.version.outputs.tag }}
           body_path: notes.md
+          prerelease: ${{ contains(needs.version.outputs.mod, '-') }}
           files: dist/*.jar
 
   # Modrinth and CurseForge, one upload per loader. Set up once in the repository settings:
