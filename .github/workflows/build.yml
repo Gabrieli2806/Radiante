@@ -4,7 +4,7 @@ name: Build
 
 on:
   push:
-    branches: [main, 'mc/**']
+    branches: [prismrt, 'mc/**']
     paths-ignore: ['**.md', 'docs/**', 'screenshots/**']
   pull_request:
   workflow_dispatch:
@@ -206,7 +206,8 @@ jobs:
   # A site whose token or ID is missing is skipped; the GitHub release does not depend on either.
   publish:
     needs: [version, release]
-    if: needs.version.outputs.release == 'true' && (vars.MODRINTH_ID != '' || vars.CURSEFORGE_ID != '')
+    # A pre-release (2.0.0-beta.1) stays on GitHub; only a plain version goes to the stores.
+    if: needs.version.outputs.release == 'true' && !contains(needs.version.outputs.mod, '-') && (vars.MODRINTH_ID != '' || vars.CURSEFORGE_ID != '')
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
