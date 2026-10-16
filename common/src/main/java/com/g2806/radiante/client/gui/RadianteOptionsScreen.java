@@ -782,7 +782,7 @@ public class RadianteOptionsScreen extends Screen {
         this.pendingCustomScale = false;
         this.pendingRenderScale = null;
         this.pendingAdvanced.clear();
-        this.pendingProfile = RendererProfile.BEDROCK_RTX;
+        this.pendingProfile = RendererProfile.BEDROCK_RTX_ENHANCED;
         if (this.pendingTunables != null) {
             this.pendingTunables.replaceAll((tunable, value) -> tunable.defaultSteps);
         }
@@ -965,13 +965,10 @@ public class RadianteOptionsScreen extends Screen {
             tooltip("options.radiante.renderer_profile"),
             (caption, value) -> Component.translatable("options.radiante.renderer_profile." + value.name().toLowerCase(java.util.Locale.ROOT)),
             new OptionInstance.Enum<>(this.pendingProfile == RendererProfile.CUSTOM
-                    ? List.of(RendererProfile.DEFAULT, RendererProfile.BEDROCK_RTX,
-                        RendererProfile.BEDROCK_RTX_ORIGINAL, RendererProfile.BEDROCK_RTX_ENHANCED,
-                        RendererProfile.CUSTOM)
-                    : List.of(RendererProfile.DEFAULT, RendererProfile.BEDROCK_RTX,
-                        RendererProfile.BEDROCK_RTX_ORIGINAL, RendererProfile.BEDROCK_RTX_ENHANCED),
+                    ? List.of(RendererProfile.BEDROCK_RTX_ENHANCED, RendererProfile.CUSTOM)
+                    : List.of(RendererProfile.BEDROCK_RTX_ENHANCED),
                 Codec.STRING.xmap(RendererProfile::of, RendererProfile::name)),
-            this.pendingProfile == RendererProfile.RADIANTE_ENHANCED ? RendererProfile.DEFAULT : this.pendingProfile,
+            this.pendingProfile,
             value -> {
                 this.pendingProfile = value;
                 adoptProfileSwitches();
@@ -1446,9 +1443,8 @@ public class RadianteOptionsScreen extends Screen {
     /** Bedrock's fog volume is what fogs the air, as things are chosen here. */
     private boolean bedrockFog() {
         return switch (this.pendingProfile) {
-            case BEDROCK_RTX, BEDROCK_RTX_ORIGINAL, BEDROCK_RTX_ENHANCED -> true;
+            case BEDROCK_RTX_ENHANCED -> true;
             case CUSTOM -> packToggleOn("render_pipeline.module.ray_tracing.attribute.bedrock_volumetric_fog");
-            default -> false;
         };
     }
 
@@ -1738,8 +1734,7 @@ public class RadianteOptionsScreen extends Screen {
         if (changed) {
             Pipeline.savePipeline();
         }
-        RendererProfile chosen = this.pendingProfile == RendererProfile.RADIANTE_ENHANCED ? RendererProfile.DEFAULT
-            : this.pendingProfile;
+        RendererProfile chosen = this.pendingProfile;
         if (chosen != RendererProfile.current()) {
             changed |= chosen.apply();
         }

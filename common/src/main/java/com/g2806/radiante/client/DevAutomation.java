@@ -345,7 +345,7 @@ public final class DevAutomation {
             minecraft.options.renderDistance().set(Integer.parseInt(action.substring(3)));
             RadianteClient.LOGGER.info("[dev] render distance {}", action.substring(3));
         } else if (action.startsWith("profile=")) {
-            // profile=<DEFAULT|BEDROCK_RTX|BEDROCK_RTX_ORIGINAL|BEDROCK_RTX_ENHANCED|RADIANTE_ENHANCED>: applies a
+            // profile=<BEDROCK_RTX_ENHANCED|CUSTOM>: applies a
             // renderer profile at once (see applyPipelineChange).
             var profile = com.g2806.radiante.client.profile.RendererProfile.of(action.substring(8));
             boolean changed = profile.apply();

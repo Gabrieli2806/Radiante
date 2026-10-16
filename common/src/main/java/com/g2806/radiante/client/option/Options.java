@@ -122,7 +122,7 @@ public class Options {
     public static String cloudsBeforeDistantHorizons = "";
 
     /** The renderer profile last applied (com.g2806.radiante.client.profile.RendererProfile), by name. */
-    public static String rendererProfile = "BEDROCK_RTX";
+    public static String rendererProfile = "BEDROCK_RTX_ENHANCED";
 
     /** The look and lighting settings back to a fresh install's; pipeline and restart-bound ones are the screen's. */
     public static void resetVisualDefaults() {

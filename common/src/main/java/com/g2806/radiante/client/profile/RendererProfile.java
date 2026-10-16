@@ -11,54 +11,40 @@ import java.util.Map;
  * A named set of renderer settings.
  *
  * <ul>
- * <li>{@link #DEFAULT}: Radiante's own look, as it was before profiles existed.
- * <li>{@link #BEDROCK_RTX}: the Bedrock RTX compatible mode. Its values live in {@link BedrockRtxProfile} and say how
- * well each one is known.
- * <li>{@link #BEDROCK_RTX_ENHANCED}: the experimental profile ({@link #BEDROCK_RTX_ORIGINAL}) with what looks better
- * than Bedrock RTX on top: what Bedrock does is kept everywhere else, so the two show the same world but for that.
- * Today: light blocks whose pack gives them little glow look lit by their own light.
- * <li>{@link #RADIANTE_ENHANCED}: reserved for techniques beyond Bedrock (ReSTIR variations, ray reconstruction
- * tuning). Today it is the same as {@link #DEFAULT}; it exists so the choice does not have to be added later.
- * <li>{@link #CUSTOM}: a profile's values with some of them changed by hand. It writes nothing and holds nothing:
- * every attribute stays as it is. The settings screen turns Bedrock RTX into this the moment one of the settings
- * Bedrock RTX manages is changed, so the change is kept instead of being written over on the next build.
+ * <li>{@link #BEDROCK_RTX_ENHANCED}: the main profile. Bedrock RTX's own look (its sky and sunlight, its exposure and
+ * tone mapping as read from the running game, its materials, water, glass and fog; see {@link BedrockRtxProfile})
+ * with a few things on top that look better than Bedrock RTX; what Bedrock does is kept everywhere else. Today:
+ * light blocks whose pack gives them little glow look lit by their own light, and the end portal glows.
+ * <li>{@link #CUSTOM}: the profile's values with some of them changed by hand. It writes nothing and holds nothing:
+ * every attribute stays as it is. The settings screen turns the profile into this the moment one of the settings it
+ * manages is changed, so the change is kept instead of being written over on the next build.
  * </ul>
+ *
+ * Earlier versions had more profiles (Radiante's own look, a first Bedrock approximation, Bedrock RTX without the
+ * extras); a saved choice naming one of them reads as {@link #BEDROCK_RTX_ENHANCED}.
  *
  * Applying a profile writes the attributes it manages (see {@link BedrockRtxProfile#PARAMETERS}) and remembers the
  * choice in {@link Options#rendererProfile}; attributes it does not manage are left as the player set them.
  */
 public enum RendererProfile {
-    DEFAULT,
-    BEDROCK_RTX,
-    BEDROCK_RTX_ORIGINAL,
     BEDROCK_RTX_ENHANCED,
-    RADIANTE_ENHANCED,
     CUSTOM;
 
-    /** The profile saved in the options, {@link #BEDROCK_RTX} (a fresh install's) when it is missing or unknown. */
+    /** The profile saved in the options; {@link #BEDROCK_RTX_ENHANCED} when it is missing, unknown or removed. */
     public static RendererProfile current() {
         return of(Options.rendererProfile);
     }
 
     public static RendererProfile of(String name) {
-        if (name != null) {
-            for (RendererProfile profile : values()) {
-                if (profile.name().equals(name.trim().toUpperCase(Locale.ROOT))) {
-                    return profile;
-                }
-            }
+        if (name != null && name.trim().equalsIgnoreCase(CUSTOM.name())) {
+            return CUSTOM;
         }
-        return BEDROCK_RTX;
+        return BEDROCK_RTX_ENHANCED;
     }
 
-    /** The Bedrock profiles use the common compatibility settings. */
+    /** Whether the profile writes the Bedrock settings (everything but Custom). */
     public boolean isBedrock() {
-        return this == BEDROCK_RTX || buildsOnOriginal();
-    }
-
-    /** The experimental profile, and the enhanced one built on it. */
-    public boolean buildsOnOriginal() {
-        return this == BEDROCK_RTX_ORIGINAL || this == BEDROCK_RTX_ENHANCED;
+        return this != CUSTOM;
     }
 
     private static final String ORIGINAL_ATTRIBUTE = Pipeline.BEDROCK_ORIGINAL_ATTRIBUTE;
@@ -67,7 +53,7 @@ public enum RendererProfile {
     private static final String FALSE = "render_pipeline.false";
 
     /**
-     * What the experimental profile sets besides the settings both Bedrock profiles share: its own switch; the
+     * What the profile sets besides the shared Bedrock table: Bedrock RTX's own mode switch; the
      * pack's own metalness and roughness, which its specular response is made for; Bedrock's sky and sunlight; both
      * branches of water and glass traced (full-resolution DLSS guides do not describe alternating missing lobes);
      * and glass as the pack draws it, each block in its frame, as Bedrock shows it.
@@ -83,9 +69,9 @@ public enum RendererProfile {
     private static final String TONE = "render_pipeline.module.tone_mapping.attribute.";
 
     /**
-     * The experimental profile's exposure and tone mapping: Bedrock RTX's own values, read from the running game
+     * The profile's exposure and tone mapping: Bedrock RTX's own values, read from the running game
      * (its frame constants and its tone mapping material's uniforms, the same at every time of day). They take the
-     * place of the shared profile's stand-ins ({@link BedrockRtxProfile}); the exposure range and the speed it
+     * place of the table's older stand-ins ({@link BedrockRtxProfile}); the exposure range and the speed it
      * adapts at are the metering mode's own (tone_mapping/exposure.comp). The brightness bias and the saturation
      * are Radiante's controls on top of the curve; Bedrock has neither, so they are held neutral.
      */
@@ -113,13 +99,13 @@ public enum RendererProfile {
      * of being written over without a word.
      */
     public String managedValue(String attribute) {
-        if (buildsOnOriginal() && attribute.equals(ENHANCED_ATTRIBUTE)) {
-            return this == BEDROCK_RTX_ENHANCED ? TRUE : FALSE;
+        if (isBedrock() && attribute.equals(ENHANCED_ATTRIBUTE)) {
+            return TRUE;
         }
-        if (buildsOnOriginal() && ORIGINAL_VALUES.containsKey(attribute)) {
+        if (isBedrock() && ORIGINAL_VALUES.containsKey(attribute)) {
             return ORIGINAL_VALUES.get(attribute);
         }
-        if (buildsOnOriginal() && ORIGINAL_TONE_VALUES.containsKey(attribute)) {
+        if (isBedrock() && ORIGINAL_TONE_VALUES.containsKey(attribute)) {
             return ORIGINAL_TONE_VALUES.get(attribute);
         }
         if (isBedrock()) {
@@ -133,15 +119,15 @@ public enum RendererProfile {
     }
 
     private String valueFor(CompatParameter parameter) {
-        if (buildsOnOriginal() && ORIGINAL_TONE_VALUES.containsKey(parameter.attribute())) {
+        if (isBedrock() && ORIGINAL_TONE_VALUES.containsKey(parameter.attribute())) {
             return ORIGINAL_TONE_VALUES.get(parameter.attribute());
         }
-        return isBedrock() ? parameter.bedrockValue() : parameter.defaultValue();
+        return parameter.bedrockValue();
     }
 
-    /** The experimental profile's tone values that no shared parameter covers, written alongside them. */
+    /** The tone values that no table parameter covers, written alongside them. */
     private boolean setOriginalToneExtras() {
-        if (!buildsOnOriginal()) {
+        if (!isBedrock()) {
             return false;
         }
         boolean changed = false;
@@ -155,17 +141,14 @@ public enum RendererProfile {
     }
 
     /**
-     * The experimental profile's switch, and what it needs with it, and the enhanced profile's on top. Off under
-     * every other profile; Custom leaves them as they are, like everything else.
+     * Bedrock RTX's mode switch and what it needs with it, and the enhanced extras' switch on top. Custom leaves
+     * them as they are, like everything else.
      */
     private boolean setOriginalMode() {
         if (this == CUSTOM) {
             return false;
         }
-        boolean changed = Pipeline.setShaderPackValue(ENHANCED_ATTRIBUTE, this == BEDROCK_RTX_ENHANCED ? TRUE : FALSE);
-        if (!buildsOnOriginal()) {
-            return Pipeline.setShaderPackValue(ORIGINAL_ATTRIBUTE, FALSE) | changed;
-        }
+        boolean changed = Pipeline.setShaderPackValue(ENHANCED_ATTRIBUTE, TRUE);
         for (Map.Entry<String, String> value : ORIGINAL_VALUES.entrySet()) {
             changed |= Pipeline.setShaderPackValue(value.getKey(), value.getValue());
         }

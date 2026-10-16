@@ -426,10 +426,10 @@ public class Pipeline {
      * material from the same block's top. Bedrock RTX has no such shading.
      */
     public static final String FACE_SHADING_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.face_shading";
-    /** The experimental Bedrock RTX profile's switch (RendererProfile.BEDROCK_RTX_ORIGINAL). */
+    /** Bedrock RTX's own mode (sky, sun, exposure, materials); on under the Enhanced profile. */
     public static final String BEDROCK_ORIGINAL_ATTRIBUTE =
         "render_pipeline.module.ray_tracing.attribute.bedrock_original";
-    /** On top of that one, what goes beyond Bedrock (RendererProfile.BEDROCK_RTX_ENHANCED). */
+    /** On top of that one, what goes beyond Bedrock on purpose (RendererProfile.BEDROCK_RTX_ENHANCED). */
     public static final String BEDROCK_ENHANCED_ATTRIBUTE =
         "render_pipeline.module.ray_tracing.attribute.bedrock_enhanced";
 

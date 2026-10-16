@@ -310,6 +310,10 @@ public final class EmissionTiles {
             coloured = false;
         }
         boolean eye = sprite.contents().name().equals(END_PORTAL_EYE);
+        // Under the Bedrock profile the eye glows like any other light of its level (no pack map) or as its pack
+        // authors it (see keepSetGlow): Bedrock RTX shows an eye of ender in its frame barely glowing, and the full
+        // glow lit a ring of frames brighter than any lamp around it.
+        boolean bedrockGlow = com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow();
         boolean lava = isLava(sprite);
         if (lava) {
             threshold = 0.0f;
@@ -355,7 +359,7 @@ public final class EmissionTiles {
                             writeSpecularEmission(specular, atlasWidth, atlasHeight,
                                 Math.round(sprite.getU0() * atlasWidth) + x,
                                 Math.round(sprite.getV0() * atlasHeight) + y,
-                                eye ? END_PORTAL_EYE_GLOW : lava ? strength : strength * brightness);
+                                eye && !bedrockGlow ? END_PORTAL_EYE_GLOW : lava ? strength : strength * brightness);
                         }
                         emission += weight;
                         red += r * weight;
@@ -564,7 +568,10 @@ public final class EmissionTiles {
 
     /** A sprite whose glow Radiante sets itself, whatever a pack gives it: see {@link #keepSetGlow}. */
     static boolean setsOwnGlow(Identifier spriteId) {
-        return END_PORTAL_EYE.equals(spriteId);
+        // Not under the Bedrock profile: there the eye glows and casts what its pack's MER map says, as in Bedrock
+        // RTX (Vanilla RTX: 5 of 255, next to nothing). Kept out of the MER, its worked out level-8 glow lit a
+        // closed room brighter than three torches.
+        return END_PORTAL_EYE.equals(spriteId) && !com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow();
     }
 
     /** LabPBR stores emission in the specular alpha: 0..254 scale linearly, 255 means none. */
@@ -660,7 +667,8 @@ public final class EmissionTiles {
     static void keepVisibleGlow(TextureAtlasSprite sprite, ByteBuffer specular, byte[] derived, int atlasWidth,
         int atlasHeight) {
         Integer level = lightLevels.get(sprite);
-        if (level == null || level <= 0 || setsOwnGlow(sprite.contents().name())) {
+        // The eye of ender in its frame is no lamp: it shows the glow its pack gives it (see setsOwnGlow).
+        if (level == null || level <= 0 || END_PORTAL_EYE.equals(sprite.contents().name())) {
             return;
         }
         SpriteContents contents = sprite.contents();

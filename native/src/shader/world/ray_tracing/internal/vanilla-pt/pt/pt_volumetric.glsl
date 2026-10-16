@@ -103,7 +103,18 @@ vec3 waterGodRays(vec3 origin, vec3 rayDir, float distance) {
     vec3 lightDir = celestialSunDirection();
     if (lightDir.y < 0.0) { lightDir = -lightDir; }
     // Mostly forward: the shafts show best looking towards the light, as under real water.
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+    // Bedrock RTX lights its water as a medium like its air: the sunlight scattered towards the eye is the pack's
+    // water scattering coefficient (Vanilla RTX: 0.0045, 0.0099, 0.018 per block) with the fog's Henyey-Greenstein
+    // phase. The fixed 0.12 below, about twelve times that, filled every view under water with streaks of light and
+    // a bright teal haze where Bedrock's water is clear and blue.
+    float phase = henyeyGreenstein(dot(rayDir, lightDir), 0.4);
+    vec3 scattering = max(skyUBO.waterAlbedo.rgb, vec3(0.0)) * max(skyUBO.waterExtinction.rgb, vec3(0.0));
+    if (!waterMediumActive()) { scattering = vec3(strength); }
+#else
     float phase = mix(INV_4_PI, min(henyeyGreenstein(dot(rayDir, lightDir), 0.6), 2.0), 0.7);
+    vec3 scattering = vec3(strength);
+#endif
     vec3 sigmaT = waterMediumExtinction(VPT_WATER_DENSITY);
     uint seed = xxhash32(uvec3(uint(gl_LaunchIDEXT.x), uint(gl_LaunchIDEXT.y), worldUBO.seed ^ 0x3C6EF372u));
     float jitter = rand(seed);
@@ -114,7 +125,7 @@ vec3 waterGodRays(vec3 origin, vec3 rayDir, float distance) {
         vec3 light = sampleVolumetricDirectionalLight(origin + rayDir * t, lightDir, false);
         sum += exp(-sigmaT * t) * light;
     }
-    return sum * stepLength * phase * strength;
+    return sum * stepLength * phase * scattering;
 }
 
 vec3 segmentIntegral(vec3 sigmaT, vec3 segmentTransmittance, float stepLength) {

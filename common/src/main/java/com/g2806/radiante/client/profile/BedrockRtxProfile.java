@@ -37,10 +37,10 @@ public final class BedrockRtxProfile {
     private static final String NOT_MEASURED = "no reference capture yet";
     /**
      * Bedrock RTX's own tone mapping values are known now (read from the running game, the same at every time of
-     * day); the experimental profile takes them (RendererProfile), this one keeps the values its exposure, which is
-     * not Bedrock's, was set up with.
+     * day); the profile takes them (RendererProfile.ORIGINAL_TONE_VALUES) over the stand-ins below, which an older
+     * approximation of its exposure was set up with.
      */
-    private static final String GAME_TONE = "Bedrock RTX's own value, which the experimental profile uses: ";
+    private static final String GAME_TONE = "Bedrock RTX's own value, which the profile uses: ";
 
     /** The managed settings, grouped by the logical sections of the profile. */
     public static final List<CompatParameter> PARAMETERS = List.of(
