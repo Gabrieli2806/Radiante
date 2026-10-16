@@ -11,8 +11,8 @@ Languages: **EN** · [ES](README.es.md)
 Radiante is a standalone path-traced renderer for Minecraft. Its native renderer, PrismRT, runs on the render pearl
 (`com.mojang.renderpearl`) Vulkan backend introduced in Minecraft 26.3: instead of creating its own Vulkan device next
 to the game, it shares the device Minecraft already created, so the ray tracer and the vanilla GUI draw into the same
-frame. Radiante began as a fork of [Radiance](https://github.com/Minecraft-Radiance/Radiance) (up to 1.0.0, kept on
-the `main` branch); from 2.0 on, the renderer and its path tracer are new code.
+frame. Radiante began as a fork of [Radiance](https://github.com/Minecraft-Radiance/Radiance) (up to 1.0.0);
+from 2.0 on, the renderer and its path tracer are new code.
 
 **Ray tracing off and on.** The same view with vanilla lighting and with Radiante.
 
