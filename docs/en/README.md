@@ -38,6 +38,7 @@ Documentation version: **0.5.0** (first beta).
 ## For developers
 
 - **[Building and releasing](building.md)** — Windows, Linux, GitHub Actions and how a release goes out.
+- **[How PrismRT works](../prismrt.md)** — the native renderer's architecture, for contributors (English).
 
 ## Settings reference by category
 

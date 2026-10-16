@@ -207,6 +207,8 @@ Flags útiles al ejecutar (Fabric):
 
 ## Cómo funciona
 
+Una explicación técnica detallada del renderizador nativo está en [docs/prismrt.md](docs/prismrt.md) (en inglés).
+
 - La creación de `VulkanInstance` / `VulkanDevice` se redirige a los puntos de entrada nativos `createMerged`,
   que añaden las extensiones de ray tracing, descriptor indexing y upscalers a lo que Minecraft haya pedido,
   y fusionan las cadenas de features.

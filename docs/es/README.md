@@ -38,6 +38,7 @@ Versión de esta documentación: **0.5.0** (primera beta).
 ## Para desarrolladores
 
 - **[Compilar y publicar](compilar.md)** — Windows, Linux, GitHub Actions y cómo sale una versión.
+- **[Cómo funciona PrismRT](../prismrt.md)** — la arquitectura del renderizador nativo, para quien contribuye (en inglés).
 
 ## Referencia de ajustes por categoría
 

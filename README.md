@@ -201,6 +201,8 @@ Useful run flags (Fabric):
 
 ## How it works
 
+A detailed technical explanation of the native renderer is in [docs/prismrt.md](docs/prismrt.md).
+
 - `VulkanInstance` / `VulkanDevice` creation is redirected into the native `createMerged` entry points, which
   add the ray tracing, descriptor indexing and upscaler extensions to whatever Minecraft asked for and merge
   the feature chains.
