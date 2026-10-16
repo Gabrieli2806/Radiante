@@ -454,7 +454,7 @@ public class Pipeline {
     /** Rain streaks that bend the view behind them like little lenses. */
     public static final String RAIN_REFRACTION_ATTRIBUTE =
         "render_pipeline.module.ray_tracing.attribute.rain_refraction";
-    /** Volumetric fog made the way Radiance does it (a lit 3D grid) instead of a march per pixel. */
+    /** Volumetric fog made with a lit 3D grid instead of a march per pixel. */
     public static final String FROXEL_FOG_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.froxel_fog";
     /** Volumetric clouds shade the ground under them (only with Volumetric clouds). */
     public static final String CLOUD_SHADOWS_ATTRIBUTE =

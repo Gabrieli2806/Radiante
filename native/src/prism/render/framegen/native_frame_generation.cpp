@@ -1,6 +1,5 @@
-// Frame generation without Streamline. The DLSS and FSR backends (dlss_generator.cpp, fsr_generator.cpp) descend from
-// Radiance 0.1.6's dlss_frame_generation.cpp and fsr_frame_generation.cpp (GPL-3.0); the capture and present paths
-// are Radiante's, as Minecraft owns the swapchain here.
+// Frame generation without Streamline, with DLSS and FSR backends (dlss_generator.cpp, fsr_generator.cpp). Minecraft
+// owns the swapchain here, so the capture and present paths go through its own present.
 #include "prism/render/framegen/native_frame_generation.hpp"
 
 #include "common/shared.hpp"

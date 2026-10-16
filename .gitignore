@@ -30,7 +30,6 @@ CMakeFiles/
 common/src/main/resources/radiante-native/
 
 # Upstream reference checkouts kept locally for comparison
-upstream/
 
 # --- JVM crash and profiling output ---------------------------------------
 hs_err_pid*.log

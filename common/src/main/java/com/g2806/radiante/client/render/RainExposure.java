@@ -18,7 +18,7 @@ import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 
 /**
- * Where rain reaches the ground, for wet surfaces (ported from Radiance 0.1.6's RainExposure). A 512 by 512 texture
+ * Where rain reaches the ground, for wet surfaces. A 512 by 512 texture
  * wraps around the camera, one texel per block column: the height of the column's top rain-blocking block (red and
  * green, offset by 32768), whether it rains there rather than snows (blue) and whether the column is known (alpha).
  * The shader wets upward faces that are the top of their column. Wetness itself follows the rain slowly, drying

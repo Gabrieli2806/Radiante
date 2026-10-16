@@ -22,7 +22,7 @@ lejos, más simplificadas son las secciones que DH le da a Radiante para trazar.
 ## Cómo se une con el terreno cercano
 
 Desde la 0.5.0 el terreno lejano no se vuelve a construir cuando cargan chunks cercanos. Se oculta
-**por columna y por rayo** donde el terreno cercano ya está construido, como hace Vista en Radiance.
+**por columna y por rayo** donde el terreno cercano ya está construido.
 Una zona lejana solo cuenta como reemplazada cuando el renderizador ya dibuja lo que la reemplaza,
 así que no quedan huecos al volar rápido.
 

@@ -50,7 +50,7 @@ which needs the world's HDR image for each of them. Until then the option is hid
 
 ### Native frame generation (DLSS / FSR without Streamline) — done, keep testing
 
-Ported from Radiance/MCVR 0.1.6 (`dlss_frame_generation.cpp`, `fsr_frame_generation.cpp`) into
+Built into
 `core/render/framegen/native_frame_generation.cpp`: DLSS frame generation through NGX on NVIDIA (up to 4x on RTX 50),
 FSR 3 frame generation on every other GPU (2x). Minecraft owns the swapchain here, so the generated frames are
 evaluated in its present command buffer (HdrPresentMixin), the first replaces the real frame in Minecraft's blit and
@@ -128,16 +128,16 @@ before LWJGL, the toggle applies at once, and Linux gets Reflex too. Verified on
 check on NeoForge, Forge and Linux, and the latency itself with a measuring tool. Also still to check: the Forge jar
 installed in a real Forge client.
 
-### Froxel fog (Radiance style) — done, keep tuning
+### Froxel fog — done, keep tuning
 
-Volumetric fog can now be made the way Radiance/MCVR 0.1.6 makes it (advanced/volume), chosen with Fog Style
-(Radiance / Radiante) under Volumetric Fog; Radiance is the default. The air in front of the camera is a 160x90x64
+Volumetric fog can now be made with a lit froxel grid, chosen with Fog Style
+(Froxel / Radiante) under Volumetric Fog; Froxel is the default. The air in front of the camera is a 160x90x64
 frustum grid (`common/froxel_fog.glsl`): each frame a quarter of the cells are lit in the world pass (sun or moon
 through a shadow ray, the sky through a look up, and the nearest block lights, so lights glow in the fog) and blended
 into their reprojected history; `froxel/carry.comp` carries the rest over before the world pass and
 `froxel/integrate.comp` integrates the grid afterwards. Pixels read last frame's integral at their surface, and past
 the grid the medium carries on lit as its last slice. Same medium as the per-pixel march (air, light shafts, biome
-fog); about the same cost here (237 vs 234 fps). Still to do: a far-visibility pass as Radiance has, so distant
+fog); about the same cost here (237 vs 234 fps). Still to do: a far-visibility pass, so distant
 valleys in shadow do not glow, and tuning the block light glow (FROXEL_BLOCK_LIGHT_GLOW).
 
 ### ReSTIR for block lights — done, keep tuning
@@ -157,7 +157,7 @@ changes handled in `nrd_module.cpp` (hit distance D and base colour/metalness in
 needed three local fixes (marked "Radiante: GLSL") where it uses HLSL-only forms; re-apply them on the next update.
 Linux builds need `-DSHADERMAKE_FIND_DXC=OFF` (the DXC download ShaderMake asks for 404s; only SPIR-V is needed).
 
-### Ported from Radiance 0.1.6 — done
+### Wet ground and rain refraction — done
 
 - Wet ground in rain (`RainExposure`, `common/rain_wetness.glsl`, option "Wet Ground in Rain").
 - Emission cell occupancy map: chunk builds skip non-emissive quads without locking or searching (`Emission`).
@@ -347,7 +347,7 @@ Earlier attempt, reverted, kept for reference:
 
 - The packs already describe post render passes that rasterise entity geometry
   over the traced image (`content` is one of weather, particle, text, name_tag,
-  star, selected by `EntityBuildData::postRenderFlag`). Nothing in this fork
+  star, selected by `EntityBuildData::postRenderFlag`). Nothing in this renderer
   sets that flag - `EntityManager` writes zeros - so the path has never drawn
   anything here. Setting it does reach the draw loop; the draw calls are issued.
 - Full screen post passes do reach the presented image (confirmed by tinting
@@ -686,7 +686,7 @@ each compacted BLAS its own buffer, so rebuilding a chunk frees exactly its
 memory instead of pinning its whole build batch (slow growth over long
 sessions). Still possible: fewer TLAS instances by merging sections.
 
-### Frosted glass (inherited from Radiance) — fixed
+### Frosted glass — fixed
 
 Glass, stained glass and panes read as blurry/frosted instead of clear.
 `convertLabPBRMaterial` (`util/labpbr.glsl`) derives roughness from the specular
@@ -781,7 +781,7 @@ glass (1.00, 0.38, 0.35), lime glass (0.66, 1.00, 0.17), clear glass
 
 ### The player casts no shadow in first person — done
 
-Radiance showed the player's own shadow in first person; this renderer did not.
+The player's own shadow was missing in first person.
 Minecraft extracts no model for the camera entity, so nothing of the player
 reached the world: no shadow, and nothing of them in reflections either. The
 avatar state is there all along (`LevelRenderState.playerRenderState

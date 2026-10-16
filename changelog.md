@@ -100,11 +100,11 @@ First beta. Covers everything since 0.2.0 (0.3.0 and 0.4.0 were never documented
   deleting is done outside a world and always ends in a forced restart.
 - **NVIDIA Reflex without Streamline**, straight on `VK_NV_low_latency2`: no restart to toggle it, works on Linux, and
   Streamline is gone.
-- **Distant Horizons: per-column coverage hiding**, as in Radiance's Vista. Far terrain is no longer remeshed when
+- **Distant Horizons: per-column coverage hiding**. Far terrain is no longer remeshed when
   chunks load; it is hidden per ray where the near terrain is built. Far terrain only counts as replaced once the
   renderer actually draws what replaces it.
 - **Frame generation** on its own present thread, with native DLSS and FSR providers.
-- Froxel volumetric fog (Radiance style) with a fog-style toggle, rain refraction, light from dropped and emissive
+- Froxel volumetric fog with a fog-style toggle, rain refraction, light from dropped and emissive
   entities (with a reach slider), seamless glass including panes, and a "Cache Deep Bounces" performance toggle.
 - New settings: Upscaling Mode for FSR and XeSS (the render resolution, as DLSS Mode is for DLSS, set by the
   Quality level too), Frame Generation Type (Auto, DLSS or FSR, where the GPU runs both), ReSTIR Block Lights, Shader
@@ -163,8 +163,8 @@ First beta. Covers everything since 0.2.0 (0.3.0 and 0.4.0 were never documented
 
 ### Added
 
-- Initial release: Radiance/MCVR ported to Minecraft 26.3 on Fabric, running on Minecraft's own
-  `com.mojang.renderpearl` Vulkan backend.
+- Initial release for Minecraft 26.3 on Fabric, running on Minecraft's own `com.mojang.renderpearl` Vulkan
+  backend.
 - Shared Vulkan instance and device: ray tracing, descriptor indexing and upscaler extensions are merged into
   the ones Minecraft requests, with the feature chains combined.
 - Serialised access to the graphics queue between Minecraft and the renderer.

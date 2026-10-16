@@ -1,7 +1,7 @@
 #ifndef VPT_RAIN_WETNESS_GLSL
 #define VPT_RAIN_WETNESS_GLSL
 
-// Wet ground in rain, ported from Radiance 0.1.6's advanced pack (scene/materials/wetness.glsl). The Java side keeps
+// Wet ground in rain. The Java side keeps
 // a texture of the top rain-blocking block of every column around the camera (RainExposure): an upward face that is
 // the top of its column, in a biome where it rains rather than snows, gets darker and glossier with the rain. Faces
 // next to a wall or overhang dry off towards it, so wet patches end softly instead of at block edges.

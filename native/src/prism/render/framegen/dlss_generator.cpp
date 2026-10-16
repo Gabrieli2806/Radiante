@@ -1,5 +1,4 @@
-// DLSS frame generation through NGX, without Streamline. Descends from Radiance 0.1.6's dlss_frame_generation.cpp
-// (GPL-3.0).
+// DLSS frame generation through NGX, without Streamline.
 #include "prism/render/framegen/generator.hpp"
 
 #include "prism/gpu/image.hpp"

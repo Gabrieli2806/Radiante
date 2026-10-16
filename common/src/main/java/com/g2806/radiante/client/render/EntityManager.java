@@ -914,7 +914,7 @@ public final class EntityManager {
      * The player, in first person. Minecraft draws nothing of them then - no model is extracted for the camera
      * entity - so the world around the player had no shadow of them in it and they were missing from every
      * reflection. Their model is submitted here under the mask camera rays skip and shadow rays and later bounces
-     * keep, which is how the original Radiance did it. Off with the "First Person Shadow" option.
+     * keep. Off with the "First Person Shadow" option.
      */
     private static void collectPlayerShadow(Minecraft minecraft, LevelRenderState levelRenderState,
         CameraRenderState cameraState) {

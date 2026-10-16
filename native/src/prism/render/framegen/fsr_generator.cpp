@@ -1,5 +1,4 @@
-// FSR frame generation through the FidelityFX API, without its swapchain. Descends from Radiance 0.1.6's
-// fsr_frame_generation.cpp (GPL-3.0).
+// FSR frame generation through the FidelityFX API, without its swapchain.
 #include "prism/render/framegen/generator.hpp"
 
 #ifdef PRISM_ENABLE_FFX_UPSCALER

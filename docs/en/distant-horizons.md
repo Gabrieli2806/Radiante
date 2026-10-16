@@ -22,7 +22,7 @@ hands Radiante to trace.
 ## How it meets the near terrain
 
 Since 0.5.0 far terrain is no longer rebuilt when near chunks load. It is hidden **per column and
-per ray** where the near terrain is already built, as Vista does in Radiance. A far area only counts
+per ray** where the near terrain is already built. A far area only counts
 as replaced once the renderer actually draws what replaces it, so no holes are left when flying
 fast.
 

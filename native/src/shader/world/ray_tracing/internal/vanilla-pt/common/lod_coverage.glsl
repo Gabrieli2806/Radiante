@@ -2,7 +2,7 @@
 #define VPT_LOD_COVERAGE_GLSL
 
 // Distant Horizons terrain stays where it is while chunks load in and out; it is hidden per ray instead, in the chunk
-// columns whose own terrain is built (Chunks::updateLodCoverage). After Radiance's Vista coverage.
+// columns whose own terrain is built (Chunks::updateLodCoverage).
 //   [0] origin x, [1] origin z, in chunks; [2] window size in chunks (0: none); [3, 4) instance range of far terrain;
 //   [8...] one bit per column, row by row along x.
 // Needs GL_EXT_buffer_reference and the WorldUBO.

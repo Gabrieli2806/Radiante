@@ -9,9 +9,8 @@ Idiomas: [EN](README.md) · **ES**
 
 ![Radiante con DLSS Quality: bosque y río con sol](docs/images/scenes/hero.webp)
 
-Radiante es un fork de [Radiance](https://github.com/Minecraft-Radiance/Radiance) y su renderizador nativo
-[MCVR](https://github.com/Minecraft-Radiance/MCVR), reescrito para el backend Vulkan "render pearl"
-(`com.mojang.renderpearl`) introducido en Minecraft 26.3. En lugar de crear su propio dispositivo Vulkan junto
+Radiante es un renderizador con trazado de rayos independiente para Minecraft. Su renderizador nativo, PrismRT,
+funciona sobre el backend Vulkan "render pearl" (`com.mojang.renderpearl`) introducido en Minecraft 26.3. En lugar de crear su propio dispositivo Vulkan junto
 al del juego, comparte el que Minecraft ya creó, así que el trazador de rayos y la GUI vanilla dibujan en el
 mismo frame.
 
@@ -129,7 +128,7 @@ cp -r /tmp/dlss/lib/Windows_x86_64 native/extern/DLSS/lib/   # o Linux_x86_64 en
 
 ```sh
 # 1. renderizador nativo (toolchain de Visual Studio 2026, x64, Vulkan SDK 1.4.341+)
-cmake -S native -B build/native -G "Visual Studio 18 2026" -A x64 -DMCVR_ENABLE_NRD=ON -DUSE_AMD=ON
+cmake -S native -B build/native -G "Visual Studio 18 2026" -A x64 -DPRISM_ENABLE_NRD=ON -DUSE_AMD=ON
 cmake --build build/native --config Release --target INSTALL -j 16
 
 # 2. el mod, un jar por loader en fabric/, neoforge/ y forge/ build/libs
@@ -270,5 +269,4 @@ Reportes de errores, ajustes de shaders y pull requests son bienvenidos.
 
 ## Licencia
 
-GPL-3.0, heredada de los proyectos originales. Radiance y MCVR son de LJIONG e Interstellarss; este fork
-mantiene su licencia y créditos.
+GPL-3.0. Radiante comenzó como un fork de Radiance y MCVR, de LJIONG e Interstellarss.

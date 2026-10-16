@@ -11,8 +11,7 @@ Languages: **EN** · [ES](README.es.md)
 Radiante is a standalone path-traced renderer for Minecraft. Its native renderer, PrismRT, runs on the render pearl
 (`com.mojang.renderpearl`) Vulkan backend introduced in Minecraft 26.3: instead of creating its own Vulkan device next
 to the game, it shares the device Minecraft already created, so the ray tracer and the vanilla GUI draw into the same
-frame. Radiante began as a fork of [Radiance](https://github.com/Minecraft-Radiance/Radiance) (up to 1.0.0);
-from 2.0 on, the renderer and its path tracer are new code.
+frame.
 
 **Ray tracing off and on.** The same view with vanilla lighting and with Radiante.
 
@@ -125,7 +124,7 @@ cp -r /tmp/dlss/lib/Windows_x86_64 native/extern/DLSS/lib/   # or Linux_x86_64 o
 
 ```sh
 # 1. native renderer (Visual Studio 2026 toolchain, x64, Vulkan SDK 1.4.341+)
-cmake -S native -B build/native -G "Visual Studio 18 2026" -A x64 -DMCVR_ENABLE_NRD=ON -DUSE_AMD=ON
+cmake -S native -B build/native -G "Visual Studio 18 2026" -A x64 -DPRISM_ENABLE_NRD=ON -DUSE_AMD=ON
 cmake --build build/native --config Release --target INSTALL -j 16
 
 # 2. the mod, one jar per loader in fabric/, neoforge/ and forge/ build/libs
@@ -258,5 +257,4 @@ Bug reports, shader tweaks and pull requests are welcome.
 
 ## Licence
 
-GPL-3.0, inherited from the upstream projects. Radiance and MCVR are by LJIONG and Interstellarss; this fork
-keeps their licence and credits.
+GPL-3.0. Radiante began as a fork of Radiance and MCVR by LJIONG and Interstellarss.

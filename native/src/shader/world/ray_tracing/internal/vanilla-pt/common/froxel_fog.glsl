@@ -1,7 +1,7 @@
 #ifndef VPT_FROXEL_FOG_GLSL
 #define VPT_FROXEL_FOG_GLSL
 
-// Froxel fog, after Radiance's (MCVR 0.1.6, advanced/volume): the air in front of the camera is cut into a grid of
+// Froxel fog: the air in front of the camera is cut into a grid of
 // frustum-aligned cells ("froxels"), each lit once by the sun or moon through a shadow ray, by the sky and by the block
 // lights around it, and kept over frames. A compute pass then integrates the grid front to back, and each pixel reads
 // the fog up to its surface from that integral instead of marching the air itself. Light shafts come out sharper and

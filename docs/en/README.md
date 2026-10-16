@@ -6,9 +6,8 @@ Languages: [ES](../es/README.md) · **EN**
 
 Radiante is a hardware ray tracing mod for Minecraft 26.3 (Fabric, NeoForge and Forge),
 on Windows and Linux, built on
-Minecraft's own Vulkan backend instead of creating a second Vulkan device next to it. It is a fork of
-[Radiance](https://github.com/Minecraft-Radiance/Radiance) and its native renderer
-[MCVR](https://github.com/Minecraft-Radiance/MCVR), by LJIONG and Interstellarss.
+Minecraft's own Vulkan backend instead of creating a second Vulkan device next to it. Its native
+renderer is PrismRT.
 
 Documentation version: **0.5.0** (first beta).
 
@@ -58,7 +57,7 @@ control, its default value, and what it does:
 
 - Hardware ray tracing for terrain: direct light, soft shadows and global illumination, with up to
   8 bounces and ReSTIR for block lights.
-- Physical sky, volumetric fog (Radiance-style froxel grid or per pixel), volumetric clouds with
+- Physical sky, volumetric fog (froxel grid or per pixel), volumetric clouds with
   shadows, rain with refraction and wet ground, seamless glass.
 - Biome Ambiance: every biome's own air and water, kept subtle, for vanilla, modded and Bedrock
   pack biomes alike.
@@ -92,5 +91,4 @@ The full, up-to-date backlog lives in [ROADMAP.md](../../ROADMAP.md), at the rep
 
 ## Licence
 
-GPL-3.0, inherited from the upstream projects. Radiance and MCVR are by LJIONG and Interstellarss;
-this fork keeps their licence and credits.
+GPL-3.0. Radiante began as a fork of Radiance and MCVR by LJIONG and Interstellarss.

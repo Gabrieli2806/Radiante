@@ -26,7 +26,7 @@ cp -r /tmp/dlss/lib/Windows_x86_64 native/extern/DLSS/lib/   # o Linux_x86_64 en
 Visual Studio 2026 (toolchain x64).
 
 ```sh
-cmake -S native -B build/native -G "Visual Studio 18 2026" -A x64 -DMCVR_ENABLE_NRD=ON -DUSE_AMD=ON
+cmake -S native -B build/native -G "Visual Studio 18 2026" -A x64 -DPRISM_ENABLE_NRD=ON -DUSE_AMD=ON
 cmake --build build/native --config Release --target INSTALL -j 16
 ./gradlew.bat build
 ```

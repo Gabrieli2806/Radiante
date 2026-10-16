@@ -2,7 +2,7 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_GOOGLE_include_directive : require
 
-// Rain streaks as little lenses, after Radiance (MCVR 0.1.6, output/post/particle_refraction.frag): each streak is
+// Rain streaks as little lenses: each streak is
 // taken as a cylinder of water across its width, so it bends what lies behind it sideways, brightest at its edges.
 // What lies behind is post_scene_color, a copy of the frame taken just before the weather is drawn. Snow, told apart
 // by its colour (white flakes against rain's blue-grey streaks), is drawn as before.

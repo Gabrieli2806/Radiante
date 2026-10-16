@@ -709,7 +709,7 @@ public final class ChunkManager {
 
     /**
      * Sends the renderer the chunk columns round the camera whose terrain is built (see {@link #isColumnBuilt}), so
-     * it hides Distant Horizons terrain there per ray. Like Radiance's Vista the far terrain is never remeshed for
+     * it hides Distant Horizons terrain there per ray. The far terrain is never remeshed for
      * chunks loading in and out, which is what left it lagging behind (holes, or both drawn) when moving fast. Only
      * the columns whose sections changed are looked at again.
      */
