@@ -1,0 +1,957 @@
+package com.g2806.radiante.client.render;
+
+import com.g2806.radiante.client.option.Options;
+import com.g2806.radiante.client.proxy.world.ChunkProxy;
+import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongIterator;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.SectionUpdateTracker;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.block.BlockQuadOutput;
+import net.minecraft.client.renderer.block.FluidRenderer;
+import net.minecraft.client.renderer.block.ModelBlockRenderer;
+import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
+import net.minecraft.client.renderer.chunk.RenderRegionCache;
+import net.minecraft.client.renderer.chunk.RenderSectionRegion;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.SectionPos;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.FluidState;
+import org.joml.Vector3fc;
+import org.lwjgl.system.MemoryUtil;
+
+/**
+ * Compiles world sections into the renderer's PBR geometry. Sections are laid out exactly like Minecraft's
+ * rotating section grid so the shaders can look a chunk up from a section coordinate.
+ */
+public final class ChunkManager {
+    /**
+     * Glass blocks (plain, stained, tinted) and glass panes. Their see-through texels are clear glass for the tracer,
+     * as Bedrock RTX renders them: a surface that reflects and refracts, not a hole. Iron bars share the pane class.
+     */
+    static boolean isGlass(BlockState state) {
+        net.minecraft.world.level.block.Block block = state.getBlock();
+        // Tinted glass too: seen through like the rest, only darkened by its own deep tint.
+        // Not copper grates, which share glass's class: their holes are holes, and as clear glass they mirrored the
+        // sky and bent the view through them.
+        return block instanceof net.minecraft.world.level.block.TransparentBlock
+                && !(block instanceof net.minecraft.world.level.block.WaterloggedTransparentBlock)
+            || state.is(Blocks.TINTED_GLASS)
+            || block instanceof net.minecraft.world.level.block.StainedGlassPaneBlock
+            || state.is(net.minecraft.world.level.block.Blocks.GLASS_PANE);
+    }
+
+
+
+    /**
+     * The other blocks Bedrock draws blended, as it does glass: ice, frosted ice, slime and honey. Bedrock RTX sees
+     * through them the way it sees through glass; the experimental Bedrock profile does the same.
+     */
+    private static boolean isBlend(BlockState state) {
+        net.minecraft.world.level.block.Block block = state.getBlock();
+        return block instanceof net.minecraft.world.level.block.HalfTransparentBlock
+            && !(block instanceof net.minecraft.world.level.block.TransparentBlock);
+    }
+
+    /** Glass panes (plain and stained), as opposed to glass blocks: seamless glass can treat them apart. */
+    private static boolean isGlassPane(BlockState state) {
+        return state.getBlock() instanceof net.minecraft.world.level.block.StainedGlassPaneBlock
+            || state.is(net.minecraft.world.level.block.Blocks.GLASS_PANE);
+    }
+
+    /** Grass, ferns, flowers, bushes and the like: what the tracer may leave out far away (foliage culling). */
+    private static boolean isPlant(BlockState state) {
+        return state.getBlock() instanceof net.minecraft.world.level.block.VegetationBlock;
+    }
+
+    private static final int VERTEX_FORMAT_PBR = 12;
+    public static final int GEOMETRY_TYPE_WORLD_SOLID = 1;
+    public static final int GEOMETRY_TYPE_WORLD_TRANSPARENT = 2;
+    /**
+     * Slots past the section grid, lent to far terrain that is not in Minecraft's sections (Distant Horizons LODs,
+     * see compat.distanthorizons). They are traced like any section, but no section coordinate ever maps to one.
+     */
+    public static final int EXTRA_SLOTS = 2048;
+    private static final int MAX_REGION_SNAPSHOTS_PER_FRAME = 96;
+    /**
+     * Rebuilds of nearby sections compiled on the render thread per frame. A falling block landing or a piston
+     * finishing its move swaps the moving block for terrain in one tick; built in the background, the terrain
+     * arrives a frame or more after the moving block is gone and the block blinks out in between.
+     */
+    private static final int MAX_SYNC_REBUILDS_PER_FRAME = 4;
+
+    private static final ThreadLocal<SectionCompileScratch> SCRATCH = ThreadLocal.withInitial(SectionCompileScratch::new);
+
+    private static ExecutorService executor;
+    private static final AtomicInteger pendingBuilds = new AtomicInteger();
+    /** Section uploads hold the read lock; replacing the section grid takes the write lock. */
+    private static final ReentrantReadWriteLock GRID_LOCK = new ReentrantReadWriteLock();
+    private static volatile int generation;
+
+    private static int gridSizeXZ;
+    private static int gridSizeY;
+    private static int minSectionY;
+    private static final LongOpenHashSet compiledSections = new LongOpenHashSet();
+    /** Columns whose sections changed since {@link #updateLodCoverage} last looked; guarded by compiledSections. */
+    private static final LongOpenHashSet dirtyColumns = new LongOpenHashSet();
+    /** Columns {@link #isColumnBuilt} held for when last looked at; guarded by compiledSections. */
+    private static final LongOpenHashSet builtColumns = new LongOpenHashSet();
+    private static boolean coverageDirty = true;
+    private static int coverageOriginX = Integer.MIN_VALUE;
+    private static int coverageOriginZ = Integer.MIN_VALUE;
+    private static int coverageSize;
+    private static boolean forceAllDirty;
+    /** Whether block faces keep vanilla's face shading in their colour (Pipeline.FACE_SHADING_ATTRIBUTE). */
+    private static volatile boolean faceShading = true;
+    /**
+     * Newest build handed out for each section. A synchronous rebuild can overtake an older one still running in
+     * the background, and the older one must not land on top of it afterwards.
+     */
+    private static final java.util.concurrent.ConcurrentHashMap<Long, Integer> latestBuild =
+        new java.util.concurrent.ConcurrentHashMap<>();
+    private static final AtomicInteger buildSequence = new AtomicInteger();
+    /**
+     * The section each grid slot currently holds. Builds are queued faster than they run, so after a teleport the
+     * queue is still full of sections from where the player was; by the time one of those finishes, its slot belongs
+     * to a section at the new location. Checking ownership drops that work before it is compiled, and stops a late
+     * one from writing the old area back into a slot that now stands somewhere else.
+     */
+    private static java.util.concurrent.atomic.AtomicLongArray slotOwner =
+        new java.util.concurrent.atomic.AtomicLongArray(0);
+    private static final long NO_OWNER = Long.MIN_VALUE;
+
+    private ChunkManager() {
+    }
+
+    public static synchronized void onTrackerCreated(SectionUpdateTracker tracker, int renderDistance, int minSection,
+        int maxSection) {
+        shutdown();
+        GRID_LOCK.writeLock().lock();
+        try {
+            generation++;
+            resetGrid(renderDistance, minSection, maxSection);
+        } finally {
+            GRID_LOCK.writeLock().unlock();
+        }
+    }
+
+    private static void resetGrid(int renderDistance, int minSection, int maxSection) {
+        gridSizeXZ = renderDistance * 2 + 1;
+        gridSizeY = maxSection - minSection + 1;
+        minSectionY = minSection;
+        synchronized (CHANGED) {
+            CHANGED.clear();
+        }
+        synchronized (compiledSections) {
+            compiledSections.clear();
+            dirtyColumns.clear();
+            builtColumns.clear();
+            coverageDirty = true;
+        }
+        latestBuild.clear();
+        slotOwner = new java.util.concurrent.atomic.AtomicLongArray(gridSizeXZ * gridSizeXZ * gridSizeY);
+        for (int i = 0; i < slotOwner.length(); i++) {
+            slotOwner.set(i, NO_OWNER);
+        }
+        forceAllDirty = true;
+        executor = Executors.newFixedThreadPool(Math.max(1, Options.chunkBuildingThreads), runnable -> {
+            Thread thread = new Thread(runnable, "Radiante Section Builder");
+            thread.setDaemon(true);
+            // Below the render thread, so a burst of loading chunks costs load time rather than frame rate.
+            thread.setPriority(Thread.NORM_PRIORITY - 2);
+            return thread;
+        });
+        ChunkProxy.init(gridSizeXZ * gridSizeXZ * gridSizeY + EXTRA_SLOTS, gridSizeXZ, gridSizeY, gridSizeXZ,
+            minSection);
+    }
+
+    public static synchronized void shutdown() {
+        RadianteRenderer.resetLevelFrames();
+        // Builder threads upload under the read lock and check the generation first. Bumping it under the write
+        // lock waits out any upload in flight and turns away every later one, so none reaches a renderer that is
+        // being torn down; one did on quitting, and the game died in native code.
+        GRID_LOCK.writeLock().lock();
+        try {
+            generation++;
+            if (executor != null) {
+                executor.shutdownNow();
+                executor = null;
+            }
+        } finally {
+            GRID_LOCK.writeLock().unlock();
+        }
+        pendingBuilds.set(0);
+    }
+
+    /** Bumped whenever the renderer's slots are replaced; geometry uploaded under an older one is gone. */
+    public static int generation() {
+        return generation;
+    }
+
+    /**
+     * Uploads geometry into one of the {@link #EXTRA_SLOTS}, placed at {@code origin}; vertex positions are relative
+     * to it. Dropped when the slots were replaced since {@code expectedGeneration}. The vertex blocks stay the
+     * caller's to free.
+     */
+    public static void submitExtraGeometry(int expectedGeneration, int extraIndex, BlockPos origin,
+        int[] geometryTypes, String[] names, int atlasId, int[] vertexCounts, long[] vertices) {
+        if (extraIndex < 0 || extraIndex >= EXTRA_SLOTS) {
+            throw new IllegalArgumentException("extra slot " + extraIndex);
+        }
+        GRID_LOCK.readLock().lock();
+        try {
+            if (expectedGeneration == generation && executor != null) {
+                submitGeometry(extraSlotBase() + extraIndex, origin, geometryTypes, names, atlasId, vertexCounts,
+                    vertices, false);
+            }
+        } finally {
+            GRID_LOCK.readLock().unlock();
+        }
+    }
+
+    /** Whether the renderer draws the latest geometry handed to this extra slot (no build of it still pending). */
+    public static boolean isExtraSlotCurrent(int expectedGeneration, int extraIndex) {
+        GRID_LOCK.readLock().lock();
+        try {
+            return expectedGeneration == generation && executor != null
+                && ChunkProxy.isSlotCurrent(extraSlotBase() + extraIndex);
+        } finally {
+            GRID_LOCK.readLock().unlock();
+        }
+    }
+
+    /** Empties one of the {@link #EXTRA_SLOTS}. */
+    public static void clearExtraSlot(int expectedGeneration, int extraIndex) {
+        GRID_LOCK.readLock().lock();
+        try {
+            if (expectedGeneration == generation && executor != null) {
+                ChunkProxy.invalidateSingle(extraSlotBase() + extraIndex);
+            }
+        } finally {
+            GRID_LOCK.readLock().unlock();
+        }
+    }
+
+    private static int extraSlotBase() {
+        return gridSizeXZ * gridSizeXZ * gridSizeY;
+    }
+
+    /** Hands geometry to the renderer; the vertex blocks stay the caller's to free. */
+    private static void submitGeometry(int slot, BlockPos origin, int[] geometryTypes, String[] names, int atlasId,
+        int[] vertexCounts, long[] vertices, boolean important) {
+        int count = vertices.length;
+        long geometryTypesPtr = MemoryUtil.nmemCalloc(count, Integer.BYTES);
+        long geometryGroupNames = MemoryUtil.nmemCalloc(count, Long.BYTES);
+        long geometryTextures = MemoryUtil.nmemCalloc(count, Integer.BYTES);
+        long vertexFormats = MemoryUtil.nmemCalloc(count, Integer.BYTES);
+        long vertexCountsPtr = MemoryUtil.nmemCalloc(count, Integer.BYTES);
+        long verticesPtr = MemoryUtil.nmemCalloc(count, Long.BYTES);
+        long[] namePtrs = new long[count];
+
+        try {
+            for (int i = 0; i < count; i++) {
+                namePtrs[i] = MemoryUtil.memAddress(MemoryUtil.memUTF8(names[i], true));
+                MemoryUtil.memPutInt(geometryTypesPtr + (long) i * Integer.BYTES, geometryTypes[i]);
+                MemoryUtil.memPutAddress(geometryGroupNames + (long) i * Long.BYTES, namePtrs[i]);
+                MemoryUtil.memPutInt(geometryTextures + (long) i * Integer.BYTES, atlasId);
+                MemoryUtil.memPutInt(vertexFormats + (long) i * Integer.BYTES, VERTEX_FORMAT_PBR);
+                MemoryUtil.memPutInt(vertexCountsPtr + (long) i * Integer.BYTES, vertexCounts[i]);
+                MemoryUtil.memPutAddress(verticesPtr + (long) i * Long.BYTES, vertices[i]);
+            }
+
+            ChunkProxy.rebuild(origin.getX(), origin.getY(), origin.getZ(), slot, count, geometryTypesPtr,
+                geometryGroupNames, geometryTextures, vertexFormats, vertexCountsPtr, verticesPtr, important);
+        } finally {
+            MemoryUtil.nmemFree(geometryTypesPtr);
+            MemoryUtil.nmemFree(geometryGroupNames);
+            MemoryUtil.nmemFree(geometryTextures);
+            MemoryUtil.nmemFree(vertexFormats);
+            MemoryUtil.nmemFree(vertexCountsPtr);
+            MemoryUtil.nmemFree(verticesPtr);
+            for (long name : namePtrs) {
+                MemoryUtil.nmemFree(name);
+            }
+        }
+    }
+
+    public static void markAllDirty() {
+        forceAllDirty = true;
+    }
+
+    public static int slotOf(long sectionNode) {
+        int gridX = Math.floorMod(SectionPos.x(sectionNode), gridSizeXZ);
+        int gridY = SectionPos.y(sectionNode) - minSectionY;
+        int gridZ = Math.floorMod(SectionPos.z(sectionNode), gridSizeXZ);
+        if (gridY < 0 || gridY >= gridSizeY) {
+            return -1;
+        }
+        return (gridZ * gridSizeY + gridY) * gridSizeXZ + gridX;
+    }
+
+    /**
+     * Sections whose tracker state changed since the last frame: made dirty by a block change, or scrolled into view
+     * by the tracker's rotating grid. Filled from {@code SectionDirtyStateMixin}.
+     */
+    private static final LongArrayList CHANGED = new LongArrayList();
+    /** Dirty sections still waiting to be built, typically because their neighbours are not loaded yet. */
+    private static final LongOpenHashSet pendingDirty = new LongOpenHashSet();
+    /** Per frame: whether all chunks around a column are loaded. All sections of a column share the answer. */
+    private static final Long2ByteOpenHashMap columnReady = new Long2ByteOpenHashMap();
+    private static long[] readyNodes = new long[256];
+    private static long[] readyKeys = new long[256];
+
+    public static void onSectionChanged(long sectionNode) {
+        synchronized (CHANGED) {
+            CHANGED.add(sectionNode);
+        }
+    }
+
+    private static long[] drainChanged() {
+        synchronized (CHANGED) {
+            long[] nodes = CHANGED.toLongArray();
+            CHANGED.clear();
+            return nodes;
+        }
+    }
+
+    /**
+     * Snapshots dirty sections on the render thread and queues them for compilation.
+     *
+     * <p>Only the sections the tracker reports as changed are looked at; walking every section each frame cost
+     * over ten milliseconds at a 32 chunk render distance, most of it re-checking the neighbours of sections at the
+     * edge of the loaded area that could not be built yet anyway.
+     */
+    public static void update(ClientLevel level, SectionUpdateTracker tracker, SectionPos cameraSection) {
+        if (executor == null || level == null) {
+            return;
+        }
+
+        ChunkProxy.updateSectionPos(cameraSection.x(), cameraSection.y(), cameraSection.z());
+
+        boolean shading = com.g2806.radiante.client.pipeline.Pipeline.isShaderPackToggleOn(
+            com.g2806.radiante.client.pipeline.Pipeline.FACE_SHADING_ATTRIBUTE);
+        if (shading != faceShading) {
+            faceShading = shading;
+            forceAllDirty = true;
+        }
+        boolean rebuildAll = forceAllDirty;
+        forceAllDirty = false;
+        // Relocating a slot takes the grid's write lock, so a builder thread cannot check the slot's owner, lose it
+        // to the relocation, and then upload the old section into it anyway. Taken only on frames that move a slot.
+        boolean[] relocating = new boolean[1];
+        try {
+            if (rebuildAll) {
+                pendingDirty.clear();
+                ((SectionTrackerAccess) tracker).radiante$forEachSection(state -> {
+                    long node = state.getSectionNode();
+                    relocateIfMoved(node, relocating);
+                    state.setDirty(false);
+                });
+            }
+            for (long node : drainChanged()) {
+                relocateIfMoved(node, relocating);
+                pendingDirty.add(node);
+            }
+        } finally {
+            if (relocating[0]) {
+                GRID_LOCK.writeLock().unlock();
+            }
+        }
+
+        if (pendingDirty.isEmpty()) {
+            return;
+        }
+
+        int cameraX = cameraSection.x();
+        int cameraY = cameraSection.y();
+        int cameraZ = cameraSection.z();
+        columnReady.clear();
+        int readyCount = 0;
+        LongIterator iterator = pendingDirty.iterator();
+        while (iterator.hasNext()) {
+            long node = iterator.nextLong();
+            SectionUpdateTracker.SectionDirtyState state = tracker.getDirtyState(node);
+            if (state == null || state.getSectionNode() != node || !state.isDirty() || slotOf(node) < 0) {
+                iterator.remove();
+                continue;
+            }
+            long column = ((long) SectionPos.x(node) << 32) | (SectionPos.z(node) & 0xFFFFFFFFL);
+            byte ready = columnReady.getOrDefault(column, (byte) -1);
+            if (ready < 0) {
+                ready = tracker.hasAllNeighbors(level, node) ? (byte) 1 : (byte) 0;
+                columnReady.put(column, ready);
+            }
+            if (ready == 0) {
+                continue;
+            }
+            if (readyCount == readyNodes.length) {
+                readyNodes = java.util.Arrays.copyOf(readyNodes, readyCount * 2);
+                readyKeys = java.util.Arrays.copyOf(readyKeys, readyCount * 2);
+            }
+            long dx = SectionPos.x(node) - cameraX;
+            long dy = SectionPos.y(node) - cameraY;
+            long dz = SectionPos.z(node) - cameraZ;
+            readyNodes[readyCount] = node;
+            // Nearest first: distance in the high bits, the index in the low ones, sorted as plain longs.
+            readyKeys[readyCount] = ((dx * dx + dy * dy + dz * dz) << 32) | readyCount;
+            readyCount++;
+        }
+        if (readyCount == 0) {
+            return;
+        }
+        java.util.Arrays.sort(readyKeys, 0, readyCount);
+
+        RenderRegionCache cache = new RenderRegionCache();
+        BlockPos cameraBlock = cameraSection.center();
+        int snapshots = 0;
+        int syncRebuilds = 0;
+        // Snapshots are taken on the render thread, and each copies the blocks of a section and its neighbours.
+        // Taking more than the builders can work through only moves that cost into the frame and leaves a backlog
+        // that goes stale the moment the player moves on, so the queue is kept a few sections deep per builder.
+        int backlogLimit = Math.max(8, Options.chunkBuildingThreads * 4);
+        for (int i = 0; i < readyCount; i++) {
+            if (snapshots >= MAX_REGION_SNAPSHOTS_PER_FRAME || pendingBuilds.get() >= backlogLimit) {
+                break;
+            }
+
+            long node = readyNodes[(int) (readyKeys[i] & 0xFFFFFFFFL)];
+            SectionUpdateTracker.SectionDirtyState state = tracker.getDirtyState(node);
+            if (state == null) {
+                pendingDirty.remove(node);
+                continue;
+            }
+
+            state.setNotDirty();
+            pendingDirty.remove(node);
+            snapshots++;
+            int slot = slotOf(node);
+            RenderSectionRegion region = cache.createRegion(level, node);
+            boolean important = distanceSqr(node, cameraBlock) < 768.0;
+            int buildGeneration = generation;
+            int sequence = buildSequence.incrementAndGet();
+            latestBuild.put(node, sequence);
+
+            // Only rebuilds: a first build near the player happens while loading in, where a hitch is worse than
+            // a section showing up a frame late.
+            if (important && syncRebuilds < MAX_SYNC_REBUILDS_PER_FRAME && isSectionReady(node)) {
+                syncRebuilds++;
+                try {
+                    compile(slot, node, region, true, buildGeneration, sequence);
+                } catch (Throwable t) {
+                    RadianteRenderer.LOGGER.error("Failed to compile section {}", SectionPos.of(node), t);
+                }
+                continue;
+            }
+
+            pendingBuilds.incrementAndGet();
+            executor.execute(() -> {
+                try {
+                    compile(slot, node, region, important, buildGeneration, sequence);
+                } catch (Throwable t) {
+                    RadianteRenderer.LOGGER.error("Failed to compile section {}", SectionPos.of(node), t);
+                } finally {
+                    pendingBuilds.decrementAndGet();
+                }
+            });
+        }
+    }
+
+    /** Points a grid slot at the section now occupying it, dropping whatever the old section left there. */
+    private static void relocateIfMoved(long node, boolean[] relocating) {
+        int slot = slotOf(node);
+        if (slot < 0 || slot >= slotOwner.length() || slotOwner.get(slot) == node) {
+            return;
+        }
+        if (!relocating[0]) {
+            GRID_LOCK.writeLock().lock();
+            relocating[0] = true;
+        }
+        long evicted = slotOwner.getAndSet(slot, node);
+        synchronized (compiledSections) {
+            compiledSections.remove(node);
+            dirtyColumns.add(columnOf(node));
+            if (evicted != NO_OWNER) {
+                compiledSections.remove(evicted);
+                dirtyColumns.add(columnOf(evicted));
+            }
+        }
+        if (evicted != NO_OWNER) {
+            latestBuild.remove(evicted);
+            pendingDirty.remove(evicted);
+        }
+        ChunkProxy.relocateSingle(slot, SectionPos.sectionToBlockCoord(SectionPos.x(node)),
+            SectionPos.sectionToBlockCoord(SectionPos.y(node)), SectionPos.sectionToBlockCoord(SectionPos.z(node)));
+    }
+
+    private static double distanceSqr(long sectionNode, BlockPos cameraBlock) {
+        return SectionPos.of(sectionNode).center().distSqr(cameraBlock);
+    }
+
+    private static boolean ownsSlot(int slot, long sectionNode) {
+        java.util.concurrent.atomic.AtomicLongArray owners = slotOwner;
+        return slot >= 0 && slot < owners.length() && owners.get(slot) == sectionNode;
+    }
+
+    private static boolean isLatestBuild(long sectionNode, int sequence) {
+        Integer latest = latestBuild.get(sectionNode);
+        return latest == null || latest == sequence;
+    }
+
+    private static void compile(int slot, long sectionNode, RenderSectionRegion region, boolean important,
+        int buildGeneration, int sequence) {
+        // Queued before a teleport or superseded by a newer build: compiling it would only delay the sections that
+        // are actually around the player.
+        if (buildGeneration != generation || !ownsSlot(slot, sectionNode) || !isLatestBuild(sectionNode, sequence)) {
+            return;
+        }
+
+        SectionCompileScratch scratch = SCRATCH.get();
+        scratch.reset();
+
+        Minecraft minecraft = Minecraft.getInstance();
+        int atlasId = TextureTracker.idOf(TextureAtlas.LOCATION_BLOCKS);
+
+        ModelBlockRenderer blockRenderer = scratch.blockRenderer(minecraft);
+        FluidRenderer fluidRenderer = scratch.fluidRenderer(minecraft);
+
+        BlockPos origin = SectionPos.of(sectionNode).origin();
+        BlockPos max = origin.offset(15, 15, 15);
+
+        // Vanilla's fixed face shading (its cardinal lighting) comes multiplied into the colour of every face, and is
+        // divided back out unless it is wanted (FACE_SHADING_ATTRIBUTE): the colour left is the block's tint alone.
+        boolean unshade = !faceShading;
+        // The lights Bedrock RTX adds at torches, lanterns and end rods, where blocks cast their glow as it does.
+        boolean pointLights = com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow();
+        net.minecraft.world.level.CardinalLighting cardinal = region.cardinalLighting();
+        BlockQuadOutput quadOutput = (x, y, z, quad, instance) -> {
+            if (scratch.dropInwardFaces && facesInward(quad)) {
+                return;
+            }
+            if (unshade) {
+                net.minecraft.core.Direction shadeFace = quad.materialInfo().shadeDirectionOverride();
+                float shade = cardinal.byFace(shadeFace != null ? shadeFace : quad.direction());
+                if (shade > 0.0f && shade != 1.0f) {
+                    instance.scaleColor(1.0f / shade);
+                }
+            }
+            scratch.writer(quad.materialInfo().layer(), atlasId).putBlockBakedQuad(x, y, z, quad, instance);
+            if (scratch.collectPanel) {
+                scratch.panelQuads.add(quad);
+            }
+        };
+        FluidRenderer.Output fluidOutput =
+            layer -> scratch.writer(layer, atlasId).water(scratch.fluidIsWater).computeQuadNormals(true)
+                .unshadeQuads(unshade ? cardinal : null).albedoEmission(scratch.fluidIsLava ? Glow.LAVA : 0.0f);
+
+        for (BlockPos pos : BlockPos.betweenClosed(origin, max)) {
+            BlockState blockState = region.getBlockState(pos);
+            if (blockState.isAir()) {
+                continue;
+            }
+            scratch.blockIsGlass = isGlass(blockState);
+            scratch.blockIsBlend = isBlend(blockState);
+            scratch.blockIsUnlit = EmissionTiles.isUnlit(blockState);
+            scratch.blockIsPlant = isPlant(blockState);
+            scratch.blockIsPane = scratch.blockIsGlass && isGlassPane(blockState);
+            if (scratch.blockIsPane) {
+                scratch.paneCapUp = !isGlass(region.getBlockState(pos.above()));
+                scratch.paneCapDown = !isGlass(region.getBlockState(pos.below()));
+            }
+
+
+            FluidState fluidState = blockState.getFluidState();
+            if (!fluidState.isEmpty()) {
+                scratch.blockIsGlass = false;
+                scratch.blockIsBlend = false;
+                scratch.blockIsUnlit = false;
+                scratch.blockIsPlant = false;
+                scratch.blockIsPane = false;
+                scratch.fluidIsWater = fluidState.is(net.minecraft.tags.FluidTags.WATER);
+                scratch.fluidIsLava = fluidState.is(net.minecraft.tags.FluidTags.LAVA);
+                fluidRenderer.tesselate(region, pos, fluidOutput, blockState, fluidState);
+                scratch.blockIsGlass = isGlass(blockState);
+                scratch.blockIsBlend = isBlend(blockState);
+                scratch.blockIsUnlit = EmissionTiles.isUnlit(blockState);
+                scratch.blockIsPlant = isPlant(blockState);
+                scratch.blockIsPane = scratch.blockIsGlass && isGlassPane(blockState);
+                // Water with water or solid blocks on every side draws no face, and never asks for a writer: when
+                // that is the first fluid of the section there is none yet, and the whole section failed to build.
+                if (scratch.currentWriter() != null) {
+                    scratch.currentWriter().computeQuadNormals(false).unshadeQuads(null).water(false)
+                        .albedoEmission(0.0f);
+                }
+            }
+
+            if (blockState.getRenderShape() == RenderShape.MODEL) {
+                scratch.dropInwardFaces = blockState.is(Blocks.POWDER_SNOW);
+                scratch.collectPanel = blockState.is(BlockTags.DOORS) || blockState.is(BlockTags.TRAPDOORS);
+                scratch.panelQuads.clear();
+                int sx = SectionPos.sectionRelative(pos.getX());
+                int sy = SectionPos.sectionRelative(pos.getY());
+                int sz = SectionPos.sectionRelative(pos.getZ());
+                blockRenderer.tesselateBlock(quadOutput, sx, sy, sz, region, pos,
+                    blockState, minecraft.getModelManager().getBlockStateModelSet().get(blockState),
+                    blockState.getSeed(pos));
+                if (pointLights && BedrockPointLights.hasLight(blockState.getBlock())) {
+                    BedrockPointLights.emit(blockState, sx, sy, sz, scratch.pointLightWriter(atlasId));
+                }
+                if (scratch.collectPanel && !scratch.panelQuads.isEmpty()) {
+                    CutoutWalls.emit(scratch.panelQuads, sx, sy, sz,
+                        scratch.writer(scratch.panelQuads.get(0).materialInfo().layer(), atlasId));
+                }
+            }
+        }
+
+        boolean uploaded = false;
+        GRID_LOCK.readLock().lock();
+        try {
+            // A section compiled for the previous world would land in a slot of the new grid, and one compiled for
+            // a slot that has since been relocated would put the old area back.
+            if (buildGeneration == generation && ownsSlot(slot, sectionNode) && isLatestBuild(sectionNode, sequence)) {
+                upload(slot, sectionNode, sequence, origin, scratch, atlasId, important);
+                uploaded = true;
+            }
+        } finally {
+            GRID_LOCK.readLock().unlock();
+        }
+        if (uploaded) {
+            synchronized (compiledSections) {
+                compiledSections.add(sectionNode);
+                dirtyColumns.add(columnOf(sectionNode));
+            }
+        }
+    }
+
+    /**
+     * Powder snow's model is a shell of paper thin boxes, each drawing an outward face and an inward one 0.002 of a
+     * block behind it with mirrored UVs. Traced, the two break up into large triangles of mismatched texture across
+     * the surface. The inward faces only show from inside the block, where the powder snow fog covers everything.
+     */
+    private static boolean facesInward(BakedQuad quad) {
+        Vector3fc corner = quad.position0();
+        Direction direction = quad.direction();
+        return direction.getStepX() * (corner.x() - 0.5f) + direction.getStepY() * (corner.y() - 0.5f)
+            + direction.getStepZ() * (corner.z() - 0.5f) < 0.0f;
+    }
+
+    /** How many sections the renderer holds geometry for. Minecraft's own count reads zero while it is off. */
+    public static int compiledSectionCount() {
+        synchronized (compiledSections) {
+            return compiledSections.size();
+        }
+    }
+
+    /**
+     * True when the builders have caught up, which is what {@code LevelRenderer.hasRenderedAllSections} reports
+     * for Minecraft's own terrain. Only the builds actually in flight count: sections waiting to be looked at
+     * again trickle in the whole time a world is open, and waiting for that list to empty would be waiting for
+     * something that never happens.
+     */
+    public static boolean hasBuiltEverything() {
+        return pendingBuilds.get() == 0;
+    }
+
+    /** True once the section covering this position has been handed to the renderer. */
+    public static boolean isSectionReady(BlockPos pos) {
+        return isSectionReady(SectionPos.asLong(pos));
+    }
+
+    /** Whether the renderer has built any section of this chunk column yet. */
+    public static boolean isColumnBuilt(int chunkX, int chunkZ) {
+        // Built from the bottom up to sea level at least, with nothing missing below the highest section built.
+        // Any one section built used to count: the sea floor came in before the water above it, and the far
+        // terrain standing in was dropped too soon, leaving a ring of bare, dark sea floor round the loaded area.
+        int seaSection = SectionPos.blockToSectionCoord(63);
+        synchronized (compiledSections) {
+            int highest = Integer.MIN_VALUE;
+            for (int y = minSectionY + gridSizeY - 1; y >= minSectionY; y--) {
+                if (compiledSections.contains(SectionPos.asLong(chunkX, y, chunkZ))) {
+                    highest = y;
+                    break;
+                }
+            }
+            if (highest < Math.min(seaSection, minSectionY + gridSizeY - 1)) {
+                return false;
+            }
+            for (int y = minSectionY; y < highest; y++) {
+                if (!compiledSections.contains(SectionPos.asLong(chunkX, y, chunkZ))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    private static long columnKey(int chunkX, int chunkZ) {
+        return ((long) chunkX << 32) | (chunkZ & 0xFFFFFFFFL);
+    }
+
+    private static long columnOf(long sectionNode) {
+        return columnKey(SectionPos.x(sectionNode), SectionPos.z(sectionNode));
+    }
+
+    /**
+     * Sends the renderer the chunk columns round the camera whose terrain is built (see {@link #isColumnBuilt}), so
+     * it hides Distant Horizons terrain there per ray. Like Radiance's Vista the far terrain is never remeshed for
+     * chunks loading in and out, which is what left it lagging behind (holes, or both drawn) when moving fast. Only
+     * the columns whose sections changed are looked at again.
+     */
+    public static void updateLodCoverage(int cameraChunkX, int cameraChunkZ) {
+        int size = Math.min(gridSizeXZ + 2, 256);
+        if (size <= 2) {
+            return;
+        }
+        int originX = cameraChunkX - size / 2;
+        int originZ = cameraChunkZ - size / 2;
+        int[] words;
+        synchronized (compiledSections) {
+            if (!dirtyColumns.isEmpty()) {
+                LongIterator iterator = dirtyColumns.iterator();
+                while (iterator.hasNext()) {
+                    long column = iterator.nextLong();
+                    boolean built = isColumnBuilt((int) (column >> 32), (int) column);
+                    coverageDirty |= built ? builtColumns.add(column) : builtColumns.remove(column);
+                }
+                dirtyColumns.clear();
+            }
+            if (!coverageDirty && originX == coverageOriginX && originZ == coverageOriginZ && size == coverageSize) {
+                return;
+            }
+            coverageDirty = false;
+            coverageOriginX = originX;
+            coverageOriginZ = originZ;
+            coverageSize = size;
+            words = new int[(size * size + 31) / 32];
+            for (int z = 0; z < size; z++) {
+                for (int x = 0; x < size; x++) {
+                    if (builtColumns.contains(columnKey(originX + x, originZ + z))) {
+                        int bit = z * size + x;
+                        words[bit >>> 5] |= 1 << (bit & 31);
+                    }
+                }
+            }
+        }
+        ChunkProxy.setLodCoverage(originX, originZ, size, words);
+    }
+
+    private static boolean isSectionReady(long node) {
+        synchronized (compiledSections) {
+            return compiledSections.contains(node);
+        }
+    }
+
+    /**
+     * Sections near the player are built by the renderer inside the current frame, which reads the vertex data
+     * uploaded earlier in that same frame. Handing them over from a builder thread in the middle of a frame lets the
+     * acceleration structure be built from buffers that were never filled, so they are applied on the render thread
+     * before the frame is recorded.
+     */
+    private static final ConcurrentLinkedQueue<SectionUpload> IMPORTANT_UPLOADS = new ConcurrentLinkedQueue<>();
+
+    private record SectionUpload(int generation, long sectionNode, int sequence, int slot, BlockPos origin, int[] geometryTypes, String[] names,
+        int atlasId, int[] vertexCounts, long[] vertices) {
+
+        void apply() {
+            applyWith(true);
+        }
+
+        void applyAsync() {
+            applyWith(false);
+        }
+
+        private void applyWith(boolean important) {
+            submitGeometry(this.slot, this.origin, this.geometryTypes, this.names, this.atlasId, this.vertexCounts,
+                this.vertices, important);
+        }
+
+        void free() {
+            for (long address : this.vertices) {
+                MemoryUtil.nmemFree(address);
+            }
+        }
+    }
+
+    /** Applies near-player section rebuilds; call on the render thread before the renderer records a frame. */
+    public static void applyImportantUploads() {
+        SectionUpload upload;
+        while ((upload = IMPORTANT_UPLOADS.poll()) != null) {
+            try {
+                if (upload.generation() == generation && ownsSlot(upload.slot(), upload.sectionNode())
+                    && isLatestBuild(upload.sectionNode(), upload.sequence())) {
+                    upload.apply();
+                }
+            } finally {
+                upload.free();
+            }
+        }
+    }
+
+    private static void upload(int slot, long sectionNode, int sequence, BlockPos origin,
+        SectionCompileScratch scratch, int atlasId, boolean important) {
+        List<ChunkSectionLayer> layers = new ArrayList<>();
+        List<PBRVertexWriter> layerWriters = new ArrayList<>();
+        for (EnumMap<ChunkSectionLayer, PBRVertexWriter> writers : List.of(scratch.writers, scratch.unlitWriters)) {
+            for (Map.Entry<ChunkSectionLayer, PBRVertexWriter> entry : writers.entrySet()) {
+                entry.getValue().finish();
+                if (entry.getValue().vertexCount() > 0) {
+                    layers.add(entry.getKey());
+                    layerWriters.add(entry.getValue());
+                }
+            }
+        }
+        // The point light markers, a geometry of their own (BedrockPointLights): never hit, only read for lights.
+        if (scratch.pointLightWriter != null && scratch.pointLightWriter.vertexCount() > 0) {
+            scratch.pointLightWriter.finish();
+            layers.add(ChunkSectionLayer.TRANSLUCENT);
+            layerWriters.add(scratch.pointLightWriter);
+        }
+
+        if (layers.isEmpty()) {
+            ChunkProxy.invalidateSingle(slot);
+            return;
+        }
+
+        int count = layers.size();
+        int[] geometryTypes = new int[count];
+        String[] names = new String[count];
+        int[] vertexCounts = new int[count];
+        long[] vertices = new long[count];
+        for (int i = 0; i < count; i++) {
+            ChunkSectionLayer layer = layers.get(i);
+            PBRVertexWriter writer = layerWriters.get(i);
+            geometryTypes[i] = layer == ChunkSectionLayer.SOLID ? GEOMETRY_TYPE_WORLD_SOLID
+                : GEOMETRY_TYPE_WORLD_TRANSPARENT;
+            names[i] = layer.label();
+            vertexCounts[i] = writer.vertexCount();
+            long size = (long) writer.vertexCount() * PBRVertexWriter.STRIDE;
+            vertices[i] = MemoryUtil.nmemAllocChecked(size);
+            MemoryUtil.memCopy(writer.address(), vertices[i], size);
+        }
+
+        SectionUpload sectionUpload = new SectionUpload(generation, sectionNode, sequence, slot, origin, geometryTypes, names, atlasId,
+            vertexCounts, vertices);
+        if (important) {
+            IMPORTANT_UPLOADS.add(sectionUpload);
+            return;
+        }
+
+        try {
+            sectionUpload.applyAsync();
+        } finally {
+            sectionUpload.free();
+        }
+    }
+
+    private static final class SectionCompileScratch {
+
+        private final EnumMap<ChunkSectionLayer, PBRVertexWriter> writers = new EnumMap<>(ChunkSectionLayer.class);
+        /**
+         * The same for the unlit states of light blocks (see blockIsUnlit), kept apart so that every geometry carries
+         * one set of flags: the compact layout the native side packs terrain into needs that.
+         */
+        private final EnumMap<ChunkSectionLayer, PBRVertexWriter> unlitWriters =
+            new EnumMap<>(ChunkSectionLayer.class);
+        /** The markers of Bedrock's point lights (BedrockPointLights), apart from any surface. */
+        private PBRVertexWriter pointLightWriter;
+        private ModelBlockRenderer blockRenderer;
+        private FluidRenderer fluidRenderer;
+        private Object fluidModels;
+        private PBRVertexWriter current;
+        private boolean dropInwardFaces;
+        private boolean collectPanel;
+        private boolean fluidIsWater;
+        private boolean fluidIsLava;
+        /** The block being written is glass or a glass pane; see PBRVertexWriter.glass. */
+        private boolean blockIsGlass;
+        /** The block being written is ice, slime or honey; see PBRVertexWriter.blend. */
+        private boolean blockIsBlend;
+        /** The block being written is a light block in a state that gives no light; see PBRVertexWriter.unlit. */
+        private boolean blockIsUnlit;
+        private boolean blockIsPlant;
+        private boolean blockIsPane;
+        private boolean paneCapUp;
+        private boolean paneCapDown;
+        private final List<BakedQuad> panelQuads = new ArrayList<>();
+
+        void reset() {
+            for (PBRVertexWriter writer : this.writers.values()) {
+                writer.reset();
+            }
+            for (PBRVertexWriter writer : this.unlitWriters.values()) {
+                writer.reset();
+            }
+            if (this.pointLightWriter != null) {
+                this.pointLightWriter.reset();
+            }
+        }
+
+        PBRVertexWriter pointLightWriter(int atlasId) {
+            if (this.pointLightWriter == null) {
+                this.pointLightWriter = new PBRVertexWriter(256);
+            }
+            return this.pointLightWriter.textureId(atlasId);
+        }
+
+        ModelBlockRenderer blockRenderer(Minecraft minecraft) {
+            if (this.blockRenderer == null) {
+                this.blockRenderer = new ModelBlockRenderer(false, true, minecraft.getBlockColors());
+            }
+            return this.blockRenderer;
+        }
+
+        FluidRenderer fluidRenderer(Minecraft minecraft) {
+            // The fluid models hold their sprites. A resource reload builds a new set on a new atlas, and a renderer
+            // kept from before drew water with the old atlas coordinates - wherever those now fall, usually nowhere
+            // visible, so rebuilt sections lost their water after a pack change.
+            Object models = minecraft.getModelManager().getFluidStateModelSet();
+            if (this.fluidRenderer == null || models != this.fluidModels) {
+                this.fluidRenderer = new FluidRenderer(minecraft.getModelManager().getFluidStateModelSet());
+                this.fluidModels = models;
+            }
+            return this.fluidRenderer;
+        }
+
+        PBRVertexWriter writer(ChunkSectionLayer layer, int atlasId) {
+            EnumMap<ChunkSectionLayer, PBRVertexWriter> writers = this.blockIsUnlit ? this.unlitWriters : this.writers;
+            PBRVertexWriter writer = writers.get(layer);
+            if (writer == null) {
+                writer = new PBRVertexWriter(4096);
+                writers.put(layer, writer);
+            }
+            writer.textureId(atlasId).alphaMode(alphaModeOf(layer)).coordinate(0).water(false).glass(this.blockIsGlass).plant(this.blockIsPlant)
+                .glassPane(this.blockIsPane, this.paneCapUp, this.paneCapDown).blend(this.blockIsBlend)
+                .unlit(this.blockIsUnlit);
+            this.current = writer;
+            return writer;
+        }
+
+        PBRVertexWriter currentWriter() {
+            return this.current;
+        }
+
+        private static int alphaModeOf(ChunkSectionLayer layer) {
+            return switch (layer) {
+                case SOLID -> PBRVertexWriter.ALPHA_MODE_OPAQUE;
+                case CUTOUT -> PBRVertexWriter.ALPHA_MODE_CUTOUT;
+                case TRANSLUCENT -> PBRVertexWriter.ALPHA_MODE_TRANSPARENT;
+            };
+        }
+    }
+}

@@ -1,0 +1,76 @@
+#version 460
+
+// Luminance histogram for the Bedrock-style tone curve (bedrock_curve.comp), an independent approximation of how the
+// game behaves: 256 bins over exposed log2 luminance -24 .. +4, each pixel split between its two nearest bins in
+// 1/64 steps. Black pixels and pixels brighter than the range are left out.
+#define BIN_COUNT 256
+const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
+const float LOG2_MIN = -24.0;
+const float LOG2_RANGE = 28.0;
+const float WEIGHT_STEPS = 64.0;
+
+layout(set = 0, binding = 0) uniform sampler2D hdrImage;
+
+layout(set = 0, binding = 2) readonly buffer ExposureBuffer {
+    float exposure;
+    float avgLogLum;
+    float padding0;
+    float padding1;
+}
+expData;
+
+layout(std430, set = 0, binding = 4) buffer BedrockCurveBuffer {
+    uint histogram[BIN_COUNT];
+    float curve[BIN_COUNT];
+}
+bedrock;
+
+// ToneMappingBedrockCurvePushConstant (tone_mapping_module.hpp).
+layout(push_constant) uniform PushConstant {
+    float dynamicRange;
+    float curveShift;
+    float maxExposureIncrease;
+    float shadowMinSlope;
+    float shadowContrast;
+    float shadowContrastEnd;
+    int needsReset;
+    int autoExposure;
+    float manualExposure;
+    float exposureBias;
+}
+pc;
+
+// 256 invocations, one for each bin of the group's own histogram, which is added to the frame's once complete.
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+shared uint groupBins[BIN_COUNT];
+
+// The exposure the tone mapping pass applies.
+float currentExposure() {
+    float exposure = pc.autoExposure != 0 ? expData.exposure : pc.manualExposure;
+    if (isnan(exposure) || isinf(exposure) || exposure <= 0.0) { exposure = max(pc.manualExposure, 1e-6); }
+    return exposure * exp2(pc.exposureBias);
+}
+
+void main() {
+    uint bin = gl_LocalInvocationIndex;
+    groupBins[bin] = 0u;
+    barrier();
+
+    ivec2 size = textureSize(hdrImage, 0);
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+    if (all(lessThan(pixel, size))) {
+        float luminance = dot(texelFetch(hdrImage, pixel, 0).rgb, LUMA) * currentExposure();
+        if (luminance > 0.0 && luminance < exp2(LOG2_MIN + LOG2_RANGE)) {
+            float position = (max(log2(luminance), LOG2_MIN) - LOG2_MIN) * (float(BIN_COUNT - 1) / LOG2_RANGE);
+            uint lower = uint(position);
+            float upperShare = fract(position);
+            atomicAdd(groupBins[lower], uint((1.0 - upperShare) * WEIGHT_STEPS));
+            if (lower + 1u < BIN_COUNT) { atomicAdd(groupBins[lower + 1u], uint(upperShare * WEIGHT_STEPS)); }
+        }
+    }
+    barrier();
+
+    uint count = groupBins[bin];
+    if (count != 0u) { atomicAdd(bedrock.histogram[bin], count); }
+}

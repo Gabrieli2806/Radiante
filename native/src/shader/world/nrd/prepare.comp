@@ -1,0 +1,110 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+
+// Builds the inputs of NRD's RELAX denoiser from the path tracer's first-hit outputs, one pixel per invocation:
+//  - diffuse and specular radiance with the albedo divided out (compose.comp multiplies it back afterwards, so the
+//    denoiser never blurs texture detail), each with its hit distance;
+//  - screen motion, the packed normal + roughness, and view depth.
+// Pixels the denoiser must leave alone - no surface, or a colour the tracer already marked final in the clear
+// image - get empty signals instead.
+
+#define NRD_GLSL 1
+#include "../../../extern/nrd/Shaders/NRD.hlsli"
+#include "common/shared.hpp"
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+// Path tracer outputs.
+layout(set = 0, binding = 0, rgba16f) uniform readonly image2D directRadianceImage;
+layout(set = 0, binding = 1, rgba16f) uniform readonly image2D diffuseIndirectRadianceImage;
+layout(set = 0, binding = 2, rgba16f) uniform readonly image2D specularIndirectRadianceImage;
+layout(set = 0, binding = 3, rgba8) uniform readonly image2D diffuseAlbedoMetallicImage;
+layout(set = 0, binding = 4, rgba8) uniform readonly image2D specularAlbedoImage;
+layout(set = 0, binding = 5, rg16f) uniform readonly image2D motionVectorImage;
+layout(set = 0, binding = 6, rgba16f) uniform readonly image2D normalRoughnessImage;
+layout(set = 0, binding = 7, r16f) uniform readonly image2D linearDepthImage;
+layout(set = 0, binding = 8, rgba16f) uniform readonly image2D clearRadianceImage;
+layout(set = 0, binding = 9, r16f) uniform readonly image2D diffuseHitDepthImage;
+layout(set = 0, binding = 10, r16f) uniform readonly image2D specularHitDepthImage;
+layout(set = 0, binding = 11, rgba16f) uniform readonly image2D refractionRadianceImage;
+
+// NRD inputs. The normal/roughness format follows the encoding NRD was built with.
+layout(set = 1, binding = 0, rgba16f) uniform writeonly image2D nrdDiffuseImage;
+layout(set = 1, binding = 1, rgba16f) uniform writeonly image2D nrdSpecularImage;
+layout(set = 1, binding = 2, rg16f) uniform writeonly image2D nrdMotionImage;
+#if NRD_NORMAL_ENCODING == NRD_NORMAL_ENCODING_R10G10B10A2_UNORM
+layout(set = 1, binding = 3, rgb10_a2) uniform writeonly image2D nrdNormalRoughnessImage;
+#elif NRD_NORMAL_ENCODING == NRD_NORMAL_ENCODING_RGBA8_UNORM
+layout(set = 1, binding = 3, rgba8) uniform writeonly image2D nrdNormalRoughnessImage;
+#elif NRD_NORMAL_ENCODING == NRD_NORMAL_ENCODING_RGBA8_SNORM
+layout(set = 1, binding = 3, rgba8_snorm) uniform writeonly image2D nrdNormalRoughnessImage;
+#elif NRD_NORMAL_ENCODING == NRD_NORMAL_ENCODING_RGBA16_UNORM
+layout(set = 1, binding = 3, rgba16) uniform writeonly image2D nrdNormalRoughnessImage;
+#elif NRD_NORMAL_ENCODING == NRD_NORMAL_ENCODING_RGBA16_SNORM
+layout(set = 1, binding = 3, rgba16_snorm) uniform writeonly image2D nrdNormalRoughnessImage;
+#else
+#error Unsupported NRD normal encoding
+#endif
+layout(set = 1, binding = 4, r16f) uniform writeonly image2D nrdViewZImage;
+
+layout(set = 2, binding = 0) uniform WorldUniform {
+    WorldUBO worldUBO;
+};
+
+// The tracer writes the largest half float as the linear depth of a pixel with no surface.
+const float kNoSurfaceDepth = 65504.0;
+// Albedo floors for dividing it out, so very dark materials do not blow the signal up (compose.comp uses the same).
+const vec3 kDiffuseAlbedoFloor = vec3(0.05);
+const vec3 kSpecularAlbedoFloor = vec3(0.04);
+
+// Zero radiance and motion, an up-facing normal, and the (capped) depth: the denoiser leaves the pixel alone.
+void writeEmptySignal(ivec2 pixel, float linearDepth) {
+    imageStore(nrdDiffuseImage, pixel, vec4(0.0));
+    imageStore(nrdSpecularImage, pixel, vec4(0.0));
+    imageStore(nrdMotionImage, pixel, vec4(0.0));
+    imageStore(nrdNormalRoughnessImage, pixel, vec4(0.0, 1.0, 0.0, 1.0));
+    imageStore(nrdViewZImage, pixel, vec4(min(linearDepth, kNoSurfaceDepth), 0.0, 0.0, 0.0));
+}
+
+void main() {
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+    if (any(greaterThanEqual(pixel, imageSize(directRadianceImage)))) return;
+
+    float viewDepth = imageLoad(linearDepthImage, pixel).r;
+    bool missedEverything = isnan(viewDepth) || isinf(viewDepth) || viewDepth >= kNoSurfaceDepth * 0.9;
+    // A clear-image alpha of zero means the tracer left this pixel to the denoiser.
+    bool toDenoise = imageLoad(clearRadianceImage, pixel).a == 0.0 && !missedEverything;
+    if (!toDenoise) {
+        writeEmptySignal(pixel, viewDepth);
+        return;
+    }
+
+    // NRD reprojects with motion that includes the camera jitter.
+    vec2 screenMotion = imageLoad(motionVectorImage, pixel).xy + worldUBO.cameraJitter;
+    if (any(isnan(screenMotion)) || any(isinf(screenMotion))) screenMotion = vec2(0.0);
+    imageStore(nrdMotionImage, pixel, vec4(screenMotion, 0.0, 0.0));
+
+    // The tiny +Y nudge keeps normalize away from a zero vector.
+    vec4 gbufferNormalRoughness = imageLoad(normalRoughnessImage, pixel);
+    vec3 surfaceNormal = normalize(gbufferNormalRoughness.xyz + vec3(0.0, 1e-6, 0.0));
+    imageStore(nrdViewZImage, pixel, vec4(viewDepth, 0.0, 0.0, 0.0));
+    imageStore(nrdNormalRoughnessImage, pixel,
+               NRD_FrontEnd_PackNormalAndRoughness(surfaceNormal, gbufferNormalRoughness.w, 0.0));
+
+    // Diffuse: direct light plus diffuse bounces.
+    vec3 diffuseLight =
+        imageLoad(diffuseIndirectRadianceImage, pixel).rgb + imageLoad(directRadianceImage, pixel).rgb;
+    float diffuseDistance = max(imageLoad(diffuseHitDepthImage, pixel).r, 0.001);
+    vec3 diffuseReflectance = max(imageLoad(diffuseAlbedoMetallicImage, pixel).rgb, kDiffuseAlbedoFloor);
+    imageStore(nrdDiffuseImage, pixel,
+               RELAX_FrontEnd_PackRadianceAndHitDist(diffuseLight / diffuseReflectance, diffuseDistance, true));
+
+    // Specular: reflections, plus the light seen through glass and water (alpha > 0.5 marks it valid).
+    vec4 throughSurface = imageLoad(refractionRadianceImage, pixel);
+    vec3 refracted = throughSurface.a > 0.5 ? max(throughSurface.rgb, vec3(0.0)) : vec3(0.0);
+    vec3 specularLight = imageLoad(specularIndirectRadianceImage, pixel).rgb + refracted;
+    float specularDistance = NRD_FrontEnd_TrimHitDistance(imageLoad(specularHitDepthImage, pixel).r, 1e-3);
+    vec3 specularReflectance = max(imageLoad(specularAlbedoImage, pixel).rgb, kSpecularAlbedoFloor);
+    imageStore(nrdSpecularImage, pixel,
+               RELAX_FrontEnd_PackRadianceAndHitDist(specularLight / specularReflectance, specularDistance, true));
+}

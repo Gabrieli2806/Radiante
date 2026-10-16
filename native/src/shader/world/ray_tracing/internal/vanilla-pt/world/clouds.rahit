@@ -1,0 +1,21 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_GOOGLE_include_directive : require
+
+#include "pt/pt_payload.glsl"
+#include "common/shared.hpp"
+
+#ifndef VPT_CLOUD_MODE
+#    define VPT_CLOUD_MODE 1u
+#endif
+
+// The main-path payload's in half: what the ray generation shader passes along with the ray.
+layout(location = 0) rayPayloadInEXT PrismHit prismHit;
+hitAttributeEXT vec2 attribs;
+
+void main() {
+    if (VPT_CLOUD_MODE != 1u) {
+        ignoreIntersectionEXT;
+        return;
+    }
+}

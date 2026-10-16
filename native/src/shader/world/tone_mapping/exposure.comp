@@ -1,0 +1,269 @@
+#version 460
+
+// The exposure for this frame, eased from the last one towards what the selected meter reads. One invocation.
+//
+// Metering modes (ToneMappingExposureMeteringMode):
+//   0, 1  the histogram of hist.comp (whole picture, or its centre): the mean log luminance between two percentiles
+//         brought to middle grey;
+//   2     a light meter over the picture, Bedrock style;
+//   3     the incident light the ray tracer measured on the surfaces in view, with mode 2 standing in for open sky;
+//   4     Bedrock RTX's own exposure rule, limits and rate, from the same incident light.
+#define BIN_COUNT 256
+
+layout(set = 0, binding = 0) uniform sampler2D hdrImage;
+
+layout(set = 0, binding = 1) buffer Histogram {
+    uint bins[BIN_COUNT];
+}
+histogram;
+
+// ToneMappingModuleExposureData: carried from frame to frame, read by the tone mapping and bloom passes.
+layout(set = 0, binding = 2) buffer ExposureBuffer {
+    float exposure;
+    float avgLogLum;
+    float padding0;
+    float padding1;
+}
+expData;
+
+// The incident light meter (Buffers::lightMeterBuffer), shared with world.rgen.
+layout(set = 0, binding = 5) buffer LightMeterBuffer {
+    // Per sample: the cube root of the light a white surface would show there (per channel), and the sample's weight.
+    vec4 samples[256];
+    // x how much of a day it is (1 by day), y the scale the picture is shown at against the meter's reading (below 1
+    // in the End), z 1 while the camera is under water, w how far the eye may open by day (0: maxExposure).
+    vec4 daylight;
+    // Mode 4 only: x the metered level in stops, y the stops of the scale Bedrock RTX works at; w is 1 once they hold
+    // a value. Zero in every other mode.
+    vec4 bedrockMeter;
+    // Mode 4: each sample's light accumulated over frames by world.rgen, and its frame count.
+    vec4 sampleHistory[256];
+}
+lightMeter;
+
+// The leading members of ToneMappingModulePushConstant (tone_mapping_module.hpp).
+layout(push_constant) uniform PushConstant {
+    float log2Min;
+    float log2Max;
+    float epsilon;
+    float lowPercent;
+    float highPercent;
+    float middleGrey;
+    float dt; // seconds since the last frame
+    float speedUp;
+    float speedDown;
+    float minExposure;
+    float maxExposure;
+    float manualExposure;
+    float exposureBias;
+    float whitePoint;
+    float saturation;
+    int toneMappingMethod;
+    int autoExposure;
+    int clampOutput;
+    int exposureMeteringMode;
+    float centerMeteringPercent;
+    float adaptation; // 1: the exposure follows the scene all the way; 0: it stays at manualExposure
+}
+pc;
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+// Mode 2 samples the picture on a 16 x 16 grid.
+const uint METER_GRID = 16u;
+// Mode 3 with no surfaces in view to meter: how far above middle grey a picture of sky is put.
+const float SKY_METER_GAIN = 3.0;
+// Mode 3: how far the eye opens at night, however high the day's limit (matched by eye to Bedrock RTX's nights).
+const float NIGHT_MAX_EXPOSURE = 0.6;
+// Mode 4: Bedrock RTX's exposure limits (2^-1 .. 2^6) and the share of the way it moves each frame, as read from the
+// running game.
+const float BEDROCK_MIN_EV = -1.0;
+const float BEDROCK_MAX_EV = 6.0;
+const float BEDROCK_EV_ALPHA = 0.02;
+
+// Mode 2's reading: per channel the cube of the mean cube root over the grid (a power mean that a few very bright
+// samples barely move), and the brightest channel of that.
+float pictureLevel() {
+    ivec2 size = textureSize(hdrImage, 0);
+    vec3 sum = vec3(0.0);
+    for (uint y = 0u; y < METER_GRID; y++) {
+        for (uint x = 0u; x < METER_GRID; x++) {
+            ivec2 pixel = ivec2((vec2(x, y) + 0.5) / float(METER_GRID) * vec2(size));
+            vec3 radiance = max(texelFetch(hdrImage, pixel, 0).rgb, vec3(0.0));
+            vec3 root = exp2(log2(max(radiance, vec3(1e-12))) / 3.0);
+            sum += any(isnan(root)) || any(isinf(root)) ? vec3(0.0) : root;
+        }
+    }
+    vec3 level = pow(sum / float(METER_GRID * METER_GRID), vec3(3.0));
+    return max(level.r, max(level.g, level.b));
+}
+
+// The incident reading: the power mean (p = 1/3) of the light on the surfaces in view, its brightest channel, and the
+// exposure that shows a white surface under that light at 0.75, Bedrock RTX's rule. Neither the sky nor the colour of
+// the blocks moves it. False when too few surfaces were seen to go by.
+bool incidentExposure(out float target) {
+    vec3 sum = vec3(0.0);
+    float weight = 0.0;
+    for (uint i = 0u; i < 256u; i++) {
+        vec4 s = lightMeter.samples[i];
+        sum += s.rgb * s.a;
+        weight += s.a;
+    }
+    target = 0.0;
+    if (weight < (pc.exposureMeteringMode == 4 ? 16.0 : 4.0)) return false;
+    vec3 level = pow(sum / weight, vec3(3.0));
+    float m = max(level.r, max(level.g, level.b));
+    // Mode 3 puts white at 0.75 on the scale the other modes put middle grey at 0.18 on.
+    target = pc.exposureMeteringMode == 4 ? 0.75 / (m + 1e-6) : 0.75 * (pc.middleGrey / 0.18) / max(m, 1e-6);
+    return true;
+}
+
+// Mode 4: the incident exposure in stops, held within Bedrock RTX's limits and approached by its rate each frame; the
+// End is kept darker than metered (daylight.y). With too few surfaces in view the exposure stays.
+void meterBedrock(float previous, bool fresh) {
+    float target;
+    if (!incidentExposure(target)) {
+        expData.exposure = previous;
+        return;
+    }
+    expData.avgLogLum = log2(max(0.75 / max(target, 1e-12) - 1e-6, 1e-12));
+    float previousEV = log2(previous);
+    float darkness = clamp(lightMeter.daylight.y, 0.05, 1.0);
+    float targetEV = clamp(log2(max(target, 1e-12)), BEDROCK_MIN_EV, BEDROCK_MAX_EV) + log2(darkness);
+    expData.exposure = exp2(fresh ? targetEV : mix(previousEV, targetEV, BEDROCK_EV_ALPHA));
+
+    // The two other values the game keeps from the same reading, for world.rgen.
+    float meterEV = log2(max(target, 1e-12));
+    float workingEV = clamp(meterEV + 0.3, BEDROCK_MIN_EV - 4.0, BEDROCK_MAX_EV + 4.0);
+    vec4 meter = lightMeter.bedrockMeter;
+    bool meterFresh = fresh || meter.w != 1.0 || any(isnan(meter.xy)) || any(isinf(meter.xy));
+    if (meterFresh) {
+        // The samples' histories start over with the meter, and are never read before they are written.
+        for (uint i = 0u; i < 256u; i++) { lightMeter.sampleHistory[i] = vec4(0.0); }
+    }
+    lightMeter.bedrockMeter = meterFresh ? vec4(meterEV, workingEV, 0.0, 1.0) :
+                                           vec4(mix(meter.xy, vec2(meterEV, workingEV), BEDROCK_EV_ALPHA), 0.0, 1.0);
+}
+
+// Modes 2 and 3.
+void meterLight(float previous) {
+    float level = pictureLevel();
+    float targetExposure = pc.middleGrey / max(level, 1e-6);
+    bool incident = pc.exposureMeteringMode == 3;
+    // Mode 3 meters the incident light when there are surfaces in view, and the picture otherwise (open sea, the sky
+    // overhead). Such a picture is mostly sky; brought down to middle grey like a picture of surfaces it made noon at
+    // sea a dull dusk that lifted again at the shore, so it is put where a clear sky sits under the incident meter,
+    // about three times higher, and slowly (below): a look up at the sky leaves the eye as it was.
+    float incidentTarget;
+    bool skyMetered = false;
+    if (incident) {
+        if (incidentExposure(incidentTarget)) {
+            targetExposure = incidentTarget;
+        } else {
+            targetExposure *= SKY_METER_GAIN;
+            skyMetered = true;
+        }
+    }
+    float maxExposure = pc.maxExposure;
+    if (incident) {
+        // The eye opens this far only by day; at night it stops at NIGHT_MAX_EXPOSURE.
+        float day = clamp(lightMeter.daylight.x, 0.0, 1.0);
+        maxExposure = exp2(mix(log2(min(pc.maxExposure, NIGHT_MAX_EXPOSURE)),
+                               log2(clamp(pc.maxExposure, 1e-6,
+                                          lightMeter.daylight.w > 0.0 ? lightMeter.daylight.w : pc.maxExposure)),
+                               day));
+        // A dimension meant to look darker than the meter makes it (the End).
+        float darkness = clamp(lightMeter.daylight.y, 0.05, 1.0);
+        targetExposure *= darkness;
+        maxExposure *= darkness;
+    }
+    float anchor = clamp(pc.manualExposure, pc.minExposure, maxExposure);
+    targetExposure = exp2(mix(log2(anchor), log2(max(targetExposure, 1e-6)), clamp(pc.adaptation, 0.0, 1.0)));
+    float speed = (targetExposure > previous) ? pc.speedUp : pc.speedDown;
+    if (incident) {
+        // The incident meter reads 256 single path traced samples, noisy from frame to frame; followed at full speed
+        // the picture shimmered. Changes under a tenth of a stop are left alone and larger ones followed at a third
+        // of the speed: the eye holds still, and a change of scene is still felt.
+        float stops = log2(max(targetExposure, 1e-6)) - log2(max(previous, 1e-6));
+        if (abs(stops) < 0.1) { targetExposure = previous; }
+        speed *= skyMetered ? 0.12 : 0.35;
+    }
+    float k = 1.0 - exp(-pc.dt * speed);
+    expData.avgLogLum = log2(max(level, 1e-12));
+    expData.exposure = clamp(mix(previous, targetExposure, clamp(k, 0.0, 1.0)), pc.minExposure, maxExposure);
+}
+
+// Modes 0 and 1: the mean log luminance of the pixels between the low and the high percentile, brought to middle
+// grey.
+void meterHistogram(float previous) {
+    uint total = 0u;
+    for (uint i = 0u; i < BIN_COUNT; ++i) total += histogram.bins[i];
+    if (total == 0u) {
+        expData.avgLogLum = pc.log2Min;
+        expData.exposure = clamp(previous, pc.minExposure, pc.maxExposure);
+        return;
+    }
+
+    float totalCount = float(total);
+    uint lowCount = uint(clamp(pc.lowPercent, 0.0, 1.0) * totalCount);
+    uint highCount = uint(clamp(pc.highPercent, 0.0, 1.0) * totalCount);
+    if (highCount <= lowCount) highCount = lowCount + 1u;
+
+    float log2Range = pc.log2Max - pc.log2Min;
+    uint below = 0u; // pixels in the bins before this one
+    uint used = 0u;
+    double logSum = 0.0;
+    for (uint i = 0u; i < BIN_COUNT; ++i) {
+        uint count = histogram.bins[i];
+        if (count == 0u) continue;
+        uint through = below + count;
+        uint first = max(below, lowCount);
+        uint last = min(through, highCount);
+        if (last > first) {
+            uint taken = last - first;
+            float binCenter = (float(i) + 0.5) / float(BIN_COUNT);
+            float logLuminance = pc.log2Min + binCenter * log2Range;
+            logSum += double(logLuminance) * double(taken);
+            used += taken;
+        }
+        below = through;
+        if (below >= highCount) break;
+    }
+
+    float avgLogLum = (used > 0u) ? float(logSum / double(used)) : pc.log2Min;
+    float targetExposure = pc.middleGrey / max(exp2(avgLogLum), 1e-6);
+    // Only part of the way, as an eye (and Bedrock RTX) adapts: a dark room stays darker than a sunlit field, around
+    // the exposure held for a scene of no particular brightness (manualExposure).
+    float anchor = clamp(pc.manualExposure, pc.minExposure, pc.maxExposure);
+    targetExposure = exp2(mix(log2(anchor), log2(max(targetExposure, 1e-6)), clamp(pc.adaptation, 0.0, 1.0)));
+    float speed = (targetExposure > previous) ? pc.speedUp : pc.speedDown;
+    float k = 1.0 - exp(-pc.dt * speed);
+
+    expData.avgLogLum = avgLogLum;
+    expData.exposure = clamp(mix(previous, targetExposure, clamp(k, 0.0, 1.0)), pc.minExposure, pc.maxExposure);
+}
+
+void main() {
+    if (pc.exposureMeteringMode != 4) { lightMeter.bedrockMeter = vec4(0.0); }
+
+    // Nothing carried over yet (the buffer is zeroed when the module is built) or not a usable value: start from the
+    // manual exposure.
+    float stored = expData.exposure;
+    bool fresh = isnan(stored) || isinf(stored) || stored <= 0.0;
+    float previous = fresh ? clamp(pc.manualExposure, pc.minExposure, pc.maxExposure) : stored;
+
+    // Under water the exposure is held where it was when the camera went in (world.rgen sets daylight.z): deeper
+    // water is darker, as in Bedrock RTX, rather than brought back up by the eye.
+    if (lightMeter.daylight.z > 0.5) {
+        expData.exposure = previous;
+        return;
+    }
+
+    if (pc.exposureMeteringMode == 4) {
+        meterBedrock(previous, fresh);
+    } else if (pc.exposureMeteringMode == 2 || pc.exposureMeteringMode == 3) {
+        meterLight(previous);
+    } else {
+        meterHistogram(previous);
+    }
+}

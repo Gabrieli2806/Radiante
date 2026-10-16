@@ -1,0 +1,61 @@
+#version 460
+
+// Resamples the packed normal (xyz) and roughness (w) from the render resolution to the output resolution. Filtered
+// bilinearly, then the normal is renormalised (blending unit vectors shortens them) and roughness kept in 0..1.
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(set = 0, binding = 5, rgba16f) uniform readonly image2D normalRoughnessIn;
+layout(set = 0, binding = 6, rgba16f) uniform writeonly image2D normalRoughnessOut;
+
+layout(push_constant) uniform NormalRoughnessUpscaleParams {
+    float scaleX;
+    float scaleY;
+    uint srcWidth;
+    uint srcHeight;
+    uint dstWidth;
+    uint dstHeight;
+} params;
+
+// Source texel with the coordinate clamped to the source image.
+vec4 fetchSource(ivec2 texel) {
+    texel = clamp(texel, ivec2(0), ivec2(int(params.srcWidth) - 1, int(params.srcHeight) - 1));
+    return imageLoad(normalRoughnessIn, texel);
+}
+
+// Bilinear filter at a position in source pixel units (texel centres at +0.5), kept inside the image.
+vec4 filterSource(vec2 srcPos) {
+    vec2 centred = clamp(srcPos - 0.5, vec2(0.0), vec2(params.srcWidth - 1u, params.srcHeight - 1u));
+    ivec2 lo = ivec2(floor(centred));
+    ivec2 hi = min(lo + ivec2(1), ivec2(int(params.srcWidth) - 1, int(params.srcHeight) - 1));
+    vec2 weight = fract(centred);
+
+    vec4 valueLL = fetchSource(lo);
+    vec4 valueHL = fetchSource(ivec2(hi.x, lo.y));
+    vec4 valueLH = fetchSource(ivec2(lo.x, hi.y));
+    vec4 valueHH = fetchSource(hi);
+
+    vec4 rowLow = mix(valueLL, valueHL, weight.x);
+    vec4 rowHigh = mix(valueLH, valueHH, weight.x);
+    return mix(rowLow, rowHigh, weight.y);
+}
+
+void main() {
+    uvec2 dst = gl_GlobalInvocationID.xy;
+    if (dst.x >= params.dstWidth || dst.y >= params.dstHeight) {
+        return;
+    }
+
+    vec2 dstUv = (vec2(dst) + 0.5) / vec2(params.dstWidth, params.dstHeight);
+    vec2 srcPos = dstUv * vec2(params.srcWidth, params.srcHeight);
+    vec4 filtered = filterSource(srcPos);
+
+    // Leave a (near) zero normal alone rather than dividing by zero.
+    float normalLength = length(filtered.xyz);
+    if (normalLength > 1e-5) {
+        filtered.xyz /= normalLength;
+    }
+    filtered.w = clamp(filtered.w, 0.0, 1.0);
+
+    imageStore(normalRoughnessOut, ivec2(dst), filtered);
+}

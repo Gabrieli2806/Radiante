@@ -1,0 +1,85 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+
+// Any-hit for text geometry (signs, name tags, map text). It decides how much of the glyph quad is actually there
+// (util/text_mode.glsl, per text mode), drops the empty parts, and lets partly covered surfaces through at random
+// in proportion to their coverage.
+
+#include "util/random.glsl"
+#include "util/ray_cone.glsl"
+#include "pt/pt_payload.glsl"
+#include "util/text_mode.glsl"
+#include "util/util.glsl"
+#include "common/shared.hpp"
+
+layout(set = 0, binding = 0) uniform sampler2D textures[];
+
+layout(set = 1, binding = 1) readonly buffer BLASOffsets {
+    uint offsets[];
+}
+blasOffsets;
+
+layout(set = 1, binding = 2) readonly buffer IndexBufferAddr {
+    uint64_t addrs[];
+}
+indexBufferAddrs;
+
+layout(set = 2, binding = 0) uniform Uniform {
+    WorldUBO ubo;
+};
+
+layout(std430, buffer_reference, buffer_reference_align = 8) readonly buffer IndexBuffer {
+    uint indices[];
+}
+indexBuffer;
+
+#include "util/vertex.glsl"
+
+// Incoming main-path payload (what the raygen sent along with the ray); only its ray cone is read here.
+layout(location = 0) rayPayloadInEXT PrismHit prismHit;
+hitAttributeEXT vec2 attribs;
+
+void main() {
+    uint geometry = getGeometryBufferIndex(gl_InstanceCustomIndexEXT, gl_GeometryIndexEXT);
+
+    uint i0, i1, i2;
+    MaterialVertex m0, m1, m2;
+    loadTriangleIndices(geometry, gl_PrimitiveID, i0, i1, i2);
+    loadTriangleMaterial(geometry, i0, i1, i2, m0, m1, m2);
+
+    vec3 bary = vec3(1.0 - (attribs.x + attribs.y), attribs.x, attribs.y);
+    uint flags = m0.packedData;
+    bool textured = hasTexture(flags);
+
+    float vertexAlpha = 1.0;
+    if (hasColorLayer(flags)) {
+        vertexAlpha = (bary.x * m0.colorLayer + bary.y * m1.colorLayer + bary.z * m2.colorLayer).a;
+    }
+
+    vec4 glyph = vec4(1.0);
+    if (textured) {
+        vec2 uv = bary.x * m0.textureUV + bary.y * m1.textureUV + bary.z * m2.textureUV;
+        // Mip level from the ray cone's footprint at the hit distance.
+        float footprint = prismHit.coneWidth + gl_HitTEXT * prismHit.coneSpread;
+        PositionVertex p0, p1, p2;
+        loadTrianglePositions(geometry, i0, i1, i2, p0, p1, p2);
+        vec3 dPdu, dPdv;
+        computedposduDv(p0.pos, p1.pos, p2.pos, m0.textureUV, m1.textureUV, m2.textureUV, dPdu, dPdv);
+        float lod = lodWithCone(textures[nonuniformEXT(m0.textureID)], uv, footprint, dPdu, dPdv);
+        glyph = sampleTexture(textures[nonuniformEXT(m0.textureID)], uv, lod, false);
+    }
+
+    float coverage = resolveTextCoverage(glyph, textured, vertexAlpha, getAlphaMode(flags));
+    if (coverage < 0.05) { ignoreIntersectionEXT; }
+
+    // Partial coverage (a name tag's backing plate is black at a quarter opacity) is hit with that probability, so
+    // the plate darkens the scene behind it rather than hiding it. Glyphs themselves are opaque and skip this.
+    if (coverage < 0.95) {
+        uint seed = xxhash32(uvec3(gl_LaunchIDEXT.xy, ubo.seed ^ uint(gl_PrimitiveID)));
+        if (rand(seed) >= coverage) { ignoreIntersectionEXT; }
+    }
+}

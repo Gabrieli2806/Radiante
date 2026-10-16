@@ -1,0 +1,5 @@
+
+render_pipeline.module.ray_tracing.attribute.bedrock_original=Bedrock RTX (Experimental)
+render_pipeline.module.ray_tracing.attribute.bedrock_enhanced=Bedrock RTX (Mejorado)
+render_pipeline.module.ray_tracing.attribute.face_shading=Sombreado de caras de vanilla
+render_pipeline.module.ray_tracing.attribute.bedrock_materials=Materiales Bedrock RTX

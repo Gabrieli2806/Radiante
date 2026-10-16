@@ -1,0 +1,71 @@
+plugins {
+	id 'net.fabricmc.fabric-loom'
+}
+
+base {
+	archivesName = "${rootProject.archives_base_name}-fabric"
+}
+
+sourceSets.main {
+	java.srcDir rootProject.commonJava
+	resources.srcDir rootProject.commonResources
+}
+
+// Mod Menu's two API interfaces, to compile the "Configure" entrypoint against without depending on Mod Menu; left
+// out of the jar (Mod Menu brings the real ones).
+sourceSets.main.java.srcDir "src/modmenuStubs/java"
+tasks.named("jar") {
+	exclude "com/terraformersmc/**"
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${rootProject.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${rootProject.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_api_version}"
+
+	implementation "org.yaml:snakeyaml:${rootProject.snakeyaml_version}"
+	include "org.yaml:snakeyaml:${rootProject.snakeyaml_version}"
+	implementation "org.tukaani:xz:${rootProject.xz_version}"
+	include "org.tukaani:xz:${rootProject.xz_version}"
+}
+
+loom {
+	runs {
+		// Shared with the other loaders' runs, so worlds and settings carry over.
+		client {
+			runDir = "../run"
+		}
+	}
+}
+
+processResources {
+	def version = project.version
+	def mcVersion = rootProject.minecraft_version
+	inputs.property "version", version
+	inputs.property "minecraft_version", mcVersion
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version, "minecraft_version": mcVersion
+	}
+}
+
+tasks.named("runClient", JavaExec) {
+	args "--width", "1920", "--height", "1080"
+	if (project.hasProperty("quickPlay")) {
+		args "--quickPlaySingleplayer", project.property("quickPlay")
+	}
+	if (project.hasProperty("vulkanValidation")) {
+		args "--vulkanValidation", "--renderDebugLabels"
+	}
+	// Prints which Vulkan library LWJGL ends up loading, which is how we tell whether frame generation can hook
+	// Minecraft's presentation at all.
+	if (project.hasProperty("lwjglDebug")) {
+		jvmArgs "-Dorg.lwjgl.util.DebugLoader=true", "-Dorg.lwjgl.util.Debug=true"
+	}
+}
+
+rootProject.packNatives(tasks.jar)
+
+jar {
+	archiveFileName.set("${rootProject.archives_base_name}-fabric-${project.version}+${rootProject.minecraft_version}.jar")
+}

@@ -1,0 +1,43 @@
+#version 460
+
+// Minecraft's depth for the traced picture (render/mc_depth.cpp). The tracer's first hit distance becomes the depth
+// Minecraft's own passes test against, so that what other mods draw over the traced world is hidden behind it.
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+// Distance in front of the camera, at the tracer's resolution.
+layout(set = 0, binding = 0, r16f) uniform readonly image2D hitDistances;
+// Minecraft's depth, at the target's resolution.
+layout(set = 0, binding = 1, r32f) uniform writeonly image2D targetDepth;
+
+layout(push_constant) uniform DepthParams {
+    // Minecraft's projection as it acts on a view space z: clip z = zScale * z + zOffset, clip w = wScale * z +
+    // wOffset.
+    float zScale;
+    float zOffset;
+    float wScale;
+    float wOffset;
+    uvec2 sourceSize;
+    uvec2 targetSize;
+} params;
+
+void main() {
+    uvec2 pixel = gl_GlobalInvocationID.xy;
+    if (any(greaterThanEqual(pixel, params.targetSize))) { return; }
+
+    // The hit under the pixel's centre, whatever the two resolutions.
+    vec2 uv = (vec2(pixel) + 0.5) / vec2(params.targetSize);
+    ivec2 texel = clamp(ivec2(uv * vec2(params.sourceSize)), ivec2(0), ivec2(params.sourceSize) - 1);
+    float range = abs(imageLoad(hitDistances, texel).r);
+    // The sky (nothing hit), or further than a half float holds: as far away as it gets.
+    if (isnan(range) || isinf(range) || range > 60000.0) { range = 1.0e7; }
+    // A half float keeps about a thousandth of the distance. Pushed back a little further than that, an outline or a
+    // ghost block drawn on a surface stays in front of it instead of flickering through it.
+    range = range * 1.004 + 0.03;
+
+    float viewZ = -range;
+    float clipZ = params.zScale * viewZ + params.zOffset;
+    float clipW = params.wScale * viewZ + params.wOffset;
+    float depth = abs(clipW) > 1.0e-12 ? clipZ / clipW : 0.0;
+    imageStore(targetDepth, ivec2(pixel), vec4(clamp(depth, 0.0, 1.0), 0.0, 0.0, 0.0));
+}

@@ -1,0 +1,65 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+
+// Builds the frame from NRD's output: the denoised diffuse and specular radiance times the albedo prepare.comp divided
+// out, plus emission, seen through the fog. Pixels the path tracer marked final in the clear image keep that colour.
+
+#define NRD_GLSL 1
+#include "../../../extern/nrd/Shaders/NRD.hlsli"
+#include "common/shared.hpp"
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, rgba8) uniform readonly image2D diffuseAlbedoMetallicImage;
+layout(set = 0, binding = 1, rgba8) uniform readonly image2D specularAlbedoImage;
+layout(set = 0, binding = 2, rgba16f) uniform readonly image2D clearRadianceImage;
+layout(set = 0, binding = 3, rgba16f) uniform readonly image2D baseEmissionImage;
+layout(set = 0, binding = 4, rgba16f) uniform readonly image2D fogImage;
+layout(set = 0, binding = 5, rgba16f) uniform readonly image2D fogTransmissionImage;
+
+layout(set = 1, binding = 0, rgba16f) uniform readonly image2D denoisedDiffuseImage;
+layout(set = 1, binding = 1, rgba16f) uniform readonly image2D denoisedSpecularImage;
+layout(set = 1, binding = 2, rgba16f) uniform writeonly image2D outputImage;
+
+layout(set = 2, binding = 0) uniform SkyUniform {
+    SkyUBO skyUBO;
+};
+
+// The albedo floors prepare.comp divided by.
+const vec3 kDiffuseAlbedoFloor = vec3(0.05);
+const vec3 kSpecularAlbedoFloor = vec3(0.04);
+const vec3 kUnderwaterColor = vec3(0.0, 0.48, 0.65);
+const uint kSubmersionWater = 1u;
+
+void main() {
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+    if (any(greaterThanEqual(pixel, imageSize(outputImage)))) return;
+
+    vec3 diffuse = RELAX_BackEnd_UnpackRadiance(imageLoad(denoisedDiffuseImage, pixel)).rgb *
+                   max(imageLoad(diffuseAlbedoMetallicImage, pixel).rgb, kDiffuseAlbedoFloor);
+    vec3 specular = RELAX_BackEnd_UnpackRadiance(imageLoad(denoisedSpecularImage, pixel)).rgb *
+                    max(imageLoad(specularAlbedoImage, pixel).rgb, kSpecularAlbedoFloor);
+
+    vec4 clear = imageLoad(clearRadianceImage, pixel);
+    vec4 emission = imageLoad(baseEmissionImage, pixel);
+
+    // fog.a says how the fog applies: -2 means a coloured transmittance in the fog transmission image, 0..1 a grey one
+    // (fog.a itself), anything else no fog. fog.rgb is the light the fog adds.
+    vec4 fog = imageLoad(fogImage, pixel);
+    bool colouredFog = fog.a == -2.0;
+    bool fogged = colouredFog || fog.a >= 0.0;
+    vec3 transmittance = colouredFog ? clamp(imageLoad(fogTransmissionImage, pixel).rgb, 0.0, 1.0)
+                                     : vec3(fogged ? clamp(fog.a, 0.0, 1.0) : 1.0);
+    vec3 inscattered = fogged ? fog.rgb : vec3(0.0);
+
+    vec3 result;
+    if (clear.a > 0.0) {
+        vec3 clearRadiance = clear.rgb * clear.a;
+        result = colouredFog ? clearRadiance * transmittance + inscattered : clearRadiance;
+    } else {
+        vec3 radiance = diffuse + specular + emission.rgb * emission.a;
+        if (fogged && !colouredFog && skyUBO.cameraSubmersionType == kSubmersionWater) radiance *= kUnderwaterColor;
+        result = radiance * transmittance + inscattered;
+    }
+    imageStore(outputImage, pixel, vec4(max(result, 0.0), 1.0));
+}

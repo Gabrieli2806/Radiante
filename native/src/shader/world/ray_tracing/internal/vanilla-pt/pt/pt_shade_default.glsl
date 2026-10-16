@@ -1,0 +1,564 @@
+#ifndef VPT_PT_SHADE_DEFAULT_GLSL
+#define VPT_PT_SHADE_DEFAULT_GLSL
+
+// The default surface shading: material, water and glass media, parallax, direct light and the next bounce, for the
+// default group, the four text groups and every entity layer (their closest hits only record the hit,
+// world/hit/default.rchit and no_height.rchit). It runs in the ray generation shader: ptShadeRecorded
+// (pt/pt_trace.glsl) fills g_hit from the recorded hit and calls ptShadeDefault. The pieces it is built from live in
+// pt_material, pt_parallax, pt_direct, pt_media and pt_glass, and every value of the hit (ray, distance, triangle,
+// transforms) is read through g_hit (pt_hit_context.glsl).
+//
+// The raygen (world.rgen) already has: shared.hpp, disney, labpbr, random, ray_cone, ray, util, constants, and from
+// pt_bindings.glsl the acceleration structure, set 1 binding 1, the world / last world / sky uniforms, transLUT,
+// skyFull, celestial, volumetric_cloud, water_medium, both payloads and mainRay. Only the libraries and descriptors
+// the shading adds are declared below.
+
+#include "common/bedrock_solar_brdf.glsl"
+#include "util/alpha_mode.glsl"
+#include "common/fft_water.glsl"
+#include "util/height_map.glsl"
+#include "util/sampling_helpers.glsl"
+
+layout(set = 0, binding = 0) uniform sampler2D textures[];
+
+layout(set = 1, binding = 2) readonly buffer IndexBufferAddr {
+    uint64_t addrs[];
+}
+indexBufferAddrs;
+
+layout(set = 1, binding = 3) readonly buffer LastIndexBufferAddr {
+    uint64_t addrs[];
+}
+lastIndexBufferAddrs;
+
+layout(set = 1, binding = 6) readonly buffer LastPositionBufferAddr {
+    uint64_t addrs[];
+}
+lastPositionBufferAddrs;
+
+layout(set = 1, binding = 8) readonly buffer LastObjToWorldMat {
+    mat4 mat[];
+}
+lastObjToWorldMats;
+
+layout(set = 1, binding = 7) readonly buffer TextureMappingBuffer {
+    TextureMapping mapping;
+};
+
+layout(std430, buffer_reference, buffer_reference_align = 8) readonly buffer IndexBuffer {
+    uint indices[];
+}
+indexBuffer;
+
+#include "util/vertex.glsl"
+#include "common/rain_wetness.glsl"
+#include "common/seamless_glass.glsl"
+#include "common/bedrock_water.glsl"
+
+#ifndef VPT_BOUNCE_LIGHT_BOOST
+#    define VPT_BOUNCE_LIGHT_BOOST 1.0
+#endif
+
+#include "pt/pt_hit_context.glsl"
+#include "pt/pt_side_channels.glsl"
+#include "pt/pt_material.glsl"
+#include "pt/pt_parallax.glsl"
+#include "pt/pt_direct.glsl"
+#include "pt/pt_media.glsl"
+#include "pt/pt_glass.glsl"
+
+// Up to how rough a metal is still a mirror looked into (see the mirror path below); LabPBR's smoothest is 0.01.
+#ifndef VPT_MIRROR_MAX_ROUGHNESS
+#    define VPT_MIRROR_MAX_ROUGHNESS 0.03
+#endif
+// A macro rather than a const: the setting changes live, read from the world uniform, and a global const needs a
+// value known when the shader is compiled.
+#define MIRROR_MAX_ROUGHNESS VPT_MIRROR_MAX_ROUGHNESS
+const float MIRROR_MIN_METALLIC = 0.5;
+// Under how rough a Bedrock pack's full metal is a mirror in the experimental Bedrock profile.
+const float BEDROCK_MIRROR_ROUGHNESS = 0.01;
+
+// The shading's globals start every hit at the values a closest-hit invocation used to start with. They live as long
+// as the pixel here, so each hit puts them back first; otherwise a hit could see what the previous one left
+// (g_hitIsGlass and g_textureLodUnclamped are only set on textured hits). The side channels (g_step) are cleared for
+// hits and misses alike, by ptShadeRecorded.
+void ptBeginRaygenShade() {
+    g_hitIsGlass = false;
+    g_viewBounce = false;
+    g_frontNormal = vec3(0.0, 1.0, 0.0);
+    g_textureLodUnclamped = 0.0;
+    gParallaxDetectEdges = false;
+}
+
+// The old closest-hit main(), unchanged in order, reading the hit through g_hit and handing its results back
+// through pt_side_channels.glsl. viewMark: the ray belongs to a view chain (traced with RAY_VIEW_BOUNCE_MARK).
+// parallaxAllowed: the hit's group may take height-map parallax (false for entity_solid_z_offset_forward).
+void ptShadeDefault(bool viewMark, bool parallaxAllowed) {
+    uint geometryBufferIndex = g_hit.geometryBufferIndex;
+    MaterialVertex m0 = g_hit.m0;
+    MaterialVertex m1 = g_hit.m1;
+    MaterialVertex m2 = g_hit.m2;
+    PositionVertex p0 = g_hit.p0;
+    PositionVertex p1 = g_hit.p1;
+    PositionVertex p2 = g_hit.p2;
+
+    vec3 baryCoords = g_hit.bary;
+    vec3 planeHitWorldPos = g_hit.planeHitWorldPos;
+    vec3 baseViewDir = -mainRay.direction;
+
+    uint packedData = g_hit.packedData;
+    bool useColorLayer = hasColorLayer(packedData);
+    bool useTexture = hasTexture(packedData);
+    bool useGlint = hasGlint(packedData);
+    bool useOverlay = hasOverlay(packedData);
+    vec4 colorLayerValue = useColorLayer ?
+                               baryCoords.x * m0.colorLayer + baryCoords.y * m1.colorLayer + baryCoords.z * m2.colorLayer :
+                               vec4(1.0);
+    vec3 colorLayer = colorLayerValue.rgb;
+    uint bounce = rayBounce(mainRay);
+    g_viewBounce = viewMark;
+
+    ptWaterMediumAtHit(bounce);
+
+    float albedoEmission =
+        baryCoords.x * m0.albedoEmission + baryCoords.y * m1.albedoEmission + baryCoords.z * m2.albedoEmission;
+    uint textureID = m0.textureID;
+    uint alphaMode = getAlphaMode(packedData);
+    uint coordinate = getCoordinate(packedData);
+
+    vec2 textureUV = vec2(0.0);
+    TextureMapEntry textureMap = TextureMapEntry(-1, -1, -1, -1);
+    vec2 atlasUvMin = vec2(0.0);
+    vec2 atlasUvMax = vec2(0.0);
+    float lod = 0.0;
+    vec3 dposdu = vec3(1.0, 0.0, 0.0);
+    vec3 dposdv = vec3(0.0, 1.0, 0.0);
+    bool hasHeightMapSurface = false;
+    float maxDepthWorld = 0.0;
+    mat3 objectToWorld = g_hit.objectToWorld;
+    mat3 normalMatrix = g_hit.normalMatrix;
+    vec3 baseGeoNormal =
+        normalizeF(normalMatrix * cross(p1.pos - p0.pos, p2.pos - p0.pos), vec3(0.0, 1.0, 0.0));
+    vec3 planeGeoNormal = baseGeoNormal;
+    // The face's own normal, as its triangles are wound (outward for a block's faces), before it is turned to the view.
+    vec3 windingNormal = baseGeoNormal;
+    g_frontNormal = windingNormal;
+    vec3 dPduWorld = objectToWorld * dposdu;
+    vec3 dPdvWorld = objectToWorld * dposdv;
+    bool isWaterMaterial = false;
+    bool hasFftWaterSurface = false;
+    // Height-map parallax runs only for the groups that allow it (entity_solid_z_offset_forward, drawn with a forward
+    // depth offset, never takes it), and then only when the pack attribute turns it on.
+    bool parallaxEnabled = parallaxAllowed && VPT_ENABLE_PARALLAX != 0;
+    bool useRealisticWaterSurface = VPT_WATER_SURFACE_MODE == 1u;
+
+    if (useTexture) {
+        textureMap = mapping.entries[textureID];
+        textureUV = baryCoords.x * m0.textureUV + baryCoords.y * m1.textureUV + baryCoords.z * m2.textureUV;
+        atlasUvMin = min(m0.textureUV, min(m1.textureUV, m2.textureUV));
+        atlasUvMax = max(m0.textureUV, max(m1.textureUV, m2.textureUV));
+
+        float coneRadiusWorld = mainRay.coneWidth + g_hit.hitT * mainRay.coneSpread;
+        computedposduDv(p0.pos, p1.pos, p2.pos, m0.textureUV, m1.textureUV, m2.textureUV, dposdu, dposdv);
+        if (isGlassSurface(packedData) && !isHeldSurface(packedData)) {
+            textureUV = seamlessGlassUV(textureUV, baryCoords.x * p0.pos + baryCoords.y * p1.pos + baryCoords.z * p2.pos,
+                                        dposdu, dposdv, packedData);
+            // Kept half a texel inside the sprite: on the frame's last column the filtered lookups of the material
+            // maps reached into the next sprite of the atlas, and that column came out black in places.
+            vec2 halfTexel = 0.5 / vec2(textureSize(textures[nonuniformEXT(textureID)], 0));
+            textureUV = clamp(textureUV, atlasUvMin + halfTexel, max(atlasUvMax - halfTexel, atlasUvMin + halfTexel));
+        }
+        lod = lodWithCone(textures[nonuniformEXT(textureID)], textureUV, coneRadiusWorld, dposdu, dposdv);
+        {
+            ivec2 lodTexSize = textureSize(textures[nonuniformEXT(textureID)], 0);
+            float footprint = max(coneRadiusWorld / max(length(dposdu), 1e-6) * float(lodTexSize.x),
+                                  coneRadiusWorld / max(length(dposdv), 1e-6) * float(lodTexSize.y));
+            g_textureLodUnclamped = log2(max(footprint, 1e-6));
+        }
+
+        dPduWorld = objectToWorld * dposdu;
+        dPdvWorld = objectToWorld * dposdv;
+        planeGeoNormal = normalizeF(cross(dPduWorld, dPdvWorld), baseGeoNormal);
+        baseGeoNormal = planeGeoNormal;
+        if (dot(baseGeoNormal, baseViewDir) < 0.0) { baseGeoNormal = -baseGeoNormal; }
+
+        isWaterMaterial = isWaterSurface(packedData);
+        g_hitIsGlass = isGlassSurface(packedData);
+        if (textureMap.flag >= 0) {
+            ivec4 flags = ivec4(round(sampleTexture(textures[nonuniformEXT(textureMap.flag)], textureUV, ceil(lod), false) * 255.0));
+            isWaterMaterial = isWaterMaterial || (flags.r & 0x1) > 0;
+        }
+        hasFftWaterSurface = useRealisticWaterSurface && isWaterMaterial && abs(planeGeoNormal.y) > 0.75;
+
+#if !defined(VPT_BEDROCK_ORIGINAL) || VPT_BEDROCK_ORIGINAL == 0
+        if (ptWaterSidePassThrough(isWaterMaterial, planeGeoNormal, baseGeoNormal, bounce)) { return; }
+#endif
+
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+        if (ptBedrockGlassHit(textureID, textureUV, textureMap, colorLayerValue, colorLayer, windingNormal,
+                              baseGeoNormal, bounce)) {
+            return;
+        }
+#else
+        if (ptGlassPassThrough(textureID, textureUV, textureMap, colorLayerValue, colorLayer, baseGeoNormal, bounce)) {
+            return;
+        }
+#endif
+
+        if (!isWaterMaterial && parallaxEnabled && bounce == 0u && textureMap.normal >= 0 && coordinate != 1u) {
+            maxDepthWorld = heightMapMaxDepthWorld(atlasUvMin, atlasUvMax, dPduWorld, dPdvWorld);
+            hasHeightMapSurface =
+                maxDepthWorld > heightMapMinWorldDepth && dot(baseViewDir, baseGeoNormal) > VPT_PARALLAX_MIN_VIEW_DOT;
+        }
+    } else {
+        dPduWorld = objectToWorld * dposdu;
+        dPdvWorld = objectToWorld * dposdv;
+    }
+    if (dot(baseGeoNormal, baseViewDir) < 0.0) { baseGeoNormal = -baseGeoNormal; }
+    // Glass is flat: carving its frame by a height map put dark side walls along the joins between glass blocks.
+    if (g_hitIsGlass) { hasHeightMapSurface = false; }
+    vec3 cameraOrigin = vec3(worldUBO.cameraEffectedViewMatInv * vec4(0.0, 0.0, 0.0, 1.0));
+    bool traceLocalHeight =
+        hasHeightMapSurface && (lod == 0.0 || distance(planeHitWorldPos, cameraOrigin) <= VPT_PARALLAX_CLOSE_DISTANCE) &&
+        !hasFftWaterSurface;
+
+    // Where the texture is not carved the ray is on the surface already. Tracing it all the same ran it through the
+    // edge handling of carved faces, which along the border of an uncarved one left a dark line - round the top of a
+    // grass block with a pack that gives it a normal map and no depth.
+    if (traceLocalHeight &&
+        sampleHeight(textures[nonuniformEXT(textureMap.normal)], textureUV, atlasUvMin, atlasUvMax, 0, 0u) >= 0.999) {
+        traceLocalHeight = false;
+    }
+
+    HeightMapHit initialHit = ptParallaxInitialHit(traceLocalHeight, textureMap, textureUV, atlasUvMin, atlasUvMax,
+                                                   dPduWorld, dPdvWorld, baseGeoNormal, maxDepthWorld);
+    if (ptParallaxEdgePassThrough(initialHit, baseGeoNormal)) { return; }
+
+    vec3 hitWorldPos = planeHitWorldPos + g_hit.rayDir * initialHit.t;
+    float actualHitT = g_hit.hitT + initialHit.t;
+
+    mainRay.hitT = actualHitT;
+    mainRay.coneWidth += actualHitT * mainRay.coneSpread;
+    mainRay.directLightRadiance = vec3(0.0);
+    mainRay.hasPrevScenePos = 0u;
+    if (bounce == 0u) {
+        vec3 prevScenePos;
+        if (loadPreviousScenePos(geometryBufferIndex, g_hit.primitiveId, baryCoords, prevScenePos)) {
+            // A raindrop seen here was higher up the sheet last frame.
+            if (isRainSurface(packedData)) { prevScenePos.y += worldUBO.rainFallPerFrame; }
+            mainRay.prevScenePos = prevScenePos;
+            mainRay.hasPrevScenePos = 1u;
+        }
+    }
+
+    vec3 glint = vec3(0.0);
+    if (useGlint) {
+        vec2 glintUV = baryCoords.x * m0.glintUV + baryCoords.y * m1.glintUV + baryCoords.z * m2.glintUV;
+        glintUV = (worldUBO.textureMat * vec4(glintUV, 0.0, 1.0)).xy;
+        glint = sampleTexture(textures[nonuniformEXT(m0.glintTexture)], glintUV, false).rgb;
+    }
+    glint *= glint;
+
+    vec3 viewDir = -g_hit.rayDir;
+
+    SampledSurface surface;
+    sampleSurfaceState(useTexture, textureID, textureMap, atlasUvMin, atlasUvMax, initialHit.uv, lod, alphaMode,
+                       colorLayerValue, colorLayer, glint, useOverlay, m0.overlayUV, dPduWorld, dPdvWorld,
+                       baseGeoNormal, hasHeightMapSurface, maxDepthWorld, initialHit, hitWorldPos, viewDir,
+                       isWaterMaterial, hasFftWaterSurface, surface);
+    // A light block in a state that gives no light draws the sprite its lit state glows with (unlit redstone ore).
+    if (isUnlitSurface(packedData)) { surface.mat.emission = 0.0; }
+
+    mainRay.normal = surface.shadingNormal;
+    ptStoreMaterial(surface.albedoValue, surface.mat.f0, surface.mat.roughness, surface.mat.metallic,
+                    surface.mat.transmission, surface.mat.ior, surface.mat.emission);
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+    // Save the incoming medium before the sampled bounce changes it. The deterministic split needs it too.
+    ptStoreAux(isWaterMaterial ? vec2(VPT_FFT_WATER_ORIGIN_BIAS, rayInWater(mainRay) ? 2.0 : 1.0) : vec2(0.0));
+#else
+    ptStoreAux(isWaterMaterial ? vec2(VPT_FFT_WATER_ORIGIN_BIAS, 1.0) : vec2(0.0));
+#endif
+
+    // A mirror (a smooth metal: SPBR's mirror block, polished metal packs) seen by the camera is looked into, not
+    // shaded: the view carries on along the reflection, tinted by the mirror's Fresnel colour, and what it shows
+    // becomes the surface the denoiser sees, at its distance behind the mirror. Shaded as a surface, the reflection
+    // went through the specular denoiser and came out blurred and noisy.
+    // Not what glows: a pack's light with a smooth metallic core (Vanilla RTX's beacon) was looked into there, and
+    // its brightest texels, the ones that glow most, showed the room instead of their light.
+    // The experimental Bedrock profile: a pack's metal is a mirror only when perfect (metalness 1, roughness under a
+    // hundredth), as Bedrock RTX shows it; anything rougher keeps its glossy highlight instead of turning into a flat
+    // mirror. Other materials (vanilla's, a Java pack's) keep the rule above.
+    bool mirrorSurface = surface.mat.metallic > MIRROR_MIN_METALLIC && surface.mat.roughness <= MIRROR_MAX_ROUGHNESS;
+    bool bedrockMirror = false;
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+    if (surface.authoredMer) {
+        mirrorSurface = surface.mat.metallic >= 1.0 - EPS && surface.mat.roughness < BEDROCK_MIRROR_ROUGHNESS;
+        bedrockMirror = true;
+    }
+#endif
+    if ((bounce == 0u || rayCameraPath(mainRay)) && !isWaterMaterial && mirrorSurface &&
+        surface.mat.transmission <= EPS && surface.mat.emission <= EPS) {
+        vec3 incident = normalize(g_hit.rayDir);
+        vec3 mirrorNormal = surface.shadingNormal;
+        if (dot(mirrorNormal, incident) > 0.0) { mirrorNormal = -mirrorNormal; }
+        float cosTheta = clamp(dot(-incident, mirrorNormal), 0.0, 1.0);
+        vec3 fresnel = surface.mat.f0 + (vec3(1.0) - surface.mat.f0) * pow(1.0 - cosTheta, 5.0);
+        // Bedrock's mirror reflects by its colour alone, at every angle.
+        if (bedrockMirror) { fresnel = surface.mat.f0; }
+        mainRay.throughput *= clamp(fresnel, vec3(0.0), vec3(1.0));
+        mainRay.hitT = actualHitT;
+        mainRay.coneWidth += mainRay.hitT * mainRay.coneSpread;
+        mainRay.origin = hitWorldPos + mirrorNormal * 0.002;
+        mainRay.direction = reflect(incident, mirrorNormal);
+        // A pass-through that carries on along the reflection itself: no separate reflection is asked for.
+        ptClearReflectionRequest();
+        mainRay.hasPrevScenePos = 0u;
+        ptStoreMaterial(vec4(1.0), vec3(1.0), 0.0, 1.0, 0.0, 1.0, 0.0);
+        raySetNoisy(mainRay, false);
+        raySetContinue(mainRay, true);
+        raySetPassThrough(mainRay, true);
+        raySetStop(mainRay, false);
+        return;
+    }
+
+    SampledSurface currentSurface = surface;
+    vec3 currentViewDir = viewDir;
+    bool storedLobeType = false;
+    for (int localBounce = 0; localBounce < 1; ++localBounce) {
+        // A glowing surface is seen brighter than the light it casts (Bedrock keeps the two apart): glowstone and
+        // lamps read as glowing whole, as there, while the room they light stays as it was. At 16x (the strength
+        // the light is cast with) glowstone showed its bright specks on a near-black block.
+        float emissionFactor =
+            (bounce == 0u && localBounce == 0) ? 14.0 * VPT_DIRECT_LIGHT_STRENGTH : VPT_INDIRECT_LIGHT_STRENGTH;
+        // Seen, a texel glows in proportion to its emissive value, not its square: the dim parts of glowstone
+        // between its bright specks glow too instead of going near black. The light cast keeps the square law.
+#if VPT_BEDROCK_SPECULAR
+        // The experimental Bedrock profile: emission is on Bedrock's own scale there, seen and bounced alike
+        // (sampleSurfaceState brings what no pack authored to it).
+        emissionFactor = VPT_BEDROCK_SEEN_EMISSION;
+#endif
+        float seenEmission = currentSurface.mat.emission;
+#if defined(VPT_EMISSION_MODEL) && VPT_EMISSION_MODEL != 0 && !VPT_BEDROCK_SPECULAR
+        if (bounce == 0u && localBounce == 0) { seenEmission = sqrt(max(seenEmission, 0.0)); }
+#endif
+        float blockEmissionWeight =
+            (localBounce == 0 && bounce > 0u && vptBlockLightAlreadyCounted(g_hit.rayOrigin, currentSurface.worldPos)) ?
+                0.0 : 1.0;
+        // (The experimental profile desaturates the glow seen as Bedrock does, as much as the light it casts.)
+        bool keepGlowColour = bounce == 0u && localBounce == 0 && VPT_BEDROCK_SPECULAR == 0;
+        vec3 emissionRadiance =
+            blockEmissionWeight * emissionFactor *
+            worldUBO.emissionBrightness *
+            (keepGlowColour ? currentSurface.tint : vptEmissiveColour(currentSurface.tint)) *
+            seenEmission * mainRay.throughput;
+        emissionRadiance += currentSurface.tint * albedoEmission * mainRay.throughput;
+        mainRay.radiance += emissionRadiance;
+        g_seenEmission += emissionRadiance;
+
+        SampledSurface litSurface = currentSurface;
+        vec3 directLight =
+            sampleSurfaceDirectLight(litSurface, currentViewDir, textureUV, planeHitWorldPos, atlasUvMin, atlasUvMax,
+                                     dPduWorld, dPdvWorld, baseGeoNormal, traceLocalHeight,
+                                     textureMap.normal, maxDepthWorld, hasFftWaterSurface);
+        // The surface the camera sees first, straight or through glass: full block light sampling (and ReSTIR).
+        bool blockLightPrimary = rayBounce(mainRay) == 0u || rayCameraPath(mainRay);
+        // From the second bounce on, block lights are left to be found by the bounces themselves: what they add there is
+        // small and averaged away, and sampling them on every bounce cost as much as the rest of the light together.
+        // The first bounce samples them (fewer candidates, see sampleBlockLight), with Cache Deep Bounces too: the
+        // cache answers from the second bounce on, and a surface lit only by the walls around a lamp (a ceiling around
+        // the lights set into it) got nothing of the light those walls take from the lamp, and stayed dark.
+        // So does every bounce of the paths that fill the radiance cache: what it keeps for a surface is the light
+        // leaving it, lamps included. Reached deeper than the first bounce, a wall went into the cache unlit by the
+        // lamp beside it, and every room lit by block lights came out darker the more its light bounced around.
+        bool blockLightView = false;
+#if VPT_BEDROCK_SPECULAR
+        // A reflected/refracted view is not a diffuse deep bounce. Sample its emitters explicitly
+        // even after multiple interfaces, without writing the primary pixel's ReSTIR reservoir.
+        blockLightView = g_viewBounce;
+#endif
+        // The experimental profile samples them on every bounce (with the few candidates of the first): its lights
+        // are a pack's glowing texels and Bedrock's point lights, and a bounce that has to find a glowing texel by
+        // itself finds it rarely and, from far away, at a level of detail where the average of greens squared
+        // undercounts it - a room lit by lamps came out a fifth darker on its walls and floor, and the light of a
+        // torch, which has no surface to be found, stopped after the second bounce.
+        bool blockLightSkipped = !blockLightPrimary && !blockLightView && rayBounce(mainRay) >= 2u &&
+                                 !rayCacheUpdate(mainRay) && VPT_BEDROCK_SPECULAR == 0;
+        vec3 blockLight = vec3(0.0);
+        if (!blockLightSkipped) {
+            blockLight = blockLightView && !blockLightPrimary ?
+                sampleBlockLight(litSurface.worldPos, litSurface.geometricNormal,
+                                 litSurface.shadingNormal, currentViewDir, litSurface.mat, false) :
+                sampleBlockLightAt(litSurface.worldPos, litSurface.geometricNormal,
+                                   litSurface.shadingNormal, currentViewDir, litSurface.mat, blockLightPrimary);
+        }
+        directLight += blockLight;
+        directLight += sampleHeldLight(litSurface.worldPos, litSurface.geometricNormal,
+                                       litSurface.shadingNormal, litSurface.mat);
+        if (localBounce == 0) { mainRay.directLightRadiance = directLight; }
+        mainRay.radiance += directLight;
+
+        bool isOpaqueSurface = currentSurface.mat.transmission <= EPS;
+        vec3 sampleDir;
+        float pdf;
+        uint lobeType;
+        vec3 bsdf;
+        if (isWaterMaterial && currentSurface.mat.transmission > EPS) {
+            vec3 incident = -currentViewDir;
+            vec3 waterNormal = currentSurface.shadingNormal;
+            vec3 waterUpNormal = waterNormal.y >= 0.0 ? waterNormal : -waterNormal;
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+            float eta = rayInWater(mainRay) ? currentSurface.mat.ior : 1.0 / currentSurface.mat.ior;
+            if (dot(incident, waterNormal) > 0.0) { waterNormal = -waterNormal; }
+#else
+            float eta = dot(incident, waterUpNormal) < 0.0 ? (1.0 / currentSurface.mat.ior) : currentSurface.mat.ior;
+#endif
+            float fresnel = clamp(vptInterfaceFresnel(abs(dot(currentViewDir, waterNormal)), eta), 0.0, 1.0);
+            vec3 refractionDir = refract(incident, waterNormal, eta);
+            // Seen from under the water, the surface is let through everywhere with a light cyan tint and little
+            // reflection, as in Bedrock RTX: physically only a circle overhead (Snell's window) shows the sky and
+            // the rest mirrors the water below, which read as a hole in a turquoise ceiling.
+            bool fromBelow = dot(incident, waterUpNormal) > 0.0;
+#if !defined(VPT_BEDROCK_ORIGINAL) || VPT_BEDROCK_ORIGINAL == 0
+            if (abs(baseGeoNormal.y) <= 0.5) {
+                // A side has no up: which way the light crosses it is whether the ray is in the water. Read off the
+                // sign of a normal with no vertical part, the medium flipped at random from texel to texel.
+                waterNormal = dot(incident, waterNormal) < 0.0 ? waterNormal : -waterNormal;
+                eta = rayInWater(mainRay) ? currentSurface.mat.ior : 1.0 / currentSurface.mat.ior;
+                fresnel = clamp(vptInterfaceFresnel(abs(dot(currentViewDir, waterNormal)), eta), 0.0, 1.0);
+                refractionDir = refract(incident, waterNormal, eta);
+                fromBelow = false;
+            }
+            if (fromBelow) {
+                refractionDir = normalize(mix(incident, waterUpNormal, 0.15));
+                fresnel = min(fresnel, 0.08);
+            }
+#endif
+            bool hasRefraction = dot(refractionDir, refractionDir) > 1e-6;
+            bool chooseReflection = !hasRefraction ||
+                                    (VPT_TRANSPARENT_SPLIT_MODE != VPT_TRANSPARENT_SPLIT_MODE_DETERMINISTIC &&
+                                     rand(mainRay.seed) < fresnel);
+            if (chooseReflection) {
+                sampleDir = normalize(reflect(incident, waterNormal));
+                pdf = max(fresnel, 1e-4);
+                lobeType = 1u;
+                bsdf = vec3(fresnel);
+            } else {
+                sampleDir = normalize(refractionDir);
+                pdf = max(1.0 - fresnel, 1e-4);
+                lobeType = 2u;
+                // The water medium colours the water by depth, as Bedrock RTX does (a pack's own, or one made from
+                // the biome's water colour); the surface itself is clear.
+                vec3 surfaceTint = waterMediumActive() ? vec3(1.0) :
+                                                         pow(max(currentSurface.albedoValue.rgb, vec3(0.0)), vec3(0.5));
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+                surfaceTint = vec3(1.0); // Water colour is accumulated over the medium, not a cyan sheet.
+#else
+                if (fromBelow) { surfaceTint *= vec3(0.85, 0.97, 1.0); }
+#endif
+                bsdf = surfaceTint * (1.0 - fresnel);
+            }
+        } else {
+            bsdf = DisneySample(currentSurface.mat, currentViewDir, currentSurface.shadingNormal, sampleDir, pdf,
+                                mainRay.seed, lobeType);
+        }
+
+        // Leaving the water's surface, through it or off it. Off the top, down goes into the water and up out of it;
+        // through a side, the ray swaps sides.
+        if (isWaterMaterial) {
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+            if (lobeType == 2u) { raySetInWater(mainRay, !rayInWater(mainRay)); }
+#else
+            if (abs(baseGeoNormal.y) > 0.5) {
+                raySetInWater(mainRay, sampleDir.y < 0.0);
+            } else if (lobeType == 2u) {
+                raySetInWater(mainRay, !rayInWater(mainRay));
+            }
+#endif
+        }
+
+        raySetBlockLightSampled(mainRay, worldUBO.blockLightSampling != 0u && !blockLightSkipped && lobeType == 0u &&
+                                             vptBlockLightDiffuseWeight(currentSurface.mat) > 1e-4);
+        raySetBlockLightLean(mainRay, !blockLightPrimary && !blockLightView);
+
+        if (!storedLobeType) {
+            raySetLobeType(mainRay, lobeType);
+            raySetIndirectVolumetricCloud(mainRay,
+                                          vptShouldCaptureIndirectVolumetricCloud(lobeType, currentSurface.mat.roughness));
+            storedLobeType = true;
+        }
+        raySetNoisy(mainRay, true);
+
+        if (pdf <= 1e-6 || max(bsdf.r, max(bsdf.g, bsdf.b)) <= 1e-6) {
+            raySetStop(mainRay, true);
+            return;
+        }
+
+        if (isOpaqueSurface && dot(sampleDir, currentSurface.geometricNormal) <= 0.0) {
+            raySetStop(mainRay, true);
+            return;
+        }
+
+        vec3 throughputBefore = mainRay.throughput;
+        mainRay.throughput *= bsdf / max(pdf, 1e-4);
+        // Bedrock RTX fills a room from a single patch of sunlight: light off rough surfaces carries on stronger than
+        // their albedo alone lets it (VPT_BOUNCE_LIGHT_BOOST), kept under 0.95 a bounce so it still dies out.
+        // (Not in the experimental profile: Bedrock's own light, exposure and tone curve fill the room there.)
+        if (lobeType == 0u && VPT_BOUNCE_LIGHT_BOOST > 1.0 && VPT_BEDROCK_SPECULAR == 0) {
+            vec3 ratio = mainRay.throughput / max(throughputBefore, vec3(1e-6));
+            float bounceAlbedo = max(ratio.r, max(ratio.g, ratio.b));
+            mainRay.throughput *= clamp(0.95 / max(bounceAlbedo, 1e-3), 1.0, VPT_BOUNCE_LIGHT_BOOST);
+        }
+
+        if (!traceLocalHeight) {
+            if (hasFftWaterSurface) {
+                vec3 exitNormal = dot(sampleDir, currentSurface.geometricNormal) >= 0.0 ? currentSurface.geometricNormal :
+                                                                                           -currentSurface.geometricNormal;
+                mainRay.origin = currentSurface.worldPos + exitNormal * VPT_FFT_WATER_ORIGIN_BIAS;
+            } else if (hasHeightMapSurface) {
+                vec3 exitBasePos =
+                    basePlaneWorldPosAtUv(currentSurface.uv, textureUV, planeHitWorldPos, dPduWorld, dPdvWorld);
+                vec3 exitNormal = dot(sampleDir, baseGeoNormal) >= 0.0 ? baseGeoNormal : -baseGeoNormal;
+                mainRay.origin = exitBasePos + exitNormal * 0.0002;
+            } else {
+                vec3 exitNormal = dot(sampleDir, currentSurface.geometricNormal) >= 0.0 ? currentSurface.geometricNormal :
+                                                                                           -currentSurface.geometricNormal;
+                mainRay.origin = currentSurface.worldPos + exitNormal * 0.0002;
+            }
+            mainRay.direction = sampleDir;
+            raySetStop(mainRay, false);
+            return;
+        }
+
+        HeightMapHit localBounceHit;
+        vec2 exitUv;
+        float exitDepth;
+        float exitDistance;
+        bool localBlocked = traceLocalHeightIntersectionAndExit(
+            textureMap.normal, atlasUvMin, atlasUvMax, dPduWorld, dPdvWorld, baseGeoNormal, maxDepthWorld,
+            currentSurface, sampleDir, VPT_PARALLAX_SECONDARY_MAX_STEPS, localBounceHit, exitUv, exitDepth,
+            exitDistance);
+        if (!localBlocked) {
+            vec3 exitBasePos =
+                basePlaneWorldPosAtUv(exitUv, textureUV, planeHitWorldPos, dPduWorld, dPdvWorld) -
+                baseGeoNormal * exitDepth;
+            vec3 exitGeoNormal =
+                localBounceHit.sideWall && localBounceHit.edgeWall ? localBounceHit.geometricNormal : baseGeoNormal;
+            vec3 exitNormal = dot(sampleDir, exitGeoNormal) >= 0.0 ? exitGeoNormal : -exitGeoNormal;
+            mainRay.origin = exitBasePos + exitNormal * 0.0002;
+            mainRay.direction = sampleDir;
+            raySetStop(mainRay, false);
+            return;
+        }
+
+        vec3 nextWorldPos = currentSurface.worldPos + sampleDir * localBounceHit.t;
+        sampleSurfaceState(useTexture, textureID, textureMap, atlasUvMin, atlasUvMax, localBounceHit.uv, lod, alphaMode,
+                           colorLayerValue, colorLayer, glint, useOverlay, m0.overlayUV, dPduWorld, dPdvWorld,
+                           baseGeoNormal, hasHeightMapSurface, maxDepthWorld, localBounceHit, nextWorldPos, -sampleDir,
+                           isWaterMaterial, hasFftWaterSurface, currentSurface);
+        currentViewDir = -sampleDir;
+    }
+
+    raySetStop(mainRay, true);
+}
+
+#endif // VPT_PT_SHADE_DEFAULT_GLSL

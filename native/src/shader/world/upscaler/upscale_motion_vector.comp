@@ -1,0 +1,55 @@
+#version 460
+
+// Resamples the motion vectors from the render resolution to the output resolution, bilinearly, and rescales them
+// from source pixels to output pixels (scaleX / scaleY).
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(set = 0, binding = 2, rg16f) uniform readonly image2D motionVectorIn;
+layout(set = 0, binding = 4, rg16f) uniform writeonly image2D motionVectorOut;
+
+layout(push_constant) uniform MotionParams {
+    float scaleX;
+    float scaleY;
+    uint srcWidth;
+    uint srcHeight;
+    uint dstWidth;
+    uint dstHeight;
+} params;
+
+// Source motion with the coordinate clamped to the source image.
+vec2 fetchSourceMotion(ivec2 texel) {
+    texel = clamp(texel, ivec2(0), ivec2(int(params.srcWidth) - 1, int(params.srcHeight) - 1));
+    return imageLoad(motionVectorIn, texel).xy;
+}
+
+// Bilinear filter at a position in source pixel units (texel centres at +0.5), kept inside the image.
+vec2 filterSourceMotion(vec2 srcPos) {
+    vec2 centred = clamp(srcPos - 0.5, vec2(0.0), vec2(params.srcWidth - 1u, params.srcHeight - 1u));
+    ivec2 lo = ivec2(floor(centred));
+    ivec2 hi = min(lo + ivec2(1), ivec2(int(params.srcWidth) - 1, int(params.srcHeight) - 1));
+    vec2 weight = fract(centred);
+
+    vec2 motionLL = fetchSourceMotion(lo);
+    vec2 motionHL = fetchSourceMotion(ivec2(hi.x, lo.y));
+    vec2 motionLH = fetchSourceMotion(ivec2(lo.x, hi.y));
+    vec2 motionHH = fetchSourceMotion(hi);
+
+    vec2 rowLow = mix(motionLL, motionHL, weight.x);
+    vec2 rowHigh = mix(motionLH, motionHH, weight.x);
+    return mix(rowLow, rowHigh, weight.y);
+}
+
+void main() {
+    uvec2 dst = gl_GlobalInvocationID.xy;
+    if (dst.x >= params.dstWidth || dst.y >= params.dstHeight) {
+        return;
+    }
+
+    vec2 dstUv = (vec2(dst) + 0.5) / vec2(params.dstWidth, params.dstHeight);
+    vec2 srcPos = dstUv * vec2(params.srcWidth, params.srcHeight);
+    vec2 motion = filterSourceMotion(srcPos);
+    motion *= vec2(params.scaleX, params.scaleY);
+
+    imageStore(motionVectorOut, ivec2(dst), vec4(motion, 0.0, 0.0));
+}

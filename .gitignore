@@ -1,0 +1,73 @@
+# --- Gradle ---------------------------------------------------------------
+.gradle/
+build/
+out/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Loom / Mod Dev Gradle caches
+.loom-cache/
+.mache/
+
+# --- Minecraft run directories --------------------------------------------
+# Everything runClient/runServer produces: worlds, screenshots, logs, crash
+# reports, and the renderer folder it unpacks the native build into.
+run/
+run-*/
+runs/
+
+# --- Native build ---------------------------------------------------------
+# CMake writes out of tree; nothing it produces belongs in the repository.
+native/build/
+native/out/
+native/bin/
+cmake-build-*/
+CMakeUserPresets.json
+CMakeCache.txt
+CMakeFiles/
+
+# The renderer, its shader packs and the vendor DLLs are build output. They are
+# assembled by the CMake INSTALL target and shipped in the jar, never committed.
+common/src/main/resources/radiante-native/
+
+# Upstream reference checkouts kept locally for comparison
+upstream/
+
+# --- JVM crash and profiling output ---------------------------------------
+hs_err_pid*.log
+replay_pid*.log
+*.hprof
+
+# --- IDE: IntelliJ IDEA ---------------------------------------------------
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# --- IDE: Eclipse ---------------------------------------------------------
+bin/
+eclipse/
+.classpath
+.project
+.settings/
+
+# --- IDE: VS Code and Fleet ----------------------------------------------
+.vscode/
+.fleet/
+
+# --- OS -------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Local overrides ------------------------------------------------------
+local.properties
+gradle-app.setting
+*.local
+forge/*.launch
+
+# --- Bedrock RTX compatibility research ---
+/docs/bedrock-rtx-compat/
+/docs/research/
+/tools/bedrock-rtx/
+/tools
+/issues

@@ -1,0 +1,47 @@
+#version 460
+
+// Prepares the upscaler's depth and motion inputs. The path tracer writes linear view depth; upscalers want a
+// standard [0, 1] device depth (infinite-far style: 1 at or beyond the far plane). Motion vectors are copied over
+// with NaN or infinite values zeroed, since a single bad vector can smear across the upscaler's history.
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, r16f) uniform readonly image2D linearDepth;
+layout(set = 0, binding = 1, r32f) uniform writeonly image2D deviceDepth;
+layout(set = 0, binding = 2, rg16f) uniform readonly image2D motionVectorIn;
+layout(set = 0, binding = 3, rg16f) uniform writeonly image2D motionVectorOut;
+
+layout(push_constant) uniform DepthParams {
+    float nearPlane;
+    float farPlane;
+    uint width;
+    uint height;
+    vec2 jitter;
+}
+params;
+
+void main() {
+    uvec2 invocation = gl_GlobalInvocationID.xy;
+    if (invocation.x >= params.width || invocation.y >= params.height) { return; }
+    ivec2 pixel = ivec2(invocation);
+
+    float viewDepth = imageLoad(linearDepth, pixel).r;
+
+    vec2 motion = imageLoad(motionVectorIn, pixel).xy;
+    if (any(isnan(motion)) || any(isinf(motion))) { motion = vec2(0.0); }
+    imageStore(motionVectorOut, pixel, vec4(motion, 0.0, 0.0));
+
+    float zNear = params.nearPlane;
+    float zFar = params.farPlane;
+
+    // No surface (or an unusable depth): the far plane.
+    if (isnan(viewDepth) || isinf(viewDepth) || viewDepth >= zFar) {
+        imageStore(deviceDepth, pixel, vec4(1.0));
+        return;
+    }
+
+    // Perspective depth: 0 at the near plane, approaching 1 at the far plane.
+    float ndcDepth = clamp((zFar / (zFar - zNear)) * (1.0 - zNear / max(viewDepth, zNear)), 0.0, 1.0);
+
+    imageStore(deviceDepth, pixel, vec4(ndcDepth));
+}

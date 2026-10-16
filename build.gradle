@@ -1,0 +1,110 @@
+buildscript {
+	repositories {
+		mavenCentral()
+	}
+	dependencies {
+		// Compresses the native libraries for the jars (compressNatives below).
+		classpath "org.tukaani:xz:1.10"
+	}
+}
+
+// Settings every module shares. Loader specifics live in each module's own build.gradle.
+subprojects {
+	apply plugin: 'java'
+
+	version = rootProject.mod_version
+	group = rootProject.maven_group
+
+	java {
+		toolchain.languageVersion = JavaLanguageVersion.of(25)
+	}
+
+	tasks.withType(JavaCompile).configureEach {
+		options.encoding = 'UTF-8'
+		options.release = 25
+	}
+
+	repositories {
+		mavenCentral()
+		exclusiveContent {
+			forRepository { maven { url 'https://api.modrinth.com/maven' } }
+			filter { includeGroup 'maven.modrinth' }
+		}
+	}
+
+	// Optional mods Radiante integrates with when they are installed. Compile only: nothing of theirs ships, and
+	// the code that touches them is only loaded once they are found at run time.
+	afterEvaluate {
+		dependencies {
+			compileOnly("maven.modrinth:distanthorizons:${rootProject.distant_horizons_version}") {
+				transitive = false
+			}
+		}
+	}
+}
+
+// The loader modules compile the common sources as their own, so there is one jar per loader with no extra
+// dependency to ship.
+ext.commonJava = file('common/src/main/java')
+ext.commonResources = file('common/src/main/resources')
+
+// The native libraries (renderer, DLSS, XeSS) are most of a jar's size and compress far better with xz than with the
+// jar's own deflate: each one ships as <name>.xz, with natives.sha256 listing what they unpack to, and the mod
+// unpacks them into the game folder on first start (RadianteClient.ensureNativeLoaded). Development runs read the
+// resources folder directly and keep the plain files.
+ext.nativeResources = file('common/src/main/resources/radiante-native')
+
+// DLSS and XeSS are downloaded by the player on request (UpscalerDownloads), not shipped.
+def NOT_SHIPPED = ['**/dlss/**', '**/libxess.dll']
+
+def compressNatives = tasks.register('compressNatives') {
+	def source = nativeResources
+	def output = layout.buildDirectory.dir('compressed-natives')
+	inputs.files(fileTree(source) { include '**/*.dll', '**/*.so', '**/*.so.*' ; exclude NOT_SHIPPED })
+	outputs.dir output
+	doLast {
+		def out = output.get().asFile
+		project.delete(out)
+		out.mkdirs()
+		def manifest = new StringBuilder()
+		def tree = fileTree(source) { include '**/*.dll', '**/*.so', '**/*.so.*' ; exclude NOT_SHIPPED }
+		tree.visit { details ->
+			if (details.directory) {
+				return
+			}
+			def relative = details.relativePath.pathString
+			def target = new File(out, relative + '.xz')
+			target.parentFile.mkdirs()
+			def digest = java.security.MessageDigest.getInstance('SHA-256')
+			details.file.withInputStream { input ->
+				target.withOutputStream { raw ->
+					def options = new org.tukaani.xz.LZMA2Options(9)
+					def xz = new org.tukaani.xz.XZOutputStream(raw, options, org.tukaani.xz.XZ.CHECK_CRC64)
+					byte[] buffer = new byte[1 << 16]
+					int n
+					while ((n = input.read(buffer)) > 0) {
+						digest.update(buffer, 0, n)
+						xz.write(buffer, 0, n)
+					}
+					xz.finish()
+				}
+			}
+			manifest.append(digest.digest().encodeHex().toString()).append('  ').append(relative).append('\n')
+		}
+		new File(out, 'natives.sha256').text = manifest.toString()
+	}
+}
+
+// For the loader modules: the jar takes the compressed natives instead of the plain ones.
+ext.packNatives = { Jar jar ->
+	jar.dependsOn compressNatives
+	jar.exclude { element ->
+		def path = element.relativePath.pathString
+		def name = element.name
+		path.startsWith('radiante-native/') && !name.endsWith('.xz') && name != 'natives.sha256'
+			&& (name.endsWith('.dll') || name.endsWith('.so') || name.contains('.so.') || name.endsWith('.lib'))
+	}
+	jar.from(compressNatives) {
+		into 'radiante-native'
+	}
+}

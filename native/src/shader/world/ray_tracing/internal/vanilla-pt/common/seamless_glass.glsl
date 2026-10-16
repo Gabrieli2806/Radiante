@@ -1,0 +1,90 @@
+#ifndef VPT_SEAMLESS_GLASS_GLSL
+#define VPT_SEAMLESS_GLASS_GLSL
+
+// Seamless glass: vanilla glass textures draw a frame around every block, so a wall of glass reads as a grid of
+// separate blocks. With this on, a point of a glass face within the frame's width of its block's edge takes its
+// colour from just inside the frame instead, and neighbouring blocks of the same glass join into one sheet.
+//
+// Worked out from where the point lies in its block, not from the texture: a pane's front shows only a strip of
+// its texture, and the frame lies on the block's edges whichever part of the texture a face shows.
+
+#ifndef VPT_SEAMLESS_GLASS
+#    define VPT_SEAMLESS_GLASS 1
+#endif
+// Which glass is joined: 0 blocks and panes, 1 glass blocks only, 2 panes only.
+#ifndef VPT_SEAMLESS_GLASS_SCOPE
+#    define VPT_SEAMLESS_GLASS_SCOPE 0u
+#endif
+
+bool seamlessGlassApplies(uint packedData) {
+    bool pane = isPaneSurface(packedData);
+    return VPT_SEAMLESS_GLASS_SCOPE == 0u || (VPT_SEAMLESS_GLASS_SCOPE == 1u && !pane) ||
+           (VPT_SEAMLESS_GLASS_SCOPE == 2u && pane);
+}
+
+// Frame width, as a share of a block (one texel of a 16 pixel texture), and where a point inside it is moved to.
+const float SEAMLESS_GLASS_FRAME = 1.5 / 16.0;
+
+// uv at objectPos (block-aligned geometry space) on a face whose texture runs along dposdu and dposdv, moved off
+// the frame along the block's edges.
+vec2 seamlessGlassUV(vec2 uv, vec3 objectPos, vec3 dposdu, vec3 dposdv, uint packedData) {
+#if VPT_SEAMLESS_GLASS != 0
+    if (!seamlessGlassApplies(packedData)) { return uv; }
+    vec3 faceNormal = cross(dposdu, dposdv);
+    float normalLength = length(faceNormal);
+    if (normalLength <= 1e-8) { return uv; }
+    vec3 axisWeight = abs(faceNormal) / normalLength;
+
+    vec3 local = fract(objectPos + 1e-4);
+    vec3 shift = vec3(0.0);
+    for (int axis = 0; axis < 3; axis++) {
+        // Only along the face, not across it.
+        if (axisWeight[axis] > 0.5) { continue; }
+        if (local[axis] < SEAMLESS_GLASS_FRAME) {
+            shift[axis] = SEAMLESS_GLASS_FRAME - local[axis];
+        } else if (local[axis] > 1.0 - SEAMLESS_GLASS_FRAME) {
+            shift[axis] = (1.0 - SEAMLESS_GLASS_FRAME) - local[axis];
+        }
+    }
+    if (dot(shift, shift) <= 0.0) { return uv; }
+
+    // The texture's change for that move: shift = a * dposdu + b * dposdv, solved in the face's plane.
+    float uu = dot(dposdu, dposdu);
+    float uv2 = dot(dposdu, dposdv);
+    float vv = dot(dposdv, dposdv);
+    float determinant = uu * vv - uv2 * uv2;
+    if (abs(determinant) <= 1e-12) { return uv; }
+    float su = dot(shift, dposdu);
+    float sv = dot(shift, dposdv);
+    float a = (su * vv - sv * uv2) / determinant;
+    float b = (sv * uu - su * uv2) / determinant;
+    return uv + vec2(a, b);
+#else
+    return uv;
+#endif
+}
+
+// The thin tops and bottoms of panes: between two panes stacked they stay inside the glass, and through its clear
+// front they showed as a line along every join. With seamless glass they are left out, so a wall of panes is one
+// clear sheet. A pane's upright thin faces stay: a pane standing on its own is only those.
+// Told apart by their size in the world (under 3/16 of a block across), not in texels: a pack whose pane texture is
+// finer than 16 px (Bedrock RTX packs, upscaled for their detail maps) made the strip too many texels wide, and every
+// join between stacked panes showed as a dark line.
+bool seamlessGlassHidesFace(vec3 p0, vec3 p1, vec3 p2, uint packedData) {
+#if VPT_SEAMLESS_GLASS != 0
+    if (!seamlessGlassApplies(packedData)) { return false; }
+    vec3 faceNormal = cross(p1 - p0, p2 - p0);
+    float normalLength = length(faceNormal);
+    bool horizontal = normalLength > 0.0 && abs(faceNormal.y) > 0.9 * normalLength;
+    vec2 extent = max(p0.xz, max(p1.xz, p2.xz)) - min(p0.xz, min(p1.xz, p2.xz));
+    if (!horizontal || min(extent.x, extent.y) >= 3.0 / 16.0) { return false; }
+    // Only a cap with glass on the other side: the top of the highest pane and the bottom of the lowest stay, or a
+    // window seen from above or below had a hollow edge. (Vanilla winds faces outward, so the normal says which.)
+    bool up = faceNormal.y > 0.0;
+    return up ? (packedData & PANE_CAP_UP_BIT) == 0u : (packedData & PANE_CAP_DOWN_BIT) == 0u;
+#else
+    return false;
+#endif
+}
+
+#endif

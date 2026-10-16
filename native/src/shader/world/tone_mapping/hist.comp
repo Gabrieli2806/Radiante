@@ -1,0 +1,81 @@
+#version 460
+
+// Builds the luminance histogram that exposure.comp meters from, for the global and centre metering modes.
+// 256 bins cover log2 luminance from log2Min to log2Max evenly; values beyond either end land in the end bin.
+#define BIN_COUNT 256
+const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
+
+layout(set = 0, binding = 0) uniform sampler2D hdrImage;
+
+layout(std430, set = 0, binding = 1) buffer Histogram {
+    uint bins[BIN_COUNT];
+}
+histogram;
+
+// Must match the start of ToneMappingModulePushConstant (tone_mapping_module.hpp) member for member.
+layout(push_constant) uniform PushConstant {
+    float log2Min;
+    float log2Max;
+    float epsilon;
+    float lowPercent;
+    float highPercent;
+    float middleGrey;
+    float dt;
+    float speedUp;
+    float speedDown;
+    float minExposure;
+    float maxExposure;
+    float manualExposure;
+    float exposureBias;
+    float whitePoint;
+    float saturation;
+    int toneMappingMethod;
+    int autoExposure;
+    int clampOutput;
+    int exposureMeteringMode;
+    float centerMeteringPercent; // 0 .. 1 of the picture's area
+}
+pc;
+
+// A 16 x 16 group is 256 invocations: one per bin of a group-local histogram, which keeps the global atomics down
+// to one add per non-empty bin per group.
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+shared uint groupBins[BIN_COUNT];
+
+// Centre metering only counts a centred rectangle with the picture's aspect ratio whose area is
+// centerMeteringPercent of the picture (each side scaled by the square root of it).
+bool isMetered(ivec2 pixel, ivec2 size) {
+    if (pc.exposureMeteringMode != 1) return true;
+    float sideScale = sqrt(clamp(pc.centerMeteringPercent, 1e-6, 1.0));
+    vec2 middle = vec2(size) * 0.5;
+    vec2 halfSize = vec2(size) * 0.5 * sideScale;
+    vec2 samplePos = vec2(pixel) + vec2(0.5);
+    return all(greaterThanEqual(samplePos, middle - halfSize)) && all(lessThan(samplePos, middle + halfSize));
+}
+
+uint binOf(vec3 radiance) {
+    float log2Luma = log2(max(dot(radiance, LUMA), pc.epsilon));
+    float span = pc.log2Max - pc.log2Min;
+    float normalized = span != 0.0 ? (log2Luma - pc.log2Min) / span : 0.0;
+    // The min only matters for a NaN pixel slipping past the clamp.
+    return min(uint(clamp(normalized, 0.0, 1.0) * float(BIN_COUNT - 1)), uint(BIN_COUNT - 1));
+}
+
+void main() {
+    // Clear the group histogram, one bin per invocation.
+    uint myBin = gl_LocalInvocationIndex;
+    groupBins[myBin] = 0u;
+    barrier();
+
+    ivec2 size = textureSize(hdrImage, 0);
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+    if (all(lessThan(pixel, size)) && isMetered(pixel, size)) {
+        atomicAdd(groupBins[binOf(texelFetch(hdrImage, pixel, 0).rgb)], 1u);
+    }
+    barrier();
+
+    // Merge into the frame's histogram.
+    uint tally = groupBins[myBin];
+    if (tally != 0u) atomicAdd(histogram.bins[myBin], tally);
+}

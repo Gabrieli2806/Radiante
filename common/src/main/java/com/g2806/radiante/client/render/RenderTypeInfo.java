@@ -1,0 +1,333 @@
+package com.g2806.radiante.client.render;
+
+import com.g2806.radiante.mixin.render.RenderTypeAccessors.RenderSetupAccessor;
+import com.g2806.radiante.mixin.render.RenderTypeAccessors.RenderTypeAccessor;
+import com.g2806.radiante.mixin.render.RenderTypeAccessors.TextureBindingAccessor;
+import java.util.Map;
+import com.mojang.renderpearl.api.GpuFormat;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.AbstractTexture;
+import net.minecraft.client.renderer.rendertype.RenderSetup;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.resources.Identifier;
+
+/**
+ * Per render type data the ray tracer needs: which mirrored texture it samples, whether it blends and whether
+ * it reads the overlay (entities flashing red or white).
+ */
+public final class RenderTypeInfo {
+
+    /**
+     * Read on the render thread for every layer of every entity, every frame. A plain map behind a lock made that
+     * a contended call for what is almost always a hit, so lookups go straight at a concurrent map and only a miss
+     * pays anything. Building the same entry twice is harmless: the values are immutable and identical.
+     */
+    private static final Map<RenderType, RenderTypeInfo> CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+
+
+    private final Identifier texture;
+    private final Identifier glintTexture;
+    private final boolean useOverlay;
+    private final boolean blending;
+    private final boolean solid;
+    private final String name;
+    private final float uOffset;
+    private final float vOffset;
+
+    private RenderTypeInfo(Identifier texture, Identifier glintTexture, boolean useOverlay, boolean blending,
+        boolean solid, String name, float uOffset, float vOffset) {
+        this.texture = texture;
+        this.glintTexture = glintTexture;
+        this.useOverlay = useOverlay;
+        this.blending = blending;
+        this.solid = solid;
+        this.name = tracedName(name == null ? "" : name);
+        this.uOffset = uOffset;
+        this.vOffset = vOffset;
+    }
+
+    /**
+     * The plain text layers - what a text display uses unless it is see-through - have no hit group of their own in
+     * the packs, and their text modes mean cut out and translucent to the ordinary entity shaders: logos and
+     * holograms came out as panes of glass. A ray tracer has no depth bias to tell them from the polygon offset
+     * layers anyway, so they are traced as those. The untextured background layers ride along: with no texture the
+     * text shaders take their coverage from the vertex colour alone.
+     */
+    private static String tracedName(String name) {
+        return switch (name) {
+            case "text", "text_background" -> "text_polygon_offset";
+            case "text_intensity" -> "text_intensity_polygon_offset";
+            case "text_background_see_through" -> "text_see_through";
+            default -> name;
+        };
+    }
+
+    public static RenderTypeInfo of(RenderType renderType) {
+        RenderTypeInfo info = CACHE.get(renderType);
+        if (info != null) {
+            return info;
+        }
+
+        RenderSetup setup = ((RenderTypeAccessor) (Object) renderType).radiante$state();
+        RenderSetupAccessor access = (RenderSetupAccessor) (Object) setup;
+        Object binding = access.radiante$textures().get("Sampler0");
+        Identifier texture = binding == null ? null : ((TextureBindingAccessor) binding).radiante$location();
+        // The enchantment glint: vanilla's armor and item glint render types sample it as a second texture
+        // alongside the base one ("GlintSampler"), blended in over time by a scrolling matrix. Its presence here
+        // is what tells a writer it is drawing a glinting layer at all - see PbrAtlases and RenderTypeInfo.of.
+        Object glintBinding = access.radiante$textures().get("GlintSampler");
+        Identifier glintTexture = glintBinding == null ? null : ((TextureBindingAccessor) glintBinding).radiante$location();
+        String name = ((RenderTypeAccessor) (Object) renderType).radiante$name();
+        // Only fully opaque types are traced as solid. Cut out layers (villager hats, zombie heads, skin overlays)
+        // keep their alpha test, otherwise their transparent texels render black on top of the face.
+        boolean solid = !renderType.hasBlending() && name != null && name.contains("solid");
+        // A scrolling texture (the energy swirl) bakes this frame's offset into a render type made anew every frame.
+        // Reading it here is what makes the swirl move; caching those throwaway types would only grow the cache.
+        boolean scrolling = access.radiante$textureTransform()
+            instanceof net.minecraft.client.renderer.rendertype.TextureTransform.OffsetTextureTransform;
+        float uOffset = 0.0f;
+        float vOffset = 0.0f;
+        if (scrolling) {
+            org.joml.Matrix4f transform = access.radiante$textureTransform().createMatrix();
+            uOffset = transform.m30();
+            vOffset = transform.m31();
+        }
+        info = new RenderTypeInfo(texture, glintTexture, access.radiante$useOverlay(), renderType.hasBlending(),
+            solid, name, uOffset, vOffset);
+        if (!scrolling) {
+            CACHE.put(renderType, info);
+            if (com.g2806.radiante.client.option.Options.debugLogging) {
+                AbstractTexture found = texture == null ? null
+                    : Minecraft.getInstance().getTextureManager().getTexture(texture);
+                com.mojang.renderpearl.api.textures.GpuTexture gpu = found == null ? null
+                    : TextureTracker.gpuTextureOrNull(found);
+                TextureTracker.reportUse("layer " + name + " blending=" + renderType.hasBlending() + " alphaMode="
+                    + info.alphaMode() + " group=" + info.groupName() + " texture=" + texture
+                    + (gpu == null ? "" : " (" + TextureTracker.describe(gpu) + ")"));
+            }
+        }
+        return info;
+    }
+
+    public float uOffset() {
+        return this.uOffset;
+    }
+
+    public float vOffset() {
+        return this.vOffset;
+    }
+
+    /** Whether this layer is one of vanilla's glint render types (armor, item, trim, shield pattern). */
+    public boolean isGlint() {
+        return this.glintTexture != null;
+    }
+
+    /** The renderer id of the glint texture this layer samples, or 0 when it is not a glint layer. */
+    public int glintTextureId() {
+        return this.glintTexture == null ? 0 : TextureTracker.idOf(this.glintTexture);
+    }
+
+    /** See util/text_mode.glsl: these share the alpha mode field, so they must not collide with its values. */
+    private int layerTextMode() {
+        return switch (this.name) {
+            case "text_background" -> 1;
+            case "text_intensity" -> 2;
+            case "text" -> 3;
+            case "text_background_see_through" -> 4;
+            case "text_intensity_see_through" -> 5;
+            case "text_see_through" -> 6;
+            case "text_intensity_polygon_offset" -> 7;
+            case "text_polygon_offset" -> 8;
+            default -> PBRVertexWriter.ALPHA_MODE_OPAQUE;
+        };
+    }
+
+    /**
+     * Minecraft builds a font page with one channel unless the font needs colour, and the shape of a letter is that
+     * single channel. Read as colour it samples as red with a solid alpha, which is a filled rectangle rather than
+     * a letter, so a page like that is always an intensity mode whatever the layer is called.
+     */
+    private static int forChannels(int mode, boolean singleChannelPage) {
+        return (mode == 3 || mode == 6 || mode == 8) && singleChannelPage ? mode - 1 : mode;
+    }
+
+    private int textMode() {
+        return forChannels(layerTextMode(), isSingleChannel());
+    }
+
+    /**
+     * The same choice, for a glyph whose page is known. Font pages are built at runtime and are not registered
+     * under the identifier the layer names, so asking the texture manager for the layer's texture answers about
+     * some other sheet - or about nothing at all. Every glyph knows the page it was baked into, and that is the one
+     * whose channel count decides how the shader has to read it.
+     */
+    public int alphaModeForPage(boolean singleChannelPage) {
+        int mode = layerTextMode();
+        if (mode == PBRVertexWriter.ALPHA_MODE_OPAQUE) {
+            return alphaMode();
+        }
+        return forChannels(mode, singleChannelPage);
+    }
+
+    private boolean isSingleChannel() {
+        if (this.texture == null) {
+            return false;
+        }
+        AbstractTexture texture = Minecraft.getInstance().getTextureManager().getTexture(this.texture);
+        return texture != null && texture.getTexture() != null
+            && texture.getTexture().getFormat() == GpuFormat.R8_UNORM;
+    }
+
+    /** True when this layer samples the block atlas: a block drawn as an item, not a skin or a model texture. */
+    public boolean isBlockAtlas() {
+        return this.texture != null && this.texture.getPath().equals("textures/atlas/blocks.png");
+    }
+
+    /** The renderer id of the texture this render type samples, or 0 when it has none. */
+    public int textureId() {
+        if (this.texture == null) {
+            return 0;
+        }
+        int id = TextureTracker.idOf(this.texture);
+        if (id == 0) {
+            net.minecraft.client.renderer.texture.AbstractTexture found =
+                net.minecraft.client.Minecraft.getInstance().getTextureManager().getTexture(this.texture);
+            TextureTracker.reportMissing("layer " + this.name + " texture " + this.texture
+                + (found == null ? " (not registered)" : " (" + found.getClass().getSimpleName() + ")"),
+                found == null ? null : TextureTracker.gpuTextureOrNull(found));
+        }
+        EntityPbr.note(this.texture, id);
+        return id;
+    }
+
+    /**
+     * Layers that are light themselves rather than lit surfaces. They carry no texture and are drawn additively in
+     * vanilla, so without this they would trace as dark geometry.
+     */
+    public float emission() {
+        if (this.name.contains("lightning")) {
+            return Glow.LIGHTNING;
+        }
+        if (this.name.contains("beacon_beam")) {
+            return Glow.BEACON_BEAM;
+        }
+        if (this.name.equals("energy_swirl")) {
+            return this.texture != null && this.texture.getPath().contains("wither_armor") ? Glow.WITHER_ARMOR
+                : Glow.ENERGY_SWIRL;
+        }
+        // "eyes" covers endermen, spiders and blazes; the emissive variant covers the overlays other mobs add.
+        if (this.name.equals("eyes") || this.name.contains("emissive")) {
+            return Glow.MOB_EYES;
+        }
+        return 0.0f;
+    }
+
+    /**
+     * Layers whose vertices arrive without a normal. End portals submit bare corner positions, and glyphs carry
+     * position, colour and texture coordinate but nothing to say which way they face. A surface with no normal
+     * cannot be shaded, so the normal is derived from the quad itself instead.
+     */
+    public boolean needsComputedNormals() {
+        return isEndPortal() || isEndGateway() || this.name.startsWith("text");
+    }
+
+    /** The texture this layer samples, or null when it has none. */
+    public Identifier texture() {
+        return this.texture;
+    }
+
+    public boolean useOverlay() {
+        return this.useOverlay;
+    }
+
+    private boolean isEndPortal() {
+        return this.name.equals("end_portal");
+    }
+
+    /** The patch over a boat's inside that keeps water out of it ("water_mask", or its order-independent twin). */
+    public boolean isWaterMask() {
+        return this.name.endsWith("water_mask");
+    }
+
+    private boolean isEndGateway() {
+        return this.name.equals("end_gateway");
+    }
+
+    /** Hit groups the packs define for text. Any other name here stalls the renderer, so the list is exact. */
+    private static final java.util.Set<String> TEXT_HIT_GROUPS = java.util.Set.of(
+        "text_see_through", "text_intensity_see_through", "text_polygon_offset", "text_intensity_polygon_offset");
+
+    /** Hit group the shader packs shade this geometry with; a few have their own, everything else the default. */
+    /** Lines, outlines and debug shapes: overlays to draw over the world, not geometry to trace. */
+    public boolean isOverlayOnly() {
+        return this.name.contains("line") || this.name.contains("debug") || this.name.contains("outline")
+            || this.name.contains("gizmo");
+    }
+
+    public String groupName() {
+        // The shader packs name their hit groups after render layers, which makes it tempting to hand the layer
+        // name over and let specialised groups do their job. Doing that stalls the renderer within seconds of
+        // entering a world: most of those groups are not valid for entity geometry. Only the names the packs
+        // really define for this geometry are passed through - the portals, and the four text groups, whose
+        // any-hit shader is the only thing that cuts a glyph out of the cell it is drawn in.
+        if (isEndPortal() || isEndGateway() || TEXT_HIT_GROUPS.contains(this.name)) {
+            return this.name;
+        }
+        if (isWaterMask()) {
+            return "water_mask";
+        }
+        return "Entity";
+    }
+
+    public int alphaMode() {
+        // Text layers put a text mode in this field instead of an alpha mode: the shaders read it to know whether a
+        // glyph page carries its coverage in the red channel, in the alpha channel, or is a solid background quad.
+        int textMode = textMode();
+        if (textMode != PBRVertexWriter.ALPHA_MODE_OPAQUE) {
+            return textMode;
+        }
+        if (this.solid || isEndPortal() || isEndGateway()) {
+            return PBRVertexWriter.ALPHA_MODE_OPAQUE;
+        }
+        // Vanilla adds these onto the mob; read as a surface, their black texels covered the face with a dark
+        // glassy shell and the eyes came out washed out.
+        if (this.name.equals("eyes")) {
+            return PBRVertexWriter.ALPHA_MODE_ADDITIVE;
+        }
+        // Minecraft gives an item a translucent layer as soon as its sprite has one texel that is not fully opaque
+        // or fully clear, and server packs draw whole signs and logos that way. Traced as a translucent surface
+        // such an item is a pane of tinted glass, see-through and mirror-like; as coverage its solid texels are
+        // solid and only the soft ones let rays through, which is what blending shows in vanilla.
+        if (this.blending && this.name.startsWith("item")) {
+            return PBRVertexWriter.ALPHA_MODE_STOCHASTIC;
+        }
+        return this.blending ? PBRVertexWriter.ALPHA_MODE_TRANSPARENT : PBRVertexWriter.ALPHA_MODE_CUTOUT;
+    }
+
+    /**
+     * Only fully opaque geometry may be traced as solid: the acceleration structure marks it opaque, and the
+     * shaders never terminate when an opaque hit asks them to continue past a cut out texel.
+     */
+    public int geometryType() {
+        if (isEndPortal()) {
+            return NativeGeometry.GEOMETRY_TYPE_END_PORTAL;
+        }
+        if (isEndGateway()) {
+            return NativeGeometry.GEOMETRY_TYPE_END_GATEWAY;
+        }
+        // The patch over a boat's inside that keeps water out of it. Vanilla draws it into depth only; traced as
+        // an ordinary surface it was a black sheet, which showed through boats with see-through bottoms
+        // (glass-bottom boat packs). As its own geometry type a ray passing it is marked as inside the boat, and
+        // the water below is skipped, as the shaders already expect (world/water_mask.rchit).
+        if (isWaterMask()) {
+            return NativeGeometry.GEOMETRY_TYPE_BOAT_WATER_MASK;
+        }
+        // A glyph cell is mostly empty, and only the text any-hit shader knows which texels are the letter. Solid
+        // geometry is built with the Vulkan opaque flag, which tells the driver it may skip any-hit entirely - so
+        // calling text solid is what turned every letter into a filled rectangle. It has to stay non-opaque.
+        if (textMode() != PBRVertexWriter.ALPHA_MODE_OPAQUE) {
+            return NativeGeometry.GEOMETRY_TYPE_WORLD_TRANSPARENT;
+        }
+        return this.solid ? NativeGeometry.GEOMETRY_TYPE_WORLD_SOLID : NativeGeometry.GEOMETRY_TYPE_WORLD_TRANSPARENT;
+    }
+}
