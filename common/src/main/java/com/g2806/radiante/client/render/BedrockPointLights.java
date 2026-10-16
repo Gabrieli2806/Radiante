@@ -13,16 +13,19 @@ import net.minecraft.world.level.block.state.BlockState;
  * redstone torches, lanterns, soul lanterns and end rods, each a small sphere of light at its flame. Every other light
  * block lights the world through its glow alone. All of it is as Bedrock's light list holds it while the game runs
  * (read from the running game): where the light sits in the block, its colour, a strength of 2 / 25.5 for all of
- * them (times the 0.3 its shader applies), and a radius of 0.23 for lanterns, 0.115 for the rest. The soul torch has
- * none there.
+ * them, and a radius of 0.23 for lanterns, 0.115 for the rest. The soul torch has none there.
  *
  * <p>Only the experimental Bedrock profile has them (ChunkManager writes them when Bedrock's glow is cast, see
  * Pipeline.castsBedrockGlow); the others light with every glowing block's texture.
  */
 final class BedrockPointLights {
 
-    /** A light's strength: 2 of 255 in Bedrock's light list, over 25.5, times 0.3. */
-    static final float STRENGTH = 2.0f / 25.5f * 0.3f;
+    /**
+     * A light's strength: 2 of 255 in Bedrock's light list, over 25.5. (The 0.3 its shader was taken to apply on top
+     * is not there: side by side with Bedrock RTX, a torch lit the wall it hangs on about a third as brightly in
+     * daylight, and a room lit by torches alone stayed at the eye's darkest limit, two to five times darker.)
+     */
+    static final float STRENGTH = 2.0f / 25.5f;
     private static final float RADIUS = 0.115f;
     private static final float LANTERN_RADIUS = 0.23f;
 
