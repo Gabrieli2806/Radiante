@@ -26,6 +26,7 @@ enum OptionImpact {
         Map.entry("options.radiante.quality", VARIES),
         Map.entry("options.radiante.preset", HIGH),
         Map.entry("options.radiante.dlss_mode", HIGH),
+        Map.entry("options.radiante.ray_reconstruction", MEDIUM),
         Map.entry("options.radiante.render_scale", HIGH),
         Map.entry("options.radiante.frame_generation", VARIES),
         Map.entry("options.radiante.ray_bounces", HIGH),

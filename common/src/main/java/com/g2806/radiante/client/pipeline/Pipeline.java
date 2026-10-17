@@ -170,6 +170,15 @@ public class Pipeline {
                     POST_RENDER_MODULE_NAME);
         }
 
+        if (Objects.equals(presetName, Presets.RT_NRD_DLSS.key)) {
+            return areModulesAvailable(
+                    RAY_TRACING_MODULE_NAME,
+                    NRD_MODULE_NAME,
+                    DLSS_MODULE_NAME,
+                    TONE_MAPPING_MODULE_NAME,
+                    POST_RENDER_MODULE_NAME);
+        }
+
         return false;
     }
 
@@ -238,7 +247,7 @@ public class Pipeline {
 
     /**
      * The upscaler of the active pipeline and its quality mode, for the debug screen: "DLSS Balanced + Ray
-     * Reconstruction", "FSR3 Upscaler Quality", or "Native" when nothing upscales.
+     * Reconstruction", "DLSS Balanced (NRD denoiser)", "FSR3 Upscaler Quality", or "Native" when nothing upscales.
      */
     public static String describeUpscaler() {
         for (Module module : INSTANCE.modules) {
@@ -263,6 +272,9 @@ public class Pipeline {
                 AttributeConfig rayReconstruction = findAttribute(module, RAY_RECONSTRUCTION_ATTRIBUTE);
                 if (rayReconstruction != null && Objects.equals(rayReconstruction.value, "render_pipeline.true")) {
                     description.append(" + ").append(I18n.get(RAY_RECONSTRUCTION_ATTRIBUTE));
+                } else {
+                    // Said outright: without it the line read the same as DLSS with a missing suffix.
+                    description.append(" (NRD denoiser)");
                 }
             }
             return description.toString();
@@ -1220,8 +1232,8 @@ public class Pipeline {
         postRenderModule.y = 300;
 
         INSTANCE.activePresetName = Presets.RT_DLSSRR.key;
-        // DLSS is the denoiser in this preset, so ray reconstruction is what the module has to create. The
-        // super resolution path exists in the renderer but has no preset feeding it a denoised picture yet.
+        // DLSS is the denoiser in this preset, so ray reconstruction is what the module has to create. Its super
+        // resolution path is RT_NRD_DLSS, where NRD has already denoised the picture.
         setRayReconstructionOn(dlssModule, true);
 
         connect(rayTracingModule.getOutputImageConfig("radiance"),
@@ -1364,6 +1376,125 @@ public class Pipeline {
         connect(upscalerModule.getOutputImageConfig("upscaled_motion_vector"),
                 postRenderModule.getInputImageConfig("motion_vector"));
         connect(upscalerModule.getOutputImageConfig("upscaled_normal_roughness"),
+                postRenderModule.getInputImageConfig("normal_roughness"));
+
+        connect(toneMappingModule.getOutputImageConfig("mapped_output"),
+                postRenderModule.getInputImageConfig("ldr_input"));
+
+        connectOutput(postRenderModule.getOutputImageConfig("post_rendered"));
+    }
+
+    /**
+     * DLSS without Ray Reconstruction: NRD denoises as in the FSR and XeSS presets and DLSS only upscales its
+     * result. For GPUs where Ray Reconstruction costs too much, or where it smears or ghosts.
+     */
+    private static void assembleNRDDLSSInternal() {
+        clear();
+
+        Module rayTracingModule = addModule(RAY_TRACING_MODULE_NAME);
+
+        Module denoiserModule = addModule(NRD_MODULE_NAME);
+
+        Module dlssModule = addModule(DLSS_MODULE_NAME);
+
+        Module toneMappingModule = addModule(TONE_MAPPING_MODULE_NAME);
+
+        Module postRenderModule = addModule(POST_RENDER_MODULE_NAME);
+
+        rayTracingModule.x = 100;
+        rayTracingModule.y = 220;
+        denoiserModule.x = 380;
+        denoiserModule.y = 120;
+        dlssModule.x = 660;
+        dlssModule.y = 220;
+        toneMappingModule.x = 940;
+        toneMappingModule.y = 120;
+        postRenderModule.x = 940;
+        postRenderModule.y = 300;
+
+        INSTANCE.activePresetName = Presets.RT_NRD_DLSS.key;
+        // The picture reaching DLSS is already denoised, so it must create super resolution: ray reconstruction
+        // would denoise it a second time.
+        setRayReconstructionOn(dlssModule, false);
+
+        connect(rayTracingModule.getOutputImageConfig("first_hit_diffuse_indirect_light"),
+                denoiserModule.getInputImageConfig("diffuse_radiance"));
+
+        connect(rayTracingModule.getOutputImageConfig("first_hit_specular"),
+                denoiserModule.getInputImageConfig("specular_radiance"));
+
+        connect(rayTracingModule.getOutputImageConfig("first_hit_diffuse_direct_light"),
+                denoiserModule.getInputImageConfig("direct_radiance"));
+
+        connect(rayTracingModule.getOutputImageConfig("diffuse_albedo_metallic"),
+                denoiserModule.getInputImageConfig("diffuse_albedo"));
+
+        connect(rayTracingModule.getOutputImageConfig("specular_albedo"),
+                denoiserModule.getInputImageConfig("specular_albedo"));
+
+        connect(rayTracingModule.getOutputImageConfig("normal_roughness"),
+                denoiserModule.getInputImageConfig("normal_roughness"));
+
+        connect(rayTracingModule.getOutputImageConfig("motion_vector"),
+                denoiserModule.getInputImageConfig("motion_vector"));
+
+        connect(rayTracingModule.getOutputImageConfig("linear_depth"),
+                denoiserModule.getInputImageConfig("linear_depth"));
+
+        connect(rayTracingModule.getOutputImageConfig("first_hit_depth"),
+                denoiserModule.getInputImageConfig("diffuseHitDepthImage"));
+
+        connect(rayTracingModule.getOutputImageConfig("specular_hit_depth"),
+                denoiserModule.getInputImageConfig("specularHitDepthImage"));
+
+        connect(rayTracingModule.getOutputImageConfig("first_hit_clear"),
+                denoiserModule.getInputImageConfig("first_hit_clear"));
+
+        connect(rayTracingModule.getOutputImageConfig("first_hit_base_emission"),
+                denoiserModule.getInputImageConfig("first_hit_base_emission"));
+
+        connect(rayTracingModule.getOutputImageConfig("fog_image"),
+                denoiserModule.getInputImageConfig("fog_image"));
+
+        connect(rayTracingModule.getOutputImageConfig("first_hit_refraction"),
+                denoiserModule.getInputImageConfig("first_hit_refraction"));
+
+        connect(denoiserModule.getOutputImageConfig("denoised_radiance"),
+                dlssModule.getInputImageConfig("radiance"));
+
+        // Super resolution reads only the colour, motion and depth, plus what it upscales for post render; the
+        // G-buffer inputs ray reconstruction guides itself with are connected all the same, so none is unbound.
+        connect(rayTracingModule.getOutputImageConfig("diffuse_albedo_metallic"),
+                dlssModule.getInputImageConfig("diffuse_albedo_metallic"));
+
+        connect(rayTracingModule.getOutputImageConfig("specular_albedo"),
+                dlssModule.getInputImageConfig("specular_albedo"));
+
+        connect(rayTracingModule.getOutputImageConfig("normal_roughness"),
+                dlssModule.getInputImageConfig("normal_roughness"));
+
+        connect(rayTracingModule.getOutputImageConfig("motion_vector"),
+                dlssModule.getInputImageConfig("motion_vector"));
+
+        connect(rayTracingModule.getOutputImageConfig("linear_depth"),
+                dlssModule.getInputImageConfig("linear_depth"));
+
+        connect(rayTracingModule.getOutputImageConfig("specular_hit_depth"),
+                dlssModule.getInputImageConfig("specular_hit_depth"));
+
+        connect(rayTracingModule.getOutputImageConfig("first_hit_depth"),
+                dlssModule.getInputImageConfig("first_hit_depth"));
+
+        connect(dlssModule.getOutputImageConfig("processed"),
+                toneMappingModule.getInputImageConfig("denoised_radiance"));
+        connect(dlssModule.getOutputImageConfig("processed"),
+                postRenderModule.getInputImageConfig("hdr_input"));
+
+        connect(dlssModule.getOutputImageConfig("upscaled_first_hit_depth"),
+                postRenderModule.getInputImageConfig("first_hit_depth"));
+        connect(dlssModule.getOutputImageConfig("upscaled_motion_vector"),
+                postRenderModule.getInputImageConfig("motion_vector"));
+        connect(dlssModule.getOutputImageConfig("upscaled_normal_roughness"),
                 postRenderModule.getInputImageConfig("normal_roughness"));
 
         connect(toneMappingModule.getOutputImageConfig("mapped_output"),
@@ -1583,6 +1714,11 @@ public class Pipeline {
 
         if (Objects.equals(presetName, Presets.RT_NRD_XESS.key)) {
             assembleNRDXESSInternal();
+            return;
+        }
+
+        if (Objects.equals(presetName, Presets.RT_NRD_DLSS.key)) {
+            assembleNRDDLSSInternal();
             return;
         }
 

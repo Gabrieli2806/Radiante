@@ -88,8 +88,8 @@ public final class RadianteClient {
             var installed = com.g2806.radiante.client.download.UpscalerDownloads.switchOfferOnStartup();
             if (installed != null) {
                 String presetKey = com.g2806.radiante.client.gui.UpscalerDownloadScreen.presetOf(installed).key;
-                if (com.g2806.radiante.client.pipeline.Pipeline.isPresetAvailable(presetKey) && !java.util.Objects.equals(
-                    presetKey, com.g2806.radiante.client.pipeline.Pipeline.INSTANCE.getActivePresetName())) {
+                if (com.g2806.radiante.client.pipeline.Pipeline.isPresetAvailable(presetKey)
+                    && !com.g2806.radiante.client.gui.UpscalerDownloadScreen.isInUse(installed)) {
                     minecraft.gui.setScreen(new com.g2806.radiante.client.gui.UpscalerDownloadScreen(title, installed,
                         com.g2806.radiante.client.gui.UpscalerDownloadScreen.Mode.SWITCH));
                     return;

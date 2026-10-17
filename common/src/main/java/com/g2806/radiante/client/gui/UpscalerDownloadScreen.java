@@ -55,6 +55,19 @@ public class UpscalerDownloadScreen extends Screen {
             : com.g2806.radiante.client.pipeline.Presets.RT_NRD_XESS;
     }
 
+    /**
+     * Whether the active pipeline already runs this upscaler. DLSS counts with Ray Reconstruction off too: offering
+     * to switch to DLSS there would only turn Ray Reconstruction back on.
+     */
+    public static boolean isInUse(Component component) {
+        var active = com.g2806.radiante.client.pipeline.Presets.byKey(
+            com.g2806.radiante.client.pipeline.Pipeline.INSTANCE.getActivePresetName());
+        if (active == null) {
+            return false;
+        }
+        return component == Component.DLSS ? active.usesDlss() : active == presetOf(component);
+    }
+
     public boolean isRestartScreen() {
         return this.mode == Mode.RESTART;
     }

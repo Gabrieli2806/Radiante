@@ -30,6 +30,11 @@ public class RadianteOptionsScreen extends Screen {
     /** A pipeline picked that needs a download or a restart first: shown, with Install / Restart below, not applied. */
     private Presets shownPreset;
     private String pendingDlssMode;
+    /**
+     * DLSS Ray Reconstruction on or off; null until read. The selector has one DLSS entry: with this off it applies
+     * as RT_NRD_DLSS, where NRD denoises and DLSS only upscales.
+     */
+    private Boolean pendingRayReconstruction;
     /** FSR or XeSS render resolution mode; null when neither is in the pipeline. */
     private String pendingUpscalerMode;
     /** The Custom upscaling mode is chosen: the render resolution is the percentage below, not a mode's. */
@@ -153,6 +158,7 @@ public class RadianteOptionsScreen extends Screen {
         this.staged.putAll(previous.staged);
         this.shownPreset = previous.shownPreset;
         this.pendingDlssMode = previous.pendingDlssMode;
+        this.pendingRayReconstruction = previous.pendingRayReconstruction;
         this.pendingUpscalerMode = previous.pendingUpscalerMode;
         this.pendingRenderScale = previous.pendingRenderScale;
         this.pendingCustomScale = previous.pendingCustomScale;
@@ -228,9 +234,21 @@ public class RadianteOptionsScreen extends Screen {
     }
 
     private OptionInstance<Presets> presetOption() {
+        String activeKey = Pipeline.INSTANCE.getActivePresetName();
+        if (this.pendingRayReconstruction == null) {
+            this.pendingRayReconstruction = !Objects.equals(activeKey, Presets.RT_NRD_DLSS.key);
+        }
+        // DLSS without Ray Reconstruction is not an entry of its own: it is the DLSS entry with that option off.
+        if (Objects.equals(activeKey, Presets.RT_NRD_DLSS.key)) {
+            activeKey = Presets.RT_DLSSRR.key;
+        }
+        if (this.pendingPreset == Presets.RT_NRD_DLSS) {
+            this.pendingPreset = Presets.RT_DLSSRR;
+            this.pendingRayReconstruction = false;
+        }
         List<Presets> available = new ArrayList<>();
         for (Presets preset : Presets.values()) {
-            if (Pipeline.isPresetAvailable(preset.key)) {
+            if (preset != Presets.RT_NRD_DLSS && Pipeline.isPresetAvailable(preset.key)) {
                 available.add(preset);
             }
         }
@@ -238,7 +256,8 @@ public class RadianteOptionsScreen extends Screen {
         List<Presets> listed = new ArrayList<>(available);
         for (Presets preset : Presets.values()) {
             UpscalerDownloads.Component needed = downloadFor(preset);
-            if (!listed.contains(preset) && needed != null && offersDownload(needed)) {
+            if (preset != Presets.RT_NRD_DLSS && !listed.contains(preset) && needed != null
+                && offersDownload(needed)) {
                 listed.add(preset);
             }
         }
@@ -248,7 +267,7 @@ public class RadianteOptionsScreen extends Screen {
 
         Presets active = available.getFirst();
         for (Presets preset : available) {
-            if (Objects.equals(preset.key, Pipeline.INSTANCE.getActivePresetName())) {
+            if (Objects.equals(preset.key, activeKey)) {
                 active = preset;
             }
         }
@@ -319,7 +338,7 @@ public class RadianteOptionsScreen extends Screen {
     /** The download a preset needs, or null when it needs none. */
     private static UpscalerDownloads.Component downloadFor(Presets preset) {
         return switch (preset) {
-            case RT_DLSSRR -> UpscalerDownloads.Component.DLSS;
+            case RT_DLSSRR, RT_NRD_DLSS -> UpscalerDownloads.Component.DLSS;
             case RT_NRD_XESS -> UpscalerDownloads.Component.XESS;
             default -> null;
         };
@@ -336,6 +355,11 @@ public class RadianteOptionsScreen extends Screen {
     /** Development: opens the settings looking at a pipeline, as if picked in the selector. */
     public static RadianteOptionsScreen showingPreset(Screen parent, net.minecraft.client.Options options, Presets preset) {
         RadianteOptionsScreen screen = new RadianteOptionsScreen(parent, options);
+        // The selector lists DLSS once; without Ray Reconstruction it is that entry with the option off.
+        if (preset == Presets.RT_NRD_DLSS) {
+            preset = Presets.RT_DLSSRR;
+            screen.pendingRayReconstruction = false;
+        }
         screen.shownPreset = preset;
         return screen;
     }
@@ -418,7 +442,36 @@ public class RadianteOptionsScreen extends Screen {
      * alone. Offering them next to FSR or XeSS suggests they can be combined, and they cannot.
      */
     private boolean usingDlss() {
-        return this.pendingPreset == Presets.RT_DLSSRR;
+        return this.pendingPreset != null && this.pendingPreset.usesDlss();
+    }
+
+    /**
+     * The pipeline Apply builds: the DLSS entry becomes RT_NRD_DLSS with Ray Reconstruction off, where NRD is there
+     * to take over the denoising.
+     */
+    private Presets appliedPreset() {
+        if (usingDlss() && Boolean.FALSE.equals(this.pendingRayReconstruction)
+            && Pipeline.isPresetAvailable(Presets.RT_NRD_DLSS.key)) {
+            return Presets.RT_NRD_DLSS;
+        }
+        return usingDlss() ? Presets.RT_DLSSRR : this.pendingPreset;
+    }
+
+    /**
+     * Ray Reconstruction is DLSS's own denoiser; off, NRD denoises and DLSS only upscales. Offered only with DLSS,
+     * and only where the NRD pipeline that replaces it can be built.
+     */
+    private OptionInstance<Boolean> rayReconstructionOption() {
+        if (!usingDlss() || !Pipeline.isPresetAvailable(Presets.RT_NRD_DLSS.key)) {
+            return null;
+        }
+        if (this.pendingRayReconstruction == null) {
+            this.pendingRayReconstruction = !Objects.equals(Pipeline.INSTANCE.getActivePresetName(),
+                Presets.RT_NRD_DLSS.key);
+        }
+        return OptionInstance.createBoolean("options.radiante.ray_reconstruction",
+            tooltip("options.radiante.ray_reconstruction"), this.pendingRayReconstruction,
+            value -> this.pendingRayReconstruction = value);
     }
 
     private OptionInstance<String> dlssModeOption() {
@@ -744,6 +797,7 @@ public class RadianteOptionsScreen extends Screen {
         this.pendingPreset = Pipeline.isPresetAvailable(Presets.RT_DLSSRR.key) ? Presets.RT_DLSSRR
             : Pipeline.isPresetAvailable(Presets.RT_NRD_FSR.key) ? Presets.RT_NRD_FSR : null;
         this.pendingDlssMode = "render_pipeline.module.dlss.attribute.mode.ultra_performance";
+        this.pendingRayReconstruction = Boolean.TRUE;
         this.pendingGeneratedFrames = 0;
         this.pendingCloudMode = Pipeline.supportsClouds() ? Pipeline.CLOUD_MODES.get(1) : null;
         this.pendingChunkAuto = true;
@@ -926,8 +980,8 @@ public class RadianteOptionsScreen extends Screen {
                 });
         }
         this.reflexToggle = reflex;
-        addRows(preset, dlssMode, upscalerModeOption(), renderScaleOption(), frameGenerationBackendOption(),
-            frameGeneration, reflex);
+        addRows(preset, dlssMode, rayReconstructionOption(), upscalerModeOption(), renderScaleOption(),
+            frameGenerationBackendOption(), frameGeneration, reflex);
     }
 
     private void addImageOptions() {
@@ -1640,13 +1694,14 @@ public class RadianteOptionsScreen extends Screen {
             changed = true;
             structural = true;
         }
-        if (this.pendingPreset != null
-            && !Objects.equals(this.pendingPreset.key, Pipeline.INSTANCE.getActivePresetName())) {
+        Presets appliedPreset = appliedPreset();
+        if (appliedPreset != null
+            && !Objects.equals(appliedPreset.key, Pipeline.INSTANCE.getActivePresetName())) {
             if (Options.debugLogging) {
                 RadianteClient.LOGGER.info("[settings] preset: {} -> {}", Pipeline.INSTANCE.getActivePresetName(),
-                    this.pendingPreset.key);
+                    appliedPreset.key);
             }
-            Pipeline.switchToPresetMode(this.pendingPreset.key, false);
+            Pipeline.switchToPresetMode(appliedPreset.key, false);
             changed = true;
             structural = true;
         }
