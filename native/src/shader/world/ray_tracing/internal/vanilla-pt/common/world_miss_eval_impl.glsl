@@ -168,6 +168,13 @@ float celestialHaloFade(vec3 bodyDir, vec3 rayDir) {
            smoothstep(CELESTIAL_HORIZON_Y - 0.03, CELESTIAL_HORIZON_Y + 0.03, rayDir.y);
 }
 
+// How the moon is seen, against the light it casts (VPT_MOON_RADIANCE): its disc a third as bright, and only a
+// faint, tight halo, as Bedrock RTX draws it. A tenth of the moonlight spread a radian wide lit half the night sky
+// round the moon.
+const float MOON_DISC_SEEN = 0.3;
+const float MOON_HALO_WIDTH = 0.05;
+const float MOON_HALO_STRENGTH = 0.03;
+
 vec4 evalMoonBillboard(vec3 rayDir) {
     vec3 moonDir = celestialMoonDirection();
     rayDir = normalize(rayDir);
@@ -329,7 +336,10 @@ void main() {
             if (!blocked) {
                 // The air reddens and dims the moon near the horizon much less than its own light would suggest: at
                 // the full attenuation a rising moon was lost in the twilight until it stood well up in the sky.
-                vec3 moonRadiance = moonSample.rgb * (VPT_MOON_RADIANCE * worldUBO.moonBrightness) *
+                // The disc is seen at MOON_DISC_SEEN of the moonlight it casts: at full strength the night exposure
+                // blew it out into a white blot with a glow round it, where Bedrock RTX shows the moon's face, craters
+                // and all, no brighter than the clouds it lights.
+                vec3 moonRadiance = moonSample.rgb * (VPT_MOON_RADIANCE * worldUBO.moonBrightness) * MOON_DISC_SEEN *
                                     mix(vec3(1.0), transmittance, 0.5) * celestialHorizonCut(rayDir);
                 backgroundRadiance += mix(moonRadiance, vec3(0.0), progress);
             }
@@ -350,7 +360,7 @@ void main() {
         backgroundRadiance += celestialHalo(rayDir, sunDirHalo, VPT_SUN_GLOW_WIDTH, VPT_SUN_GLOW) *
                               (VPT_SUN_RADIANCE * worldUBO.sunBrightness) * sunHaloTint *
                               celestialHaloFade(sunDirHalo, rayDir) * (1.0 - progress);
-        backgroundRadiance += celestialHalo(rayDir, moonDirHalo, 0.10, 0.10) *
+        backgroundRadiance += celestialHalo(rayDir, moonDirHalo, MOON_HALO_WIDTH, MOON_HALO_STRENGTH) *
                               (VPT_MOON_RADIANCE * worldUBO.moonBrightness) * moonHaloTint *
                               celestialHaloFade(moonDirHalo, rayDir) * (1.0 - progress);
     }
