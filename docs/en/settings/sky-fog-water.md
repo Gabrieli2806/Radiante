@@ -22,7 +22,7 @@
 | **Stars at Altitude** | 0% – 400% | 100% | How much clearer the stars get the higher you are: at 100% they are twice as bright from a mountain top (around Y 190) as from sea level. 0% keeps them the same everywhere. With Biome Ambiance on, the biome's air counts too: sharper over deserts, peaks and the open sea, dimmer in a swamp's or a jungle's haze. |
 | **Sun Glow** | 0% – 300% | 100% | The halo around the sun. |
 | **Light Shafts** | 0% – 400% | 100% | Beams of light through windows, skylights and leaves. Needs Volumetric Fog turned on below. |
-| **Vanilla Sun Path** | On/Off | On | Sun and moon follow vanilla's path, straight overhead from east to west. Off, the path leans ten degrees south, so noon shadows are not straight down. |
+| **Sun Path** | Vanilla · Tilted · Custom | Vanilla | Vanilla: sun and moon cross straight overhead from east to west. Tilted: the path leans ten degrees south, so noon shadows are not straight down. Custom shows when the [Sun & Moon Path](#sun--moon-path-advanced) settings hold anything else. |
 | **Vanilla Sun/Moon Rotation** | On/Off | On | Keeps the sun and moon squares lined up with their path as in vanilla, instead of turning as they cross the sky. |
 | **Biome Ambiance** | On/Off | On | Each biome's own air and water, kept subtle: warm dust over deserts, a green murk over swamps, a cold bright mist over snow, red, teal and ash in the Nether, violet in the End; under water, clear and bright by a beach, dark and close in the deep ocean. Fades from one biome to the next, stays out of overworld caves, and works with or without Volumetric Fog. More under [Biome Ambiance](#biome-ambiance) below. |
 | **Biome Ambiance Strength** | 0% – 400% | 100% | How thick each biome's haze is. 100% is the tuned, subtle look; no effect on performance. |
@@ -37,6 +37,24 @@
 | **Water Waves** | 0% – 400% | 100% | How rough the water surface is. 0% is a flat, mirror-like surface. |
 | **Water Murkiness** | 0% – 500% | 100% | How quickly the view fades out underwater. Lower is clearer. |
 | **Underwater Light Rays** | 0% – 400% | 100% | Shafts of sunlight through the water surface while underwater. |
+
+## Sun & Moon Path (advanced)
+
+With **Advanced** on, the Sun & Moon Path group sets the sky's path by hand. Everything that uses the sun or the moon
+follows it at once, without a rebuild: the sky and its glow, shadows, clouds, fog and light shafts, water and the
+Bedrock RTX lighting.
+
+| Control | Range | Default | What it does |
+|---|---|---|---|
+| **Sun Path Tilt** | -45° – 45° | 0° | How far the sun's path leans from straight overhead: positive south, negative north. The sun still rises and sets at the same times. Tilted is 10°. |
+| **Sun Path Rotation** | -180° – 180° | 0° | Turns the path around the sky; positive turns it clockwise seen from above, moving sunrise from the east towards the south. |
+| **Sun Rotation** | -180° – 180° | 0° | Turns the sun's square around its own centre. Only how it looks. |
+| **Moon Follows Sun** | On/Off | On | The moon crosses on the sun's path, opposite the sun, as in vanilla. Off, it takes the two settings below; it still rises as the sun sets. |
+| **Moon Path Tilt** | -45° – 45° | 0° | The moon's own lean, as Sun Path Tilt. Only with Moon Follows Sun off. |
+| **Moon Path Rotation** | -180° – 180° | 0° | The moon's own turn, as Sun Path Rotation. Only with Moon Follows Sun off. |
+| **Moon Rotation** | -180° – 180° | 0° | Turns the moon's square around its own centre. Only how it looks. |
+
+With ray tracing off, Minecraft draws its own sky, which keeps vanilla's path.
 
 ## Biome Ambiance
 
