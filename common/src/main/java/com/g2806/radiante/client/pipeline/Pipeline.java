@@ -460,6 +460,12 @@ public class Pipeline {
     /** Water and glass trace their reflection or their refraction per pixel on a checkerboard, not both. */
     public static final String TRANSPARENT_CHECKERBOARD_ATTRIBUTE =
         "render_pipeline.module.ray_tracing.attribute.transparent_checkerboard";
+    /**
+     * The path tracer writes the light of what the camera sees apart for NRD (its glow and the sun's light left out of
+     * what NRD blurs, the bounce's length as its hit distance). Not a setting: every build sets it to whether the
+     * pipeline denoises with NRD (syncDenoiserSignals).
+     */
+    public static final String NRD_SIGNALS_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.nrd_signals";
     /** Glass blocks without the frame vanilla draws around each one, so neighbours join into one sheet. */
     public static final String SEAMLESS_GLASS_ATTRIBUTE =
         "render_pipeline.module.ray_tracing.attribute.seamless_glass";
@@ -869,6 +875,19 @@ public class Pipeline {
         }
     }
 
+    /**
+     * Tells the shader pack whether NRD denoises this pipeline (NRD_SIGNALS_ATTRIBUTE): with Ray Reconstruction the
+     * path tracer hands over one picture, with NRD the light in signals NRD can denoise well. Part of every build, so
+     * a preset switch, a custom pipeline or a pipeline file from an older session cannot leave it wrong.
+     */
+    private static void syncDenoiserSignals() {
+        boolean nrd = false;
+        for (Module module : INSTANCE.modules) {
+            nrd |= module != null && Objects.equals(module.name, NRD_MODULE_NAME);
+        }
+        setShaderPackValue(NRD_SIGNALS_ATTRIBUTE, nrd ? "render_pipeline.true" : "render_pipeline.false");
+    }
+
     private static void buildInternal() {
         buildInternal(false);
     }
@@ -881,6 +900,7 @@ public class Pipeline {
         // written by an older session put them back to defaults, and Bedrock RTX's eye adaptation and the rest
         // silently went away while the profile still read Bedrock RTX.
         com.g2806.radiante.client.profile.RendererProfile.current().enforce();
+        syncDenoiserSignals();
         getModuleAttributes();
 
         Map<ImageConfig, ImageConfig> dstTosrcMap = new HashMap<>();

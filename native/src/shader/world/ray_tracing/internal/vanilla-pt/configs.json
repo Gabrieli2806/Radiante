@@ -254,6 +254,12 @@
             "define": "VPT_TRANSPARENT_CHECKERBOARD"
         },
         {
+            "name": "render_pipeline.module.ray_tracing.attribute.nrd_signals",
+            "type": "bool",
+            "default_value": "render_pipeline.false",
+            "define": "VPT_NRD_SIGNALS"
+        },
+        {
             "name": "render_pipeline.module.ray_tracing.attribute.cache_deep_bounces",
             "type": "bool",
             "default_value": "render_pipeline.true",

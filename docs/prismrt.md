@@ -332,7 +332,10 @@ diffuse and specular albedo, normal/roughness, motion vectors, linear and first-
 first-hit direct and indirect diffuse, specular, emission, refraction, and fog image and transmission.
 
 - **NRD** (`nrd/`): RELAX diffuse+specular. `nrd/prepare.comp` and `nrd/compose.comp` pack the inputs and put the
-  denoised signals back together. Built only with `PRISM_ENABLE_NRD`.
+  denoised signals back together. Built only with `PRISM_ENABLE_NRD`. Java sets the pack attribute `nrd_signals`
+  (`VPT_NRD_SIGNALS`) on every build whose pipeline has NRD: the path tracer then writes its signals for NRD (the
+  glow of the surface seen kept out of them, the direct light always diffuse, the bounce's length as the diffuse hit
+  distance).
 - **DLSS** (`dlss/`): DLSS Super Resolution and Ray Reconstruction through NGX; RR replaces NRD when available.
 - **FSR** (`fsr_upscaler/`): FidelityFX upscaler (`PRISM_ENABLE_FFX_UPSCALER`).
 - **XeSS** (`xess_upscaler/`): Intel XeSS SR (`PRISM_ENABLE_XESS`, needs `extern/xess`).

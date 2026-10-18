@@ -91,10 +91,13 @@ void main() {
     imageStore(nrdNormalRoughnessImage, pixel,
                NRD_FrontEnd_PackNormalAndRoughness(surfaceNormal, gbufferNormalRoughness.w, 0.0));
 
-    // Diffuse: direct light plus diffuse bounces.
-    vec3 diffuseLight =
-        imageLoad(diffuseIndirectRadianceImage, pixel).rgb + imageLoad(directRadianceImage, pixel).rgb;
-    float diffuseDistance = max(imageLoad(diffuseHitDepthImage, pixel).r, 0.001);
+    // Diffuse: direct light plus diffuse bounces. The bounce's length rides in the indirect image's alpha (world.rgen,
+    // VPT_NRD_SIGNALS), 0 where the bounce took the specular lobe: NRD then reconstructs it from the neighbours
+    // (HitDistanceReconstructionMode). The first hit's own distance, which the diffuse hit depth input carries, is not
+    // a hit distance: it made NRD blur every surface as if its light came from far away.
+    vec4 diffuseIndirect = imageLoad(diffuseIndirectRadianceImage, pixel);
+    vec3 diffuseLight = diffuseIndirect.rgb + imageLoad(directRadianceImage, pixel).rgb;
+    float diffuseDistance = max(diffuseIndirect.a, 0.0);
     vec3 diffuseReflectance = max(imageLoad(diffuseAlbedoMetallicImage, pixel).rgb, kDiffuseAlbedoFloor);
     imageStore(nrdDiffuseImage, pixel,
                RELAX_FrontEnd_PackRadianceAndHitDist(diffuseLight / diffuseReflectance, diffuseDistance, true));

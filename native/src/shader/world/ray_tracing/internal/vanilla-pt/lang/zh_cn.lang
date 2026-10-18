@@ -102,6 +102,7 @@ render_pipeline.module.ray_tracing.attribute.post_dof_focus_range=景深焦平�
 render_pipeline.module.ray_tracing.attribute.cache_deep_bounces=深层反弹使用缓存
 render_pipeline.module.ray_tracing.attribute.bedrock_one_bounce=基岩版单次反弹
 render_pipeline.module.ray_tracing.attribute.transparent_checkerboard=玻璃/水棋盘格
+render_pipeline.module.ray_tracing.attribute.nrd_signals=NRD 信号
 render_pipeline.module.ray_tracing.attribute.exposure_day_scale=白天曝光
 render_pipeline.module.ray_tracing.attribute.exposure_night_scale=夜间曝光
 render_pipeline.module.ray_tracing.attribute.exposure_day_max=白天暗处上限

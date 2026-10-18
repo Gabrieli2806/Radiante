@@ -102,6 +102,7 @@ render_pipeline.module.ray_tracing.attribute.post_dof_focus_range=DOF Focus Rang
 render_pipeline.module.ray_tracing.attribute.cache_deep_bounces=Cache Deep Bounces
 render_pipeline.module.ray_tracing.attribute.bedrock_one_bounce=Bedrock One Bounce
 render_pipeline.module.ray_tracing.attribute.transparent_checkerboard=Glass/Water Checkerboard
+render_pipeline.module.ray_tracing.attribute.nrd_signals=NRD Signals
 render_pipeline.module.ray_tracing.attribute.exposure_day_scale=Daytime Exposure
 render_pipeline.module.ray_tracing.attribute.exposure_night_scale=Night-time Exposure
 render_pipeline.module.ray_tracing.attribute.exposure_day_max=Daytime Low-Light Limit

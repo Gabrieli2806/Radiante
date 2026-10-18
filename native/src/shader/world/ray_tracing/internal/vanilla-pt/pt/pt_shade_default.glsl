@@ -115,6 +115,15 @@ const float MIRROR_MIN_METALLIC = 0.5;
 // Under how rough a Bedrock pack's full metal is a mirror in the experimental Bedrock profile.
 const float BEDROCK_MIRROR_ROUGHNESS = 0.01;
 
+#if VPT_NRD_SIGNALS
+// With NRD denoising (VPT_NRD_SIGNALS), the surface the camera sees records the glow it was seen with for the ray
+// generation, which hands NRD its signals (world.rgen): the glow is left out of what NRD blurs and added back as it
+// is, sharp. (The sun's light was tried the same way, for sharper normal maps: its shadows through leaves and grass
+// came out grainy.) One of the ray generation's own output images carries it, at this pixel; the ray generation
+// clears it before its camera rays and writes it anew after.
+layout(set = 3, binding = 12, rgba16f) uniform image2D nrdRecordEmissionImage; // first_hit_base_emission
+#endif
+
 // The old closest-hit main(), unchanged in order, reading the hit through g_hit and handing its results back
 // through pt_side_channels.glsl. viewMark: the ray belongs to a view chain (traced with RAY_VIEW_BOUNCE_MARK).
 void ptShadeDefault(bool viewMark) {
@@ -392,6 +401,13 @@ void ptShadeDefault(bool viewMark) {
             seenEmission * mainRay.throughput;
         emissionRadiance += currentSurface.tint * albedoEmission * mainRay.throughput;
         mainRay.radiance += emissionRadiance;
+#if VPT_NRD_SIGNALS
+        // The surface the camera sees (pass-throughs left out, the paths that fill the cache too). Stored at once:
+        // kept to the end, it was one more thing the shadow rays traced there had to keep (pt_deferred_shadow.glsl).
+        if ((bounce == 0u || rayCameraPath(mainRay)) && !rayCacheUpdate(mainRay)) {
+            imageStore(nrdRecordEmissionImage, ivec2(gl_LaunchIDEXT.xy), vec4(emissionRadiance, 1.0));
+        }
+#endif
 
         SampledSurface litSurface = currentSurface;
         // The shadow rays of the lights sampled here are traced as the hit shader ends (main below, see

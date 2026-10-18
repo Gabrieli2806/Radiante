@@ -125,6 +125,9 @@ nrd::ReblurSettings defaultReblurSettings() {
 nrd::RelaxSettings relaxSettings() {
     nrd::RelaxSettings settings = {};
     settings.hitDistanceReconstructionMode = nrd::HitDistanceReconstructionMode::AREA_3X3;
+    // A bounce that finds a torch's flame or the sun's reflection by chance is one very bright sample among dark
+    // ones; without this RELAX kept such samples as sparks scattered over a lit room, still there once converged.
+    settings.enableAntiFirefly = true;
     return settings;
 }
 
