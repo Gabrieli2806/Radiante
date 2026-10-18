@@ -300,7 +300,9 @@ the work, not the pixel: `gl_LaunchIDEXT` and every image coordinate stay the sa
 SHaRC is a world-space hash grid of cached radiance (`use_sharc`, on by default). It has three parts:
 
 - **update**: a sparse `SHARC_UPDATE` variant of the raygen traces paths that fill the cache
-  (`pt_sharc_update.glsl`; `configs.json` names the pass as `"update_pass": "world"`);
+  (`pt_sharc_update.glsl`; `configs.json` names the pass as `"update_pass": "world"`): one per
+  `sharc_update_downsample_factor` squared pixels, the factor scaled up above a 1280x720 render size so the cache gets
+  the same number of paths a frame at any larger size (its cells are in the world and do not shrink with the render);
 - **resolve**: `sharc_resolve.comp` folds the frame's accumulated radiance into the resolved cache and evicts stale
   entries;
 - **query**: deep bounces may take the cached light instead of tracing on (`pt_sharc.glsl`).
