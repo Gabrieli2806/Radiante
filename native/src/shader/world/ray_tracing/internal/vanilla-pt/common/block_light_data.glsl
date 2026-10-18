@@ -10,8 +10,12 @@ struct VptChunkLightData {
     int z;
     uint geometryCount;
     uint lightCount;
+    // Which of the 27 sections around this one hold lights (bit (dz + 1) * 9 + (dy + 1) * 3 + (dx + 1)), and
+    // VPT_LIGHT_NEIGHBOURS_KNOWN once the renderer has worked that out (Chunks::updateLightNeighbours).
+    uint lightNeighbours;
     uint64_t lightBufferAddress;
 };
+const uint VPT_LIGHT_NEIGHBOURS_KNOWN = 1u << 31;
 
 struct VptPackedLight {
     vec4 p0Area;
@@ -86,15 +90,21 @@ int vptFloorMod(int value, int divisor) {
     return value - divisor * int(floor(float(value) / float(divisor)));
 }
 
-/** The loaded section's slot in the light list, or -1 when it is outside the grid or holds no lights. */
-int vptSectionLightSlot(ivec3 section) {
+/** The slot the grid gives a section, or -1 when it is outside the grid. */
+int vptSectionSlot(ivec3 section) {
     int sizeX = worldUBO.chunkGridInfo.x;
     int sizeY = worldUBO.chunkGridInfo.y;
     int sizeZ = worldUBO.chunkGridInfo.z;
     int bottom = worldUBO.chunkGridInfo.w;
     if (sizeX <= 0 || sizeY <= 0 || sizeZ <= 0) { return -1; }
     if (section.y < bottom || section.y >= bottom + sizeY) { return -1; }
-    int slot = (vptFloorMod(section.z, sizeZ) * sizeY + (section.y - bottom)) * sizeX + vptFloorMod(section.x, sizeX);
+    return (vptFloorMod(section.z, sizeZ) * sizeY + (section.y - bottom)) * sizeX + vptFloorMod(section.x, sizeX);
+}
+
+/** The loaded section's slot in the light list, or -1 when it is outside the grid or holds no lights. */
+int vptSectionLightSlot(ivec3 section) {
+    int slot = vptSectionSlot(section);
+    if (slot < 0) { return -1; }
     VptChunkLightData data = vptChunkLights[slot];
     // A slot is reused as the grid scrolls; one still holding another section is no use here.
     if (data.x != section.x * 16 || data.y != section.y * 16 || data.z != section.z * 16) { return -1; }
@@ -129,10 +139,62 @@ bool vptHasEntityLights() {
     return worldUBO.entityLightCount > 0u && (worldUBO.entityLightAddressLo | worldUBO.entityLightAddressHi) != 0u;
 }
 
+/**
+ * The mask of the sections around section that hold lights (VptChunkLightData.lightNeighbours, without the known
+ * bit), as the renderer worked it out for that section; false when the grid's slot for it holds another section or
+ * none was worked out yet, and the sections have to be looked at one by one.
+ */
+bool vptLightNeighbours(ivec3 section, out uint mask) {
+    mask = 0u;
+    int slot = vptSectionSlot(section);
+    if (slot < 0) { return false; }
+    VptChunkLightData data = vptChunkLights[slot];
+    if (data.x != section.x * 16 || data.y != section.y * 16 || data.z != section.z * 16) { return false; }
+    if ((data.lightNeighbours & VPT_LIGHT_NEIGHBOURS_KNOWN) == 0u) { return false; }
+    mask = data.lightNeighbours & ~VPT_LIGHT_NEIGHBOURS_KNOWN;
+    return true;
+}
+
+// The slots of the sections a mask of vptLightNeighbours names around center, appended to slots in the order the
+// section by section search finds them (z, then y, then x, each from -1 to 1): the same list, from one read of the
+// table instead of one per section. A macro, not a function, for the reason VPT_PICK_LIGHT is one: no copy of the
+// slot array.
+#define VPT_APPEND_NEIGHBOUR_SLOTS(center, mask, slots, slotCount)                                                    \
+    {                                                                                                                 \
+        uint vptRemaining = (mask);                                                                                   \
+        while (vptRemaining != 0u) {                                                                                  \
+            int vptBit = findLSB(vptRemaining);                                                                       \
+            vptRemaining &= vptRemaining - 1u;                                                                        \
+            slots[slotCount++] = vptSectionSlot((center) + ivec3(vptBit % 3, (vptBit / 3) % 3, vptBit / 9) - 1);       \
+        }                                                                                                             \
+    }
+
+/**
+ * Of the 27 sections around center, the bits of the eight in the 2x2x2 block that starts at base (the block around
+ * a point's closest section corner): on each axis the pair of offsets base starts.
+ */
+uint vptNearNeighbourBits(ivec3 base, ivec3 center) {
+    ivec3 low = base - center + 1; // 0 or 1: the first offset of the pair on each axis, counted from -1
+    uint xBits = 3u << uint(low.x);
+    uint bits = 0u;
+    for (int dz = 0; dz < 2; dz++) {
+        for (int dy = 0; dy < 2; dy++) {
+            bits |= xBits << uint((low.z + dz) * 9 + (low.y + dy) * 3);
+        }
+    }
+    return bits;
+}
+
 /** The light list slots a surface at scenePos picks from: the 27 sections around it, then the entities'. */
 int vptGatherLightSlots(vec3 scenePos, out int slots[28]) {
     int slotCount = 0;
     ivec3 center = vptSectionOf(scenePos);
+    uint mask;
+    if (vptLightNeighbours(center, mask)) {
+        VPT_APPEND_NEIGHBOUR_SLOTS(center, mask, slots, slotCount)
+        if (vptHasEntityLights()) { slots[slotCount++] = VPT_ENTITY_LIGHT_SLOT; }
+        return slotCount;
+    }
     for (int dz = -1; dz <= 1; dz++) {
         for (int dy = -1; dy <= 1; dy++) {
             for (int dx = -1; dx <= 1; dx++) {
@@ -149,6 +211,13 @@ int vptGatherLightSlots(vec3 scenePos, out int slots[28]) {
 int vptGatherNearLightSlots(vec3 scenePos, out int slots[28]) {
     int slotCount = 0;
     ivec3 base = ivec3(floor((scenePos + vec3(worldUBO.cameraPos.xyz) - 8.0) / 16.0));
+    ivec3 center = vptSectionOf(scenePos);
+    uint mask;
+    if (vptLightNeighbours(center, mask)) {
+        VPT_APPEND_NEIGHBOUR_SLOTS(center, mask & vptNearNeighbourBits(base, center), slots, slotCount)
+        if (vptHasEntityLights()) { slots[slotCount++] = VPT_ENTITY_LIGHT_SLOT; }
+        return slotCount;
+    }
     for (int corner = 0; corner < 8; corner++) {
         int slot = vptSectionLightSlot(base + ivec3(corner & 1, (corner >> 1) & 1, corner >> 2));
         if (slot >= 0) { slots[slotCount++] = slot; }

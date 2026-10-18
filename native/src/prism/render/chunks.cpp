@@ -790,7 +790,7 @@ void Chunks::invalidateChunk(int id) {
     dropQueuedBuild(id);
     Chunk1 &slot = *chunks_[id];
     clearSlot(slot);
-    storePackedData(id, {slot.x, slot.y, slot.z, 0, 0, 0});
+    storePackedData(id, {.x = slot.x, .y = slot.y, .z = slot.z, .geometryCount = 0});
 }
 
 void Chunks::relocateChunk(int id, int x, int y, int z) {
@@ -802,7 +802,7 @@ void Chunks::relocateChunk(int id, int x, int y, int z) {
     slot.y = y;
     slot.z = z;
     clearSlot(slot);
-    storePackedData(id, {x, y, z, 0, 0, 0});
+    storePackedData(id, {.x = x, .y = y, .z = z, .geometryCount = 0});
 }
 
 void Chunks::queueChunkBuild(ChunkBuildTask task) {
@@ -1084,8 +1084,13 @@ bool Chunks::swapIn(ChunkBuildData &data) {
     if (slot.occupiedFlag != nullptr) *slot.occupiedFlag = slot.blas != nullptr ? 1 : 0;
     bumpContentVersion();
 
-    storePackedData(data.id, {slot.x, slot.y, slot.z, slot.geometryCount, data.lightCount,
-                              data.lightBuffer != nullptr ? data.lightBuffer->bufferAddress() : 0});
+    storePackedData(data.id, {.x = slot.x,
+                              .y = slot.y,
+                              .z = slot.z,
+                              .geometryCount = slot.geometryCount,
+                              .lightCount = data.lightCount,
+                              .lightBufferAddress =
+                                  data.lightBuffer != nullptr ? data.lightBuffer->bufferAddress() : 0});
     return true;
 }
 
@@ -1102,7 +1107,65 @@ void Chunks::clearSlot(Chunk1 &slot) {
 void Chunks::storePackedData(int64_t id, const ChunkPackedData &entry) {
     if (!Renderer::options.collectChunkEmission) return;
     chunkPackedData_[id] = entry;
+    updateLightNeighbours(id);
     chunkPackedDataRevision_++;
+}
+
+namespace {
+int32_t floorModInt(int32_t value, int32_t divisor) {
+    const int32_t remainder = value % divisor;
+    return remainder < 0 ? remainder + divisor : remainder;
+}
+} // namespace
+
+// The masks of the sections around a slot that changed. A mask reads only the slots the grid puts next to its own
+// (the grid wraps in x and z), so these 27 are the only ones that can have changed, whatever section each holds.
+void Chunks::updateLightNeighbours(int64_t id) {
+    if (sizeX_ <= 0 || sizeY_ <= 0 || sizeZ_ <= 0) return;
+    const int64_t layer = static_cast<int64_t>(sizeX_) * sizeY_;
+    const int32_t ix = static_cast<int32_t>(id % sizeX_);
+    const int32_t iy = static_cast<int32_t>((id / sizeX_) % sizeY_);
+    const int32_t iz = static_cast<int32_t>(id / layer);
+    for (int32_t dz = -1; dz <= 1; dz++) {
+        for (int32_t dy = -1; dy <= 1; dy++) {
+            const int32_t ny = iy + dy;
+            if (ny < 0 || ny >= sizeY_) continue;
+            for (int32_t dx = -1; dx <= 1; dx++) {
+                const int64_t neighbour =
+                    (static_cast<int64_t>(floorModInt(iz + dz, sizeZ_)) * sizeY_ + ny) * sizeX_ +
+                    floorModInt(ix + dx, sizeX_);
+                if (neighbour < 0 || neighbour >= static_cast<int64_t>(chunkPackedData_.size())) continue;
+                chunkPackedData_[neighbour].lightNeighbours = lightNeighboursOf(chunkPackedData_[neighbour]);
+            }
+        }
+    }
+}
+
+// The mask of one entry, for the section it names, by the rule vptSectionLightSlot applies to each neighbour: the
+// slot the grid gives that section holds it, with lights.
+uint32_t Chunks::lightNeighboursOf(const ChunkPackedData &entry) const {
+    const int32_t sx = entry.x >> 4;
+    const int32_t sy = entry.y >> 4;
+    const int32_t sz = entry.z >> 4;
+    uint32_t mask = kLightNeighboursKnown;
+    for (int32_t dz = -1; dz <= 1; dz++) {
+        for (int32_t dy = -1; dy <= 1; dy++) {
+            const int32_t y = sy + dy;
+            if (y < bottomSectionCoord_ || y >= bottomSectionCoord_ + sizeY_) continue;
+            for (int32_t dx = -1; dx <= 1; dx++) {
+                const int64_t slot = (static_cast<int64_t>(floorModInt(sz + dz, sizeZ_)) * sizeY_ +
+                                      (y - bottomSectionCoord_)) *
+                                         sizeX_ +
+                                     floorModInt(sx + dx, sizeX_);
+                if (slot < 0 || slot >= static_cast<int64_t>(chunkPackedData_.size())) continue;
+                const ChunkPackedData &neighbour = chunkPackedData_[slot];
+                if (neighbour.x != (sx + dx) * 16 || neighbour.y != y * 16 || neighbour.z != (sz + dz) * 16) continue;
+                if (neighbour.lightCount == 0 || neighbour.lightBufferAddress == 0) continue;
+                mask |= 1u << static_cast<uint32_t>((dz + 1) * 9 + (dy + 1) * 3 + (dx + 1));
+            }
+        }
+    }
+    return mask;
 }
 
 void Chunks::allocateChunkPackedDataBuffers() {

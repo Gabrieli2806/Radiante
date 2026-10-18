@@ -9,6 +9,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <mutex>
@@ -27,9 +28,17 @@ struct ChunkPackedData {
     int32_t z;
     uint32_t geometryCount;
     uint32_t lightCount = 0;
+    // Which of the 27 sections around this one, itself included, hold lights: bit (dz + 1) * 9 + (dy + 1) * 3 +
+    // (dx + 1), plus kLightNeighboursKnown once worked out (Chunks::updateLightNeighbours). A shader gathering the
+    // light lists around a point reads this one entry instead of all 27 (vptGatherLightSlots). It sits in the padding
+    // the address below leaves, so the entry keeps its size and layout.
+    uint32_t lightNeighbours = 0;
     VkDeviceAddress lightBufferAddress = 0;
 };
 static_assert(sizeof(ChunkPackedData) == 32);
+static_assert(offsetof(ChunkPackedData, lightNeighbours) == 20 && offsetof(ChunkPackedData, lightBufferAddress) == 24);
+// ChunkPackedData::lightNeighbours holds a mask worked out for the section the entry names.
+constexpr uint32_t kLightNeighboursKnown = 1u << 31;
 
 // A section's geometry as Java hands it over (ChunkProxy.rebuildSingle): per geometry its type, hit group name and
 // vertices, four to a quad. Callers fill it with designated initializers, so the members keep this order.
@@ -222,6 +231,8 @@ class Chunks : public SharedObject<Chunks> {
     bool swapIn(ChunkBuildData &data);
     void clearSlot(Chunk1 &slot);
     void storePackedData(int64_t id, const ChunkPackedData &entry);
+    void updateLightNeighbours(int64_t id);
+    uint32_t lightNeighboursOf(const ChunkPackedData &entry) const;
     void allocateChunkPackedDataBuffers();
     void releaseEmissionResources();
     std::shared_ptr<ChunkBuildScheduler> makeScheduler();

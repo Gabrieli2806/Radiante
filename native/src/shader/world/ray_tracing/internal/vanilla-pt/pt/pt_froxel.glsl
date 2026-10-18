@@ -28,9 +28,15 @@ vec3 froxelBlockLight(vec3 position, inout uint seed) {
     int slots[9];
     int slotCount = 0;
     ivec3 base = ivec3(floor((position + vec3(worldUBO.cameraPos.xyz) - 8.0) / 16.0));
-    for (int corner = 0; corner < 8; corner++) {
-        int slot = vptSectionLightSlot(base + ivec3(corner & 1, (corner >> 1) & 1, corner >> 2));
-        if (slot >= 0) { slots[slotCount++] = slot; }
+    ivec3 center = vptSectionOf(position);
+    uint neighbours;
+    if (vptLightNeighbours(center, neighbours)) {
+        VPT_APPEND_NEIGHBOUR_SLOTS(center, neighbours & vptNearNeighbourBits(base, center), slots, slotCount)
+    } else {
+        for (int corner = 0; corner < 8; corner++) {
+            int slot = vptSectionLightSlot(base + ivec3(corner & 1, (corner >> 1) & 1, corner >> 2));
+            if (slot >= 0) { slots[slotCount++] = slot; }
+        }
     }
     if (vptHasEntityLights()) { slots[slotCount++] = VPT_ENTITY_LIGHT_SLOT; }
     if (slotCount == 0) { return vec3(0.0); }
