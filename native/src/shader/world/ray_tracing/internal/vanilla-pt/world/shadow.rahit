@@ -270,7 +270,7 @@ void main() {
         if (hasGlint(flags)) {
             glint = sampleTexture(textures[nonuniformEXT(m0.glintTexture)], glintUV, false).rgb;
         }
-        glint *= glint;
+        glint *= glint * GLINT_STRENGTH;
 
         vec3 filterColour = surface.rgb;
         if (hasOverlay(flags)) {

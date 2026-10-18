@@ -300,7 +300,7 @@ void ptShadeDefault(bool viewMark) {
         glintUV = (worldUBO.textureMat * vec4(glintUV, 0.0, 1.0)).xy;
         glint = sampleTexture(textures[nonuniformEXT(m0.glintTexture)], glintUV, false).rgb;
     }
-    glint *= glint;
+    glint *= glint * GLINT_STRENGTH;
 
     vec3 viewDir = -g_hit.rayDir;
 

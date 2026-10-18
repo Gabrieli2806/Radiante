@@ -121,6 +121,11 @@ bool hasOverlay(uint packedData) {
     return (packedData & USE_OVERLAY_BIT) != 0u;
 }
 
+// How much of the enchantment glint (its texture, squared into linear light) is added to a surface's colour. Vanilla
+// adds the glint over the lit picture in display space, where it stays a faint moving sheen; added to the albedo here,
+// the sun lit it in full and dark armor turned a saturated violet.
+const float GLINT_STRENGTH = 0.3;
+
 bool hasGlint(uint packedData) {
     return (packedData & USE_GLINT_BIT) != 0u;
 }

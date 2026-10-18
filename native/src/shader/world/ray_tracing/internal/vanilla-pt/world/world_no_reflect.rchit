@@ -154,7 +154,7 @@ void main() {
     vec2 glintUV = baryCoords.x * m0.glintUV + baryCoords.y * m1.glintUV + baryCoords.z * m2.glintUV;
     glintUV = (worldUBO.textureMat * vec4(glintUV, 0.0, 1.0)).xy;
     vec3 glint = useGlint ? sampleTexture(textures[nonuniformEXT(glintTexture)], glintUV, false).rgb : vec3(0.0);
-    glint = glint * glint;
+    glint = glint * glint * GLINT_STRENGTH;
 
     bool useOverlay = hasOverlay(m0.packedData);
     vec3 tint = vptSurfaceColour(albedoValue.rgb * colorLayer) + glint;
