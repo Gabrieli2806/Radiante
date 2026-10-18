@@ -24,7 +24,7 @@ components below.
 | --- | --- | --- |
 | DLSS / NGX SDK (Super Resolution, Ray Reconstruction) | NVIDIA | [NVIDIA RTX SDK](NVIDIA-RTX-SDK-LICENSE.txt) |
 | NRD (NVIDIA Real-time Denoisers) | NVIDIA | [NVIDIA RTX SDK](NVIDIA-NRD-LICENSE.txt) |
-| FidelityFX SDK (FSR) | AMD | [MIT](AMD-FidelityFX-LICENSE.txt) |
+| FidelityFX SDK (FSR, and FSR 1 EASU/RCAS for the output resolution upscale) | AMD | [MIT](AMD-FidelityFX-LICENSE.txt) |
 
 ## DLSS feature DLLs
 

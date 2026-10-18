@@ -87,6 +87,16 @@ One frame, step by step:
 They differ for the extra views some mods draw between the main ones (Vivecraft's handheld camera, telescopes);
 keeping them apart avoids rebuilding the pipeline every time the views alternate.
 
+The same split carries the **output resolution** setting (`OutputResolution`, `Options.outputResolution`): Java hands
+over a trace size below the window's (1080p in a 4K window, say), so the whole world pipeline (tracing, denoising,
+upscaling, post) works at that size, and a size change rebuilds it as a window resize does. In `recordAfterWorld`, a
+picture smaller than the target is brought to the target's size by `OutputUpscaler` (`render/output_upscaler.*`): FSR 1
+EASU then RCAS, compiled from the FidelityFX SDK's own headers (`shader/display/fsr1_easu.comp`, `fsr1_rcas.comp`),
+then copied into Minecraft's target, which draws its HUD over it at full resolution. Frame generation and HDR output
+take that upscaled picture as the world fused into Minecraft's image; the traced depth for Minecraft's overlays is
+point sampled to the target's size by `mc_depth.comp` as before. At the native size none of this runs. F3 shows the
+pass as `output_fsr1` and the upscaler line names both sizes.
+
 Every frame and every rebuild holds `Framework::recreateMtx()`. Anything that changes what a frame reads (a live
 setting, a rebuild) takes the same lock, so changes always fall between two frames.
 
@@ -443,6 +453,7 @@ step and CI are in [Building and releasing](en/building.md).
 | `native/src/prism/render/textures.*`, `buffers.*`, `emission.*` | atlases and materials, uploads and the world uniform, emissive light lists |
 | `native/src/prism/render/shader_prewarm.*` | background compile into the caches |
 | `native/src/prism/render/hdr_output.*`, `mc_depth.*`, `gpu_profiler.*` | HDR output, traced depth for Minecraft's overlays, GPU timings |
+| `native/src/prism/render/output_upscaler.*` | FSR 1 upscale of a lower output resolution to the window |
 | `native/src/prism/render/framegen/` | frame generation (DLSS, FSR), present thread, Reflex |
 | `native/src/prism/render/modules/world/` | the world pipeline modules |
 | `…/ray_tracing/` | the ray tracing module, SHaRC buffers, `submodules/world_prepare` (TLAS, SBT) |

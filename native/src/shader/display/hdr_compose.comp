@@ -7,6 +7,10 @@
 // radiance: with the SDR image's exposure and tone curve below paper white, so the two match, but with highlights
 // rising to the display's peak instead of being squeezed under 1.0. Everything else (menus, text, the hotbar, whatever
 // is drawn over the world, or the whole screen when no world was traced) is Minecraft's SDR image at paper white.
+//
+// With a lower output resolution the world pipeline's images are smaller than Minecraft's, and what was fused is their
+// FSR 1 upscale (render/output_upscaler.cpp). The radiance is then filtered up to the pixel, and the upscale's own
+// detail (its sharpened edges) is carried over as the ratio between what was fused and the filtered SDR picture.
 
 layout(local_size_x = 16, local_size_y = 16) in;
 
@@ -22,6 +26,7 @@ layout(set = 0, binding = 4) readonly buffer Exposure {
 } metered;
 
 layout(set = 0, binding = 5, rgba16f) uniform writeonly image2D composed;
+layout(set = 0, binding = 6) uniform sampler2D worldOutput;     // the pipeline's picture; fusedWorld unless scaled
 
 layout(push_constant) uniform ComposeParams {
     float paperWhite;     // the scRGB value of SDR white
@@ -32,6 +37,7 @@ layout(push_constant) uniform ComposeParams {
     int autoExposure;
     int worldValid;
     int debugView;        // tints what is shown as SDR, to tell it from what is HDR
+    int scaled;           // the world images are at a lower output resolution than shownImage
 } params;
 
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
@@ -91,6 +97,20 @@ vec3 withSaturation(vec3 color, float saturation) {
     return mix(vec3(dot(color, LUMA)), color, saturation);
 }
 
+// Bilinear filtering by hand: the samplers here fetch nearest, which the unscaled path relies on.
+vec3 bilinear(sampler2D image, vec2 uv) {
+    ivec2 size = textureSize(image, 0);
+    vec2 position = uv * vec2(size) - 0.5;
+    ivec2 base = ivec2(floor(position));
+    vec2 f = position - vec2(base);
+    ivec2 high = size - 1;
+    vec3 a = texelFetch(image, clamp(base, ivec2(0), high), 0).rgb;
+    vec3 b = texelFetch(image, clamp(base + ivec2(1, 0), ivec2(0), high), 0).rgb;
+    vec3 c = texelFetch(image, clamp(base + ivec2(0, 1), ivec2(0), high), 0).rgb;
+    vec3 d = texelFetch(image, clamp(base + ivec2(1, 1), ivec2(0), high), 0).rgb;
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
 void main() {
     ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
     if (any(greaterThanEqual(pixel, imageSize(composed)))) { return; }
@@ -105,18 +125,31 @@ void main() {
         // vignette does that over most of the screen; taken for UI, its soft edge became a hard oval where the picture
         // switched between HDR and SDR.
         float shade = greyShade(shown, fused);
-        // And not a star, text or anything else a post render pass drew over the world.
-        if (shade > 0.0 && sameStored(fused, texelFetch(toneMappedWorld, pixel, 0).rgb)) {
+        // And not a star, text or anything else a post render pass drew over the world: told at the pipeline's own
+        // resolution, under the pixel's centre.
+        vec2 uv = (vec2(pixel) + 0.5) / vec2(imageSize(composed));
+        ivec2 source = params.scaled != 0 ?
+                           min(ivec2(uv * vec2(textureSize(worldOutput, 0))), textureSize(worldOutput, 0) - 1) :
+                           pixel;
+        if (shade > 0.0 &&
+            sameStored(texelFetch(worldOutput, source, 0).rgb, texelFetch(toneMappedWorld, source, 0).rgb)) {
             float exposure = params.autoExposure != 0 ? metered.exposure : params.manualExposure;
             if (isnan(exposure) || isinf(exposure) || exposure <= 0.0) { exposure = max(params.manualExposure, 1e-6); }
             exposure *= exp2(params.exposureBias);
 
-            vec3 radiance = max(texelFetch(worldRadiance, pixel, 0).rgb * exposure, vec3(0.0));
+            vec3 radiance = params.scaled != 0 ? bilinear(worldRadiance, uv) : texelFetch(worldRadiance, pixel, 0).rgb;
+            radiance = max(radiance * exposure, vec3(0.0));
             vec3 mapped = max(pbrNeutral(radiance, max(params.peak, 1.0)), vec3(0.0));
             mapped = max(withSaturation(mapped, max(params.saturation, 0.0)), vec3(0.0));
             if (!any(isnan(mapped)) && !any(isinf(mapped))) {
                 // The overlay multiplied the gamma encoded value: in linear light, its 2.2th power.
                 result = mapped * params.paperWhite * pow(shade, 2.2);
+                if (params.scaled != 0) {
+                    // The upscale's detail: what was fused against the same picture only filtered, in linear light.
+                    float filtered = dot(pow(max(bilinear(toneMappedWorld, uv), vec3(0.0)), vec3(2.2)), LUMA);
+                    float sharp = dot(pow(max(fused, vec3(0.0)), vec3(2.2)), LUMA);
+                    result *= filtered > 1.0e-4 ? clamp(sharp / filtered, 0.5, 2.0) : 1.0;
+                }
                 fromRadiance = true;
             }
         }

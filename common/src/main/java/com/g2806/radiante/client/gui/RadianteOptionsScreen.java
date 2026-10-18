@@ -5,6 +5,7 @@ import com.g2806.radiante.client.render.RadianteRenderer;
 import com.g2806.radiante.client.RadianteClient;
 import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.render.FrameGeneration;
+import com.g2806.radiante.client.render.OutputResolution;
 import com.g2806.radiante.client.pipeline.Pipeline;
 import com.g2806.radiante.client.pipeline.Presets;
 import com.g2806.radiante.client.profile.RendererProfile;
@@ -724,6 +725,32 @@ public class RadianteOptionsScreen extends Screen {
             Math.max(renderScaleMin(), this.pendingRenderScale), value -> this.pendingRenderScale = value);
     }
 
+    /**
+     * The output resolution: the size the world is rendered and upscaled to before FSR 1 brings it to the window.
+     * Only the sizes below the window's are offered; the one chosen is kept in the list even when the window has
+     * shrunk under it since (it then renders at the window's size, as Native).
+     */
+    private OptionInstance<OutputResolution> outputResolutionOption() {
+        OutputResolution current = OutputResolution.byName(staged("outputResolution", Options.outputResolution));
+        int[] size = RadianteRenderer.lastOutputSize();
+        List<OutputResolution> values = size[2] > 0 ? new ArrayList<>(OutputResolution.offeredFor(size[2], size[3]))
+            : new ArrayList<>(List.of(OutputResolution.values()));
+        if (!values.contains(current)) {
+            values.add(current);
+            values.sort(null);
+        }
+        return new OptionInstance<>("options.radiante.output_resolution", tooltip("options.radiante.output_resolution"),
+            (caption, value) -> {
+                if (value == OutputResolution.NATIVE || size[2] <= 0) {
+                    return Component.translatable(value.key());
+                }
+                int[] output = value.outputSize(size[2], size[3]);
+                return Component.translatable(value.key()).append(" (" + output[0] + "x" + output[1] + ")");
+            },
+            new OptionInstance.Enum<>(values, Codec.STRING.xmap(OutputResolution::byName, OutputResolution::name)),
+            current, value -> stage("outputResolution", value.name()));
+    }
+
     /** The FSR / XeSS mode a quality level uses: the same step as its DLSS mode. */
     private String upscalerModeFor(QualityPreset quality) {
         List<String> modes = upscalerModes();
@@ -806,6 +833,7 @@ public class RadianteOptionsScreen extends Screen {
         stage("starAltitude", 100);
         stage("vanillaSunPath", true);
         stage("vanillaCelestialOrientation", true);
+        stage("outputResolution", OutputResolution.NATIVE.name());
         this.forgetStoredSettings = true;
         // DLSS where the GPU has it, otherwise FSR, which every GPU runs: never back to no upscaler at all.
         this.pendingPreset = entryAvailable(Presets.RT_DLSSRR) ? Presets.RT_DLSSRR
@@ -995,7 +1023,7 @@ public class RadianteOptionsScreen extends Screen {
         }
         this.reflexToggle = reflex;
         addRows(preset, dlssMode, rayReconstructionOption(), upscalerModeOption(), renderScaleOption(),
-            frameGenerationBackendOption(), frameGeneration, reflex);
+            outputResolutionOption(), frameGenerationBackendOption(), frameGeneration, reflex);
     }
 
     private void addImageOptions() {

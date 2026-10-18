@@ -1,0 +1,66 @@
+#version 460
+
+// Output resolution (render/output_upscaler.cpp), first pass: AMD FidelityFX Super Resolution 1 EASU (edge adaptive
+// spatial upsampling) of the world pipeline's picture to the window's size. The algorithm is the FidelityFX SDK's own
+// (extern/FidelityFX-SDK, MIT licensed); only its inputs and outputs are wired here. The picture is tone mapped and
+// gamma encoded, the perceptual space EASU is designed for.
+
+#extension GL_GOOGLE_include_directive : require
+
+#define FFX_GPU 1
+#define FFX_GLSL 1
+#define FFX_HALF 0
+#define FFX_FSR_EASU_FLOAT 1
+
+#include "FidelityFX/gpu/ffx_core.h"
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform sampler2D inputColor; // the world's picture, sampled linear, clamped
+layout(set = 0, binding = 1, rgba16f) uniform writeonly image2D upscaled;
+
+layout(push_constant) uniform EasuParams {
+    uvec2 inputSize;
+    uvec2 outputSize;
+} params;
+
+FfxFloat32x4 FsrEasuRF(FfxFloat32x2 p) {
+    return textureGather(inputColor, p, 0);
+}
+
+FfxFloat32x4 FsrEasuGF(FfxFloat32x2 p) {
+    return textureGather(inputColor, p, 1);
+}
+
+FfxFloat32x4 FsrEasuBF(FfxFloat32x2 p) {
+    return textureGather(inputColor, p, 2);
+}
+
+#include "FidelityFX/gpu/fsr1/ffx_fsr1.h"
+
+void filterPixel(uvec2 pixel, uvec4 con0, uvec4 con1, uvec4 con2, uvec4 con3) {
+    if (any(greaterThanEqual(pixel, params.outputSize))) { return; }
+    vec3 color;
+    ffxFsrEasuFloat(color, pixel, con0, con1, con2, con3);
+    imageStore(upscaled, ivec2(pixel), vec4(color, 1.0));
+}
+
+void main() {
+    // The constants depend on the sizes only; working them out here costs a few instructions per pixel and spares the
+    // host the FidelityFX CPU headers.
+    uvec4 con0, con1, con2, con3;
+    vec2 inputSize = vec2(params.inputSize);
+    vec2 outputSize = vec2(params.outputSize);
+    ffxFsrPopulateEasuConstants(con0, con1, con2, con3, inputSize.x, inputSize.y, inputSize.x, inputSize.y,
+                                outputSize.x, outputSize.y);
+
+    // The SDK's swizzle: each 64 thread group covers a 16x16 tile, four pixels per thread, in quad order.
+    uvec2 pixel = ffxRemapForQuad(gl_LocalInvocationID.x) + uvec2(gl_WorkGroupID.x << 4u, gl_WorkGroupID.y << 4u);
+    filterPixel(pixel, con0, con1, con2, con3);
+    pixel.x += 8u;
+    filterPixel(pixel, con0, con1, con2, con3);
+    pixel.y += 8u;
+    filterPixel(pixel, con0, con1, con2, con3);
+    pixel.x -= 8u;
+    filterPixel(pixel, con0, con1, con2, con3);
+}

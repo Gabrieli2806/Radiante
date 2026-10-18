@@ -278,6 +278,16 @@ public class Pipeline {
      * Reconstruction", "DLSS Balanced (NRD denoiser)", "FSR3 Upscaler Quality", or "Native" when nothing upscales.
      */
     public static String describeUpscaler() {
+        String upscaler = describePipelineUpscaler();
+        int[] size = com.g2806.radiante.client.render.RadianteRenderer.lastOutputSize();
+        if (size[0] > 0 && (size[0] != size[2] || size[1] != size[3])) {
+            // A lower output resolution: what the pipeline upscales to, then FSR 1 to the window.
+            return upscaler + " to " + size[0] + "x" + size[1] + ", FSR 1 to " + size[2] + "x" + size[3];
+        }
+        return upscaler;
+    }
+
+    private static String describePipelineUpscaler() {
         for (Module module : INSTANCE.modules) {
             if (module == null) {
                 continue;

@@ -56,10 +56,14 @@ class NativeFrameGeneration {
     // Frames reaching the display per second, real plus generated.
     int presentedFrameRate() const;
 
+    // hudless is the world as fused into Minecraft's target. worldOutput is the world pipeline's output size, which a
+    // lower output resolution makes smaller than hudless: depth and motion vectors smaller than it are still at the
+    // render resolution, with the camera's jitter in them.
     void captureWorldFrame(std::shared_ptr<Framework> framework,
                            std::shared_ptr<gpu::DeviceLocalImage> hudless,
                            std::shared_ptr<gpu::DeviceLocalImage> linearDepth,
-                           std::shared_ptr<gpu::DeviceLocalImage> motionVectors);
+                           std::shared_ptr<gpu::DeviceLocalImage> motionVectors,
+                           VkExtent2D worldOutput);
 
     // Records the evaluation into Minecraft's present command buffer, then blits the first generated frame (the real
     // one while there is no history yet) into the swapchain image, which is in TRANSFER_DST_OPTIMAL. Minecraft's final
