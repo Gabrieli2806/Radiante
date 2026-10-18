@@ -251,6 +251,12 @@ sky. Any-hit shaders (`*.rahit`) do alpha testing; shadow rays use `shadow.rahit
      └──────── reads radiance, throughput, next direction ◀───────────────┘
 ```
 
+The default shading does not trace its shadow rays (sun or moon, block light, held lights) where it samples the
+lights: it leaves them in `pt_deferred_shadow.glsl` and traces them as its closest hit ends, when almost nothing else is
+live. A ray traced from the middle of the shading made the hit shader keep everything it still needed across the call,
+which cost more than the rays themselves: 15 ms against 8 for the world pass of a torch-lit room at 1280x720 on an
+RTX 5070, a fifth to a quarter of it in daylight.
+
 This keeps every shader small. A design where the hit shaders only record the hit and the raygen shades it was tried
 and measured: with the whole shading inlined into one raygen and all of a pixel's traces funnelled through one loop,
 the world pass took about 2.5x as long on an RTX 5070 (13 ms against 5 ms per frame at 1280x720 with DLSS), so it was
@@ -273,6 +279,7 @@ Shadow and visibility rays use `ShadowRay` at location 1.
 | `pt_material.glsl` | textures, LabPBR, Bedrock MER and height maps, glint, rain |
 | `pt_shade_default.glsl` | the default shading the closest hit shaders include |
 | `pt_direct.glsl` | sun/moon shadow ray, block lights, sky, motion vectors |
+| `pt_deferred_shadow.glsl` | the shadow rays of the default shading, traced as its closest hit ends |
 | `pt_glass.glsl`, `pt_media.glsl`, `pt_parallax.glsl` | glass, water medium, height-map parallax |
 | `pt_fog.glsl`, `pt_volumetric.glsl`, `pt_froxel.glsl` | fog settings, per-pixel volumetric march, froxel fog |
 | `pt_sharc.glsl`, `pt_sharc_update.glsl` | SHaRC query and update paths |

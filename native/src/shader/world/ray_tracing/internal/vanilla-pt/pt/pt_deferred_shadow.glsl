@@ -1,0 +1,51 @@
+#ifndef VPT_PT_DEFERRED_SHADOW_GLSL
+#define VPT_PT_DEFERRED_SHADOW_GLSL
+
+// Shadow rays a hit shader's light sampling leaves to be traced as the shader ends (ptTraceDeferredShadowRays in
+// pt_direct.glsl, called from the closest hit's main). A ray traced from the middle of the shading has to keep everything the shading still
+// needs across the trace; a closest hit traces one to the sun or moon, one to a block light and one per held light,
+// each from deep inside it, and in a room lit by a torch the block light's ray alone cost a fifth of the path tracing
+// (15 ms against 12 at 1280x720 on an RTX 5070) although it is short and cheap to traverse. Traced last, almost
+// nothing is left to keep. The light is the same: each ray, its origin, direction, length and query are the ones the
+// sampling chose, the random numbers are drawn in the same order, and the light is added once the ray says how much
+// of it arrives.
+//
+// The shading turns this on (g_deferShadowRays) only around the one light sampling whose rays its main traces: the
+// other callers (a blended face's own light, pt_direct.glsl) trace theirs at once, as before.
+
+const uint PT_SHADOW_CELESTIAL = 0u; // the sun or the moon (sampleSurfaceDirectLight)
+const uint PT_SHADOW_BLOCK = 1u;     // the block light picked (sampleBlockLight, sampleBlockLightRestir)
+const uint PT_SHADOW_HELD = 2u;      // the main hand's light (sampleOneHeldLight)
+const uint PT_SHADOW_OFF_HAND = 3u;  // the off hand's
+const int PT_SHADOW_SLOTS = 4;
+
+bool g_deferShadowRays = false;
+bool g_shadowPending[PT_SHADOW_SLOTS] = bool[PT_SHADOW_SLOTS](false, false, false, false);
+vec3 g_shadowOrigin[PT_SHADOW_SLOTS];
+vec3 g_shadowDirection[PT_SHADOW_SLOTS];
+float g_shadowLength[PT_SHADOW_SLOTS];
+uint g_shadowMask[PT_SHADOW_SLOTS];
+uint g_shadowQuery[PT_SHADOW_SLOTS];
+uint g_shadowInsideBoat[PT_SHADOW_SLOTS];
+// What the light that arrives is multiplied by: everything the sampling had, the path throughput included.
+vec3 g_shadowScale[PT_SHADOW_SLOTS];
+// ReSTIR stored this pixel's reservoir before its ray was traced: an occluded winner has its weight cleared after
+// (sampleBlockLightRestir keeps none for an occluded light).
+bool g_shadowRestirStored = false;
+uint g_shadowRestirHalf = 0u;
+// The deferred light also goes into the direct light the ray generation reads (mainRay.directLightRadiance), unless
+// the shading replaced that after sampling it (water does).
+bool g_deferredToDirect = false;
+
+void ptDeferShadowRay(uint slot, vec3 origin, vec3 direction, float rayLength, uint mask, uint query, vec3 scale) {
+    g_shadowPending[slot] = true;
+    g_shadowOrigin[slot] = origin;
+    g_shadowDirection[slot] = direction;
+    g_shadowLength[slot] = rayLength;
+    g_shadowMask[slot] = mask;
+    g_shadowQuery[slot] = query;
+    g_shadowInsideBoat[slot] = rayInsideBoat(mainRay) ? 1u : 0u;
+    g_shadowScale[slot] = scale;
+}
+
+#endif // VPT_PT_DEFERRED_SHADOW_GLSL

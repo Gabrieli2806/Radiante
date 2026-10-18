@@ -90,10 +90,22 @@ vec3 sampleSurfaceDirectLight(SampledSurface surface,
     }
     uint shadowMask = WORLD_MASK | PLAYER_MASK;
     if (VPT_CLOUD_MODE != 2u) { shadowMask |= CLOUD_MASK; }
+    float progress = skyUBO.rainGradient;
+    if (g_deferShadowRays) {
+        // The light is all known but for what the ray lets through (pt_deferred_shadow.glsl).
+        vec3 scale = mainRay.throughput * lightBRDF;
+        if (VPT_CLOUD_MODE == 2u) {
+            vec3 absoluteShadowOriginPos = baseWorldPos + vec3(worldUBO.cameraPos.xyz);
+            scale *= volumetricCloudLightVisibility(absoluteShadowOriginPos, lightDir,
+                                                    max(VPT_VOLUMETRIC_CLOUD_LIGHT_STEPS, 1), 0.175);
+        }
+        ptDeferShadowRay(PT_SHADOW_CELESTIAL, shadowOrigin, sampledLightDir, 1000.0, shadowMask, shadowRay.pad0,
+                         mix(scale, vec3(0.0), progress));
+        return vec3(0.0);
+    }
     traceRayEXT(topLevelAS, VPT_SHADOW_RAY_FLAGS, shadowMask, 0, 0, 0,
                 shadowOrigin, 0.0001, sampledLightDir, 1000.0, 1);
 
-    float progress = skyUBO.rainGradient;
     vec3 lightRadiance = shadowRay.radiance * mainRay.throughput * lightBRDF;
     if (VPT_CLOUD_MODE == 2u) {
         vec3 absoluteShadowOriginPos = baseWorldPos + vec3(worldUBO.cameraPos.xyz);
@@ -105,6 +117,43 @@ vec3 sampleSurfaceDirectLight(SampledSurface surface,
 }
 
 #include "common/block_light.glsl"
+
+/** Traces the ray left for later in one slot and returns the light it lets through; nothing when none is waiting. */
+vec3 ptTraceDeferredShadowRay(uint slot) {
+    if (!g_shadowPending[slot]) { return vec3(0.0); }
+    g_shadowPending[slot] = false;
+    shadowRay.radiance = vec3(0.0);
+    shadowRay.throughput = vec3(1.0);
+    shadowRay.insideBoat = g_shadowInsideBoat[slot];
+    shadowRay.pad0 = g_shadowQuery[slot];
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+    if (g_shadowQuery[slot] == UNDERWATER_CELESTIAL_QUERY) {
+        shadowRay.nearestWaterT = 1000.0;
+        shadowRay.waterTransmission = vec3(1.0);
+    }
+#endif
+    traceRayEXT(topLevelAS, VPT_SHADOW_RAY_FLAGS, g_shadowMask[slot], 0, 0, 0, g_shadowOrigin[slot], 0.0001,
+                g_shadowDirection[slot], g_shadowLength[slot], 1);
+    shadowRay.pad0 = 0u;
+    // The miss shader gives the sun's or moon's light already through what the ray crossed.
+    if (slot == PT_SHADOW_CELESTIAL) { return shadowRay.radiance * g_shadowScale[slot]; }
+    vec3 visibility = shadowRay.radiance * shadowRay.throughput;
+#if VPT_RESTIR != 0
+    if (slot == PT_SHADOW_BLOCK && g_shadowRestirStored) {
+        g_shadowRestirStored = false;
+        if (dot(visibility, vec3(1.0)) <= 0.0) { vptRestirClearWeight(g_shadowRestirHalf); }
+    }
+#endif
+    return visibility * g_shadowScale[slot];
+}
+
+/** Traces every ray left for later, in the order they were sampled, and returns the light they let through. */
+vec3 ptTraceDeferredShadowRays() {
+    // One call per slot rather than a loop: each call's slot is a constant once inlined, so the slots stay in
+    // registers instead of an array in memory.
+    return ptTraceDeferredShadowRay(PT_SHADOW_CELESTIAL) + ptTraceDeferredShadowRay(PT_SHADOW_BLOCK) +
+           ptTraceDeferredShadowRay(PT_SHADOW_HELD) + ptTraceDeferredShadowRay(PT_SHADOW_OFF_HAND);
+}
 
 bool loadPreviousScenePos(uint geometryBufferIndex, uint primitiveID, vec3 baryCoords, out vec3 prevScenePos) {
     uint64_t lastPositionAddr = lastPositionBufferAddrs.addrs[geometryBufferIndex];

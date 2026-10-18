@@ -91,7 +91,8 @@ float vptBlockLightDiffuseWeight(LabPBRMat mat) {
 /**
  * Light from the block lights around the surface, already multiplied by the path throughput. Picks among a few
  * candidate lights by how much each would contribute unshadowed (resampled importance sampling), then traces one
- * shadow ray to the winner.
+ * shadow ray to the winner (or leaves it to the end of the hit shader, see pt_deferred_shadow.glsl, and returns
+ * nothing yet).
  */
 vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, vec3 viewDir, LabPBRMat mat,
                       bool lean) {
@@ -167,18 +168,25 @@ vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, v
         chosenContribution = chosenPointLight * vptPointLightBrdf(mat, diffuseWeight, viewDir, shadingNormal, chosenDir);
     }
 
+    vec3 origin = worldPos + geometricNormal * 0.0002;
+    // Stops just short of the light, so the light's own block does not shadow it.
+    float rayLength = max(chosenDistance - 0.02, 0.0002);
+    vec3 estimate = chosenContribution / chosenTarget * (weightSum / float(candidates));
+    if (g_deferShadowRays) {
+        ptDeferShadowRay(PT_SHADOW_BLOCK, origin, chosenDir, rayLength, WORLD_MASK | PLAYER_MASK, BLOCK_LIGHT_QUERY,
+                         VPT_INDIRECT_LIGHT_STRENGTH * worldUBO.emissionBrightness * estimate * mainRay.throughput);
+        return vec3(0.0);
+    }
+
     shadowRay.radiance = vec3(0.0);
     shadowRay.throughput = vec3(1.0);
     shadowRay.insideBoat = rayInsideBoat(mainRay) ? 1u : 0u;
     shadowRay.pad0 = BLOCK_LIGHT_QUERY;
-    vec3 origin = worldPos + geometricNormal * 0.0002;
-    // Stops just short of the light, so the light's own block does not shadow it.
     traceRayEXT(topLevelAS, VPT_SHADOW_RAY_FLAGS, WORLD_MASK | PLAYER_MASK, 0, 0, 0, origin, 0.0001, chosenDir,
-                max(chosenDistance - 0.02, 0.0002), 1);
+                rayLength, 1);
     shadowRay.pad0 = 0u;
     vec3 visibility = shadowRay.radiance * shadowRay.throughput;
 
-    vec3 estimate = chosenContribution / chosenTarget * (weightSum / float(candidates));
     return VPT_INDIRECT_LIGHT_STRENGTH * worldUBO.emissionBrightness * estimate * visibility * mainRay.throughput;
 }
 
@@ -349,6 +357,13 @@ void vptRestirStore(ivec2 pixel, uint halfIndex, VptReservoir r, float surfaceDi
                vec4(r.W, r.M, surfaceDistance, uintBitsToFloat(packSnorm4x8(vec4(surfaceNormal, 0.0)))));
 }
 
+/** Clears the weight of the reservoir this pixel stored in halfIndex this frame: its winner turned out occluded. */
+void vptRestirClearWeight(uint halfIndex) {
+    ivec3 texel = ivec3(ivec2(gl_LaunchIDEXT.xy), int(halfIndex * 2u + 1u));
+    vec4 stored = imageLoad(vptRestirImage, texel);
+    imageStore(vptRestirImage, texel, vec4(0.0, stored.yzw));
+}
+
 /** Whether a stored reservoir was made for (about) this surface. */
 bool vptRestirSimilar(float storedDistance, vec3 storedNormal, float expectedDistance, vec3 normal) {
     if (storedDistance <= 0.0) { return false; }
@@ -462,20 +477,32 @@ vec3 sampleBlockLightRestir(vec3 worldPos, vec3 geometricNormal, vec3 shadingNor
         float target = vptRestirTarget(worldPos, geometricNormal, shadingNormal, diffuse, chosenPoint, chosenNormal,
                                        chosenRadiance, chosenFalloff, chosenContribution, chosenDir, chosenDistance);
         if (target > 0.0) {
-            shadowRay.radiance = vec3(0.0);
-            shadowRay.throughput = vec3(1.0);
-            shadowRay.insideBoat = rayInsideBoat(mainRay) ? 1u : 0u;
-            shadowRay.pad0 = BLOCK_LIGHT_QUERY;
-            traceRayEXT(topLevelAS, VPT_SHADOW_RAY_FLAGS, WORLD_MASK | PLAYER_MASK, 0, 0, 0,
-                        worldPos + geometricNormal * 0.0002, 0.0001, chosenDir, max(chosenDistance - 0.02, 0.0002),
-                        1);
-            shadowRay.pad0 = 0u;
-            vec3 visibility = shadowRay.radiance * shadowRay.throughput;
-            if (dot(visibility, vec3(1.0)) <= 0.0) { combined.W = 0.0; }
             if (chosenFalloff >= 0.0) {
                 chosenContribution = chosenRadiance * chosenFalloff *
                                      vptPointLightBrdf(mat, diffuseWeight, viewDir, shadingNormal, chosenDir);
             }
+            vec3 origin = worldPos + geometricNormal * 0.0002;
+            float rayLength = max(chosenDistance - 0.02, 0.0002);
+            if (g_deferShadowRays) {
+                // Stored now with the winner's weight; the deferred ray clears it should the winner be occluded.
+                ptDeferShadowRay(PT_SHADOW_BLOCK, origin, chosenDir, rayLength, WORLD_MASK | PLAYER_MASK,
+                                 BLOCK_LIGHT_QUERY,
+                                 VPT_INDIRECT_LIGHT_STRENGTH * worldUBO.emissionBrightness *
+                                     (chosenContribution * combined.W) * mainRay.throughput);
+                g_shadowRestirStored = true;
+                g_shadowRestirHalf = writeHalf;
+                vptRestirStore(pixel, writeHalf, combined, surfaceDistance, storeNormal);
+                return vec3(0.0);
+            }
+            shadowRay.radiance = vec3(0.0);
+            shadowRay.throughput = vec3(1.0);
+            shadowRay.insideBoat = rayInsideBoat(mainRay) ? 1u : 0u;
+            shadowRay.pad0 = BLOCK_LIGHT_QUERY;
+            traceRayEXT(topLevelAS, VPT_SHADOW_RAY_FLAGS, WORLD_MASK | PLAYER_MASK, 0, 0, 0, origin, 0.0001,
+                        chosenDir, rayLength, 1);
+            shadowRay.pad0 = 0u;
+            vec3 visibility = shadowRay.radiance * shadowRay.throughput;
+            if (dot(visibility, vec3(1.0)) <= 0.0) { combined.W = 0.0; }
             result = chosenContribution * combined.W * visibility;
         }
     }
@@ -501,8 +528,8 @@ vec3 sampleBlockLightAt(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal,
  * by the world but not by the player's own model or hands. Its reach fades the light out smoothly instead of
  * letting the inverse square law carry it across the whole scene. Already multiplied by the path throughput.
  */
-vec3 sampleOneHeldLight(vec4 heldPos, vec4 heldColor, vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal,
-                        LabPBRMat mat) {
+vec3 sampleOneHeldLight(uint slot, vec4 heldPos, vec4 heldColor, vec3 worldPos, vec3 geometricNormal,
+                        vec3 shadingNormal, LabPBRMat mat) {
     if (heldColor.w <= 0.0) { return vec3(0.0); }
     float diffuseWeight = vptBlockLightDiffuseWeight(mat);
     if (diffuseWeight <= 1e-4) { return vec3(0.0); }
@@ -526,13 +553,18 @@ vec3 sampleOneHeldLight(vec4 heldPos, vec4 heldColor, vec3 worldPos, vec3 geomet
         heldColor.rgb * mat.albedo * (diffuseWeight / PI) * cosSurface * fade / distance2;
     if (dot(contribution, vec3(1.0)) <= 1e-8) { return vec3(0.0); }
 
+    vec3 origin = worldPos + geometricNormal * 0.0002;
+    float rayLength = max(lightDistance - 0.02, 0.0002);
+    if (g_deferShadowRays) {
+        ptDeferShadowRay(slot, origin, dir, rayLength, WORLD_MASK, BLOCK_LIGHT_QUERY,
+                         VPT_INDIRECT_LIGHT_STRENGTH * worldUBO.heldLightBrightness * contribution * mainRay.throughput);
+        return vec3(0.0);
+    }
     shadowRay.radiance = vec3(0.0);
     shadowRay.throughput = vec3(1.0);
     shadowRay.insideBoat = rayInsideBoat(mainRay) ? 1u : 0u;
     shadowRay.pad0 = BLOCK_LIGHT_QUERY;
-    vec3 origin = worldPos + geometricNormal * 0.0002;
-    traceRayEXT(topLevelAS, VPT_SHADOW_RAY_FLAGS, WORLD_MASK, 0, 0, 0, origin, 0.0001, dir,
-                max(lightDistance - 0.02, 0.0002), 1);
+    traceRayEXT(topLevelAS, VPT_SHADOW_RAY_FLAGS, WORLD_MASK, 0, 0, 0, origin, 0.0001, dir, rayLength, 1);
     shadowRay.pad0 = 0u;
     vec3 visibility = shadowRay.radiance * shadowRay.throughput;
 
@@ -541,10 +573,10 @@ vec3 sampleOneHeldLight(vec4 heldPos, vec4 heldColor, vec3 worldPos, vec3 geomet
 
 // One light per hand: worldUBO.heldLight* is the main hand's, offHandLight* the off hand's.
 vec3 sampleHeldLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, LabPBRMat mat) {
-    return sampleOneHeldLight(worldUBO.heldLightPos, worldUBO.heldLightColor, worldPos, geometricNormal,
-                              shadingNormal, mat) +
-           sampleOneHeldLight(worldUBO.offHandLightPos, worldUBO.offHandLightColor, worldPos, geometricNormal,
-                              shadingNormal, mat);
+    return sampleOneHeldLight(PT_SHADOW_HELD, worldUBO.heldLightPos, worldUBO.heldLightColor, worldPos,
+                              geometricNormal, shadingNormal, mat) +
+           sampleOneHeldLight(PT_SHADOW_OFF_HAND, worldUBO.offHandLightPos, worldUBO.offHandLightColor, worldPos,
+                              geometricNormal, shadingNormal, mat);
 }
 
 #endif

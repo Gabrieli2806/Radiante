@@ -99,6 +99,7 @@ layout(location = 1) rayPayloadEXT ShadowRay shadowRay;
 #include "pt/pt_side_channels.glsl"
 #include "pt/pt_material.glsl"
 #include "pt/pt_parallax.glsl"
+#include "pt/pt_deferred_shadow.glsl"
 #include "pt/pt_direct.glsl"
 #include "pt/pt_media.glsl"
 #include "pt/pt_glass.glsl"
@@ -393,6 +394,10 @@ void ptShadeDefault(bool viewMark) {
         mainRay.radiance += emissionRadiance;
 
         SampledSurface litSurface = currentSurface;
+        // The shadow rays of the lights sampled here are traced as the hit shader ends (main below, see
+        // pt_deferred_shadow.glsl); the light they let through is added there.
+        g_deferShadowRays = true;
+        g_deferredToDirect = localBounce == 0;
         vec3 directLight =
             sampleSurfaceDirectLight(litSurface, currentViewDir, textureUV, planeHitWorldPos, atlasUvMin, atlasUvMax,
                                      dPduWorld, dPdvWorld, baseGeoNormal, traceLocalHeight,
@@ -431,6 +436,7 @@ void ptShadeDefault(bool viewMark) {
         directLight += blockLight;
         directLight += sampleHeldLight(litSurface.worldPos, litSurface.geometricNormal,
                                        litSurface.shadingNormal, litSurface.mat);
+        g_deferShadowRays = false;
         if (localBounce == 0) { mainRay.directLightRadiance = directLight; }
         mainRay.radiance += directLight;
 
@@ -477,7 +483,10 @@ void ptShadeDefault(bool viewMark) {
             // pool and sea, brightest where the texture's alpha peaks, that takes nothing away from the view through
             // the water (1 to 4 blocks of it over white, side by side). Kept in directLightRadiance as well, for the
             // ray generation, which traces the camera's view through the surface itself (initTransparent).
-            if (localBounce == 0) { mainRay.directLightRadiance = vec3(0.0); }
+            if (localBounce == 0) {
+                mainRay.directLightRadiance = vec3(0.0);
+                g_deferredToDirect = false;
+            }
             if (localBounce == 0 && !fromBelow && (bounce == 0u || rayCameraPath(mainRay) || g_viewBounce)) {
                 float waterOpacity = clamp(currentSurface.albedoValue.a * 2.0 - 1.0, 0.0, 1.0);
                 if (waterOpacity > 0.0) {
@@ -622,6 +631,10 @@ void main() {
     ptHitContextFromBuiltins();
     // The view mark is read as the ray arrives: the shading later writes its own data over pad0 (ptStoreAux).
     ptShadeDefault(mainRay.pad0 == RAY_VIEW_BOUNCE_MARK);
+    // Last, when the shading keeps nothing else across the traces (see pt_deferred_shadow.glsl).
+    vec3 deferredLight = ptTraceDeferredShadowRays();
+    mainRay.radiance += deferredLight;
+    if (g_deferredToDirect) { mainRay.directLightRadiance += deferredLight; }
 }
 #endif
 
