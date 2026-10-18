@@ -81,6 +81,8 @@ public class EntityCollector implements SubmitNodeCollector {
     /** Layers written by name tags; traced as overlay geometry that casts no shadow. */
     private final java.util.Set<RenderType> nameTagLayers = new java.util.HashSet<>();
     private boolean collectingNameTag;
+    /** Name tags are dropped: the player's own model in first person carries one when a mod forces it on. */
+    private boolean skipNameTags;
     private int used;
     /** How many times each model has been submitted for the current entity; see submitModel. */
     private final java.util.Map<Object, Integer> modelLayers = new java.util.IdentityHashMap<>();
@@ -100,6 +102,16 @@ public class EntityCollector implements SubmitNodeCollector {
         this.colorTint = 0xFFFFFF;
         this.held = false;
         this.heldGlass = false;
+        this.skipNameTags = false;
+    }
+
+    /**
+     * Leaves out the name tags of what is collected from here on, until the next reset. Minecraft never shows your own
+     * name tag (it draws no model of you in first person at all), but a mod can force it on, and it then floated
+     * round the camera on the model Radiante adds for your shadow and reflections.
+     */
+    public void skipNameTags() {
+        this.skipNameTags = true;
     }
 
     /** Marks everything collected from here on as held by the player; see PBRVertexWriter.held. */
@@ -472,7 +484,7 @@ public class EntityCollector implements SubmitNodeCollector {
     @Override
     public void submitNameTag(PoseStack poseStack, @Nullable Vec3 nameTagAttachment, int offset, Component name,
         boolean seeThrough, int lightCoords, CameraRenderState camera) {
-        if (nameTagAttachment == null) {
+        if (nameTagAttachment == null || this.skipNameTags) {
             return;
         }
 

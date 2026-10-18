@@ -927,6 +927,7 @@ public final class EntityManager {
 
         EntityRenderState state = playerState.avatarRenderState;
         COLLECTOR.reset();
+        COLLECTOR.skipNameTags();
         POSE_STACK.setIdentity();
 
         try {
