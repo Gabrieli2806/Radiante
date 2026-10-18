@@ -69,6 +69,7 @@ public abstract class GameRendererMixin {
     @WrapOperation(method = "render", at = @At(value = "INVOKE",
         target = "Lnet/minecraft/client/renderer/GameRenderer;renderLevel()V"))
     private void radiante$renderLevel(GameRenderer gameRenderer, Operation<Void> original) {
+        com.g2806.radiante.client.DevAutomation.frame();
         if (!RadianteRenderer.isRayTracingEnabled()) {
             original.call(gameRenderer);
             return;
@@ -90,6 +91,7 @@ public abstract class GameRendererMixin {
             RadianteRenderer.renderLevel(gameRenderer, this.gameRenderState().levelRenderState);
             radiante$debugCrosshair();
         }
+        com.g2806.radiante.client.DevAutomation.frameDrawn();
     }
 
     @WrapOperation(method = "renderLevel", at = @At(value = "INVOKE",

@@ -31,7 +31,59 @@ public final class DevAutomation {
     private static net.minecraft.client.gui.screens.Screen answeredBackup;
     private static final String TEST_WORLD_PREFIX = "Radiante";
 
+    /**
+     * A camera glide ({@code glide=} step): so many frames left, the step each frame takes (yaw and pitch in degrees,
+     * then x, y, z in blocks), and the screenshot taken once it has stopped.
+     */
+    private static int glideFrames;
+    private static final double[] GLIDE_STEP = new double[5];
+    private static String glideShot;
+
     private DevAutomation() {
+    }
+
+    /**
+     * Moves the camera one step of a glide, once a frame before the level is drawn. Steps per frame rather than per
+     * tick give the smooth motion a denoiser's history sees from a mouse (a tick's step stands still for several
+     * frames and then jumps) and end at a pose known in advance, so the frame drawn as the glide ends (frameDrawn) can
+     * be compared with a still, converged one from there. That frame shows the pose one step short of the last: the
+     * camera of a frame is placed before this runs.
+     */
+    public static void frame() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (!active || minecraft.player == null || glideFrames == 0) {
+            return;
+        }
+        var player = minecraft.player;
+        float yaw = player.getYRot() + (float) GLIDE_STEP[0];
+        float pitch = net.minecraft.util.Mth.clamp(player.getXRot() + (float) GLIDE_STEP[1], -90.0F, 90.0F);
+        player.setYRot(yaw);
+        player.setXRot(pitch);
+        player.yRotO = yaw;
+        player.xRotO = pitch;
+        double x = player.getX() + GLIDE_STEP[2];
+        double y = player.getY() + GLIDE_STEP[3];
+        double z = player.getZ() + GLIDE_STEP[4];
+        player.setPos(x, y, z);
+        player.xo = x;
+        player.yo = y;
+        player.zo = z;
+        player.xOld = x;
+        player.yOld = y;
+        player.zOld = z;
+        glideFrames--;
+    }
+
+    /** Takes a glide's screenshot once the frame drawn at its last step is in the target. */
+    public static void frameDrawn() {
+        if (!active || glideFrames != 0 || glideShot == null) {
+            return;
+        }
+        Minecraft minecraft = Minecraft.getInstance();
+        String name = glideShot + ".png";
+        glideShot = null;
+        Screenshot.grab(minecraft.gameDirectory, name, minecraft.gameRenderer.mainRenderTarget(), 1,
+            message -> RadianteClient.LOGGER.info("[dev] screenshot {}", name));
     }
 
     public static void register() {
@@ -303,6 +355,16 @@ public final class DevAutomation {
             };
             mapping.setDown(down);
             RadianteClient.LOGGER.info("[dev] {} {}", down ? "hold" : "release", key);
+        } else if (action.startsWith("glide=")) {
+            // glide=frames,yaw,pitch,dx,dy,dz,shot: move the camera by that step on each of so many frames, then take
+            // the screenshot (see frame()).
+            String[] v = action.substring(6).split(",");
+            for (int i = 0; i < GLIDE_STEP.length; i++) {
+                GLIDE_STEP[i] = Double.parseDouble(v[i + 1]);
+            }
+            glideShot = v[6];
+            glideFrames = Integer.parseInt(v[0]);
+            RadianteClient.LOGGER.info("[dev] glide {}", action.substring(6));
         } else if (action.startsWith("vsync=")) {
             // vsync=false: frames as fast as they render, for measuring.
             minecraft.options.enableVsync().set(Boolean.parseBoolean(action.substring(6)));
