@@ -50,7 +50,7 @@ vec3 celestialRadiance(vec3 toSun) {
 void main() {
     uint query = shadowRay.pad0;
     if (query == GLOW_OUTLINE_QUERY) { return; }
-    if (query == BLOCK_LIGHT_QUERY) {
+    if (query == BLOCK_LIGHT_QUERY || query == SKY_VISIBILITY_QUERY) {
         shadowRay.radiance = vec3(1.0);
         return;
     }

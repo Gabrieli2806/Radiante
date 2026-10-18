@@ -40,9 +40,15 @@ void ptWaterMediumAtHit(uint bounce) {
                 float skyAlong = rand(mainRay.seed);
                 vec3 skyJitter = vec3(rand(mainRay.seed), rand(mainRay.seed), rand(mainRay.seed)) * 2.0 - 1.0;
                 vec3 skyDirection = normalize(vec3(skyJitter.x * 0.5, 1.0, skyJitter.z * 0.5));
-                waterAmbient *= mix(0.35, 1.0,
-                                    skyVisibilityAlong(g_hit.rayOrigin + g_hit.rayDir * (g_hit.hitT * skyAlong),
-                                                       skyDirection));
+                // The light is 0.35 of it under a roof and all of it in sight of the sky: the part the sky adds is
+                // left to a ray traced as the hit shader ends (see PT_SHADOW_SKY), with the throughput of now.
+                vec3 ambientLight = mainRay.throughput * waterScatter * waterAmbient;
+                // Started 0.0099 along: deferred rays begin at 0.0001, skyVisibilityAlong's at 0.01.
+                ptDeferShadowRay(PT_SHADOW_SKY,
+                                 g_hit.rayOrigin + g_hit.rayDir * (g_hit.hitT * skyAlong) + skyDirection * 0.0099,
+                                 skyDirection, 256.0 - 0.0099, WORLD_MASK, SKY_VISIBILITY_QUERY, ambientLight * 0.65);
+                g_shadowInsideBoat[PT_SHADOW_SKY] = 0u;
+                waterAmbient *= 0.35;
             }
             mainRay.radiance += mainRay.throughput * waterScatter * waterAmbient;
             mainRay.throughput *= waterTransmittance;

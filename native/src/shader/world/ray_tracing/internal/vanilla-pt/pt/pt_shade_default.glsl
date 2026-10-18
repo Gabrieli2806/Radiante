@@ -664,6 +664,7 @@ void main() {
     vec3 deferredLight = ptTraceDeferredShadowRays();
     mainRay.radiance += deferredLight;
     if (g_deferredToDirect) { mainRay.directLightRadiance += deferredLight; }
+    mainRay.radiance += ptTraceDeferredShadowRay(PT_SHADOW_SKY);
 }
 #endif
 

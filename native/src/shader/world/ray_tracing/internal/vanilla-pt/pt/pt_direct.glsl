@@ -137,6 +137,10 @@ vec3 ptTraceDeferredShadowRay(uint slot) {
     shadowRay.pad0 = 0u;
     // The miss shader gives the sun's or moon's light already through what the ray crossed.
     if (slot == PT_SHADOW_CELESTIAL) { return shadowRay.radiance * g_shadowScale[slot]; }
+    // Only whether the sky is in sight, as skyVisibilityAlong answers it.
+    if (slot == PT_SHADOW_SKY) {
+        return clamp(dot(shadowRay.radiance, vec3(0.2126, 0.7152, 0.0722)), 0.0, 1.0) * g_shadowScale[slot];
+    }
     vec3 visibility = shadowRay.radiance * shadowRay.throughput;
 #if VPT_RESTIR != 0
     if (slot == PT_SHADOW_BLOCK && g_shadowRestirStored) {
@@ -181,7 +185,7 @@ float skyVisibilityAlong(vec3 position, vec3 direction) {
     shadowRay.radiance = vec3(0.0);
     shadowRay.throughput = vec3(1.0);
     shadowRay.insideBoat = 0u;
-    shadowRay.pad0 = BLOCK_LIGHT_QUERY;
+    shadowRay.pad0 = SKY_VISIBILITY_QUERY;
     traceRayEXT(topLevelAS, VPT_SHADOW_RAY_FLAGS, WORLD_MASK, 0, 0, 0, position, 0.01, direction, 256.0, 1);
     return clamp(dot(shadowRay.radiance, vec3(0.2126, 0.7152, 0.0722)), 0.0, 1.0);
 }

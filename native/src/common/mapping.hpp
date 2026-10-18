@@ -63,6 +63,9 @@
 #    define BLOCK_LIGHT_QUERY 2u
 // Bedrock original profile: direct sun or moon visibility for an opaque surface that is already under water.
 #    define UNDERWATER_CELESTIAL_QUERY 3u
+// Whether the open sky is in sight that way: a miss means "unblocked", like a block light query, but what the
+// see-through surfaces on the way take from the light is not asked for.
+#    define SKY_VISIBILITY_QUERY 4u
 
 #endif
 

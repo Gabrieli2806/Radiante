@@ -133,6 +133,11 @@ void main() {
     vec3 bary = vec3(1.0 - (attribs.x + attribs.y), attribs.x, attribs.y);
 
     uint flags = m0.packedData;
+    // A query for the open sky goes through water whatever its texture says (see below): chunk water, marked in its
+    // vertices, is let through before anything of it is read.
+    if (shadowRay.pad0 == SKY_VISIBILITY_QUERY && isWaterSurface(flags)) {
+        ignoreIntersectionEXT;
+    }
     uint albedoID = m0.textureID;
     uint alphaMode = getAlphaMode(flags);
     bool textured = hasTexture(flags);
@@ -213,58 +218,16 @@ void main() {
     }
 
     // ---- See-through surfaces: work out what they pass ----
-    vec4 specular = vec4(0.0);
-    if (textured) {
-        int specularTextureID = mapping.entries[albedoID].specular;
-        if (specularTextureID >= 0) {
-            specular = sampleTexture(textures[nonuniformEXT(specularTextureID)], uv, false);
+    vec3 transmission = vec3(1.0);
+    if (water) {
+        // Water lets the light through whatever its texture and material maps say, so they are not read for it:
+        // most shadow rays from under water (the sun on the floor, the shafts of light in the water, the sky over
+        // it) cross its surface, and every one read the maps for nothing.
+        // A query for the open sky only asks whether anything blocks the way, and water does not: what it takes
+        // from the light (its depth, the caustics) is not asked for, so it is not worked out either.
+        if (shadowRay.pad0 == SKY_VISIBILITY_QUERY) {
+            ignoreIntersectionEXT;
         }
-    }
-
-    // Enchantment glint brightens the filter colour (squared, as it is drawn).
-    vec2 glintUV = bary.x * m0.glintUV + bary.y * m1.glintUV + bary.z * m2.glintUV;
-    glintUV = (ubo.textureMat * vec4(glintUV, 0.0, 1.0)).xy;
-    vec3 glint = vec3(0.0);
-    if (hasGlint(flags)) {
-        glint = sampleTexture(textures[nonuniformEXT(m0.glintTexture)], glintUV, false).rgb;
-    }
-    glint *= glint;
-
-    vec3 filterColour = surface.rgb;
-    if (hasOverlay(flags)) {
-        vec4 overlay = sampleTexture(textures[nonuniformEXT(ubo.overlayTextureID)], m0.overlayUV, 0, false);
-        filterColour = mix(overlay.rgb, filterColour, overlay.a);
-    }
-    filterColour += glint;
-    surface.a = alpha;
-
-    LabPBRMat material = convertLabPBRMaterial(surface, specular, vec4(0.0));
-    bool passesLight = water || material.transmission > 0.0 || alpha < 0.95;
-    if (!passesLight) {
-        terminateRayEXT;
-    }
-
-    // Glass-like materials filter by their hue at full brightness (glassTint), whatever their texture's darkness;
-    // other translucent surfaces keep vanilla's alpha blend. Water is handled below.
-    vec3 transmission;
-    if (water) {
-        transmission = vec3(1.0);
-    } else if (material.transmission > 0.0) {
-        transmission = clamp(glassTint(filterColour, alpha), vec3(0.0), vec3(1.0));
-    } else {
-        transmission = clamp(mix(vec3(1.0), filterColour, alpha), vec3(0.0), vec3(1.0));
-    }
-#if VPT_SHADOW_TINT_MODEL != 0
-    // Bedrock behaviour as observed: sunlight is filtered by the texture colour as is (not brought to full
-    // brightness) and by the opaque share of the surface, with alpha remapped so the lower half of its range counts
-    // as clear: T = colour * (1 - saturate(2 alpha - 1)). The light becomes shadow once almost nothing is left
-    // (channel sum at or below 0.01, checked after multiplying below).
-    if (!water) {
-        transmission = clamp(viewGlassTintBedrock(filterColour, alpha), vec3(0.0), vec3(1.0));
-    }
-#endif
-
-    if (water) {
         bool underwaterQuery = false;
 #if SHADOW_BEDROCK_PROFILE
         underwaterQuery = shadowRay.pad0 == UNDERWATER_CELESTIAL_QUERY;
@@ -290,6 +253,52 @@ void main() {
             shadowRay.waterTransmission = transmission;
             ignoreIntersectionEXT;
         }
+#endif
+    } else {
+        vec4 specular = vec4(0.0);
+        if (textured) {
+            int specularTextureID = mapping.entries[albedoID].specular;
+            if (specularTextureID >= 0) {
+                specular = sampleTexture(textures[nonuniformEXT(specularTextureID)], uv, false);
+            }
+        }
+
+        // Enchantment glint brightens the filter colour (squared, as it is drawn).
+        vec2 glintUV = bary.x * m0.glintUV + bary.y * m1.glintUV + bary.z * m2.glintUV;
+        glintUV = (ubo.textureMat * vec4(glintUV, 0.0, 1.0)).xy;
+        vec3 glint = vec3(0.0);
+        if (hasGlint(flags)) {
+            glint = sampleTexture(textures[nonuniformEXT(m0.glintTexture)], glintUV, false).rgb;
+        }
+        glint *= glint;
+
+        vec3 filterColour = surface.rgb;
+        if (hasOverlay(flags)) {
+            vec4 overlay = sampleTexture(textures[nonuniformEXT(ubo.overlayTextureID)], m0.overlayUV, 0, false);
+            filterColour = mix(overlay.rgb, filterColour, overlay.a);
+        }
+        filterColour += glint;
+        surface.a = alpha;
+
+        LabPBRMat material = convertLabPBRMaterial(surface, specular, vec4(0.0));
+        bool passesLight = material.transmission > 0.0 || alpha < 0.95;
+        if (!passesLight) {
+            terminateRayEXT;
+        }
+
+        // Glass-like materials filter by their hue at full brightness (glassTint), whatever their texture's
+        // darkness; other translucent surfaces keep vanilla's alpha blend.
+        if (material.transmission > 0.0) {
+            transmission = clamp(glassTint(filterColour, alpha), vec3(0.0), vec3(1.0));
+        } else {
+            transmission = clamp(mix(vec3(1.0), filterColour, alpha), vec3(0.0), vec3(1.0));
+        }
+#if VPT_SHADOW_TINT_MODEL != 0
+        // Bedrock behaviour as observed: sunlight is filtered by the texture colour as is (not brought to full
+        // brightness) and by the opaque share of the surface, with alpha remapped so the lower half of its range
+        // counts as clear: T = colour * (1 - saturate(2 alpha - 1)). The light becomes shadow once almost nothing is
+        // left (channel sum at or below 0.01, checked after multiplying below).
+        transmission = clamp(viewGlassTintBedrock(filterColour, alpha), vec3(0.0), vec3(1.0));
 #endif
     }
 

@@ -17,10 +17,15 @@ const uint PT_SHADOW_CELESTIAL = 0u; // the sun or the moon (sampleSurfaceDirect
 const uint PT_SHADOW_BLOCK = 1u;     // the block light picked (sampleBlockLight, sampleBlockLightRestir)
 const uint PT_SHADOW_HELD = 2u;      // the main hand's light (sampleOneHeldLight)
 const uint PT_SHADOW_OFF_HAND = 3u;  // the off hand's
-const int PT_SHADOW_SLOTS = 4;
+// Whether the open sky is in sight from a point of the stretch of water the ray crossed (ptWaterMediumAtHit): its
+// light goes to the radiance only, not to the direct light. It is the stretch's sky, asked for every hit under water,
+// and traced at the start of the shading it cost the frame under water more than the god rays did (6 to 7 ms at
+// 1920x1080 with DLSS Quality on an RTX 5070, against 4 for all eight of the god rays' steps).
+const uint PT_SHADOW_SKY = 4u;
+const int PT_SHADOW_SLOTS = 5;
 
 bool g_deferShadowRays = false;
-bool g_shadowPending[PT_SHADOW_SLOTS] = bool[PT_SHADOW_SLOTS](false, false, false, false);
+bool g_shadowPending[PT_SHADOW_SLOTS] = bool[PT_SHADOW_SLOTS](false, false, false, false, false);
 vec3 g_shadowOrigin[PT_SHADOW_SLOTS];
 vec3 g_shadowDirection[PT_SHADOW_SLOTS];
 float g_shadowLength[PT_SHADOW_SLOTS];

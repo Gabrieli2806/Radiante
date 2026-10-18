@@ -58,8 +58,8 @@ float volumetricSkyVisibility(vec3 position, bool insideBoat) {
     shadowRay.radiance = vec3(0.0);
     shadowRay.throughput = vec3(1.0);
     shadowRay.insideBoat = insideBoat ? 1u : 0u;
-    // The miss shader answers a block light query with plain white: sky in sight or not, whatever the sun does.
-    shadowRay.pad0 = BLOCK_LIGHT_QUERY;
+    // The miss shader answers a sky visibility query with plain white: sky in sight or not, whatever the sun does.
+    shadowRay.pad0 = SKY_VISIBILITY_QUERY;
     traceRayEXT(topLevelAS, VPT_SHADOW_RAY_FLAGS, WORLD_MASK, 0, 0, 0, position + vec3(0.0, 0.02, 0.0), 0.001,
                 vec3(0.0, 1.0, 0.0), 512.0, 1);
     return clamp(volumetricLightLuminance(shadowRay.radiance), 0.0, 1.0);
