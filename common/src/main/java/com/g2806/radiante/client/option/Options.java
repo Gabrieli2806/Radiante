@@ -49,10 +49,37 @@ public class Options {
      */
     public static boolean firstPersonShadow = true;
     /**
-     * Sun and moon cross the sky exactly as in vanilla, straight overhead from east to west. Off, their path leans
-     * ten degrees to the south, so noon shadows are not all straight down.
+     * How far the sun's path leans, in degrees: 0 is vanilla's, straight overhead from east to west; positive leans
+     * it south, so noon shadows are not all straight down. The Sun Path setting's Tilted choice is
+     * SUN_PATH_TILTED_DEGREES.
      */
-    public static boolean vanillaSunPath = true;
+    public static int sunPathTilt = 0;
+    /**
+     * How far the sun's path is turned around the vertical, in degrees: positive turns it clockwise seen from above,
+     * moving sunrise from the east towards the south.
+     */
+    public static int sunPathAzimuth = 0;
+    /** The sun's square turned around its own centre, in degrees. */
+    public static int sunSpriteRotation = 0;
+    /** The moon crosses the sky on the sun's path, opposite it; off, on moonPathTilt and moonPathAzimuth. */
+    public static boolean moonFollowsSun = true;
+    /** The moon's path lean, in degrees, as sunPathTilt: positive leans its highest point south. */
+    public static int moonPathTilt = 0;
+    /** The moon's path turned around the vertical, in degrees, as sunPathAzimuth. */
+    public static int moonPathAzimuth = 0;
+    /** The moon's square turned around its own centre, in degrees. */
+    public static int moonSpriteRotation = 0;
+
+    /** The lean of the Sun Path setting's Tilted choice, the one the old Vanilla Sun Path switch gave when off. */
+    public static final int SUN_PATH_TILTED_DEGREES = 10;
+    /** The steepest lean the path settings allow either way, and the widest turn of a path or a sprite. */
+    public static final int MAX_PATH_TILT = 45;
+    public static final int MAX_ROTATION = 180;
+
+    /** Whether the sun follows vanilla's path: no lean, no turn. */
+    public static boolean vanillaSunPath() {
+        return sunPathTilt == 0 && sunPathAzimuth == 0;
+    }
     /** Sun and moon sprites keep vanilla's fixed orientation instead of turning as they cross the sky. */
     public static boolean vanillaCelestialOrientation = true;
     /**
@@ -145,8 +172,19 @@ public class Options {
         heldLightBrightness = 12;
         setEntityLightReach(64, true);
         volumetricFogStrength = 100;
-        vanillaSunPath = true;
+        resetSkyPath();
         vanillaCelestialOrientation = true;
+    }
+
+    /** The sun and moon back on vanilla's path, the moon following the sun, neither sprite turned. */
+    public static void resetSkyPath() {
+        sunPathTilt = 0;
+        sunPathAzimuth = 0;
+        sunSpriteRotation = 0;
+        moonFollowsSun = true;
+        moonPathTilt = 0;
+        moonPathAzimuth = 0;
+        moonSpriteRotation = 0;
     }
 
     /** Ray tracing can be switched off with a key, which hands the world back to Minecraft's own renderer. */
@@ -253,7 +291,19 @@ public class Options {
         number("nightBrightness", () -> nightBrightness, v -> nightBrightness = v),
         number("emissionBrightness", () -> emissionBrightness, v -> emissionBrightness = v),
         number("heldLightBrightness", () -> heldLightBrightness, v -> heldLightBrightness = v),
-        bool("vanillaSunPath", () -> vanillaSunPath, v -> vanillaSunPath = v),
+        // The on/off switch of before the path settings, still written for older versions and old codes: off is
+        // the tilted path. The settings after it, when present, give the path exactly.
+        bool("vanillaSunPath", Options::vanillaSunPath, v -> {
+            sunPathTilt = v ? 0 : SUN_PATH_TILTED_DEGREES;
+            sunPathAzimuth = 0;
+        }),
+        number("sunPathTilt", () -> sunPathTilt, v -> sunPathTilt = clamp(v, MAX_PATH_TILT)),
+        number("sunPathAzimuth", () -> sunPathAzimuth, v -> sunPathAzimuth = clamp(v, MAX_ROTATION)),
+        number("sunSpriteRotation", () -> sunSpriteRotation, v -> sunSpriteRotation = clamp(v, MAX_ROTATION)),
+        bool("moonFollowsSun", () -> moonFollowsSun, v -> moonFollowsSun = v),
+        number("moonPathTilt", () -> moonPathTilt, v -> moonPathTilt = clamp(v, MAX_PATH_TILT)),
+        number("moonPathAzimuth", () -> moonPathAzimuth, v -> moonPathAzimuth = clamp(v, MAX_ROTATION)),
+        number("moonSpriteRotation", () -> moonSpriteRotation, v -> moonSpriteRotation = clamp(v, MAX_ROTATION)),
         bool("vanillaCelestialOrientation", () -> vanillaCelestialOrientation,
             v -> vanillaCelestialOrientation = v),
         bool("blockLightSampling", () -> blockLightSampling, v -> blockLightSampling = v),
@@ -286,6 +336,10 @@ public class Options {
             outputResolutionPercent = percent;
         }
         outputResolution = value.name();
+    }
+
+    private static int clamp(int value, int limit) {
+        return Math.max(-limit, Math.min(limit, value));
     }
 
     /** The saved text of the named settings, for sharing them (SettingsCode). */

@@ -108,8 +108,7 @@ const float FROXEL_TAIL_SHADOW_REACH = 24.0;
 // by 1/pi, and by the sky; the sunlit part scales with the square of the height profile, the sky part with it once.
 // The anisotropy g is a run-time value in Bedrock (UNKNOWN; VPT_BEDROCK_FOG_G).
 vec3 shadeBedrockFogCell(vec3 position, vec3 rayDir, bool openAir) {
-    vec3 lightDir = celestialSunDirection();
-    if (lightDir.y < 0.0) { lightDir = -lightDir; }
+    vec3 lightDir = celestialLightDirection();
     float worldY = position.y + float(worldUBO.cameraPos.y);
     float height = biomeFogHeightProfile(worldY);
     vec3 sigmaS = biomeFogChroma() * biomeFogDensity() * clamp(skyUBO.biomeFog.rgb, vec3(0.0), vec3(1.0));
@@ -131,8 +130,7 @@ vec3 shadeFroxelCell(vec3 position, vec3 rayDir, float distance, inout uint seed
 #if VPT_BEDROCK_FOG != 0
     return shadeBedrockFogCell(position, rayDir, openAir);
 #endif
-    vec3 lightDir = celestialSunDirection();
-    if (lightDir.y < 0.0) { lightDir = -lightDir; }
+    vec3 lightDir = celestialLightDirection();
     float cosTheta = clamp(dot(rayDir, lightDir), -1.0, 1.0);
     vec3 sigmaS;
     vec3 sigmaT;

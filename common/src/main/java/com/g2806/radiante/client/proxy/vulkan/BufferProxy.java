@@ -19,7 +19,7 @@ public class BufferProxy {
     private static final int WORLD_UBO_SIZE = 736;
     /** Where WorldUBO.offHandLightPos starts; offHandLightColor follows it. */
     private static final int OFF_HAND_LIGHT_OFFSET = 704;
-    private static final int SKY_UBO_SIZE = 256;
+    private static final int SKY_UBO_SIZE = 304;
     private static final int TEXTURE_MAPPING_ENTRIES = 4096;
 
     private static native void updateWorldUniform(long ptr);
@@ -177,7 +177,10 @@ public class BufferProxy {
                              Vector4fc waterAlbedo,
                              Vector4fc fogControls,
                              Vector4fc rainWetness,
-                             Vector4fc waterFog) {
+                             Vector4fc waterFog,
+                             Vector4fc moonDirection,
+                             Vector4fc moonAxis,
+                             Vector4fc spriteRotation) {
     }
 
     public static void updateSkyUniform(SkyUniform uniform) {
@@ -272,7 +275,10 @@ public class BufferProxy {
             offset = putVec4(bb, offset, uniform.waterAlbedo());
             offset = putVec4(bb, offset, uniform.fogControls());
             offset = putVec4(bb, offset, uniform.rainWetness());
-            putVec4(bb, offset, uniform.waterFog());
+            offset = putVec4(bb, offset, uniform.waterFog());
+            offset = putVec4(bb, offset, uniform.moonDirection());
+            offset = putVec4(bb, offset, uniform.moonAxis());
+            putVec4(bb, offset, uniform.spriteRotation());
 
             updateSkyUniform(addr);
         }

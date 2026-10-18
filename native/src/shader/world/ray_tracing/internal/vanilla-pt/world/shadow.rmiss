@@ -88,9 +88,11 @@ void main() {
     // Fade the light in over the last 0.3 of height above (or below) the horizon as a quarter sine, so sunrise and
     // moonrise do not switch on. Bedrock's sun table already includes this fade, so its sun is left alone.
     const float horizonBand = 0.3;
+    // The height is that of the body giving the light: by night the moon's, whose path can lean apart from the sun's.
+    float lightHeight = toSun.y > 0 ? toSun.y : celestialMoonDirection().y;
     bool bedrockSun = bedrockAtmosphereActive() && toSun.y > 0;
-    if (abs(toSun.y) < horizonBand && !bedrockSun) {
-        light *= sin(PI / (2 * horizonBand) * abs(toSun.y));
+    if (abs(lightHeight) < horizonBand && !bedrockSun) {
+        light *= sin(PI / (2 * horizonBand) * abs(lightHeight));
     }
 
     shadowRay.radiance += light * shadowRay.throughput;

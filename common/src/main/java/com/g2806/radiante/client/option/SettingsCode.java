@@ -40,8 +40,15 @@ public final class SettingsCode {
 
     static {
         for (String key : new String[] {"biomeAmbiance", "firstPersonShadow", "heldItemLight", "rainWetness",
-            "vanillaSunPath", "vanillaCelestialOrientation", "blockLightSampling"}) {
+            "vanillaSunPath", "moonFollowsSun", "vanillaCelestialOrientation", "blockLightSampling"}) {
             OPTIONS.put(key, null);
+        }
+        for (String key : new String[] {"sunPathTilt", "moonPathTilt"}) {
+            OPTIONS.put(key, new int[] {-Options.MAX_PATH_TILT, Options.MAX_PATH_TILT});
+        }
+        for (String key : new String[] {"sunPathAzimuth", "sunSpriteRotation", "moonPathAzimuth",
+            "moonSpriteRotation"}) {
+            OPTIONS.put(key, new int[] {-Options.MAX_ROTATION, Options.MAX_ROTATION});
         }
         for (String key : new String[] {"volumetricFogStrength", "biomeAmbianceStrength", "starAltitude", "dayBrightness",
             "nightBrightness", "emissionBrightness", "heldLightBrightness"}) {
@@ -270,7 +277,16 @@ public final class SettingsCode {
      * are handed to the renderer here instead.
      */
     public static boolean apply(Parsed parsed) {
-        parsed.options.forEach(Options::importValue);
+        // The old sun path switch goes first: the path settings, in a code that has them, say more exactly.
+        String oldSunPath = parsed.options.get("vanillaSunPath");
+        if (oldSunPath != null) {
+            Options.importValue("vanillaSunPath", oldSunPath);
+        }
+        parsed.options.forEach((key, value) -> {
+            if (!key.equals("vanillaSunPath")) {
+                Options.importValue(key, value);
+            }
+        });
         Options.overwriteConfig();
         boolean changed = false;
         for (Map.Entry<String, Map<String, String>> module : parsed.modules.entrySet()) {

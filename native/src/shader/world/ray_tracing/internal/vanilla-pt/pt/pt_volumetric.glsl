@@ -100,8 +100,7 @@ vec3 waterGodRays(vec3 origin, vec3 rayDir, float distance) {
     if (strength <= 0.0 || distance <= 0.05) { return vec3(0.0); }
     const int STEPS = 8;
     float reach = min(distance, 48.0);
-    vec3 lightDir = celestialSunDirection();
-    if (lightDir.y < 0.0) { lightDir = -lightDir; }
+    vec3 lightDir = celestialLightDirection();
     // Mostly forward: the shafts show best looking towards the light, as under real water.
 #if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     // Bedrock RTX lights its water as a medium like its air: the sunlight scattered towards the eye is the pack's
@@ -195,8 +194,7 @@ void integrateVolumetricFog(vec3 origin,
     // the ray hits, so far terrain gets the same haze as near terrain instead of a hard edge where the march ends.
     float marchEnd = min(endDistance, volumetricMediumMaxDistance());
 
-    vec3 lightDir = celestialSunDirection();
-    if (lightDir.y < 0.0) { lightDir = -lightDir; }
+    vec3 lightDir = celestialLightDirection();
 
     float cosTheta = clamp(dot(rayDir, lightDir), -1.0, 1.0);
     vec3 sigmaS;

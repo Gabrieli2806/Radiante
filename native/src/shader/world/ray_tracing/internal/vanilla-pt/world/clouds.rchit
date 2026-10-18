@@ -150,8 +150,7 @@ void main() {
 
     // shadow ray for direct lighting
     vec3 sunDir = celestialSunDirection();
-    vec3 sampledLightDir = sunDir;
-    if (sampledLightDir.y < 0) { sampledLightDir = -sampledLightDir; }
+    vec3 sampledLightDir = celestialLightDirection();
 
     // Clouds are mostly viewed from below; keep underside lit via two-sided + backlit response.
     float ndotl = dot(normal, sampledLightDir);

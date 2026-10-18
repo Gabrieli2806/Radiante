@@ -93,8 +93,7 @@ void biomeHaze(vec3 rayDir, bool hitSky, float hitDistance, out float transmitta
         hazeRadiance = mix(vec3(skyLuma), skyLight, 0.5) * albedo;
         // The sun or moon lights the haze too, most of all looking towards it: the pale glow a low sun sits in
         // through Bedrock RTX's fog. Unshadowed; the volumetric mode traces that.
-        vec3 lightDir = celestialSunDirection();
-        if (lightDir.y < 0.0) { lightDir = -lightDir; }
+        vec3 lightDir = celestialLightDirection();
         float cosTheta = clamp(dot(rayDir, lightDir), -1.0, 1.0);
         float g = clamp(VPT_BIOME_FOG_FORWARD, 0.0, 0.95);
         float gg = g * g;

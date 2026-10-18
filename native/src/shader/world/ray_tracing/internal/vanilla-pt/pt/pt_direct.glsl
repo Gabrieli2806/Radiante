@@ -24,7 +24,7 @@ vec3 sampleSurfaceDirectLight(SampledSurface surface,
 
     bool isOpaqueSurface = surface.mat.transmission <= EPS;
     vec3 lightDir = celestialSunDirection();
-    if (lightDir.y < 0.0 && !endFlash) { lightDir = -lightDir; }
+    if (lightDir.y < 0.0 && !endFlash) { lightDir = celestialMoonDirection(); }
 
     vec3 sampledLightDir = SampleVMF(mainRay.seed, lightDir, 3000.0);
     float sampledLightNoL = dot(sampledLightDir, surface.geometricNormal);

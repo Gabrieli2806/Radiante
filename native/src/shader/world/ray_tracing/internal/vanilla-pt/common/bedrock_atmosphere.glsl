@@ -1,6 +1,9 @@
 #ifndef VPT_BEDROCK_ATMOSPHERE_GLSL
 #define VPT_BEDROCK_ATMOSPHERE_GLSL
 
+// The moon's own direction for the glow it gives the sky by night.
+#include "common/celestial.glsl"
+
 // The Bedrock style atmosphere (VPT_BEDROCK_ATMOSPHERE): Bedrock RTX does not scatter light through an atmosphere, it
 // looks its sky and its sunlight up in two small tables, and these are them, read from the player's own Bedrock
 // install (configs.json, bedrock_sky and bedrock_luts; they cannot ship in the pack). Without them the textures are
@@ -105,7 +108,7 @@ vec3 bedrockSkyRadiance(vec3 dir, vec3 sunDir) {
 #if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     // And the glow around the sun (the moon by night): 0.05 x max(cos, 0)^7 of the light's colour, part of the sky
     // that lights the world as much as of the one the camera sees.
-    vec3 toLight = sunDir.y >= 0.0 ? sunDir : -sunDir;
+    vec3 toLight = sunDir.y >= 0.0 ? sunDir : celestialMoonDirection();
     vec3 glow = 0.05 * pow(max(dot(dir, normalize(toLight)), 0.0), 7.0) * bedrockCelestialLight(sunDir.y);
     return (mix(a * a, b * b, strip - first) + glow) * bedrockSkyIntensityAdjustment(sunDir.y) *
            VPT_BEDROCK_SKY_INTENSITY;

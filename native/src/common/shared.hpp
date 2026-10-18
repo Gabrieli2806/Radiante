@@ -419,6 +419,15 @@ struct SkyUBO {
     // the sky in the shaders. a: the distance in blocks over which it fades to about a third; 0 with the Biome
     // Ambiance option off, in which case the shaders use one water for every biome.
     T_VEC4 waterFog;
+
+    // The moon's own path (the Moon Path settings): xyz the direction towards it, which keeps the hour opposite the
+    // sun's but may lean and turn apart from its path; exactly -sunDirection while it follows the sun. w unused.
+    T_VEC4 moonDirection;
+    // xyz: the axis the moon's path turns around, the moon's counterpart of celestialAxis. w unused.
+    T_VEC4 moonAxis;
+    // The Sun/Moon Rotation settings, each sprite turned around its own centre: xy (cos, sin) of the sun's angle,
+    // zw the moon's; (1, 0) is vanilla's.
+    T_VEC4 spriteRotation;
 };
 
 // Per-texture lookup from an atlas texture to its PBR companions. specular, normal and rawMer are texture ids,

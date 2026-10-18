@@ -9,7 +9,8 @@ vec3 celestialNormalize(vec3 direction, vec3 fallback) {
     return direction * inversesqrt(lengthSquared);
 }
 
-// Direction towards the sun (straight up when unknown). The sun-path tilt option is applied before upload.
+// Direction towards the sun (straight up when unknown). The sun path settings (tilt, rotation) are applied before
+// upload.
 vec3 celestialSunDirection() {
     return celestialNormalize(skyUBO.sunDirection, vec3(0.0, 1.0, 0.0));
 }
@@ -27,9 +28,26 @@ float endFlashIntensity() {
     return clamp(strength, 0.0, 1.0);
 }
 
-// The moon always sits opposite the sun.
+// Direction towards the moon. Its path can lean and turn apart from the sun's (the Moon Path settings), so it is
+// uploaded on its own; it keeps the hour opposite the sun's, so it is up exactly while the sun is down. Opposite the
+// sun when unknown, as it is with the moon following the sun's path.
 vec3 celestialMoonDirection() {
-    return -celestialSunDirection();
+    return celestialNormalize(skyUBO.moonDirection.xyz, -celestialSunDirection());
+}
+
+// The body that lights the world: the sun while it is above the horizon, the moon otherwise. The sun's height alone
+// picks it, since the moon is up exactly while the sun is down.
+vec3 celestialLightDirection() {
+    vec3 sun = celestialSunDirection();
+    return sun.y < 0.0 ? celestialMoonDirection() : sun;
+}
+
+// A point on a sun or moon sprite turned around the sprite's centre by the Sun/Moon Rotation setting; rotation is
+// (cos, sin) of the angle, (1, 0) leaving it as vanilla draws it.
+vec2 celestialSpriteRotate(vec2 p, vec2 rotation) {
+    // An unset rotation (all zero) would shrink the sprite to its centre texel across the whole square.
+    if (dot(rotation, rotation) < 0.5) { return p; }
+    return vec2(rotation.x * p.x - rotation.y * p.y, rotation.y * p.x + rotation.x * p.y);
 }
 
 #endif

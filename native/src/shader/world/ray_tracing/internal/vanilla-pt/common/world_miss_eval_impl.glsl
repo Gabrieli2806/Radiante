@@ -92,12 +92,14 @@ vec4 sampleAtlasLod0(sampler2D tex, vec2 uv01, uvec2 tileCount, uvec2 tile) {
     return sampleTexture(tex, atlasUv, 0.0, false);
 }
 
-// The sun and moon sprites' frame. Vanilla keeps one edge along the axis the sky turns around, so the squares
-// never turn as they cross the sky; the free basis turns them with the direction.
-void celestialBasis(vec3 dir, out vec3 right, out vec3 up) {
+// The sun and moon sprites' frame. Vanilla keeps one edge along the axis the body's path turns around, so the
+// squares never turn as they cross the sky; the free basis turns them with the direction. The moon's path has an
+// axis of its own (the Moon Path settings). facing: the direction the quad's frame is built around, the sun's own
+// for the sun and the one opposite the moon for the moon, which vanilla draws as the far side of the sun's quad.
+void celestialBasis(vec3 dir, vec3 pathAxis, vec3 facing, out vec3 right, out vec3 up) {
     if (skyUBO.celestialAxis.w > 0.5) {
-        right = normalize(skyUBO.celestialAxis.xyz);
-        up = normalize(cross(right, celestialSunDirection()));
+        right = normalize(pathAxis);
+        up = normalize(cross(right, facing));
         return;
     }
     makeBasis(dir, right, up);
@@ -110,9 +112,9 @@ vec4 evalSunBillboard(vec3 rayDir) {
     if (z <= 0.0) return vec4(0.0);
 
     vec3 right, up;
-    celestialBasis(sunDir, right, up);
+    celestialBasis(sunDir, skyUBO.celestialAxis.xyz, sunDir, right, up);
     vec2 p = vec2(dot(rayDir, right), dot(rayDir, up));
-    vec2 q = p / max(z, 1e-4);
+    vec2 q = celestialSpriteRotate(p / max(z, 1e-4), skyUBO.spriteRotation.xy);
     // Vanilla draws the sun as a quad of half-width 30 at distance 100 (SkyRenderer.renderSun ->
     // applyCelestialBodyTransform(pose, 100, 30)), so the half-angle's tangent is 30/100. The old 0.03 was that
     // value ten times too small, which is why the disc read as a pinprick next to vanilla's.
@@ -173,15 +175,15 @@ vec4 evalMoonBillboard(vec3 rayDir) {
     if (z <= 0.0) return vec4(0.0);
 
     vec3 right, up;
-    celestialBasis(moonDir, right, up);
+    celestialBasis(moonDir, skyUBO.moonAxis.xyz, -moonDir, right, up);
     vec2 p = vec2(dot(rayDir, right), dot(rayDir, up));
-    vec2 q = p / max(z, 1e-4);
+    vec2 q = celestialSpriteRotate(p / max(z, 1e-4), skyUBO.spriteRotation.zw);
     // Same derivation as the sun, with vanilla's moon half-width of 20 at distance 100.
     float tanHalf = 20.0 / 100.0;
     vec2 a = abs(q);
     if (a.x > tanHalf || a.y > tanHalf) return vec4(0.0);
-    // The moon's frame comes from the sun's (celestialBasis), but vanilla draws it on the opposite side of the sky
-    // turned half a circle; without this its face was upside down.
+    // The moon's frame is built facing the sun's side of the sky (celestialBasis), but vanilla draws it on the
+    // opposite side turned half a circle; without this its face was upside down.
     vec2 uv = vec2(1.0) - (q / tanHalf * 0.5 + 0.5);
     vec4 moon = sampleSpriteNearest(textures[nonuniformEXT(skyUBO.moonTextureID)], uv, skyUBO.moonUvRect);
     // As with the sun: the moon texture is a small disc inside a faint square glow, and scaled up to moonlight that

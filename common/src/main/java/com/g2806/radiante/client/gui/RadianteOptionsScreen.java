@@ -864,7 +864,13 @@ public class RadianteOptionsScreen extends Screen {
         stage("entityLightReach", 64);
         stage("volumetricFogStrength", 100);
         stage("starAltitude", 100);
-        stage("vanillaSunPath", true);
+        stage("sunPathTilt", 0);
+        stage("sunPathAzimuth", 0);
+        stage("sunSpriteRotation", 0);
+        stage("moonFollowsSun", true);
+        stage("moonPathTilt", 0);
+        stage("moonPathAzimuth", 0);
+        stage("moonSpriteRotation", 0);
         stage("vanillaCelestialOrientation", true);
         stage("outputResolution", OutputResolution.NATIVE.name());
         stage("outputResolutionPercent", OutputResolution.DEFAULT_PERCENT);
@@ -1038,8 +1044,11 @@ public class RadianteOptionsScreen extends Screen {
                 case PERFORMANCE -> addPerformanceOptions();
                 case OTHER -> addOtherOptions();
             }
-            this.sections.add(new SettingsLayout.Section(section, List.copyOf(this.page),
-                AdvancedOptions.groups(section, this.pendingAdvanced)));
+            List<SettingsLayout.Group> groups = new ArrayList<>(AdvancedOptions.groups(section, this.pendingAdvanced));
+            if (section == Category.SKY_AND_WATER) {
+                groups.add(0, skyPathGroup());
+            }
+            this.sections.add(new SettingsLayout.Section(section, List.copyOf(this.page), groups));
         }
     }
 
@@ -1242,9 +1251,7 @@ public class RadianteOptionsScreen extends Screen {
                 value -> stage("starAltitude", value)),
             tunable(Tunable.SUN_GLOW, false),
             tunable(Tunable.LIGHT_SHAFTS, false),
-            OptionInstance.createBoolean("options.radiante.vanilla_sun_path",
-                OptionInstance.cachedConstantTooltip(Component.translatable("options.radiante.vanilla_sun_path.tooltip")),
-                staged("vanillaSunPath", Options.vanillaSunPath), value -> stage("vanillaSunPath", value)),
+            sunPathOption(),
             OptionInstance.createBoolean("options.radiante.vanilla_celestial_orientation",
                 OptionInstance.cachedConstantTooltip(
                     Component.translatable("options.radiante.vanilla_celestial_orientation.tooltip")),
@@ -1264,6 +1271,96 @@ public class RadianteOptionsScreen extends Screen {
             volumetricFog, fogStyle, volumetricStrength, tunable(Tunable.FOG_DISTANCE, false),
             tunable(Tunable.WATER_WAVES, false), tunable(Tunable.WATER_DENSITY, false),
             tunable(Tunable.WATER_GOD_RAYS, false));
+    }
+
+    /** The Sun Path choices: vanilla's path, the one leaning south, or what the Sun & Moon Path group sets. */
+    enum SunPath {
+        VANILLA(0), TILTED(Options.SUN_PATH_TILTED_DEGREES), CUSTOM(0);
+
+        final int tilt;
+
+        SunPath(int tilt) {
+            this.tilt = tilt;
+        }
+
+        String key() {
+            return "options.radiante.sun_path." + name().toLowerCase(java.util.Locale.ROOT);
+        }
+
+        static SunPath of(int tilt, int azimuth) {
+            return azimuth != 0 ? CUSTOM : tilt == VANILLA.tilt ? VANILLA : tilt == TILTED.tilt ? TILTED : CUSTOM;
+        }
+    }
+
+    /**
+     * The sun's path as one choice: vanilla's or the tilted one, which set the path settings of the Sun & Moon Path
+     * group. Custom is only listed while those settings hold something else, and picking it changes nothing.
+     */
+    private OptionInstance<SunPath> sunPathOption() {
+        SunPath current = SunPath.of(staged("sunPathTilt", Options.sunPathTilt),
+            staged("sunPathAzimuth", Options.sunPathAzimuth));
+        List<SunPath> values = current == SunPath.CUSTOM ? List.of(SunPath.values())
+            : List.of(SunPath.VANILLA, SunPath.TILTED);
+        return new OptionInstance<>("options.radiante.sun_path", tooltip("options.radiante.sun_path"),
+            (caption, value) -> Component.translatable(value.key()),
+            new OptionInstance.Enum<>(values, Codec.STRING.xmap(SunPath::valueOf, SunPath::name)), current,
+            value -> {
+                if (value == SunPath.CUSTOM) {
+                    return;
+                }
+                stage("sunPathTilt", value.tilt);
+                stage("sunPathAzimuth", 0);
+                // The path sliders below show the values just set.
+                refreshQualityLater();
+            });
+    }
+
+    /** A slider in whole degrees from -limit to limit, held until Apply like the other plain options. */
+    private OptionInstance<Integer> degreesSlider(String key, String field, int current, int limit, boolean refresh) {
+        return new OptionInstance<Integer>(key, RadianteOptionsScreen.<Integer>tooltip(key),
+            (caption, value) -> Component.translatable("options.generic_value", caption, value + "°"),
+            new OptionInstance.IntRange(-limit, limit, false), staged(field, current), value -> {
+                stage(field, value);
+                if (refresh) {
+                    // The Sun Path choice above names the path these make.
+                    refreshQualityLater();
+                }
+            });
+    }
+
+    /**
+     * The Sun & Moon Path group of the advanced settings: the sun's path leaned and turned by any amount, the sun's
+     * and the moon's squares turned around their centres, and the moon on a path of its own instead of the sun's.
+     * Everything that uses the sun or the moon (the sky, shadows, clouds, fog, water) follows them, live.
+     */
+    private SettingsLayout.Group skyPathGroup() {
+        List<OptionInstance<?>> rows = new ArrayList<>();
+        rows.add(degreesSlider("options.radiante.sun_path_tilt", "sunPathTilt", Options.sunPathTilt,
+            Options.MAX_PATH_TILT, true));
+        rows.add(degreesSlider("options.radiante.sun_path_azimuth", "sunPathAzimuth", Options.sunPathAzimuth,
+            Options.MAX_ROTATION, true));
+        rows.add(degreesSlider("options.radiante.sun_sprite_rotation", "sunSpriteRotation", Options.sunSpriteRotation,
+            Options.MAX_ROTATION, false));
+        boolean followsSun = staged("moonFollowsSun", Options.moonFollowsSun);
+        rows.add(OptionInstance.createBoolean("options.radiante.moon_follows_sun",
+            tooltip("options.radiante.moon_follows_sun"), followsSun, value -> {
+                if (!value) {
+                    // The moon starts its own path where it was, on the sun's, so nothing jumps.
+                    stage("moonPathTilt", staged("sunPathTilt", Options.sunPathTilt));
+                    stage("moonPathAzimuth", staged("sunPathAzimuth", Options.sunPathAzimuth));
+                }
+                stage("moonFollowsSun", value);
+                refreshQualityLater();
+            }));
+        if (!followsSun) {
+            rows.add(degreesSlider("options.radiante.moon_path_tilt", "moonPathTilt", Options.moonPathTilt,
+                Options.MAX_PATH_TILT, false));
+            rows.add(degreesSlider("options.radiante.moon_path_azimuth", "moonPathAzimuth", Options.moonPathAzimuth,
+                Options.MAX_ROTATION, false));
+        }
+        rows.add(degreesSlider("options.radiante.moon_sprite_rotation", "moonSpriteRotation",
+            Options.moonSpriteRotation, Options.MAX_ROTATION, false));
+        return new SettingsLayout.Group("options.radiante.advanced.group.sky_path", List.copyOf(rows));
     }
 
     /** An on/off shader pack setting applied with the rest; null where the pack lacks it. */

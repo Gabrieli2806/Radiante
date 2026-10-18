@@ -454,6 +454,11 @@ public final class RadianteRenderer {
             : new Vector4f(sky.sunriseAndSunsetColor);
         Matrix4f celestial = com.g2806.radiante.api.RadianteApi.celestialTransform(sky.sunAngle);
         Vector3f sunDirection = celestial.transformDirection(new Vector3f(0.0f, 1.0f, 0.0f)).normalize();
+        // The moon on a path of its own when the player gave it one, at the hour opposite the sun's. Following the
+        // sun it is exactly the sun's direction turned round, as the shaders took it before it had a path.
+        Matrix4f moonPath = com.g2806.radiante.api.RadianteApi.moonTransform(sky.sunAngle);
+        Vector3f moonDirection = moonPath.transformDirection(new Vector3f(0.0f, -1.0f, 0.0f)).normalize();
+        Vector3f moonAxis = moonPath.transformDirection(new Vector3f(1.0f, 0.0f, 0.0f)).normalize();
         if (skyType == 2) {
             // The End has no sun: its flash takes the sun's place, its direction as vanilla draws it (SkyRenderer:
             // turned about y by 180 - yAngle, then about x by -90 - xAngle), scaled by its intensity, zero between
@@ -463,10 +468,16 @@ public final class RadianteRenderer {
                 .rotateY((float) Math.toRadians(180.0f - sky.endFlashYAngle))
                 .rotateX((float) Math.toRadians(-90.0f - sky.endFlashXAngle))
                 .transformDirection(new Vector3f(0.0f, 1.0f, 0.0f)).normalize().mul(Math.max(flash, 0.0f));
+            // No moon either: what stands for it is the side of the sky opposite the flash, as it always was.
+            moonDirection = new Vector3f(sunDirection).negate();
         }
         // Vanilla's sun and moon quads lie along the transform's local x and z, so their edges stay lined up with
         // the path; x is the axis the sky turns around.
         Vector3f celestialAxis = celestial.transformDirection(new Vector3f(1.0f, 0.0f, 0.0f)).normalize();
+        double sunSprite = Math.toRadians(Options.sunSpriteRotation);
+        double moonSprite = Math.toRadians(Options.moonSpriteRotation);
+        Vector4f spriteRotation = new Vector4f((float) Math.cos(sunSprite), (float) Math.sin(sunSprite),
+            (float) Math.cos(moonSprite), (float) Math.sin(moonSprite));
 
 
         TextureAtlas celestials = minecraft.getAtlasManager().getAtlasOrThrow(AtlasIds.CELESTIALS);
@@ -484,7 +495,8 @@ public final class RadianteRenderer {
             BiomeAmbiance.chroma(), BiomeAmbiance.heights(), BiomeAmbiance.waterExtinction(),
             BiomeAmbiance.waterAlbedo(), mobEffect,
             RainExposure.update(minecraft, cameraState.pos.x(), cameraState.pos.z()),
-            BiomeAmbiance.waterFog()));
+            BiomeAmbiance.waterFog(), new Vector4f(moonDirection, 0.0f), new Vector4f(moonAxis, 0.0f),
+            spriteRotation));
     }
 
     /**
