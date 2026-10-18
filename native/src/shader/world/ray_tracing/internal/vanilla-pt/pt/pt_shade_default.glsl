@@ -505,11 +505,17 @@ void ptShadeDefault(bool viewMark) {
             // pool and sea, brightest where the texture's alpha peaks, that takes nothing away from the view through
             // the water (1 to 4 blocks of it over white, side by side). Kept in directLightRadiance as well, for the
             // ray generation, which traces the camera's view through the surface itself (initTransparent).
+            // Only where the view enters the water from the open air. Water met through glass (an aquarium, a tunnel
+            // under the sea) is the side of the water standing against the glass, and with the layer on it every
+            // window looked frosted and the tank behind it milky. Nor on a face the view meets from inside the water
+            // (the far side of a waterfall, a tank's walls seen through its top): one body of water shows the
+            // pattern once, where the view goes into it.
             if (localBounce == 0) {
                 mainRay.directLightRadiance = vec3(0.0);
                 g_deferredToDirect = false;
             }
-            if (localBounce == 0 && !fromBelow && (bounce == 0u || rayCameraPath(mainRay) || g_viewBounce)) {
+            bool waterFromAir = !fromBelow && !rayInWater(mainRay) && !rayCrossedGlass(mainRay);
+            if (localBounce == 0 && waterFromAir && (bounce == 0u || rayCameraPath(mainRay) || g_viewBounce)) {
                 float waterOpacity = clamp(currentSurface.albedoValue.a * 2.0 - 1.0, 0.0, 1.0) *
                                      clamp(VPT_WATER_TEXTURE_LAYER, 0.0, 1.0);
                 if (waterOpacity > 0.0) {
