@@ -312,7 +312,7 @@ reads `sharc_scene_scale`, `sharc_accumulation_frame_num`, `sharc_stale_frame_nu
 ### Measuring
 
 F3 shows the GPU time of the world pipeline, averaged over 60 frames, with its larger stages
-(`PrismRT GPU: 5.10 ms (world 3.10, sharc 0.62, DLSS 0.56, ...)`), from timestamp queries (`render/gpu_profiler.*`).
+(`PrismRT GPU: 5.10 ms (world 3.10, sharc_paths 0.32, sharc_resolve 0.30, DLSS 0.56, ...)`; the SHaRC update is shown as its paths and its resolve), from timestamp queries (`render/gpu_profiler.*`).
 With the environment variable `RADIANTE_GPU_PROFILE` set, every stage is also logged every 300 frames
 (`[gpu profile]`).
 ## Denoising, upscaling and post

@@ -16,7 +16,7 @@ bool enabled();
 // RADIANTE_GPU_PROFILE is set: the per-stage averages are also logged.
 bool verbose();
 
-// The last averages, "13.14 ms (world 11.35, sharc 0.62, DLSS 0.56)", or empty before the first.
+// The last averages, "13.14 ms (world 11.35, sharc_paths 0.32, DLSS 0.56)", or empty before the first.
 std::string summary();
 
 // At the start of a frame's world commands: collects what this frame slot measured the last time it was used (that

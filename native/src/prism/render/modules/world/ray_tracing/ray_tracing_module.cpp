@@ -1145,7 +1145,7 @@ void RayTracingModule::render(RayTracingModuleContext &context) {
         RayTracingPass &pass = *std::get<std::shared_ptr<RayTracingPass>>(entry.pass);
         if (pass.executionBuffer != nullptr) uploadExecution(pass.executionBuffer, variables, frame);
         renderSharcUpdate(entry, pass, frame, variables);
-        GpuProfiler::mark(commandBuffer, "rt:sharc");
+        GpuProfiler::mark(commandBuffer, "rt:sharc_resolve");
     }
 
     shaderPack_->executeCommands(
@@ -1278,7 +1278,7 @@ void RayTracingModule::updateSharcConfig(uint32_t frameIndex) {
     config.enableAntiFireflyFilter = 1;
     config.useLockBuffer = 0;
     config.debugMode = settings_.sharcDebugMode;
-    config.updateDownsampleFactor = settings_.sharcUpdateDownsampleFactor;
+    config.updateDownsampleFactor = sharcDownsample_;
     sharcConfigBuffers_[frameIndex]->uploadToBuffer(&config);
 
     sharcPreviousCamera_ = camera;
@@ -1467,16 +1467,24 @@ void RayTracingModule::renderSharcUpdate(Pass &entry,
     }
     scene.setupHitGroupSbt(pass.hitGroupNameToIndex, pass.fallbackHitGroupIndex, pass.shadowHitGroupIndex,
                            frame.commandBuffer, pass.updateSbts[frame.index], nullptr);
+
+    // The update traces a sparse grid of the pass's rays: one per downsample factor squared. The cache is a grid in
+    // the world, whose cells do not get smaller with the render size, so above 1280x720 the factor grows with it and
+    // the cache gets as many paths a frame as at 1280x720 (where DLSS Ultra Performance renders a 4K picture): at
+    // 2560x1440 four times as many paths had cost a millisecond more for a cache no different to look at.
+    const uint32_t width = dispatchSize(pass.config.width, variables, "ray tracing dispatch width", pass.config.name);
+    const uint32_t height =
+        dispatchSize(pass.config.height, variables, "ray tracing dispatch height", pass.config.name);
+    const uint32_t baseDownsample = std::max(1u, settings_.sharcUpdateDownsampleFactor);
+    const double sizeRatio = std::sqrt(static_cast<double>(width) * height / (1280.0 * 720.0));
+    sharcDownsample_ = std::max(baseDownsample,
+                                static_cast<uint32_t>(std::lround(static_cast<double>(baseDownsample) * sizeRatio)));
+    const uint32_t downsample = sharcDownsample_;
     updateSharcConfig(frame.index);
 
     addPassBarriers(entry, pass.config.inputs, pass.config.outputs, frame);
     recordBarriers(frame);
 
-    // The update traces a sparse grid of the pass's rays: one per downsample factor squared.
-    const uint32_t width = dispatchSize(pass.config.width, variables, "ray tracing dispatch width", pass.config.name);
-    const uint32_t height =
-        dispatchSize(pass.config.height, variables, "ray tracing dispatch height", pass.config.name);
-    const uint32_t downsample = std::max(1u, settings_.sharcUpdateDownsampleFactor);
     const uint32_t updateWidth = (width + downsample - 1) / downsample;
     const uint32_t updateHeight = (height + downsample - 1) / downsample;
 
@@ -1484,6 +1492,8 @@ void RayTracingModule::renderSharcUpdate(Pass &entry,
     frame.commandBuffer->bindDescriptorTable(table, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR)
         ->bindRTPipeline(pass.updatePipeline)
         ->raytracing(pass.updateSbts[frame.index], updateWidth, updateHeight, 1);
+    // The paths and the resolve apart: the paths cost with the render size, the resolve with the cache's capacity.
+    GpuProfiler::mark(frame.commandBuffer->vkCommandBuffer(), "rt:sharc_paths");
 
     frame.commandBuffer->memoryBarrier(VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR, kShaderReadWrite,
                                        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, kShaderReadWrite);

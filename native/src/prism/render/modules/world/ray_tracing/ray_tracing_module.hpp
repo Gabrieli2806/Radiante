@@ -271,6 +271,8 @@ class RayTracingModule : public WorldModule, public SharedObject<RayTracingModul
     glm::dvec3 sharcPreviousCamera_ = glm::dvec3(0.0);
     bool sharcCameraKnown_ = false;
     uint32_t sharcFrameIndex_ = 0;
+    // The downsample factor this frame's update traces with (renderSharcUpdate), which the raygen reads too.
+    uint32_t sharcDownsample_ = 5;
 
     Settings settings_;
 
