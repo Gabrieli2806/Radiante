@@ -339,6 +339,8 @@ first-hit direct and indirect diffuse, specular, emission, refraction, and fog i
   glow of the surface seen kept out of them, the direct light always diffuse, the bounce's length as the diffuse hit
   distance).
 - **DLSS** (`dlss/`): DLSS Super Resolution and Ray Reconstruction through NGX; RR replaces NRD when available.
+  `Pipeline.isRayReconstructionAvailable` says whether NGX offers RR; without it the default falls back to NRD +
+  DLSS super resolution, then (XeSS first on Intel) NRD + FSR, NRD + XeSS, NRD alone.
 - **FSR** (`fsr_upscaler/`): FidelityFX upscaler (`PRISM_ENABLE_FFX_UPSCALER`).
 - **XeSS** (`xess_upscaler/`): Intel XeSS SR (`PRISM_ENABLE_XESS`, needs `extern/xess`).
 - The `shader/world/upscaler/*.comp` passes bring motion vectors, depth and normals to the output size for the
