@@ -61,6 +61,10 @@ class DLSSModule : public WorldModule, public SharedObject<DLSSModule> {
     static std::shared_ptr<NgxContext> ngxContext() {
         return ngxContext_;
     }
+    // Whether NGX offers Ray Reconstruction here, as initNGXContext found; NGX may offer super resolution alone.
+    static bool rayReconstructionAvailable() {
+        return ngxContext_ != nullptr && rayReconstructionAvailable_;
+    }
 
     DLSSModule() = default;
 
@@ -97,6 +101,7 @@ class DLSSModule : public WorldModule, public SharedObject<DLSSModule> {
     void chooseRenderSize();
 
     static std::shared_ptr<NgxContext> ngxContext_;
+    static bool rayReconstructionAvailable_;
 
     bool rayReconstruction_ = true;
     // Share of the output size to render at (0-1); 0 leaves it to the mode.

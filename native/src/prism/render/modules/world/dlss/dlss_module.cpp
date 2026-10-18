@@ -14,6 +14,7 @@
 #include <system_error>
 
 std::shared_ptr<NgxContext> DLSSModule::ngxContext_ = nullptr;
+bool DLSSModule::rayReconstructionAvailable_ = false;
 
 namespace {
 
@@ -129,6 +130,7 @@ bool DLSSModule::initNGXContext() {
         deinitNGXContext();
         return false;
     }
+    rayReconstructionAvailable_ = rayReconstruction;
     return true;
 }
 

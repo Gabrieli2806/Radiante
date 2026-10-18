@@ -248,7 +248,7 @@ public class RadianteOptionsScreen extends Screen {
         }
         List<Presets> available = new ArrayList<>();
         for (Presets preset : Presets.values()) {
-            if (preset != Presets.RT_NRD_DLSS && Pipeline.isPresetAvailable(preset.key)) {
+            if (preset != Presets.RT_NRD_DLSS && entryAvailable(preset)) {
                 available.add(preset);
             }
         }
@@ -390,7 +390,7 @@ public class RadianteOptionsScreen extends Screen {
                 Math.round(component.downloadBytes / 1_000_000.0)),
                 manageTooltip, () -> openUpscalerScreen(component), !inWorld, null);
         }
-        if (!Pipeline.isPresetAvailable(shown.key)) {
+        if (!entryAvailable(shown)) {
             return new SettingsLayout.Extra(Component.translatable("options.radiante.download.button.restart", name),
                 null, () -> {
                     this.applied = true;
@@ -446,11 +446,23 @@ public class RadianteOptionsScreen extends Screen {
     }
 
     /**
+     * Whether a pipeline entry can be picked. The DLSS entry stands for DLSS with or without Ray Reconstruction, so it
+     * is there too where the GPU runs DLSS super resolution alone (Apply then builds the NRD + DLSS pipeline).
+     */
+    private static boolean entryAvailable(Presets preset) {
+        if (preset == Presets.RT_DLSSRR) {
+            return Pipeline.isPresetAvailable(Presets.RT_DLSSRR.key) || Pipeline.isPresetAvailable(Presets.RT_NRD_DLSS.key);
+        }
+        return Pipeline.isPresetAvailable(preset.key);
+    }
+
+    /**
      * The pipeline Apply builds: the DLSS entry becomes RT_NRD_DLSS with Ray Reconstruction off, where NRD is there
      * to take over the denoising.
      */
     private Presets appliedPreset() {
-        if (usingDlss() && Boolean.FALSE.equals(this.pendingRayReconstruction)
+        if (usingDlss()
+            && (Boolean.FALSE.equals(this.pendingRayReconstruction) || !Pipeline.isPresetAvailable(Presets.RT_DLSSRR.key))
             && Pipeline.isPresetAvailable(Presets.RT_NRD_DLSS.key)) {
             return Presets.RT_NRD_DLSS;
         }
@@ -462,7 +474,9 @@ public class RadianteOptionsScreen extends Screen {
      * and only where the NRD pipeline that replaces it can be built.
      */
     private OptionInstance<Boolean> rayReconstructionOption() {
-        if (!usingDlss() || !Pipeline.isPresetAvailable(Presets.RT_NRD_DLSS.key)) {
+        // Not where the GPU runs DLSS without Ray Reconstruction only: there is nothing to turn on.
+        if (!usingDlss() || !Pipeline.isPresetAvailable(Presets.RT_NRD_DLSS.key)
+            || !Pipeline.isPresetAvailable(Presets.RT_DLSSRR.key)) {
             return null;
         }
         if (this.pendingRayReconstruction == null) {
@@ -794,7 +808,7 @@ public class RadianteOptionsScreen extends Screen {
         stage("vanillaCelestialOrientation", true);
         this.forgetStoredSettings = true;
         // DLSS where the GPU has it, otherwise FSR, which every GPU runs: never back to no upscaler at all.
-        this.pendingPreset = Pipeline.isPresetAvailable(Presets.RT_DLSSRR.key) ? Presets.RT_DLSSRR
+        this.pendingPreset = entryAvailable(Presets.RT_DLSSRR) ? Presets.RT_DLSSRR
             : Pipeline.isPresetAvailable(Presets.RT_NRD_FSR.key) ? Presets.RT_NRD_FSR : null;
         this.pendingDlssMode = "render_pipeline.module.dlss.attribute.mode.ultra_performance";
         this.pendingRayReconstruction = Boolean.TRUE;

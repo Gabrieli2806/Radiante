@@ -140,7 +140,8 @@ public class Pipeline {
                     RAY_TRACING_MODULE_NAME,
                     DLSS_MODULE_NAME,
                     TONE_MAPPING_MODULE_NAME,
-                    POST_RENDER_MODULE_NAME);
+                    POST_RENDER_MODULE_NAME)
+                    && rayReconstructionAvailable();
         }
 
         if (Objects.equals(presetName, Presets.RT_NRD.key)) {
@@ -182,7 +183,34 @@ public class Pipeline {
         return false;
     }
 
+    /**
+     * Whether DLSS can run Ray Reconstruction on this GPU. NGX may offer super resolution alone (an old driver, a GPU it
+     * does not support Ray Reconstruction on), and the Ray Reconstruction pipeline then drew nothing at all.
+     */
+    private static boolean rayReconstructionAvailable() {
+        try {
+            return isRayReconstructionAvailable();
+        } catch (UnsatisfiedLinkError olderRenderer) {
+            // A renderer from before the question: DLSS meant Ray Reconstruction then.
+            return true;
+        }
+    }
+
+    public static native boolean isRayReconstructionAvailable();
+
+    /**
+     * The pipeline for a GPU without Ray Reconstruction (RT_DLSSRR is the default where it runs): NRD with the best
+     * upscaler there is. DLSS super resolution where NGX offers it without Ray Reconstruction; XeSS before FSR on an
+     * Intel GPU, which runs it on its matrix units; FSR before XeSS everywhere else; NRD alone without any of them.
+     */
     private static String getBestAvailablePresetName() {
+        if (isPresetAvailable(Presets.RT_NRD_DLSS.key)) {
+            return Presets.RT_NRD_DLSS.key;
+        }
+        if (com.g2806.radiante.client.render.RadianteRenderer.isIntelGpu()
+                && isPresetAvailable(Presets.RT_NRD_XESS.key)) {
+            return Presets.RT_NRD_XESS.key;
+        }
         if (isPresetAvailable(Presets.RT_NRD_FSR.key)) {
             return Presets.RT_NRD_FSR.key;
         }

@@ -2,6 +2,7 @@
 #include "prism/middleware/jni_support.hpp"
 #include "prism/render/buffers.hpp"
 #include "prism/render/gpu_profiler.hpp"
+#include "prism/render/modules/world/dlss/dlss_module.hpp"
 #include "prism/render/modules/world/ray_tracing/ray_tracing_module.hpp"
 #include "prism/render/modules/world/shader_pack/shader_pack.hpp"
 #include "prism/render/pipeline.hpp"
@@ -46,6 +47,16 @@ JNIEXPORT jboolean JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_isNa
     return jni::boolean(jni::guard("[Radiante] isNativeModuleAvailable", false, [&] {
         auto module = jni::utf8(env, name);
         return module.has_value() && Pipeline::worldModuleConstructors.contains(*module);
+    }));
+}
+
+// Whether DLSS can run Ray Reconstruction here: NGX may offer super resolution alone, and a Ray Reconstruction
+// pipeline then draws nothing. False without DLSS.
+JNIEXPORT jboolean JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_isRayReconstructionAvailable(JNIEnv *,
+                                                                                                        jclass) {
+    return jni::boolean(jni::guard("[Radiante] isRayReconstructionAvailable", false, [] {
+        return Pipeline::worldModuleConstructors.contains(std::string(DLSSModule::NAME)) &&
+               DLSSModule::rayReconstructionAvailable();
     }));
 }
 
