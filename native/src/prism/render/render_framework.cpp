@@ -214,9 +214,25 @@ void FrameworkContext::waitForPreviousSubmit() {
     submitTimelineValue = 0;
 }
 
-void FrameworkContext::fuseInto(std::shared_ptr<gpu::ExternalImage> target) {
+void FrameworkContext::fuseInto(std::shared_ptr<gpu::ExternalImage> target,
+                                const std::shared_ptr<gpu::DeviceLocalImage> &upscaled) {
     auto owner = framework.lock();
     if (owner == nullptr || !owner->isRunning() || target == nullptr) return;
+
+    if (upscaled != nullptr) {
+        // Already at the target's size, in GENERAL with its writes made visible (OutputUpscaler): a copy, through a
+        // blit for the format conversion. Minecraft keeps its textures in GENERAL.
+        VkImageBlit blit{};
+        blit.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+        blit.srcOffsets[1] = {static_cast<int32_t>(upscaled->width()), static_cast<int32_t>(upscaled->height()), 1};
+        blit.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+        blit.dstOffsets[1] = {static_cast<int32_t>(target->width()), static_cast<int32_t>(target->height()), 1};
+        vkCmdBlitImage(fuseCommandBuffer->vkCommandBuffer(), upscaled->vkImage(), VK_IMAGE_LAYOUT_GENERAL,
+                       target->vkImage(), VK_IMAGE_LAYOUT_GENERAL, 1, &blit, VK_FILTER_NEAREST);
+        // Read by the blit outside the layout tracking: its next tracked use waits on everything before it.
+        upscaled->imageLayout() = VK_IMAGE_LAYOUT_GENERAL;
+        return;
+    }
 
     auto worldContext = owner->pipeline()->acquirePipelineContext(shared_from_this())->worldPipelineContext;
     if (worldContext == nullptr || worldContext->outputImage == nullptr) return;
@@ -347,19 +363,35 @@ void Framework::recordAfterWorld(FrameworkContext &context,
                                  VkFormat format) {
     auto worldPipeline = pipeline_->worldPipeline();
     const int depthSlot = framegen::FrameGeneration::depthSlot();
+    const std::shared_ptr<gpu::DeviceLocalImage> &output = worldContext->outputImage;
+
+    // A lower output resolution: the picture is upscaled to the target's size with FSR 1 rather than stretched by the
+    // blit. Only when it is smaller on both sides; at the target's size (Native) nothing more runs than before.
+    std::shared_ptr<gpu::DeviceLocalImage> upscaled;
+    if (output != nullptr && output->width() <= width && output->height() <= height &&
+        (output->width() < width || output->height() < height)) {
+        upscaled = outputUpscaler_.record(*this, *context.fuseCommandBuffer, output, WorldPipeline::OUTPUT_LAYOUT,
+                                          width, height, context.frameIndex);
+        if (upscaled != nullptr && GpuProfiler::enabled()) {
+            GpuProfiler::mark(context.fuseCommandBuffer->vkCommandBuffer(), "output_fsr1");
+        }
+    }
+    // What Minecraft's target receives: frame generation and HDR output compare its final image against it.
+    const std::shared_ptr<gpu::DeviceLocalImage> &shown = upscaled != nullptr ? upscaled : output;
 
     // Frame generation reads the finished world image plus the depth and motion vectors behind it.
-    if (worldPipeline != nullptr) {
+    if (worldPipeline != nullptr && output != nullptr) {
         const int motionSlot = framegen::FrameGeneration::motionVectorSlot();
         if (depthSlot >= 0 && motionSlot >= 0) {
             framegen::NativeFrameGeneration::instance().captureWorldFrame(
-                shared_from_this(), worldContext->outputImage,
+                shared_from_this(), shown,
                 worldPipeline->sharedImage(context.frameIndex, static_cast<uint32_t>(depthSlot)),
-                worldPipeline->sharedImage(context.frameIndex, static_cast<uint32_t>(motionSlot)));
+                worldPipeline->sharedImage(context.frameIndex, static_cast<uint32_t>(motionSlot)),
+                VkExtent2D{output->width(), output->height()});
         }
     }
 
-    context.fuseInto(fuseTarget(target, width, height, format));
+    context.fuseInto(fuseTarget(target, width, height, format), upscaled);
 
     // For what Minecraft draws over the traced picture afterwards: the traced depth, in its depth texture.
     if (overlayDepth_.image != VK_NULL_HANDLE && worldPipeline != nullptr && depthSlot >= 0) {
@@ -367,7 +399,7 @@ void Framework::recordAfterWorld(FrameworkContext &context,
                        worldPipeline->sharedImage(context.frameIndex, static_cast<uint32_t>(depthSlot)), overlayDepth_,
                        width, height, context.frameIndex);
     }
-    HdrOutput::instance().noteWorldFrame(worldContext);
+    HdrOutput::instance().noteWorldFrame(worldContext, upscaled);
 }
 
 std::shared_ptr<gpu::ExternalImage> Framework::fuseTarget(VkImage image,
@@ -446,6 +478,7 @@ void Framework::recreate() {
         waitRenderQueueIdle();
         framegen::NativeFrameGeneration::instance().reset();
         mcDepth_.reset();
+        outputUpscaler_.reset();
 
         const auto rebuildStart = Clock::now();
         createContexts();
@@ -480,6 +513,7 @@ void Framework::waitBackendQueueIdle() {
 void Framework::close() {
     framegen::NativeFrameGeneration::instance().release();
     mcDepth_.reset();
+    outputUpscaler_.reset();
     // Before the modules close: a prewarm still compiles with their objects.
     if (pipeline_ != nullptr) pipeline_->shaderPrewarm().cancelAndJoin();
     if (running_ && pipeline_ != nullptr) pipeline_->close();

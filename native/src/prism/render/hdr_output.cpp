@@ -25,8 +25,9 @@ struct ComposeConstants {
     int32_t autoExposure;
     int32_t worldValid;
     int32_t debugView;
+    int32_t scaled; // the world was upscaled to Minecraft's image from a lower output resolution
 };
-static_assert(sizeof(ComposeConstants) == 32);
+static_assert(sizeof(ComposeConstants) == 36);
 
 constexpr VkPipelineStageFlags2 ANY_STAGE = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 constexpr VkAccessFlags2 ANY_ACCESS = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
@@ -80,7 +81,8 @@ HdrOutput &HdrOutput::instance() {
     return *output;
 }
 
-void HdrOutput::noteWorldFrame(const std::shared_ptr<WorldPipelineContext> &worldContext) {
+void HdrOutput::noteWorldFrame(const std::shared_ptr<WorldPipelineContext> &worldContext,
+                               const std::shared_ptr<gpu::DeviceLocalImage> &upscaled) {
     std::scoped_lock lock(mutex_);
     world_ = WorldFrame{};
     worldFresh_ = false;
@@ -92,7 +94,8 @@ void HdrOutput::noteWorldFrame(const std::shared_ptr<WorldPipelineContext> &worl
         auto module = toneMapping->toneMappingModule.lock();
         if (module == nullptr) return;
 
-        world_.fused = worldContext->outputImage;
+        world_.output = worldContext->outputImage;
+        world_.fused = upscaled != nullptr ? upscaled : worldContext->outputImage;
         world_.mapped = toneMapping->ldrImage;
         world_.radiance = toneMapping->hdrImage;
         world_.exposure = module->exposureBuffer();
@@ -174,6 +177,9 @@ bool HdrOutput::prepare(uint32_t width, uint32_t height) {
                                       // the exposure, the composed image
                                       .defineDescriptorLayoutSetBinding(binding(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER))
                                       .defineDescriptorLayoutSetBinding(binding(5, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE))
+                                      // the world pipeline's picture, before an upscale to a lower output resolution
+                                      .defineDescriptorLayoutSetBinding(
+                                          binding(6, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER))
                                       .endDescriptorLayoutSetBinding()
                                       .endDescriptorLayoutSet()
                                       .definePushConstant({
@@ -228,13 +234,18 @@ bool HdrOutput::compose(VkCommandBuffer commands,
     const std::shared_ptr<gpu::ExternalImage> minecraft = minecraftView(minecraftImage, minecraftFormat, width, height);
     if (minecraft == nullptr) return false;
 
+    // With a lower output resolution the fused picture is at Minecraft's size and the others at the output's.
+    const uint32_t outputWidth = world_.output != nullptr ? world_.output->width() : 0;
+    const uint32_t outputHeight = world_.output != nullptr ? world_.output->height() : 0;
     const bool worldValid = worldFresh_ && sameSize(world_.fused, width, height) &&
-                            sameSize(world_.mapped, width, height) && sameSize(world_.radiance, width, height);
+                            sameSize(world_.mapped, outputWidth, outputHeight) &&
+                            sameSize(world_.radiance, outputWidth, outputHeight);
+    const bool scaled = worldValid && (outputWidth != width || outputHeight != height);
     // A world frame is shown once: when Minecraft presents again without tracing one (a menu over a paused game that
     // stopped rendering the level), what it shows is its own image.
     worldFresh_ = false;
-    const std::array<gpu::DeviceLocalImage *, 3> worldImages = {world_.fused.get(), world_.mapped.get(),
-                                                                world_.radiance.get()};
+    const std::array<gpu::DeviceLocalImage *, 4> worldImages = {world_.fused.get(), world_.mapped.get(),
+                                                                world_.radiance.get(), world_.output.get()};
 
     // Every image the pass samples is read in GENERAL and put back afterwards as it was, so neither Minecraft nor the
     // world pipeline finds a layout it did not leave.
@@ -242,9 +253,9 @@ bool HdrOutput::compose(VkCommandBuffer commands,
         VkImage image;
         VkImageLayout layout;
     };
-    std::array<Restore, 4> restore{};
+    std::array<Restore, 5> restore{};
     size_t restoreCount = 0;
-    std::array<VkImageMemoryBarrier2, 5> before{};
+    std::array<VkImageMemoryBarrier2, 6> before{};
     size_t beforeCount = 0;
     const auto readInGeneral = [&](VkImage image, VkImageLayout layout) {
         if (layout == VK_IMAGE_LAYOUT_GENERAL) return;
@@ -280,6 +291,7 @@ bool HdrOutput::compose(VkCommandBuffer commands,
     table->bindSamplerImage(sampler_, worldOrMinecraft(world_.radiance), VK_IMAGE_LAYOUT_GENERAL, 0, 3, 0);
     table->bindBuffer(worldValid ? world_.exposure : noExposure_, 0, 4);
     table->bindImage(composed_, VK_IMAGE_LAYOUT_GENERAL, 0, 5);
+    table->bindSamplerImage(sampler_, worldOrMinecraft(world_.output), VK_IMAGE_LAYOUT_GENERAL, 0, 6, 0);
 
     const ComposeConstants constants{
         .paperWhite = std::clamp(paperWhiteNits, 40.0f, 1000.0f) / 80.0f,
@@ -290,6 +302,7 @@ bool HdrOutput::compose(VkCommandBuffer commands,
         .autoExposure = world_.autoExposure ? 1 : 0,
         .worldValid = worldValid ? 1 : 0,
         .debugView = debugView ? 1 : 0,
+        .scaled = scaled ? 1 : 0,
     };
     vkCmdBindPipeline(commands, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_->vkPipeline());
     vkCmdBindDescriptorSets(commands, VK_PIPELINE_BIND_POINT_COMPUTE, table->vkPipelineLayout(), 0,
@@ -299,7 +312,7 @@ bool HdrOutput::compose(VkCommandBuffer commands,
                        &constants);
     vkCmdDispatch(commands, (width + 15) / 16, (height + 15) / 16, 1);
 
-    std::array<VkImageMemoryBarrier2, 5> after{};
+    std::array<VkImageMemoryBarrier2, 6> after{};
     size_t afterCount = 0;
     after[afterCount++] =
         layoutChange(composed_->vkImage(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, COMPUTE,

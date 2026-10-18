@@ -355,7 +355,8 @@ void NativeFrameGeneration::reset() {
 void NativeFrameGeneration::captureWorldFrame(std::shared_ptr<Framework> framework,
                                               std::shared_ptr<gpu::DeviceLocalImage> hudless,
                                               std::shared_ptr<gpu::DeviceLocalImage> linearDepth,
-                                              std::shared_ptr<gpu::DeviceLocalImage> motionVectors) {
+                                              std::shared_ptr<gpu::DeviceLocalImage> motionVectors,
+                                              VkExtent2D worldOutput) {
     capturedThisFrame_ = false;
     if (!active() || hudless == nullptr || linearDepth == nullptr || motionVectors == nullptr) return;
 
@@ -383,7 +384,7 @@ void NativeFrameGeneration::captureWorldFrame(std::shared_ptr<Framework> framewo
     camera.prevClipToClip = glm::inverse(camera.clipToPrevClip);
     // Upscaled depth and motion vectors carry no jitter any more.
     const bool renderResolution =
-        linearDepth->width() != hudless->width() || linearDepth->height() != hudless->height();
+        linearDepth->width() != worldOutput.width || linearDepth->height() != worldOutput.height;
     camera.jitter = renderResolution ? glm::vec2(ubo.cameraJitter) : glm::vec2(0.0f);
     camera.position = glm::vec3(position);
     camera.right = safeNormalize(glm::vec3(viewInverse[0]), {1.0f, 0.0f, 0.0f});

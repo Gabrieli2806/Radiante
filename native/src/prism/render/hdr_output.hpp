@@ -26,8 +26,10 @@ class HdrOutput {
   public:
     static HdrOutput &instance();
 
-    // A world frame was traced and fused into Minecraft's target; compose() may use it until the next one.
-    void noteWorldFrame(const std::shared_ptr<WorldPipelineContext> &worldContext);
+    // A world frame was traced and fused into Minecraft's target; compose() may use it until the next one. upscaled
+    // is what was fused in place of the pipeline's picture with a lower output resolution (OutputUpscaler), or null.
+    void noteWorldFrame(const std::shared_ptr<WorldPipelineContext> &worldContext,
+                        const std::shared_ptr<gpu::DeviceLocalImage> &upscaled);
 
     // Records the HDR composition of Minecraft's final image into `swapchainImage` on Minecraft's present command
     // buffer, in place of its own blit. The swapchain image is in TRANSFER_DST_OPTIMAL, Minecraft's image in
@@ -54,6 +56,7 @@ class HdrOutput {
     // What compose() needs of the last traced frame.
     struct WorldFrame {
         std::shared_ptr<gpu::DeviceLocalImage> fused;    // the world as fused into Minecraft's target
+        std::shared_ptr<gpu::DeviceLocalImage> output;   // the pipeline's picture; fused unless it was upscaled
         std::shared_ptr<gpu::DeviceLocalImage> mapped;   // tone mapped, before the post render passes
         std::shared_ptr<gpu::DeviceLocalImage> radiance; // the HDR radiance the tone mapping read
         std::shared_ptr<gpu::DeviceLocalBuffer> exposure;

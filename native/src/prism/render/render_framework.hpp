@@ -5,6 +5,7 @@
 #include "prism/all_extern.hpp"
 #include "prism/render/modules/world/dlss/dlss_wrapper.hpp"
 #include "prism/render/mc_depth.hpp"
+#include "prism/render/output_upscaler.hpp"
 #include "prism/render/pipeline.hpp"
 #include "prism/gpu/gpu.hpp"
 
@@ -56,8 +57,10 @@ struct FrameworkContext : public SharedObject<FrameworkContext> {
     FrameworkContext(std::shared_ptr<Framework> framework, uint32_t frameIndex);
     ~FrameworkContext();
 
-    // Records the blit of the traced picture into target; nothing when there is no world pipeline.
-    void fuseInto(std::shared_ptr<gpu::ExternalImage> target);
+    // Records the blit of the traced picture into target; nothing when there is no world pipeline. With upscaled
+    // (OutputUpscaler's picture, at the target's size), that is copied in instead.
+    void fuseInto(std::shared_ptr<gpu::ExternalImage> target,
+                  const std::shared_ptr<gpu::DeviceLocalImage> &upscaled = nullptr);
     // Waits until the GPU has executed what this slot recorded the last time it was used.
     void waitForPreviousSubmit();
 };
@@ -174,6 +177,8 @@ class Framework : public SharedObject<Framework> {
     std::shared_ptr<FrameResourceRetainer> frameResourceRetainer_;
     McDepthWriter mcDepth_;
     McDepthWriter::Target overlayDepth_;
+    // The FSR 1 upscale of a lower output resolution to the target's size.
+    OutputUpscaler outputUpscaler_;
     // Minecraft's colour target as the blit sees it, kept while the target stays the same.
     std::shared_ptr<gpu::ExternalImage> fuseTarget_;
 };
