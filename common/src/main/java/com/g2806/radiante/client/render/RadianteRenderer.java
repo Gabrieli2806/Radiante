@@ -295,6 +295,19 @@ public final class RadianteRenderer {
     /** The size the eyes were last traced at in VR; see record. */
     private static int eyeTraceWidth;
     private static int eyeTraceHeight;
+    // The size the world pipeline rendered to last, and the window's: they differ with a lower output resolution.
+    private static volatile int outputWidth;
+    private static volatile int outputHeight;
+    private static volatile int windowWidth;
+    private static volatile int windowHeight;
+
+    /**
+     * The world pipeline's output size and the window's of the last traced frame, as {output width, output height,
+     * window width, window height}; all zero before the first.
+     */
+    public static int[] lastOutputSize() {
+        return new int[] {outputWidth, outputHeight, windowWidth, windowHeight};
+    }
 
     private static boolean record(GameRenderer gameRenderer, LevelRenderState levelRenderState, boolean withDepth) {
         Minecraft minecraft = Minecraft.getInstance();
@@ -353,7 +366,20 @@ public final class RadianteRenderer {
         // they are traced at the eyes' size and scaled, so the pipeline is not rebuilt each time they alternate.
         int traceWidth = mainTarget.width;
         int traceHeight = mainTarget.height;
-        if (com.g2806.radiante.client.compat.vivecraft.VivecraftCompat.isVrActive()) {
+        boolean vr = com.g2806.radiante.client.compat.vivecraft.VivecraftCompat.isVrActive();
+        if (!vr) {
+            // A lower output resolution: the whole world pipeline runs at that size, and the native side upscales
+            // its picture into the window's target (FSR 1). Not in VR, where the eyes' targets are sized by the
+            // headset and the extra views already take the trace size from them.
+            int[] output = OutputResolution.byName(Options.outputResolution).outputSize(traceWidth, traceHeight);
+            traceWidth = output[0];
+            traceHeight = output[1];
+        }
+        outputWidth = traceWidth;
+        outputHeight = traceHeight;
+        windowWidth = mainTarget.width;
+        windowHeight = mainTarget.height;
+        if (vr) {
             if (com.g2806.radiante.client.compat.vivecraft.VivecraftCompat.isEyePass() || eyeTraceWidth <= 0) {
                 eyeTraceWidth = traceWidth;
                 eyeTraceHeight = traceHeight;

@@ -466,6 +466,12 @@ public final class DevAutomation {
             } catch (ReflectiveOperationException | RuntimeException e) {
                 RadianteClient.LOGGER.warn("[dev] option {} not set", action, e);
             }
+        } else if (action.startsWith("framegen=")) {
+            // framegen=N: N generated frames per rendered one (0 off), as the settings screen applies it. Not saved.
+            int frames = Integer.parseInt(action.substring(9));
+            com.g2806.radiante.client.render.FrameGeneration.setGeneratedFrames(frames);
+            RadianteClient.LOGGER.info("[dev] frame generation {} (max {})", frames,
+                com.g2806.radiante.client.render.FrameGeneration.maxGeneratedFrames());
         } else if (action.startsWith("packs=")) {
             String value = action.substring(6);
             // The options list is only read at startup; the repository's selection is what a reload applies.

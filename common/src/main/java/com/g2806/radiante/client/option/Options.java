@@ -114,6 +114,11 @@ public class Options {
     public static int frameGenerationBackend = 0;
     /** NVIDIA Reflex low latency mode. Loads Streamline at startup, so turning it on takes a restart. */
     public static boolean reflex = false;
+    /**
+     * The size the world is rendered and upscaled to before a final FSR 1 upscale to the window, by
+     * com.g2806.radiante.client.render.OutputResolution name. NATIVE renders at the window's size.
+     */
+    public static String outputResolution = "NATIVE";
 
     /**
      * The cloud setting Distant Horizons switched off, kept until its override toggle is off again and the setting
@@ -258,6 +263,8 @@ public class Options {
         number("generatedFrames", () -> generatedFrames, v -> generatedFrames = v),
         number("frameGenerationBackend", () -> frameGenerationBackend, v -> frameGenerationBackend = v),
         bool("reflex", () -> reflex, v -> reflex = v),
+        new Entry("outputResolution", () -> outputResolution,
+            v -> outputResolution = com.g2806.radiante.client.render.OutputResolution.byName(v.trim()).name()),
         bool("hdrOutput", () -> hdrOutput, v -> hdrOutput = v),
         number("hdrPeakNits", () -> hdrPeakNits, v -> hdrPeakNits = Math.max(200, Math.min(10000, v))),
         number("hdrPaperWhiteNits", () -> hdrPaperWhiteNits,
