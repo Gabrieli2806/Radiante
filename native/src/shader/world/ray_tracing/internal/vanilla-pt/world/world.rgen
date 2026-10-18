@@ -251,7 +251,14 @@ void main() {
     initMainRay(origin, handDirection, worldUBO.seed ^ 0x9E3779B9u, coneSpreadFromFov(fovY, fovX, resolution),
                 handRay);
     FirstHitPayload handFirstHit;
-    tracePrimary(eyePos, handDirection, rayFlags, 1, handRay, handFirstHit);
+    // Only while the hands are drawn (bit 1 of isFirstPerson): with none to find, this second camera ray per pixel cost
+    // a quarter of a millisecond at 1280x720 for nothing (spectator, F1, third person).
+    if ((worldUBO.isFirstPerson & 2u) != 0u) {
+        tracePrimary(eyePos, handDirection, rayFlags, 1, handRay, handFirstHit);
+    } else {
+        handFirstHit = worldFirstHit;
+        handFirstHit.surfaceDepth = INF_DISTANCE;
+    }
 #if VPT_NRD_SIGNALS
     vec3 nrdEmission = handFirstHit.surfaceDepth != INF_DISTANCE ? readNrdRecord(pixel) : worldNrdEmission;
     // The direct light of the surface seen, all of it, before the bounces replace the ray's.

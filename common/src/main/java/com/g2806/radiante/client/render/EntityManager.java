@@ -973,14 +973,25 @@ public final class EntityManager {
         addPending(VR_HANDS, VR_HANDS_ID, vrHandsX, vrHandsY, vrHandsZ, RAY_TRACING_PARTICLE, false);
     }
 
+    /**
+     * Whether the first person hands are drawn this frame. The world uniform says so too: the ray generation traces a
+     * second camera ray per pixel for the hands, and with none to find (spectator, F1, third person) it cost a
+     * quarter of a millisecond for nothing.
+     */
+    public static boolean handsDrawn(Minecraft minecraft, LevelRenderState levelRenderState) {
+        PlayerRenderState playerState = levelRenderState.playerRenderState;
+        CameraRenderState cameraState = levelRenderState.cameraRenderState;
+        return playerState.hasPlayer && !minecraft.gameRenderer.gameRenderState().guiRenderState.isHudHidden
+            && minecraft.options.getCameraType().isFirstPerson() && !cameraState.entityRenderState.isSleeping
+            && minecraft.gameMode != null && minecraft.gameMode.getPlayerMode() != GameType.SPECTATOR
+            // In VR, Vivecraft draws the hands at the controllers; vanilla's would sit in front of the face.
+            && !com.g2806.radiante.client.compat.vivecraft.VivecraftCompat.isVrActive();
+    }
+
     private static void collectHands(Minecraft minecraft, LevelRenderState levelRenderState,
         CameraRenderState cameraState) {
         PlayerRenderState playerState = levelRenderState.playerRenderState;
-        if (!playerState.hasPlayer || minecraft.gameRenderer.gameRenderState().guiRenderState.isHudHidden || !minecraft.options.getCameraType().isFirstPerson()
-            || cameraState.entityRenderState.isSleeping
-            || minecraft.gameMode == null || minecraft.gameMode.getPlayerMode() == GameType.SPECTATOR
-            // In VR, Vivecraft draws the hands at the controllers; vanilla's would sit in front of the face.
-            || com.g2806.radiante.client.compat.vivecraft.VivecraftCompat.isVrActive()) {
+        if (!handsDrawn(minecraft, levelRenderState)) {
             return;
         }
 

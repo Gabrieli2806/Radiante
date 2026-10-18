@@ -269,6 +269,7 @@ struct WorldUBO {
     T_MAT4 textureMat;
 
     T_UINT overlayTextureID;
+    // Bit 0: first person. Bit 1: the first person hands are drawn this frame (the hand rays are traced only then).
     T_UINT isFirstPerson;
     T_FLOAT fogStart;
     T_FLOAT fogEnd;

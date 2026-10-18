@@ -35,6 +35,7 @@ public class BufferProxy {
                                float gameTime,
                                int overlayTextureId,
                                boolean firstPerson,
+                               boolean handsDrawn,
                                float fogStart,
                                float fogEnd,
                                Vector4fc fogColor,
@@ -85,7 +86,8 @@ public class BufferProxy {
 
             bb.putInt(offset, uniform.overlayTextureId());
             offset += Integer.BYTES;
-            bb.putInt(offset, uniform.firstPerson() ? 1 : 0);
+            // Bit 0 first person, bit 1 the first person hands are drawn (the ray generation traces them only then).
+            bb.putInt(offset, uniform.firstPerson() ? (uniform.handsDrawn() ? 3 : 1) : 0);
             offset += Integer.BYTES;
             bb.putFloat(offset, uniform.fogStart());
             offset += Float.BYTES;
