@@ -161,7 +161,7 @@
   "options.radiante.biome_ambiance_strength.tooltip": "每个生物群系雾气的浓度。100%为调校后的克制效果；调低远景更清晰，调高更有氛围。不影响性能。",
   "options.radiante.cloud_mode.tooltip": "云的绘制方式。体积云是会投射阴影的真实3D云，开销最大；原版风格更省；关闭最快。",
   "options.radiante.dlss_mode.tooltip": "DLSS放大前的内部渲染分辨率。质量模式最清晰、开销最大；性能和超级性能模式更快但更模糊，细节变粗。“自定义”可手动设置分辨率。",
-  "options.radiante.ray_reconstruction.tooltip": "DLSS自带的AI降噪器：反射比NRD更清晰，涂抹更少。关闭后由NRD降噪器清理画面，DLSS只负责放大，可在性能较弱的显卡上或光线重建出现涂抹、拖影时改善效果。",
+  "options.radiante.ray_reconstruction.tooltip": "推荐在NVIDIA RTX显卡上开启。DLSS自带的AI降噪器：反射比NRD更清晰，涂抹更少。关闭后由NRD降噪器清理画面，DLSS只负责放大，可在性能较弱的显卡上或光线重建出现涂抹、拖影时改善效果。",
   "options.radiante.frame_generation.tooltip": "使用 %s 在渲染帧之间生成额外的帧。在高刷新率显示器上更流畅，但会稍微增加输入延迟。由专门的呈现线程均匀分配帧，垂直同步仍由你决定。HDR 输出下不可用。",
   "options.radiante.chunk_building_threads": "区块线程",
   "options.radiante.chunk_building_batch_size": "区块批次大小",
