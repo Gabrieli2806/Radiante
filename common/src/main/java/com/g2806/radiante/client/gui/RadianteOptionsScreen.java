@@ -727,8 +727,9 @@ public class RadianteOptionsScreen extends Screen {
 
     /**
      * The output resolution: the size the world is rendered and upscaled to before FSR 1 brings it to the window.
-     * Only the sizes below the window's are offered; the one chosen is kept in the list even when the window has
-     * shrunk under it since (it then renders at the window's size, as Native).
+     * Only the fixed sizes below the window's are offered, and Custom, whose share of the window is set on the slider
+     * below it; the one chosen is kept in the list even when the window has shrunk under it since (it then renders
+     * at the window's size, as Native).
      */
     private OptionInstance<OutputResolution> outputResolutionOption() {
         OutputResolution current = OutputResolution.byName(staged("outputResolution", Options.outputResolution));
@@ -741,14 +742,46 @@ public class RadianteOptionsScreen extends Screen {
         }
         return new OptionInstance<>("options.radiante.output_resolution", tooltip("options.radiante.output_resolution"),
             (caption, value) -> {
-                if (value == OutputResolution.NATIVE || size[2] <= 0) {
+                // Custom names its size on the slider below it.
+                if (value == OutputResolution.NATIVE || value == OutputResolution.CUSTOM || size[2] <= 0) {
                     return Component.translatable(value.key());
                 }
-                int[] output = value.outputSize(size[2], size[3]);
+                int[] output = value.outputSize(size[2], size[3], 0);
                 return Component.translatable(value.key()).append(" (" + output[0] + "x" + output[1] + ")");
             },
             new OptionInstance.Enum<>(values, Codec.STRING.xmap(OutputResolution::byName, OutputResolution::name)),
-            current, value -> stage("outputResolution", value.name()));
+            current, value -> {
+                boolean wasCustom = OutputResolution.byName(staged("outputResolution", Options.outputResolution))
+                    == OutputResolution.CUSTOM;
+                stage("outputResolution", value.name());
+                // The share slider shows only with Custom chosen.
+                if (wasCustom != (value == OutputResolution.CUSTOM)) {
+                    refreshQualityLater();
+                }
+            });
+    }
+
+    /**
+     * The share of the window the Custom output resolution renders at, as the DLSS and FSR Custom modes have their
+     * render resolution slider; absent with any other output resolution. It names the size that comes out.
+     */
+    private OptionInstance<Integer> outputScaleOption() {
+        if (OutputResolution.byName(staged("outputResolution", Options.outputResolution)) != OutputResolution.CUSTOM) {
+            return null;
+        }
+        int[] size = RadianteRenderer.lastOutputSize();
+        return new OptionInstance<Integer>("options.radiante.output_scale", tooltip("options.radiante.output_scale"),
+            (caption, value) -> {
+                Component text = Component.translatable("options.percent_value", caption, value);
+                if (size[2] <= 0) {
+                    return text;
+                }
+                int[] output = OutputResolution.CUSTOM.outputSize(size[2], size[3], value);
+                return text.copy().append(" (" + output[0] + "x" + output[1] + ")");
+            },
+            new OptionInstance.IntRange(OutputResolution.MIN_PERCENT, OutputResolution.MAX_PERCENT, false),
+            OutputResolution.clampPercent(staged("outputResolutionPercent", Options.outputResolutionPercent)),
+            value -> stage("outputResolutionPercent", value));
     }
 
     /** The FSR / XeSS mode a quality level uses: the same step as its DLSS mode. */
@@ -834,6 +867,7 @@ public class RadianteOptionsScreen extends Screen {
         stage("vanillaSunPath", true);
         stage("vanillaCelestialOrientation", true);
         stage("outputResolution", OutputResolution.NATIVE.name());
+        stage("outputResolutionPercent", OutputResolution.DEFAULT_PERCENT);
         this.forgetStoredSettings = true;
         // DLSS where the GPU has it, otherwise FSR, which every GPU runs: never back to no upscaler at all.
         this.pendingPreset = entryAvailable(Presets.RT_DLSSRR) ? Presets.RT_DLSSRR
@@ -1023,7 +1057,7 @@ public class RadianteOptionsScreen extends Screen {
         }
         this.reflexToggle = reflex;
         addRows(preset, dlssMode, rayReconstructionOption(), upscalerModeOption(), renderScaleOption(),
-            outputResolutionOption(), frameGenerationBackendOption(), frameGeneration, reflex);
+            outputResolutionOption(), outputScaleOption(), frameGenerationBackendOption(), frameGeneration, reflex);
     }
 
     private void addImageOptions() {

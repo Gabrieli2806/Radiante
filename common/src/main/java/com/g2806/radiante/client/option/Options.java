@@ -116,9 +116,12 @@ public class Options {
     public static boolean reflex = false;
     /**
      * The size the world is rendered and upscaled to before a final FSR 1 upscale to the window, by
-     * com.g2806.radiante.client.render.OutputResolution name. NATIVE renders at the window's size.
+     * com.g2806.radiante.client.render.OutputResolution name. NATIVE renders at the window's size; CUSTOM at
+     * outputResolutionPercent of it.
      */
     public static String outputResolution = "NATIVE";
+    /** The share of the window, in percent, the Custom output resolution renders at. */
+    public static int outputResolutionPercent = com.g2806.radiante.client.render.OutputResolution.DEFAULT_PERCENT;
 
     /**
      * The cloud setting Distant Horizons switched off, kept until its override toggle is off again and the setting
@@ -263,12 +266,27 @@ public class Options {
         number("generatedFrames", () -> generatedFrames, v -> generatedFrames = v),
         number("frameGenerationBackend", () -> frameGenerationBackend, v -> frameGenerationBackend = v),
         bool("reflex", () -> reflex, v -> reflex = v),
-        new Entry("outputResolution", () -> outputResolution,
-            v -> outputResolution = com.g2806.radiante.client.render.OutputResolution.byName(v.trim()).name()),
+        new Entry("outputResolution", () -> outputResolution, v -> setOutputResolution(v.trim())),
+        number("outputResolutionPercent", () -> outputResolutionPercent,
+            v -> outputResolutionPercent = com.g2806.radiante.client.render.OutputResolution.clampPercent(v)),
         bool("hdrOutput", () -> hdrOutput, v -> hdrOutput = v),
         number("hdrPeakNits", () -> hdrPeakNits, v -> hdrPeakNits = Math.max(200, Math.min(10000, v))),
         number("hdrPaperWhiteNits", () -> hdrPaperWhiteNits,
             v -> hdrPaperWhiteNits = Math.max(80, Math.min(500, v))));
+
+    /**
+     * Takes a saved output resolution. The fixed percentages of before (PERCENT_75 and the like) became the Custom
+     * size with their share, so a player who chose one keeps the same picture.
+     */
+    private static void setOutputResolution(String name) {
+        com.g2806.radiante.client.render.OutputResolution value =
+            com.g2806.radiante.client.render.OutputResolution.byName(name);
+        int percent = com.g2806.radiante.client.render.OutputResolution.percentOf(name);
+        if (percent > 0) {
+            outputResolutionPercent = percent;
+        }
+        outputResolution = value.name();
+    }
 
     /** The saved text of the named settings, for sharing them (SettingsCode). */
     public static java.util.Map<String, String> exportValues(java.util.Collection<String> keys) {

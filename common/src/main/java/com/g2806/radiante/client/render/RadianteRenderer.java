@@ -371,7 +371,8 @@ public final class RadianteRenderer {
             // A lower output resolution: the whole world pipeline runs at that size, and the native side upscales
             // its picture into the window's target (FSR 1). Not in VR, where the eyes' targets are sized by the
             // headset and the extra views already take the trace size from them.
-            int[] output = OutputResolution.byName(Options.outputResolution).outputSize(traceWidth, traceHeight);
+            int[] output = OutputResolution.byName(Options.outputResolution).outputSize(traceWidth, traceHeight,
+                Options.outputResolutionPercent);
             traceWidth = output[0];
             traceHeight = output[1];
         }
