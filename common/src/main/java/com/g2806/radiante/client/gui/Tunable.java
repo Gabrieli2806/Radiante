@@ -49,6 +49,9 @@ enum Tunable {
     // How much of the sky a window shows on top of what is behind it.
     GLASS_REFLECTIONS(null, "render_pipeline.module.ray_tracing.attribute.glass_reflection", 0.005, 0, 200, 100,
         Format.PERCENT),
+    // How much of the pack's water texture shows over the surface: Bedrock RTX's faint pattern, or clear water at 0.
+    WATER_TEXTURE(null, "render_pipeline.module.ray_tracing.attribute.water_texture_layer", 0.01, 0, 100, 100,
+        Format.PERCENT),
     STARS(Pipeline.POST_RENDER_MODULE_NAME, "render_pipeline.module.post_render.attribute.star_count", 100.0, 1, 200,
         30, Format.NUMBER),
     BOUNCE_LIGHT(null, "render_pipeline.module.ray_tracing.attribute.bounce_light_boost", 0.01, 50, 200, 150,

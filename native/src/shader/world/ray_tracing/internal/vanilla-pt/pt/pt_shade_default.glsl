@@ -8,6 +8,12 @@
 // is read through g_hit (pt_hit_context.glsl), so the same source can later shade in raygen.
 // The wrapper supplies #version and the extensions.
 
+// How strongly the pack's water texture shows over the surface (the Water Texture slider): 1 as Bedrock RTX
+// draws it, 0 for clear water.
+#ifndef VPT_WATER_TEXTURE_LAYER
+#    define VPT_WATER_TEXTURE_LAYER 1.0
+#endif
+
 #ifndef PT_PARALLAX_ALLOWED
 #    error "pt_shade_default.glsl: the including shader must define PT_PARALLAX_ALLOWED (1 or 0)"
 #endif
@@ -504,7 +510,8 @@ void ptShadeDefault(bool viewMark) {
                 g_deferredToDirect = false;
             }
             if (localBounce == 0 && !fromBelow && (bounce == 0u || rayCameraPath(mainRay) || g_viewBounce)) {
-                float waterOpacity = clamp(currentSurface.albedoValue.a * 2.0 - 1.0, 0.0, 1.0);
+                float waterOpacity = clamp(currentSurface.albedoValue.a * 2.0 - 1.0, 0.0, 1.0) *
+                                     clamp(VPT_WATER_TEXTURE_LAYER, 0.0, 1.0);
                 if (waterOpacity > 0.0) {
                     vec3 layer = bedrockBlendedFaceLight(currentSurface.worldPos, baseGeoNormal, currentViewDir,
                                                          currentSurface.albedoValue.rgb, waterOpacity) *
