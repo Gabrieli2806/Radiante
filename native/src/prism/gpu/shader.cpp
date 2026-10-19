@@ -103,6 +103,9 @@ std::string toHex(uint64_t value) {
     return std::string(text, converted.ptr);
 }
 
+// Bumped whenever decorateNonUniformResources (below) changes what it writes.
+constexpr std::string_view kSpirvPostProcessVersion = "nonuniform-1";
+
 // computeCompiledHash for a source whose canonical path is known.
 std::string compiledHash(std::string_view canonicalSource,
                          VkShaderStageFlagBits stage,
@@ -111,6 +114,8 @@ std::string compiledHash(std::string_view canonicalSource,
                          std::string_view injectedSource,
                          uint64_t dependencyHash) {
     Fnv1a hash;
+    // What compileSource does to the SPIR-V after the compiler; changed when that changes, so cached results go.
+    hash.string(kSpirvPostProcessVersion);
     hash.string(canonicalSource);
     hash.value(stage);
     hash.value(dependencyHash);
@@ -392,6 +397,116 @@ std::string injectAfterVersion(std::string source, std::string_view injected) {
     return source;
 }
 
+// Marks every load of an element of a descriptor array (textures[], the image and sampler tables) NonUniform, and the
+// access chain it loads through.
+//
+// The shaders index those arrays with nonuniformEXT, but almost always hand the element to a helper function
+// (sampleTexture(textures[nonuniformEXT(id)], ...)). glslang then passes a pointer to the element, and the load inside
+// the helper carries no NonUniform decoration: only the index does. Vulkan wants the decoration on what the image
+// instruction reads, and RADV goes by it. Without it, lanes of one wave that hit different textures all sampled the
+// first lane's: in an any-hit shader the alpha test read the wrong texture, kept see-through texels of entity skins,
+// and the pig's, cow's and villager's sides came out black. NVIDIA's drivers do not need the decoration.
+// A load of a uniform index costs RADV nothing more than a check.
+void decorateNonUniformResources(std::vector<uint32_t> &spirv) {
+    constexpr uint32_t kHeaderWords = 5;
+    if (spirv.size() <= kHeaderWords || spirv[0] != 0x07230203u) return;
+    enum : uint32_t {
+        OpCapability = 17,
+        OpTypeVoid = 19,
+        OpTypeImage = 25,
+        OpTypeSampler = 26,
+        OpTypeSampledImage = 27,
+        OpTypeArray = 28,
+        OpTypeRuntimeArray = 29,
+        OpTypePointer = 32,
+        OpTypeForwardPointer = 39,
+        OpVariable = 59,
+        OpLoad = 61,
+        OpAccessChain = 65,
+        OpInBoundsAccessChain = 66,
+        OpDecorate = 71,
+        OpCopyObject = 83,
+        DecorationNonUniform = 5300,
+        CapabilityShaderNonUniform = 5301,
+    };
+
+    std::unordered_set<uint32_t> resourceTypes;  // images, samplers, sampled images
+    std::unordered_set<uint32_t> resourceArrays; // arrays of them
+    std::unordered_set<uint32_t> arrayPointers;  // pointers to those arrays
+    std::unordered_set<uint32_t> arrayVariables; // descriptor arrays
+    std::unordered_set<uint32_t> elementPointers; // access chains into them
+    std::unordered_set<uint32_t> alreadyNonUniform;
+    std::vector<uint32_t> toDecorate;
+    bool hasCapability = false;
+    size_t firstType = 0;
+
+    for (size_t at = kHeaderWords; at < spirv.size();) {
+        const uint32_t count = spirv[at] >> 16;
+        const uint32_t opcode = spirv[at] & 0xFFFFu;
+        if (count == 0 || at + count > spirv.size()) return; // malformed: leave it alone
+        const uint32_t *w = spirv.data() + at;
+        switch (opcode) {
+            case OpCapability:
+                if (count >= 2 && w[1] == CapabilityShaderNonUniform) hasCapability = true;
+                break;
+            case OpDecorate:
+                if (count >= 3 && w[2] == DecorationNonUniform) alreadyNonUniform.insert(w[1]);
+                break;
+            case OpTypeImage:
+            case OpTypeSampler:
+            case OpTypeSampledImage:
+                if (count >= 2) resourceTypes.insert(w[1]);
+                break;
+            case OpTypeArray:
+            case OpTypeRuntimeArray:
+                if (count >= 3 && resourceTypes.contains(w[2])) resourceArrays.insert(w[1]);
+                break;
+            case OpTypePointer:
+                if (count >= 4 && resourceArrays.contains(w[3])) arrayPointers.insert(w[1]);
+                break;
+            case OpVariable:
+                if (count >= 3 && arrayPointers.contains(w[1])) arrayVariables.insert(w[2]);
+                break;
+            case OpAccessChain:
+            case OpInBoundsAccessChain:
+                if (count >= 4 && (arrayVariables.contains(w[3]) || elementPointers.contains(w[3]))) {
+                    elementPointers.insert(w[2]);
+                    toDecorate.push_back(w[2]);
+                }
+                break;
+            case OpCopyObject:
+                if (count >= 4 && elementPointers.contains(w[3])) {
+                    elementPointers.insert(w[2]);
+                    toDecorate.push_back(w[2]);
+                }
+                break;
+            case OpLoad:
+                if (count >= 4 && elementPointers.contains(w[3])) toDecorate.push_back(w[2]);
+                break;
+            default: break;
+        }
+        // Decorations go before the first type declaration (the annotations section ends there).
+        if (firstType == 0 && opcode >= OpTypeVoid && opcode <= OpTypeForwardPointer) {
+            firstType = at;
+        }
+        at += count;
+    }
+
+    std::vector<uint32_t> decorations;
+    std::unordered_set<uint32_t> added;
+    for (uint32_t id : toDecorate) {
+        if (alreadyNonUniform.contains(id) || !added.insert(id).second) continue;
+        decorations.insert(decorations.end(), {(3u << 16) | OpDecorate, id, DecorationNonUniform});
+    }
+    if (decorations.empty() || firstType == 0) return;
+    spirv.insert(spirv.begin() + static_cast<ptrdiff_t>(firstType), decorations.begin(), decorations.end());
+    if (!hasCapability) {
+        // Capabilities come first, right after the header.
+        const uint32_t capability[] = {(2u << 16) | OpCapability, CapabilityShaderNonUniform};
+        spirv.insert(spirv.begin() + kHeaderWords, std::begin(capability), std::end(capability));
+    }
+}
+
 std::vector<uint32_t> compileSource(const std::string &sourcePath,
                                     VkShaderStageFlagBits stage,
                                     const std::unordered_map<std::string, std::string> &definitions,
@@ -424,7 +539,9 @@ std::vector<uint32_t> compileSource(const std::string &sourcePath,
                     << result.GetErrorMessage() << std::endl;
         throw std::runtime_error("shader " + sourcePath + " does not compile");
     }
-    return {result.cbegin(), result.cend()};
+    std::vector<uint32_t> spirv(result.cbegin(), result.cend());
+    decorateNonUniformResources(spirv);
+    return spirv;
 }
 
 } // namespace
