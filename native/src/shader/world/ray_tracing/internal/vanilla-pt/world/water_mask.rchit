@@ -30,7 +30,7 @@ layout(set = 1, binding = 3) readonly buffer LastIndexBufferAddr {
 }
 lastIndexBufferAddrs;
 
-layout(std430, buffer_reference, buffer_reference_align = 8) readonly buffer IndexBuffer {
+layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer IndexBuffer {
     uint indices[];
 }
 indexBuffer;

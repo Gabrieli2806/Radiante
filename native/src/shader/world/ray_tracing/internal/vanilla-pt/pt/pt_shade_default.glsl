@@ -78,7 +78,7 @@ layout(set = 5, binding = 2) uniform samplerCube skyFull;
 
 #include "common/volumetric_cloud.glsl"
 
-layout(std430, buffer_reference, buffer_reference_align = 8) readonly buffer IndexBuffer {
+layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer IndexBuffer {
     uint indices[];
 }
 indexBuffer;

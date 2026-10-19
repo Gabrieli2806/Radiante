@@ -56,7 +56,7 @@ layout(set = 3, binding = 3, rgba16f) uniform image2D normalRoughnessImage;
 layout(set = 3, binding = 4, rg16f) uniform image2D motionVectorImage;
 layout(set = 3, binding = 5, r16f) uniform image2D linearDepthImage;
 
-layout(std430, buffer_reference, buffer_reference_align = 8) readonly buffer IndexBuffer {
+layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer IndexBuffer {
     uint indices[];
 }
 indexBuffer;

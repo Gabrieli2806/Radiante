@@ -45,7 +45,7 @@ layout(set = 1, binding = 6) readonly buffer LastPositionBufferAddr {
 }
 lastPositionBufferAddrs;
 
-layout(std430, buffer_reference, buffer_reference_align = 8) readonly buffer IndexBuffer {
+layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer IndexBuffer {
     uint indices[];
 }
 indexBuffer;
