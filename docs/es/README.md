@@ -9,7 +9,7 @@ en Windows y Linux,
 construido sobre el propio backend Vulkan de Minecraft en vez de crear un segundo dispositivo Vulkan
 al lado. Su renderizador nativo es PrismRT.
 
-Versión de esta documentación: **0.5.0** (primera beta).
+Versión de esta documentación: **1.0.0**.
 
 ## Empezar
 
