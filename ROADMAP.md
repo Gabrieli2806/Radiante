@@ -42,6 +42,20 @@ own section below when it has one.
 
 ## Open work and verification needed
 
+### Shaders after an update — tell the player, and recompile cleanly — planned
+
+The first time a world is entered after Radiante is updated, it loads slower: the cached shaders and the pipeline
+cache belong to the old version, so the shaders are compiled again (about 12 s on NVIDIA, close to a minute on AMD
+Linux, where the driver compiles on one thread). Some players also report a wrong-looking picture until they reset
+the settings and the shaders are compiled again, so a stale cache after an update is the suspect.
+
+- Key the shader and pipeline caches on the mod version and the native library's build, and drop what does not match
+  (the shader cache already changes its key when the compiler's output does, see the NonUniform decoration).
+- Show a notice on the first menu after an update ("Radiante was updated: shaders are being compiled, the first
+  world load will take longer"), and a progress bar on the loading screen instead of a silent wait; the background
+  prewarm (ShaderPrewarm) can start from the title screen when it knows the cache is stale.
+- A "Recompile shaders" button in the Radiante settings (clears the cache and rebuilds the pipeline) so the fix for a
+  strange picture does not need a full settings reset.
 ### Frame generation with HDR output — not supported yet
 
 Frame generation now runs without Streamline (see "Native frame generation" below) and is switched off while HDR

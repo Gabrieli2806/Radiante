@@ -13,8 +13,8 @@ public enum ParameterStatus {
     HEURISTIC,
     /** Fitted to captures of vanilla Bedrock RTX against Radiante, with the capture set recorded. */
     MEASURED,
-    /** Read from Bedrock RTX itself while it runs: the values it hands its shaders (frame constants, uniforms). */
-    READ_FROM_GAME,
+    /** Bedrock RTX's own value, as its renderer uses it (frame constants, uniforms). */
+    BEDROCK_VALUE,
     /** Follows from verified structure or from observable behaviour, but nothing confirms the value itself. */
     INFERRED,
     /** A plausible stand-in that produces the right kind of effect; conservative until measured. */

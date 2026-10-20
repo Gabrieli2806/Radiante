@@ -260,3 +260,7 @@ Bug reports, shader tweaks and pull requests are welcome.
 ## Licence
 
 GPL-3.0. Radiante began as a fork of Radiance and MCVR by LJIONG and Interstellarss.
+
+Radiante is not affiliated with, endorsed by or sponsored by Mojang, Microsoft or NVIDIA. Minecraft, Minecraft Bedrock,
+Bedrock RTX and NVIDIA are trademarks of their owners; their names are used only to describe compatibility with
+their resource packs and the look the Bedrock RTX profile aims for.

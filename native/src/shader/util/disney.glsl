@@ -117,7 +117,7 @@ vec3 SampleVMF(inout uint seed, vec3 mu, float kappa) {
 
 // How bright a glowing texel of a Bedrock pack appears in that profile, on top of the Emission Brightness setting.
 // Bedrock RTX shows it at 5 x (MER green)^2 x its emissive multiplier x the texel's colour, with the multiplier
-// read from the running game as 1. The setting defaults to 12, which reaches the shaders as 0.12; 100 / 12 cancels
+// at 1, as Bedrock RTX has it. The setting defaults to 12, which reaches the shaders as 0.12; 100 / 12 cancels
 // that out.
 const float VPT_BEDROCK_EMISSIVE_MULTIPLIER = 1.0;
 const float VPT_BEDROCK_SEEN_EMISSION = 5.0 * VPT_BEDROCK_EMISSIVE_MULTIPLIER * (100.0 / 12.0);

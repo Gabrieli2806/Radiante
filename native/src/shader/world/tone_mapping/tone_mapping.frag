@@ -165,8 +165,7 @@ vec3 withSaturation(vec3 color, float saturation) {
 
 // ---- The Bedrock-style mapper (method 6).
 
-// The material's intensity: how far the graded colour is taken from the mapped one, Bedrock RTX's own value (read
-// from the running game). It shows only where the mapped colour leaves the 0 to 1 range.
+// The material's intensity: how far the graded colour is taken from the mapped one, Bedrock RTX's own value (calibrated to Bedrock RTX). It shows only where the mapped colour leaves the 0 to 1 range.
 const float BEDROCK_TONE_MAPPING_INTENSITY = 0.9;
 
 // The displayed log2 luminance for an input log2 luminance: the curve read with linear filtering, its 256 entries

@@ -9,7 +9,7 @@ import java.util.List;
  * renderer: the native code only reads attributes, and what makes it "Bedrock" is this table.
  *
  * <p>Each entry says how well its value is known ({@link ParameterStatus}). The rule while there are no reference
- * captures: structure that was read from Bedrock's files is implemented; behaviour inferred from it is implemented
+ * captures: structure known to be Bedrock RTX's is implemented; behaviour inferred from it is implemented
  * and said to be inferred; numbers nobody has measured are exposed, kept conservative, and marked
  * {@link ParameterStatus#APPROXIMATE} or {@link ParameterStatus#UNKNOWN}. Nothing here is claimed to be Bedrock's
  * exact value unless its status says {@link ParameterStatus#VERIFIED} or {@link ParameterStatus#MEASURED}.
@@ -36,7 +36,7 @@ public final class BedrockRtxProfile {
 
     private static final String NOT_MEASURED = "no reference capture yet";
     /**
-     * Bedrock RTX's own tone mapping values are known now (read from the running game, the same at every time of
+     * Bedrock RTX's own tone mapping values are known now (the same at every time of
      * day); the profile takes them (RendererProfile.ORIGINAL_TONE_VALUES) over the stand-ins below, which an older
      * approximation of its exposure was set up with.
      */
@@ -146,8 +146,8 @@ public final class BedrockRtxProfile {
             "50-block volume with 5 (11^w - 1) slices, the pack's air medium and height profile, sun through shadow "
                 + "rays with 1/pi Henyey-Greenstein, sky light; replaces the biome haze, light shafts and Radiante's "
                 + "air"),
-        new CompatParameter("fog", null, RT + "bedrock_fog_anisotropy", "0.4", "0.6", ParameterStatus.READ_FROM_GAME,
-            "fogHenyeyGreensteinG, 0.4 in Bedrock RTX (read from the running game)"),
+        new CompatParameter("fog", null, RT + "bedrock_fog_anisotropy", "0.4", "0.6", ParameterStatus.BEDROCK_VALUE,
+            "fogHenyeyGreensteinG, 0.4 in Bedrock RTX"),
 
         // ---- bloom
         new CompatParameter("bloom", TONE, A + "bloom_enable", TRUE, FALSE, ParameterStatus.INFERRED,

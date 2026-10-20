@@ -12,7 +12,7 @@ import net.minecraft.world.level.block.state.BlockState;
  * The lights Bedrock RTX adds of its own for a few small light blocks, on top of the glow of their textures: torches,
  * redstone torches, lanterns, soul lanterns and end rods, each a small sphere of light at its flame. Every other light
  * block lights the world through its glow alone. All of it is as Bedrock's light list holds it while the game runs
- * (read from the running game): where the light sits in the block, its colour, a strength of 2 / 25.5 for all of
+ * (calibrated to Bedrock RTX): where the light sits in the block, its colour, a strength of 2 / 25.5 for all of
  * them, and a radius of 0.23 for lanterns, 0.115 for the rest. The soul torch has none there.
  *
  * <p>Only the experimental Bedrock profile has them (ChunkManager writes them when Bedrock's glow is cast, see

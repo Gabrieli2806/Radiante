@@ -16,7 +16,7 @@
 // of the sunlight, row 1 its strength.
 //
 // The experimental Bedrock profile (VPT_BEDROCK_ORIGINAL) reads them as Bedrock RTX itself does, with the values the
-// game hands its shaders each frame (read from the running game at every hour of the day): both tables are looked up
+// game hands its shaders each frame (calibrated to Bedrock RTX at every hour of the day): both tables are looked up
 // at w = acos(sun height) / pi, the lookup table end to end over its 128 texels; the sky takes strip 7w, blending the
 // two nearest; the light of the sun is 2 x row 0 squared, and by night, past the table's middle, the same row gives
 // the moon's; the sky is scaled by 0.85^2 x row 1 squared (0.72 by day, 0.018 at night).

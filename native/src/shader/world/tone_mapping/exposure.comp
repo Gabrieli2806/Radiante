@@ -75,8 +75,7 @@ const uint METER_GRID = 16u;
 const float SKY_METER_GAIN = 3.0;
 // Mode 3: how far the eye opens at night, however high the day's limit (matched by eye to Bedrock RTX's nights).
 const float NIGHT_MAX_EXPOSURE = 0.6;
-// Mode 4: Bedrock RTX's exposure limits (2^-1 .. 2^6) and the share of the way it moves each frame, as read from the
-// running game.
+// Mode 4: Bedrock RTX's exposure limits (2^-1 .. 2^6) and the share of the way it moves each frame, as calibrated to Bedrock RTX.
 const float BEDROCK_MIN_EV = -1.0;
 const float BEDROCK_MAX_EV = 6.0;
 const float BEDROCK_EV_ALPHA = 0.02;

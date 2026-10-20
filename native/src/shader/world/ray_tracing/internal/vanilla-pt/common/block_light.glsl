@@ -27,7 +27,7 @@
 // Bedrock compatibility: the colour of the light a block casts is a little desaturated (it has an emissive
 // desaturation setting; the amount is INFERRED by eye). Kept light: at a half, lava and fire looked white and a
 // redstone torch cast almost no red. The glowing surface itself keeps its texture's colour.
-// The experimental profile takes Bedrock RTX's own amount, 0.1 (read from the running game), for the glow as much
+// The experimental profile takes Bedrock RTX's own amount, 0.1 (calibrated to Bedrock RTX), for the glow as much
 // as for the light it casts, as Bedrock does.
 #if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
 const float VPT_EMISSIVE_DESATURATION = 0.1;

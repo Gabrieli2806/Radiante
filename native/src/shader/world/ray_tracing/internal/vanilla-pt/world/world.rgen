@@ -445,7 +445,7 @@ void main() {
             imageStore(motionVectorImage, pixel, vec4(motionVec, 0.0, 0.0));
         }
 
-        // (Bedrock RTX adds no light of its own: its constant ambient is zero, read from the running game.)
+        // (Bedrock RTX adds no light of its own: its constant ambient is zero, calibrated to Bedrock RTX.)
 #if !defined(VPT_BEDROCK_ORIGINAL) || VPT_BEDROCK_ORIGINAL == 0
         if (startBounce == 1) {
             mainRay.radiance += VPT_BASIC_RADIANCE * firstHitMat.albedoValue.rgb * firstHitMat.albedoValue.a * mainRay.throughput;
@@ -887,7 +887,7 @@ void main() {
             vec4 meterSample = vec4(0.0);
 #if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
             // As Bedrock RTX weights them: in full to 21/32 of the render distance, fading out to none at it (its
-            // distance fade, read from the running game).
+            // distance fade, calibrated to Bedrock RTX).
             float renderDistance = max(worldUBO.fogEnd, 32.0);
             float meterWeight = 1.0 - clamp(surfaceDepth * 32.0 / (11.0 * renderDistance) - 21.0 / 11.0, 0.0, 1.0);
 #else
@@ -910,7 +910,7 @@ void main() {
             // Bedrock meters the light its denoiser leaves, not one path's: each sample here is accumulated over the
             // frames its surface stays under the cell, as that denoiser accumulates - all of it on a surface just come
             // into view, 1/n of the way on its n-th frame, never less than a fiftieth (its diffuse temporal alpha,
-            // read from the running game). The surface is the same while it faces the same way and lies on the same
+            // calibrated to Bedrock RTX). The surface is the same while it faces the same way and lies on the same
             // plane within Bedrock's tolerance (0.025 blocks and half a percent of the distance). The cube roots of
             // single paths averaged low where the light comes in rare bright paths, and read the place darker.
             vec4 history = lightMeter.sampleHistory[meterSlot];

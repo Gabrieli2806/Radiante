@@ -12,7 +12,7 @@ import java.util.Map;
  *
  * <ul>
  * <li>{@link #BEDROCK_RTX_ENHANCED}: the main profile. Bedrock RTX's own look (its sky and sunlight, its exposure and
- * tone mapping as read from the running game, its materials, water, glass and fog; see {@link BedrockRtxProfile})
+ * tone mapping as calibrated to Bedrock RTX, its materials, water, glass and fog; see {@link BedrockRtxProfile})
  * with a few things on top that look better than Bedrock RTX; what Bedrock does is kept everywhere else. Today:
  * light blocks whose pack gives them little glow look lit by their own light, and the end portal glows.
  * <li>{@link #CUSTOM}: the profile's values with some of them changed by hand. It writes nothing and holds nothing:
@@ -69,7 +69,7 @@ public enum RendererProfile {
     private static final String TONE = "render_pipeline.module.tone_mapping.attribute.";
 
     /**
-     * The profile's exposure and tone mapping: Bedrock RTX's own values, read from the running game
+     * The profile's exposure and tone mapping: Bedrock RTX's own values
      * (its frame constants and its tone mapping material's uniforms, the same at every time of day). They take the
      * place of the table's older stand-ins ({@link BedrockRtxProfile}); the exposure range and the speed it
      * adapts at are the metering mode's own (tone_mapping/exposure.comp). The brightness bias and the saturation
