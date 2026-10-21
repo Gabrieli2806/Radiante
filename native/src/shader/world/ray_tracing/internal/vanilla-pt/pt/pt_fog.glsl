@@ -31,7 +31,7 @@
 #endif
 
 #ifndef NETHER_EXPOSURE_SCALE
-#    define NETHER_EXPOSURE_SCALE 0.4
+#    define NETHER_EXPOSURE_SCALE 0.15
 #endif
 
 #ifndef END_EXPOSURE_SCALE
