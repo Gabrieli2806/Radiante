@@ -434,6 +434,7 @@ public final class EmissionTiles {
         int originY = Math.round(sprite.getV0() * atlasHeight);
         int cellWidth = Math.max(1, width / CELLS_PER_SIDE);
         int cellHeight = Math.max(1, height / CELLS_PER_SIDE);
+        float boost = lightBoost(sprite);
 
         List<float[]> cells = new ArrayList<>();
         for (int cellY = 0; cellY < height; cellY += cellHeight) {
@@ -473,7 +474,7 @@ public final class EmissionTiles {
                 float v0 = (originY + cellY) / (float) atlasHeight;
                 float u1 = (originX + Math.min(width, cellX + cellWidth)) / (float) atlasWidth;
                 float v1 = (originY + Math.min(height, cellY + cellHeight)) / (float) atlasHeight;
-                cells.add(new float[] {u0, v0, u1, v1, -emission / texels, red / emission, green / emission,
+                cells.add(new float[] {u0, v0, u1, v1, -emission / texels * boost, red / emission, green / emission,
                     blue / emission});
             }
         }
@@ -506,9 +507,24 @@ public final class EmissionTiles {
         return sprite.contents().name().getPath().endsWith("copper_lantern");
     }
 
+    /**
+     * How much more light than its pack gives it a block casts (the Bedrock profile's Enhanced extras). Glow berries
+     * are a plant that a pack lights only on its berries, a few specks, so a lush cave of them was nearly dark; they
+     * now light it as the warm lanterns the level 14 of vanilla's berries suggests.
+     */
+    private static float lightBoost(TextureAtlasSprite sprite) {
+        String path = sprite.contents().name().getPath();
+        return path.equals("block/cave_vines_lit") || path.equals("block/cave_vines_plant_lit") ? GLOW_BERRY_LIGHT_BOOST : 1.0f;
+    }
+
+    private static final float GLOW_BERRY_LIGHT_BOOST = 5.0f;
+
     private static boolean glowsAllOver(TextureAtlasSprite sprite) {
         String path = sprite.contents().name().getPath();
-        return path.equals("block/beacon") || path.equals(END_PORTAL_EYE.getPath());
+        // The glow berry vines too: only the berries glowed, a few specks of a dark plant, so a cave of them was barely
+        // lit. Each texel by its brightness, the leaves dim and the berries bright, they light their surroundings softly.
+        return path.equals("block/beacon") || path.equals(END_PORTAL_EYE.getPath()) || path.equals("block/cave_vines_lit")
+            || path.equals("block/cave_vines_plant_lit");
     }
 
     private static boolean isLava(TextureAtlasSprite sprite) {
