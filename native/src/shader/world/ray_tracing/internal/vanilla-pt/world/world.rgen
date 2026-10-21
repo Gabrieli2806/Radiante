@@ -717,13 +717,14 @@ void main() {
             if (worldUBO.skyType == 0) {
                 if (useTransparentSplit) {
                     applyFog(mainRay.radiance, surfaceDepth, worldUBO.fogStart, densityAir, densityFog,
-                             worldUBO.fogColor.rgb, mainRay.radiance, transparentFogTransmittance,
+                             worldUBO.fogColor.rgb * NETHER_FOG_SCALE, mainRay.radiance, transparentFogTransmittance,
                              transparentFogAdditive);
                     transparentReflectionRadiance *= transparentFogTransmittance;
                     transparentRefractionRadiance *= transparentFogTransmittance;
                 } else {
                     applyFog(mainRay.radiance, surfaceDepth, worldUBO.fogStart, densityAir, densityFog,
-                             worldUBO.fogColor.rgb, mainRay.radiance, composeFogTransmittance, composeFogAdditive);
+                             worldUBO.fogColor.rgb * NETHER_FOG_SCALE, mainRay.radiance, composeFogTransmittance,
+                             composeFogAdditive);
                 }
             } else if (worldUBO.skyType == 1) {
                 if (!useVolumetricFog && !psrHitSky) {
@@ -956,11 +957,11 @@ void main() {
         if (all(equal(pixel, ivec2(0)))) {
             // The End is a dark place by design: the eye stays as at night there, or its dim void was opened up to
             // a pale pink glare.
-            float day = worldUBO.skyType == 1 ? smoothstep(-0.05, 0.15, celestialSunDirection().y)
-                      : (worldUBO.skyType == 2 ? 0.0 : 1.0);
+            // The Nether too: lit by lava alone, the eye let open by day brought its fog up to a flat pink sky.
+            float day = worldUBO.skyType == 1 ? smoothstep(-0.05, 0.15, celestialSunDirection().y) : 0.0;
             // And how dark the place is meant to look: the End is kept well below what the meter would bring it
             // to, a dim world against a near-black void as in vanilla.
-            float darkness = worldUBO.skyType == 2 ? END_EXPOSURE_SCALE : 1.0;
+            float darkness = worldUBO.skyType == 2 ? END_EXPOSURE_SCALE : (worldUBO.skyType == 0 ? NETHER_EXPOSURE_SCALE : 1.0);
             // z: the camera is under water. The eye holds the exposure it had there (exposure.comp): the water
             // darkens with depth on its own (water_medium.glsl), and an eye adapting to it brought the brightness
             // back as the camera sank - dimming, then opening up again.

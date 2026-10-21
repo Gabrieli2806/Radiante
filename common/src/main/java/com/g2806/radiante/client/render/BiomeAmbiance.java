@@ -167,16 +167,18 @@ public final class BiomeAmbiance {
     private static final Haze MAGICAL = air(0.88f, 0.84f, 1.00f, 0.0014f);
     private static final Haze LUSH = air(0.80f, 0.90f, 0.80f, 0.0015f);
 
+    // The Nether's haze is added as light, and a cavern lit by lava alone is metered up to the brightest exposure (64
+    // times): at vanilla's fog colours (0.2 red) it came out as a flat pink sky, so its colours are a thirtieth of them.
     // ---- the Nether and the End: the haze's own colour, with nothing to light it. Thin: away from the lava a path
     // traced cavern is dark, and a haze that glows by itself is soon all there is to see in it (at the thickness
     // vanilla's fog has, a crimson forest was red silhouettes in a red bath).
 
-    private static final Haze NETHER_WASTES = glow(0.160f, 0.034f, 0.026f, 0.0030f);
-    private static final Haze CRIMSON_FOREST = glow(0.170f, 0.022f, 0.026f, 0.0034f);
-    private static final Haze WARPED_FOREST = glow(0.022f, 0.095f, 0.105f, 0.0034f);
-    private static final Haze SOUL_SAND_VALLEY = glow(0.050f, 0.150f, 0.165f, 0.0045f);
-    private static final Haze BASALT_DELTAS = glow(0.200f, 0.180f, 0.215f, 0.0060f);
-    private static final Haze NETHER_OTHER = fogColoured(1.00f, 1.00f, 1.00f, 0.0032f);
+    private static final Haze NETHER_WASTES = glow(0.0053f, 0.0011f, 0.0009f, 0.0030f);
+    private static final Haze CRIMSON_FOREST = glow(0.0057f, 0.0007f, 0.0009f, 0.0034f);
+    private static final Haze WARPED_FOREST = glow(0.0007f, 0.0032f, 0.0035f, 0.0034f);
+    private static final Haze SOUL_SAND_VALLEY = glow(0.0017f, 0.0050f, 0.0055f, 0.0045f);
+    private static final Haze BASALT_DELTAS = glow(0.0067f, 0.0060f, 0.0072f, 0.0060f);
+    private static final Haze NETHER_OTHER = fogColoured(0.033f, 0.033f, 0.033f, 0.0032f);
     private static final Haze END_CENTER = fogColoured(1.00f, 1.00f, 1.00f, 0.0012f);
     private static final Haze END_OUTER = fogColoured(1.00f, 1.00f, 1.00f, 0.0018f);
     /** Vanilla's End fog is close to black, which as haze would only darken; this is the least it is lifted to. */
