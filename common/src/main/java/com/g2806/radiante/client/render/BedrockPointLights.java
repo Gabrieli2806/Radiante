@@ -61,6 +61,8 @@ final class BedrockPointLights {
             } else if (block instanceof LanternBlock) {
                 float height = state.getValue(LanternBlock.HANGING) ? 0.35f : 0.198f;
                 writer.pointLight(x + 0.5f, y + height, z + 0.5f, rgb[0], rgb[1], rgb[2], CAST_STRENGTH, LANTERN_RADIUS);
+            } else if (block == Blocks.BEACON) {
+                writer.pointLight(x + 0.5f, y + 0.5f, z + 0.5f, rgb[0], rgb[1], rgb[2], CAST_STRENGTH, LANTERN_RADIUS);
             } else if (block == Blocks.END_ROD) {
                 writer.pointLight(x + 0.5f, y + 0.5f, z + 0.5f, rgb[0], rgb[1], rgb[2], CAST_STRENGTH, RADIUS);
             } else {
@@ -90,6 +92,11 @@ final class BedrockPointLights {
     }
 
     private static int[] colourOf0(Block block) {
+        // The beacon too: its core's glowing texels as light list candidates were tiny, bright sources that the ground
+        // far around picked one pixel in many, which left it grainy. One point light at the core lights it cleanly.
+        if (block == Blocks.BEACON) {
+            return new int[] {200, 255, 255};
+        }
         if (block == Blocks.END_ROD) {
             return new int[] {255, 255, 255};
         }
