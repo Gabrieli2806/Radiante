@@ -169,6 +169,7 @@ vec3 withSaturation(vec3 color, float saturation) {
 const float BEDROCK_TONE_MAPPING_INTENSITY = 0.9;
 // The brightest channel the Nether's picture reaches (linear, before the sRGB encoding): 0.85 is 0.93 as shown.
 const float NETHER_HUE_HOLD = 0.85;
+const float NETHER_SHOULDER_KNEE = 0.3;
 
 // The displayed log2 luminance for an input log2 luminance: the curve read with linear filtering, its 256 entries
 // covering -24 .. +4.
@@ -205,7 +206,12 @@ vec3 bedrockToneMap(vec3 color) {
     // the glow is stronger, and the pattern stays.
     if (expData.padding0 > 0.5) {
         float peak = max(mapped.r, max(mapped.g, mapped.b));
-        mapped *= NETHER_HUE_HOLD / max(peak, NETHER_HUE_HOLD);
+        if (peak > NETHER_SHOULDER_KNEE) {
+            // A soft shoulder on the brightest channel: monotonic, so the shading and the texture survive over white.
+            float room = NETHER_HUE_HOLD - NETHER_SHOULDER_KNEE;
+            float shouldered = NETHER_SHOULDER_KNEE + room * tanh((peak - NETHER_SHOULDER_KNEE) / room);
+            mapped *= shouldered / peak;
+        }
     }
 
     vec3 graded = mapped * vec3(pc.balanceR, pc.balanceG, pc.balanceB);

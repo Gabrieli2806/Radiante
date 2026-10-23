@@ -486,8 +486,7 @@ public final class EmissionTiles {
                 // Lava lights its surroundings red-orange, with the cast of a sea of it held down (see LAVA_MER_CAST).
                 boolean lava = isLava(sprite);
                 cells.add(new float[] {u0, v0, u1, v1, -emission / texels * boost * (lava ? LAVA_MER_CAST : 1.0f),
-                    red / emission, green / emission * (lava ? LAVA_LIGHT_GREEN : 1.0f),
-                    blue / emission * (lava ? LAVA_LIGHT_BLUE : 1.0f)});
+                    red / emission, green / emission, blue / emission});
             }
         }
         long tileKey = ((long) sprite.getX() << 32) ^ sprite.getY() ^ ((long) width << 48) ^ height;
@@ -604,8 +603,8 @@ public final class EmissionTiles {
      * strength, burnt the Nether out to pale peach and a flat red. The share of that glow kept (the MER green is
      * scaled by its root), and the share of it a lava block casts on the blocks around it on top.
      */
-    private static final float LAVA_MER_GLOW = 0.4f;
-    private static final float LAVA_MER_CAST = 0.3f;
+    private static final float LAVA_MER_GLOW = 0.18f;
+    private static final float LAVA_MER_CAST = 0.35f;
 
     private static boolean isLava(TextureAtlasSprite sprite) {
         Identifier name = sprite.contents().name();
