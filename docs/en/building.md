@@ -36,7 +36,7 @@ cmake --build build/native --config Release --target INSTALL -j 16
 `neoforge/build/libs` and `forge/build/libs`.
 
 To test: `./gradlew.bat :fabric:runClient` (or `:neoforge:runClient`, `:forge:runClient`). All
-three share the `run/` folder.
+three use their own folder: `run/` (Fabric), `run-neoforge/` and `run-forge/`, so they can run at once.
 
 ## Linux
 

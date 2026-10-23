@@ -137,7 +137,7 @@ cmake --build build/native --config Release --target INSTALL -j 16
 
 El paso de instalación de CMake copia los shaders y módulos a `common/src/main/resources/radiante-native/`;
 el `core.dll` compilado va a la misma carpeta. `./gradlew.bat :fabric:runClient`, `:neoforge:runClient` o
-`:forge:runClient` lanza un cliente de desarrollo; los tres comparten la carpeta `run/`.
+`:forge:runClient` lanza un cliente de desarrollo; cada uno usa su propia carpeta (`run/` Fabric, `run-neoforge/`, `run-forge/`), así que pueden correr a la vez.
 
 #### Qué compilar según el cambio
 
