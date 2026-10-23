@@ -33,6 +33,7 @@ public class VulkanBackendMixin {
     private static void radiante$requireRayTracing(VkPhysicalDevice device, Set<FeatureSet> required,
         Set<FeatureSet> requiredIfAvailable, CallbackInfoReturnable<BackendCreationException> cir) {
         if (cir.getReturnValue() == null && !RendererProxy.isRayTracingCapable(device.address())) {
+            com.g2806.radiante.client.render.RadianteRenderer.noteDeviceWithoutRayTracing();
             cir.setReturnValue(new BackendCreationException("Device does not support hardware ray tracing",
                 BackendCreationException.Reason.VULKAN_MISSING_EXTENSION, List.of("VK_KHR_ray_tracing_pipeline")));
         }

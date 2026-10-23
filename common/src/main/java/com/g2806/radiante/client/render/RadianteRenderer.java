@@ -95,6 +95,16 @@ public final class RadianteRenderer {
         return failure;
     }
 
+    /**
+     * A Vulkan device was turned away for having no hardware ray tracing (VulkanBackendMixin). 26.4 falls back to no
+     * other device then, so without this the game would end up on OpenGL told it was never on Vulkan.
+     */
+    public static void noteDeviceWithoutRayTracing() {
+        if (!active) {
+            failure = Failure.NO_RAY_TRACING;
+        }
+    }
+
     private static boolean tracingLevel;
 
     /**
