@@ -21,17 +21,23 @@
 #    define UNDERWATER_DEPTH_DIMMING 0.5
 #endif
 
-// The Nether's counterpart: how far the eye is held below what the meter would bring it to, so a dim cavern lit by
-// lava stays a dim cavern with a dark red haze.
 // The Nether's distance fog and the sky it leaves behind, at this share of vanilla's fog colour. The fog is light here,
 // and a cavern lit by lava alone is metered up to the brightest exposure (64 times): vanilla's dark red (0.2) came out
 // as a flat pink sky.
 #ifndef NETHER_FOG_SCALE
-#    define NETHER_FOG_SCALE 0.04
+#    define NETHER_FOG_SCALE 0.012
 #endif
 
+// The Nether's counterpart: how far the eye is held below what the meter would bring it to, so a cavern lit by lava
+// stays a dim cavern with a dark red haze. Lava is kept orange by holding down what it shows (NETHER_GLOW_SCALE,
+// pt_material.glsl), not by the eye: held as low as lava asked (0.15), torchlit rock was near black.
 #ifndef NETHER_EXPOSURE_SCALE
-#    define NETHER_EXPOSURE_SCALE 0.15
+#    define NETHER_EXPOSURE_SCALE 0.5
+#endif
+
+// The Bedrock profile's picture by day, against what the meter would bring it to.
+#ifndef BEDROCK_DAY_EXPOSURE_SCALE
+#    define BEDROCK_DAY_EXPOSURE_SCALE 0.85
 #endif
 
 #ifndef END_EXPOSURE_SCALE

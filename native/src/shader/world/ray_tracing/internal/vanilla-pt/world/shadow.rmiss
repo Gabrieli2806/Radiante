@@ -71,11 +71,14 @@ void main() {
     float worldHeight = gl_WorldRayOriginEXT.y + float(worldUBO.cameraPos.y);
 
 #if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+    const float BEDROCK_SUN_SCALE = 0.8;
     if (bedrockAtmosphereActive()) {
         // Bedrock RTX's own sun/moon light for this time of day (bedrock_atmosphere.glsl), already faded at the
         // horizon, scaled by the Day/Night Brightness settings relative to their defaults (0.25 and 0.35).
         float brightnessScale = toSun.y >= 0.0 ? worldUBO.sunBrightness / 0.25 : worldUBO.moonBrightness / 0.35;
-        vec3 bedrockLight = bedrockCelestialLight(toSun.y) * brightnessScale;
+        // The sun's direct light a little under Bedrock's (BEDROCK_SUN_SCALE): at full strength daylight read harsh,
+        // sunlit ground near white. The sky's light is left as it is, so the meter is not handed the whole cut back.
+        vec3 bedrockLight = bedrockCelestialLight(toSun.y) * brightnessScale * (toSun.y >= 0.0 ? BEDROCK_SUN_SCALE : 1.0);
         bedrockLight *= biomeFogLightTransmittance(worldHeight, toSun);
         shadowRay.radiance += bedrockLight * shadowRay.throughput;
         return;

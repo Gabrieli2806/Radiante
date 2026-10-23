@@ -978,6 +978,10 @@ void main() {
 #if !defined(VPT_BEDROCK_ORIGINAL) || VPT_BEDROCK_ORIGINAL == 0
             // (The experimental Bedrock profile exposes as Bedrock RTX does, with no offset of its own.)
             darkness *= mix(VPT_EXPOSURE_NIGHT_SCALE, VPT_EXPOSURE_DAY_SCALE, day);
+#else
+            // By day a little under Bedrock's: with the sun's light cut (shadow.rmiss) the meter alone opened the eye
+            // back up and the picture came out as bright as before, only flatter; held under, daylight is softer.
+            darkness *= mix(1.0, BEDROCK_DAY_EXPOSURE_SCALE, day);
 #endif
             lightMeter.daylight = vec4(day, darkness, underWater, VPT_EXPOSURE_DAY_MAX);
         }

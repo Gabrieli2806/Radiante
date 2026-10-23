@@ -282,6 +282,13 @@ void sampleSurfaceState(bool useTexture,
     }
 #    endif
 #endif
+    // In the Nether the glow a surface shows is held down by as much as the eye is opened up there (pt_fog.glsl's
+    // NETHER_EXPOSURE_SCALE): held low for the sake of the lava, the eye left torchlit rock barely readable, and
+    // opened up, lava itself came out a pale peach. Lights cast as before; only what the glowing surface shows.
+#ifndef NETHER_GLOW_SCALE
+#    define NETHER_GLOW_SCALE 0.25
+#endif
+    if (worldUBO.skyType == 0) { mat.emission *= NETHER_GLOW_SCALE; }
 
     vec3 geometricNormal = localHit.sideWall ? localHit.geometricNormal : baseGeoNormal;
     vec3 shadingNormal = geometricNormal;
