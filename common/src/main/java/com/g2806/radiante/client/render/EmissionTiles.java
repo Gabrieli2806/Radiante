@@ -380,9 +380,13 @@ public final class EmissionTiles {
                 float v0 = (sprite.getV0() * atlasHeight + cellY) / atlasHeight;
                 float u1 = (sprite.getU0() * atlasWidth + Math.min(width, cellX + cellWidth)) / atlasWidth;
                 float v1 = (sprite.getV0() * atlasHeight + Math.min(height, cellY + cellHeight)) / atlasHeight;
+                // Lava's bright texels are near white, and the light they cast burnt what it fell on to a pale cream:
+                // lava lights its surroundings red-orange, the more so the yellower the texel.
+                float greenShare = lava ? LAVA_LIGHT_GREEN : 1.0f;
+                float blueShare = lava ? LAVA_LIGHT_BLUE : 1.0f;
                 cells.add(new float[] {u0, v0, u1, v1, LIGHT_PER_FACE * strength * emission / texels, red / emission,
-                    green / emission,
-                    blue / emission});
+                    green / emission * greenShare,
+                    blue / emission * blueShare});
             }
         }
 
@@ -581,10 +585,14 @@ public final class EmissionTiles {
     }
 
     /** How brightly lava's surface glows against a level 15 light's: at full it was overexposed into a pale peach. */
-    private static final float LAVA_SURFACE_GLOW = 0.12f;
+    private static final float LAVA_SURFACE_GLOW = 0.09f;
 
     /** How much of a level 15 light's cast each lava block gives the blocks around it. */
     private static final float LAVA_CAST = 0.25f;
+
+    /** The share of the green and blue of lava's texels its light keeps: an orange-red light, not a white one. */
+    private static final float LAVA_LIGHT_GREEN = 0.5f;
+    private static final float LAVA_LIGHT_BLUE = 0.12f;
 
     private static boolean isLava(TextureAtlasSprite sprite) {
         Identifier name = sprite.contents().name();
