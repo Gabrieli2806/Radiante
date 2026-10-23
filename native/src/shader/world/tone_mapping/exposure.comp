@@ -243,6 +243,9 @@ void meterHistogram(float previous) {
 }
 
 void main() {
+    // The Nether is flagged to the tone mapper (it holds the hue of what is brighter than white there): world.rgen
+    // sends a negative daylight.w for it.
+    expData.padding0 = lightMeter.daylight.w < 0.0 ? 1.0 : 0.0;
     if (pc.exposureMeteringMode != 4) { lightMeter.bedrockMeter = vec4(0.0); }
 
     // Nothing carried over yet (the buffer is zeroed when the module is built) or not a usable value: start from the

@@ -167,6 +167,8 @@ vec3 withSaturation(vec3 color, float saturation) {
 
 // The material's intensity: how far the graded colour is taken from the mapped one, Bedrock RTX's own value (calibrated to Bedrock RTX). It shows only where the mapped colour leaves the 0 to 1 range.
 const float BEDROCK_TONE_MAPPING_INTENSITY = 0.9;
+// The brightest channel the Nether's picture reaches (linear, before the sRGB encoding): 0.85 is 0.93 as shown.
+const float NETHER_HUE_HOLD = 0.85;
 
 // The displayed log2 luminance for an input log2 luminance: the curve read with linear filtering, its 256 entries
 // covering -24 .. +4.
@@ -195,6 +197,15 @@ vec3 bedrockToneMap(vec3 color) {
         float mean = dot(mapped, vec3(1.0 / 3.0));
         float response = ((1486.4 - 1489.7 * mean) * mean - 3.3) / ((0.15 * mean + 944.2) * mean + 1.0);
         mapped = mean + (1.0 + pc.filmicSaturation * max(response - 1.0, 0.0)) * (mapped - mean);
+    }
+
+    // The Nether (exposure.comp flags it): a lava sea or a lit wall of red rock has its red channel far over white
+    // once the eye is open, and clipped channel by channel it went a flat pale peach with no texture left. The
+    // brightest channel is brought down to the white point instead, keeping the hue: bright orange, darker where
+    // the glow is stronger, and the pattern stays.
+    if (expData.padding0 > 0.5) {
+        float peak = max(mapped.r, max(mapped.g, mapped.b));
+        mapped *= NETHER_HUE_HOLD / max(peak, NETHER_HUE_HOLD);
     }
 
     vec3 graded = mapped * vec3(pc.balanceR, pc.balanceG, pc.balanceB);

@@ -309,9 +309,11 @@ void sampleSurfaceState(bool useTexture,
 #endif
     // In the Nether the glow a surface shows is held down by as much as the eye is opened up there (pt_fog.glsl's
     // NETHER_EXPOSURE_SCALE): held low for the sake of the lava, the eye left torchlit rock barely readable, and
-    // opened up, lava itself came out a pale peach. Lights cast as before; only what the glowing surface shows.
+    // opened up, lava itself came out a pale peach. Lights cast as before; only what the glowing surface shows. Raised
+    // from 0.25 so flames (fire, soul fire, campfires) show brighter; lava's own glow is held down at its source
+    // (EmissionTiles.LAVA_MER_GLOW) and the tone mapper keeps the hue of what is over white.
 #ifndef NETHER_GLOW_SCALE
-#    define NETHER_GLOW_SCALE 0.25
+#    define NETHER_GLOW_SCALE 0.5
 #endif
     if (worldUBO.skyType == 0) { mat.emission *= NETHER_GLOW_SCALE; }
 

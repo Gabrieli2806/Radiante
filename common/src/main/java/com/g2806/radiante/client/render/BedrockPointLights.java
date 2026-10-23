@@ -68,6 +68,18 @@ final class BedrockPointLights {
             } else {
                 writer.pointLight(x + 0.5f, y + 0.561f, z + 0.5f, rgb[0], rgb[1], rgb[2], CAST_STRENGTH, RADIUS);
             }
+        } else if (isFlame(block)) {
+            // Not Bedrock's: fire, soul fire and campfires lit what is around them only through the glow of their
+            // sprites, which the Nether's glow scale dims, so a flame next to lava looked dull and lit nothing. A warm
+            // (cyan for the soul ones) light of its own, at the heart of the flame.
+            if (state.hasProperty(net.minecraft.world.level.block.CampfireBlock.LIT)
+                && !state.getValue(net.minecraft.world.level.block.CampfireBlock.LIT)) {
+                return;
+            }
+            boolean soul = block == Blocks.SOUL_FIRE || block == Blocks.SOUL_CAMPFIRE;
+            boolean campfire = block == Blocks.CAMPFIRE || block == Blocks.SOUL_CAMPFIRE;
+            writer.pointLight(x + 0.5f, y + (campfire ? 0.45f : 0.35f), z + 0.5f, soul ? 0 : 255, soul ? 230 : 120,
+                soul ? 255 : 40, CAST_STRENGTH * FLAME_STRENGTH * (campfire ? 1.2f : 1.0f), FLAME_RADIUS);
         } else if (isBerryVine(state)) {
             // Not Bedrock's: the berries of a glow berry vine are level 14 in vanilla and a pack lights only their few
             // texels, so a lush cave of them was dark. Each berried block gives a warm, soft light of its own.
@@ -127,6 +139,15 @@ final class BedrockPointLights {
     /** How much of a torch's strength a glow berry vine gives: gentle, there are many of them. */
     private static final float BERRY_STRENGTH = 0.6f;
 
+    /** A flame's share of a torch's strength, and its radius: fire is a bigger, lower flame than a torch's. */
+    private static final float FLAME_STRENGTH = 0.9f;
+    private static final float FLAME_RADIUS = 0.2f;
+
+    private static boolean isFlame(Block block) {
+        return block == Blocks.FIRE || block == Blocks.SOUL_FIRE || block == Blocks.CAMPFIRE
+            || block == Blocks.SOUL_CAMPFIRE;
+    }
+
     private static boolean isBerryVine(BlockState state) {
         Block block = state.getBlock();
         return (block == Blocks.CAVE_VINES || block == Blocks.CAVE_VINES_PLANT) && state.getValue(CaveVines.BERRIES);
@@ -135,7 +156,7 @@ final class BedrockPointLights {
     /** Whether the block has one of these lights, in some state. */
     static boolean hasLight(Block block) {
         return block == Blocks.CAVE_VINES || block == Blocks.CAVE_VINES_PLANT || block == Blocks.FIREFLY_BUSH
-            || colourOf(block) != null;
+            || isFlame(block) || colourOf(block) != null;
     }
 
     /** A torch on a wall: its flame higher, and a little towards the wall it hangs on. */

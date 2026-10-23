@@ -483,8 +483,11 @@ public final class EmissionTiles {
                 float v0 = (originY + cellY) / (float) atlasHeight;
                 float u1 = (originX + Math.min(width, cellX + cellWidth)) / (float) atlasWidth;
                 float v1 = (originY + Math.min(height, cellY + cellHeight)) / (float) atlasHeight;
-                cells.add(new float[] {u0, v0, u1, v1, -emission / texels * boost, red / emission, green / emission,
-                    blue / emission});
+                // Lava lights its surroundings red-orange, with the cast of a sea of it held down (see LAVA_MER_CAST).
+                boolean lava = isLava(sprite);
+                cells.add(new float[] {u0, v0, u1, v1, -emission / texels * boost * (lava ? LAVA_MER_CAST : 1.0f),
+                    red / emission, green / emission * (lava ? LAVA_LIGHT_GREEN : 1.0f),
+                    blue / emission * (lava ? LAVA_LIGHT_BLUE : 1.0f)});
             }
         }
         long tileKey = ((long) sprite.getX() << 32) ^ sprite.getY() ^ ((long) width << 48) ^ height;
@@ -515,10 +518,11 @@ public final class EmissionTiles {
      * taken from it, so the specks and the light they cast are softened together.
      */
     static void softenMer(TextureAtlasSprite sprite, ByteBuffer mer, int atlasWidth, int atlasHeight) {
-        if (!sprite.contents().name().getPath().startsWith("block/firefly_bush")) {
+        boolean lava = isLava(sprite);
+        if (!lava && !sprite.contents().name().getPath().startsWith("block/firefly_bush")) {
             return;
         }
-        float scale = (float) Math.sqrt(FIREFLY_GLOW);
+        float scale = (float) Math.sqrt(lava ? LAVA_MER_GLOW : FIREFLY_GLOW);
         int originX = Math.round(sprite.getU0() * atlasWidth);
         int originY = Math.round(sprite.getV0() * atlasHeight);
         for (int y = 0; y < sprite.contents().height(); y++) {
@@ -593,6 +597,15 @@ public final class EmissionTiles {
     /** The share of the green and blue of lava's texels its light keeps: an orange-red light, not a white one. */
     private static final float LAVA_LIGHT_GREEN = 0.5f;
     private static final float LAVA_LIGHT_BLUE = 0.12f;
+
+    /**
+     * Under the Bedrock profile lava glows and casts what its pack's MER map says (uploadFromMer), so none of the
+     * legacy tuning above (surface glow, cast, light colour) reached it: a sea of lava, glowing at the pack's full
+     * strength, burnt the Nether out to pale peach and a flat red. The share of that glow kept (the MER green is
+     * scaled by its root), and the share of it a lava block casts on the blocks around it on top.
+     */
+    private static final float LAVA_MER_GLOW = 0.4f;
+    private static final float LAVA_MER_CAST = 0.3f;
 
     private static boolean isLava(TextureAtlasSprite sprite) {
         Identifier name = sprite.contents().name();
