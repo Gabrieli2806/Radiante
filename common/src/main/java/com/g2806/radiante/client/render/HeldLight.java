@@ -19,8 +19,11 @@ import org.joml.Vector4f;
  */
 public final class HeldLight {
 
-    /** Radiance of a light level 15 item. */
-    private static final float STRENGTH = 0.6f;
+    /**
+     * Radiance of a light level 15 item. A torch in the hand lit a cave several times wider than the same torch set
+     * down; both now meet in the middle (BedrockPointLights.STRENGTH).
+     */
+    private static final float STRENGTH = 0.35f;
     /** How far a level 15 light reaches, in blocks; vanilla light fades out over the same distance. */
     private static final float REACH = 15.0f;
 

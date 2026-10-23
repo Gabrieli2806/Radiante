@@ -26,13 +26,13 @@ final class BedrockPointLights {
      * is not there: side by side with Bedrock RTX, a torch lit the wall it hangs on about a third as brightly in
      * daylight, and a room lit by torches alone stayed at the eye's darkest limit, two to five times darker.)
      */
-    static final float STRENGTH = 2.0f / 25.5f * 4.0f;
+    static final float STRENGTH = 2.0f / 25.5f * 6.0f;
 
     /**
      * Not Bedrock's: a torch set down lit a dark room about a quarter as much as the same torch held in the hand
      * (HeldLight), so walking in with one and putting it down made the room go dark. Placed and held lights now match.
      */
-    // (The 4 in STRENGTH.)
+    // (The 6 in STRENGTH; HeldLight is brought down to meet it.)
     private static final float RADIUS = 0.115f;
     private static final float LANTERN_RADIUS = 0.23f;
 
