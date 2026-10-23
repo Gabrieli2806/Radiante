@@ -28,11 +28,14 @@ public class TextureTrackingMixins {
     @Mixin(VulkanGpuTexture.class)
     public static class TextureMixin {
 
-        @Inject(method = "close", at = @At("HEAD"))
+        /**
+         * Since 26.4 closing a texture only marks it: the image lives on until its last view is closed, and some
+         * textures are closed by their creator while their view goes on being used (the entity colour overlay
+         * hurts and flashes every entity through one). The id is given up when the image is really destroyed.
+         */
+        @Inject(method = "destroy", at = @At("HEAD"))
         private void radiante$untrackTexture(CallbackInfo ci) {
-            if (!((VulkanGpuTexture) (Object) this).isClosed()) {
-                TextureTracker.onClosed((GpuTexture) (Object) this);
-            }
+            TextureTracker.onClosed((GpuTexture) (Object) this);
         }
     }
 
