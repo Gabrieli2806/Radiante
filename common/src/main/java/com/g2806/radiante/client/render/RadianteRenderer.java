@@ -79,6 +79,22 @@ public final class RadianteRenderer {
         return active;
     }
 
+    /** Why the ray tracer is not running, so the warning names the real cause rather than always the graphics card. */
+    public enum Failure {
+        /** No Vulkan device was ever made: the game is on OpenGL. */
+        NOT_VULKAN,
+        /** The Vulkan device cannot ray trace (an old card, or a software driver). */
+        NO_RAY_TRACING,
+        /** The card can ray trace but the renderer did not start (out of video memory, another instance, ...). */
+        INIT_FAILED
+    }
+
+    private static Failure failure = Failure.NOT_VULKAN;
+
+    public static Failure failure() {
+        return failure;
+    }
+
     private static boolean tracingLevel;
 
     /**
@@ -165,6 +181,7 @@ public final class RadianteRenderer {
             LOGGER.error("Radiante: the Vulkan device has no hardware ray tracing; ray tracing stays off. On "
                 + "Linux this usually means the GPU driver is not visible to the game (Flatpak launchers need the "
                 + "matching org.freedesktop.Platform.GL.nvidia runtime).");
+            failure = Failure.NO_RAY_TRACING;
             return;
         }
 
@@ -187,6 +204,7 @@ public final class RadianteRenderer {
 
         if (!ok[0]) {
             LOGGER.error("Radiante native renderer failed to initialise; ray tracing stays off");
+            failure = Failure.INIT_FAILED;
             return;
         }
 
