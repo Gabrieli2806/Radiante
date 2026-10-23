@@ -21,4 +21,5 @@ rootProject.name = 'radiante'
 
 // common: everything that is plain Minecraft. Each loader module compiles those sources together with its own
 // entrypoint and a RadiantePlatform implementation.
-include 'common', 'fabric', 'neoforge', 'forge'
+// mc/26.4: Fabric only (no NeoForge or Forge build for 26.4 yet).
+include 'common', 'fabric'

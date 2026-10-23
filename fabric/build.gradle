@@ -39,8 +39,8 @@ loom {
 }
 
 processResources {
-	def version = project.version
-	def mcVersion = rootProject.minecraft_version
+	def version = "${project.version}+${rootProject.minecraft_version_label}"
+	def mcVersion = rootProject.minecraft_version_range
 	inputs.property "version", version
 	inputs.property "minecraft_version", mcVersion
 
@@ -67,5 +67,5 @@ tasks.named("runClient", JavaExec) {
 rootProject.packNatives(tasks.jar)
 
 jar {
-	archiveFileName.set("${rootProject.archives_base_name}-fabric-${project.version}+${rootProject.minecraft_version}.jar")
+	archiveFileName.set("${rootProject.archives_base_name}-fabric-${project.version}+${rootProject.minecraft_version_label}.jar")
 }
