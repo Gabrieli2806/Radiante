@@ -1945,16 +1945,6 @@
    "bedrock": "textures/blocks/double_plant_fern_top",
    "color": true
   },
-  "lava_flow": {
-   "bedrock": "textures/blocks/lava_flow",
-   "color": true,
-   "mcmeta": {"animation": {"frametime": 3}}
-  },
-  "lava_still": {
-   "bedrock": "textures/blocks/lava_still",
-   "color": true,
-   "mcmeta": {"animation": {"frametime": 2}}
-  },
   "leaf_litter": {
    "bedrock": "textures/blocks/leaf_litter",
    "color": true

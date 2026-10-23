@@ -557,7 +557,7 @@ public final class ChunkManager {
             }
         };
         // Lava's surface glows evenly at a level 15 glow, except where blocks cast their glow as Bedrock RTX does:
-        // there the pack's own emission map lights it, bright specks over a dark crust as Bedrock shows it. The even
+        // there only its emission map lights it (Java's texture, each texel by its yellow: EmissionTiles). The even
         // glow on top washed it out into a flat orange.
         boolean lavaGlow = !pointLights;
         FluidRenderer.Output fluidOutput =

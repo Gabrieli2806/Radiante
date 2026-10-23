@@ -315,6 +315,8 @@ public final class EmissionTiles {
         // glow lit a ring of frames brighter than any lamp around it.
         boolean bedrockGlow = com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow();
         boolean lava = isLava(sprite);
+        // Each texel by its yellow (green channel): the dark orange glows least and the bright swirls most, so the
+        // surface keeps vanilla's flowing pattern; all at full strength it was overexposed into a pale, flat peach.
         if (lava) {
             threshold = 0.0f;
             coloured = false;
@@ -359,7 +361,8 @@ public final class EmissionTiles {
                             writeSpecularEmission(specular, atlasWidth, atlasHeight,
                                 Math.round(sprite.getU0() * atlasWidth) + x,
                                 Math.round(sprite.getV0() * atlasHeight) + y,
-                                eye && !bedrockGlow ? END_PORTAL_EYE_GLOW : lava ? strength : strength * brightness);
+                                eye && !bedrockGlow ? END_PORTAL_EYE_GLOW
+                                    : lava ? strength * LAVA_SURFACE_GLOW * g : strength * brightness);
                         }
                         emission += weight;
                         red += r * weight;
@@ -526,6 +529,9 @@ public final class EmissionTiles {
         return path.equals("block/beacon") || path.equals(END_PORTAL_EYE.getPath()) || path.equals("block/cave_vines_lit")
             || path.equals("block/cave_vines_plant_lit");
     }
+
+    /** How brightly lava's surface glows against a level 15 light's: at full it was overexposed into a pale peach. */
+    private static final float LAVA_SURFACE_GLOW = 0.12f;
 
     private static boolean isLava(TextureAtlasSprite sprite) {
         Identifier name = sprite.contents().name();
