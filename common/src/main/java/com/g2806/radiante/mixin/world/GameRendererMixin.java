@@ -62,16 +62,16 @@ public abstract class GameRendererMixin {
         // In front of everything, as in vanilla, where the hand pass starts from a cleared depth.
         com.mojang.blaze3d.systems.RenderSystem.getDevice().createCommandEncoder()
             .clearDepthTexture(this.mainRenderTarget.getDepthTexture(), 0.0);
-        this.debugCrosshairRenderer.render(cameraState, state.windowRenderState.guiScale,
-            this.mainRenderTarget.getColorTextureView(), this.mainRenderTarget.getDepthTextureView());
+        this.debugCrosshairRenderer.render(cameraState, state.windowRenderState.guiScale);
     }
 
     @WrapOperation(method = "render", at = @At(value = "INVOKE",
-        target = "Lnet/minecraft/client/renderer/GameRenderer;renderLevel()V"))
-    private void radiante$renderLevel(GameRenderer gameRenderer, Operation<Void> original) {
+        target = "Lnet/minecraft/client/renderer/GameRenderer;renderLevel(Lnet/minecraft/client/DeltaTracker;)V"))
+    private void radiante$renderLevel(GameRenderer gameRenderer, net.minecraft.client.DeltaTracker deltaTracker,
+        Operation<Void> original) {
         com.g2806.radiante.client.DevAutomation.frame();
         if (!RadianteRenderer.isRayTracingEnabled()) {
-            original.call(gameRenderer);
+            original.call(gameRenderer, deltaTracker);
             return;
         }
 
@@ -81,7 +81,7 @@ public abstract class GameRendererMixin {
         // of which the tracer draws instead.
         RadianteRenderer.setTracingLevel(true);
         try {
-            original.call(gameRenderer);
+            original.call(gameRenderer, deltaTracker);
         } finally {
             RadianteRenderer.setTracingLevel(false);
         }
@@ -94,25 +94,38 @@ public abstract class GameRendererMixin {
         com.g2806.radiante.client.DevAutomation.frameDrawn();
     }
 
+    // 26.2 has no render3dHud: renderLevel draws the hand, the screen effects and the F3 crosshair inline, and
+    // ends the world fog itself. Each of the three is skipped while tracing, as main skips render3dHud.
     @WrapOperation(method = "renderLevel", at = @At(value = "INVOKE",
-        target = "Lnet/minecraft/client/renderer/GameRenderer;render3dHud(Lnet/minecraft/client/renderer/state/level/CameraRenderState;Lnet/minecraft/client/renderer/state/level/PlayerRenderState;Lnet/minecraft/client/renderer/state/OptionsRenderState;Z)V"))
-    private void radiante$skipHudWhenTracing(GameRenderer gameRenderer,
-        net.minecraft.client.renderer.state.level.CameraRenderState cameraState,
-        net.minecraft.client.renderer.state.level.PlayerRenderState playerState,
-        net.minecraft.client.renderer.state.OptionsRenderState optionsState, boolean consistentDepthRequired,
+        target = "Lnet/minecraft/client/renderer/GameRenderer;renderItemInHand(Lnet/minecraft/client/renderer/state/level/CameraRenderState;FLorg/joml/Matrix4fc;)V"))
+    private void radiante$skipHandWhenTracing(GameRenderer gameRenderer,
+        net.minecraft.client.renderer.state.level.CameraRenderState cameraState, float partialTicks,
+        org.joml.Matrix4fc modelViewMatrix, Operation<Void> original) {
+        if (!RadianteRenderer.isTracingLevel()) {
+            original.call(gameRenderer, cameraState, partialTicks, modelViewMatrix);
+        }
+    }
+
+    @WrapOperation(method = "renderLevel", at = @At(value = "INVOKE",
+        target = "Lnet/minecraft/client/renderer/ScreenEffectRenderer;submit(ZZFLnet/minecraft/client/renderer/SubmitNodeCollector;Z)V"))
+    private void radiante$skipScreenEffectsWhenTracing(net.minecraft.client.renderer.ScreenEffectRenderer renderer,
+        boolean isFirstPerson, boolean isSleeping, float partialTicks,
+        net.minecraft.client.renderer.SubmitNodeCollector collector, boolean hideGui, Operation<Void> original) {
+        if (!RadianteRenderer.isTracingLevel()) {
+            original.call(renderer, isFirstPerson, isSleeping, partialTicks, collector, hideGui);
+        }
+    }
+
+    @WrapOperation(method = "renderLevel", at = @At(value = "INVOKE",
+        target = "Lnet/minecraft/client/renderer/DebugCrosshairRenderer;render(Lnet/minecraft/client/renderer/state/level/CameraRenderState;I)V"))
+    private void radiante$crosshairWhenTracing(net.minecraft.client.renderer.DebugCrosshairRenderer renderer,
+        net.minecraft.client.renderer.state.level.CameraRenderState cameraState, int guiScale,
         Operation<Void> original) {
         if (!RadianteRenderer.isTracingLevel()) {
-            original.call(gameRenderer, cameraState, playerState, optionsState, consistentDepthRequired);
-        } else {
-            // What this pass does besides drawing: it ends the world fog. Minecraft level render switches that fog
-            // on when it runs over the traced picture, and left on it reached the screens drawn afterwards - item
-            // icons in an inventory came out as flat shapes in the fog colour.
-            com.mojang.blaze3d.systems.RenderSystem.setShaderFog(this.fogRenderer.getBuffer(
-                net.minecraft.client.renderer.fog.FogRenderer.FogMode.NONE));
-            if (RadianteRenderer.wasFrameTraced()) {
-                // The traced picture is already in the target; without the overlay pass it is not yet (see above).
-                radiante$debugCrosshair();
-            }
+            original.call(renderer, cameraState, guiScale);
+        } else if (RadianteRenderer.wasFrameTraced()) {
+            // The traced picture is already in the target; without the overlay pass it is not yet (see above).
+            radiante$debugCrosshair();
         }
     }
 

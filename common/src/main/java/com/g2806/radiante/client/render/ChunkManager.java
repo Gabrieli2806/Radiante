@@ -545,8 +545,8 @@ public final class ChunkManager {
                 return;
             }
             if (unshade) {
-                net.minecraft.core.Direction shadeFace = quad.materialInfo().shadeDirectionOverride();
-                float shade = cardinal.byFace(shadeFace != null ? shadeFace : quad.direction());
+                // 26.2 port: a quad shades by its own face or, unshaded, as one facing up (no shade override).
+                float shade = quad.materialInfo().shade() ? cardinal.byFace(quad.direction()) : cardinal.up();
                 if (shade > 0.0f && shade != 1.0f) {
                     instance.scaleColor(1.0f / shade);
                 }

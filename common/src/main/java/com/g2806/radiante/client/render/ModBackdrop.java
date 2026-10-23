@@ -59,7 +59,7 @@ public final class ModBackdrop {
     /** Right after the traced picture went into Minecraft's target: keeps a copy of it for {@link #restore}. */
     public static void capture(RenderTarget main) {
         pending = false;
-        if (failed || main == null || main.getColorTexture() == null || !main.hasDepth()) {
+        if (failed || main == null || main.getColorTexture() == null || !main.useDepth) {
             return;
         }
         try {
@@ -69,9 +69,10 @@ public final class ModBackdrop {
                 if (copy != null) {
                     copy.destroyBuffers();
                 }
-                copy = new TextureTarget("radiante traced world", main.width, main.height, format, null);
+                copy = new TextureTarget("radiante traced world", main.width, main.height, false, format);
             }
-            copy.copyColorFrom(main);
+            RenderSystem.getDevice().createCommandEncoder().copyTextureToTexture(main.getColorTexture(),
+                copy.getColorTexture(), 0, 0, 0, 0, 0, copy.width, copy.height);
             pending = true;
         } catch (RuntimeException e) {
             fail(e);
@@ -99,8 +100,8 @@ public final class ModBackdrop {
                     .withCull(false).withPrimitiveTopology(PrimitiveTopology.TRIANGLES).build();
                 pipelineFormat = format;
             }
-            pass.setPipeline(RenderSystem.getCompiledPipeline(pipeline));
-            pass.setUniform("InSampler", copy.getColorTextureView(),
+            pass.setPipeline(pipeline);
+            pass.bindTexture("InSampler", copy.getColorTextureView(),
                 RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST));
             pass.draw(3, 1, 0, 0);
         } catch (RuntimeException e) {

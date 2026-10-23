@@ -34,9 +34,7 @@ import net.minecraft.client.resources.model.ModelBakery;
 import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.state.level.QuadParticleRenderState;
-import net.minecraft.client.renderer.texture.UvMapping;
 import net.minecraft.client.resources.model.geometry.BakedQuad;
-import net.minecraft.client.resources.model.geometry.ItemQuads;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.ARGB;
@@ -65,6 +63,14 @@ public class EntityCollector implements SubmitNodeCollector {
     private static final float TEXT_SURFACE_OFFSET = 0.003f;
 
     private final Map<RenderType, PBRVertexWriter> writers = new LinkedHashMap<>();
+    /**
+     * 26.2 port: the model last drawn, the writer it went into and its first vertex. 26.2 has no render types that
+     * carry the glint alongside the base texture; it draws the glint as a second pass over the same model, so that
+     * pass switches the glint on for the vertices already written, as main's combined glint render types write them.
+     */
+    private @Nullable Object lastModel;
+    private @Nullable PBRVertexWriter lastModelWriter;
+    private int lastModelStart;
 
     /** Extra glow the current entity gives off whatever layer it is drawn with, such as a glow item frame. */
     private float entityEmission;
@@ -95,6 +101,8 @@ public class EntityCollector implements SubmitNodeCollector {
     public void reset() {
         this.modelLayers.clear();
         this.writers.clear();
+        this.lastModel = null;
+        this.lastModelWriter = null;
         this.nameTagLayers.clear();
         this.used = 0;
         this.entityEmission = 0.0f;
@@ -163,6 +171,21 @@ public class EntityCollector implements SubmitNodeCollector {
         this.used = 0;
     }
 
+    /** 26.2's glint-only render types: drawn by vanilla as a second pass over the same geometry. */
+    private static net.minecraft.resources.@Nullable Identifier glintPassTexture(RenderType renderType) {
+        String name = ((com.g2806.radiante.mixin.render.RenderTypeAccessors.RenderTypeAccessor) (Object) renderType)
+            .radiante$name();
+        if (name == null) {
+            return null;
+        }
+        return switch (name) {
+            case "armor_entity_glint" -> net.minecraft.client.renderer.feature.ItemFeatureRenderer.ENCHANTED_GLINT_ARMOR;
+            case "glint", "glint_translucent", "entity_glint" ->
+                net.minecraft.client.renderer.feature.ItemFeatureRenderer.ENCHANTED_GLINT_ITEM;
+            default -> null;
+        };
+    }
+
     protected PBRVertexWriter writer(RenderType renderType) {
         PBRVertexWriter writer = this.writers.get(renderType);
         if (writer != null) {
@@ -227,7 +250,16 @@ public class EntityCollector implements SubmitNodeCollector {
 
     @Override
     public <S> void submitModel(Model<? super S> model, S state, PoseStack poseStack, RenderType renderType,
-        int lightCoords, int overlayCoords, int tintedColor, @Nullable UvMapping uvMapping, int outlineColor) {
+        int lightCoords, int overlayCoords, int tintedColor, @Nullable TextureAtlasSprite uvMapping, int outlineColor,
+        ModelFeatureRenderer.@Nullable CrumblingOverlay crumblingOverlay) {
+        net.minecraft.resources.Identifier glintTexture = glintPassTexture(renderType);
+        if (glintTexture != null) {
+            // 26.2 port: the glint pass over the model just drawn glints that model's vertices instead.
+            if (this.lastModel == model && this.lastModelWriter != null) {
+                this.lastModelWriter.glintSince(this.lastModelStart, TextureTracker.idOf(glintTexture));
+            }
+            return;
+        }
         // An outline colour means the glowing effect. Vanilla still draws the model, and draws the silhouette on
         // top from a post effect this renderer does not run; dropping the submission made a glowing mob or player
         // disappear instead. The outline comes from a separate copy of the entity; see EntityManager.collect.
@@ -253,13 +285,20 @@ public class EntityCollector implements SubmitNodeCollector {
             buffer = uvMapping.wrap(buffer);
         }
 
+        writer.finish();
+        this.lastModel = model;
+        this.lastModelWriter = writer;
+        this.lastModelStart = writer.vertexCount();
         model.setupAnim(state);
         model.renderToBuffer(poseStack, buffer, lightCoords, overlayCoords, tintedColor);
         writer.layerOffset(0.0f);
+        if (crumblingOverlay != null) {
+            this.submitCrumblingOverlay(model, state, poseStack, renderType, lightCoords, overlayCoords, tintedColor,
+                crumblingOverlay);
+        }
     }
 
-    @Override
-    public <S> void submitCrumblingOverlay(Model<? super S> model, S state, PoseStack poseStack,
+    private <S> void submitCrumblingOverlay(Model<? super S> model, S state, PoseStack poseStack,
         RenderType renderType, int lightCoords, int overlayCoords, int tintedColor,
         ModelFeatureRenderer.CrumblingOverlay crumblingOverlay) {
         // A block entity being mined: its model again, with the destroy-stage texture projected onto it.
@@ -333,11 +372,11 @@ public class EntityCollector implements SubmitNodeCollector {
 
     @Override
     public void submitItem(PoseStack poseStack, ItemDisplayContext displayContext, int lightCoords,
-        int overlayCoords, int outlineColor, int[] tintLayers, ItemQuads quads,
+        int overlayCoords, int outlineColor, int[] tintLayers, List<BakedQuad> quads,
         ItemStackRenderState.FoilType foilType) {
         this.quadInstance.setLightCoords(lightCoords);
         this.quadInstance.setOverlayCoords(overlayCoords);
-        for (BakedQuad quad : quads.all()) {
+        for (BakedQuad quad : quads) {
             BakedQuad.MaterialInfo material = quad.materialInfo();
             int tintIndex = material.tintIndex();
             this.quadInstance.setColor(tintIndex >= 0 && tintIndex < tintLayers.length
@@ -347,18 +386,22 @@ public class EntityCollector implements SubmitNodeCollector {
             // RenderTypeInfo reads the "GlintSampler" texture those carry and every writer built from one of them
             // glints. Vanilla's "special" foil (a screen-locked decal, a handful of models) draws with the same
             // glint render type here too - it still glints, just riding the item's own UV rather than the screen.
-            RenderType renderType = switch (foilType) {
-                case NONE -> material.itemRenderType();
-                case STANDARD -> material.itemGlintRenderType();
-                case SPECIAL -> material.itemGlintSpecialRenderType();
-            };
+            RenderType renderType = material.itemRenderType();
             if (com.g2806.radiante.client.option.Options.debugLogging) {
                 TextureTracker.reportUse("item " + displayContext + " layer "
                     + ((com.g2806.radiante.mixin.render.RenderTypeAccessors.RenderTypeAccessor) (Object) renderType)
                         .radiante$name() + " sprite " + material.sprite().contents().name() + " "
                     + material.sprite().contents().width() + "x" + material.sprite().contents().height());
             }
-            this.writer(renderType).putBakedQuad(poseStack.last(), quad, this.quadInstance);
+            PBRVertexWriter writer = this.writer(renderType);
+            writer.finish();
+            int start = writer.vertexCount();
+            writer.putBakedQuad(poseStack.last(), quad, this.quadInstance);
+            if (foilType != ItemStackRenderState.FoilType.NONE) {
+                // 26.2 port: no glint item render types; the quad glints as main's would.
+                writer.glintSince(start, TextureTracker.idOf(
+                    net.minecraft.client.renderer.feature.ItemFeatureRenderer.ENCHANTED_GLINT_ITEM));
+            }
         }
     }
 
@@ -426,8 +469,7 @@ public class EntityCollector implements SubmitNodeCollector {
     }
 
     @Override
-    public void submitBreakingBlockModel(PoseStack poseStack, List<BlockStateModelPart> parts, int progress,
-        boolean isBlockTranslucent) {
+    public void submitBreakingBlockModel(PoseStack poseStack, List<BlockStateModelPart> parts, int progress) {
         PBRVertexWriter writer = this.crumblingWriter(progress);
         PoseStack.Pose pose = poseStack.last();
         org.joml.Matrix4f inverse = new org.joml.Matrix4f(pose.pose()).invert();
@@ -493,7 +535,7 @@ public class EntityCollector implements SubmitNodeCollector {
         // each letter out of its cell. Vanilla's see-through copy has no meaning to a ray tracer and is skipped.
         poseStack.pushPose();
         poseStack.translate(nameTagAttachment.x, nameTagAttachment.y + 0.5, nameTagAttachment.z);
-        poseStack.rotate(camera.orientation);
+        poseStack.mulPose(camera.orientation);
         poseStack.scale(0.025f, -0.025f, 0.025f);
         float x = -Minecraft.getInstance().font.width(name) / 2.0f;
 
@@ -527,6 +569,10 @@ public class EntityCollector implements SubmitNodeCollector {
         Font font = Minecraft.getInstance().font;
         if (font == null) {
             return;
+        }
+        // 26.2 port: text displays hand their plate over with the text (26.3 has submitTextBackground for it).
+        if (!this.collectingNameTag && !com.g2806.radiante.client.option.Options.textBackgrounds) {
+            backgroundColor = 0;
         }
 
         // Minecraft keeps sign text inside the board it is written on and relies on a depth bias to draw it in
@@ -586,30 +632,6 @@ public class EntityCollector implements SubmitNodeCollector {
         writer.alphaMode(RenderTypeInfo.of(renderType)
             .alphaModeForPage(page.getFormat() == GpuFormat.R8_UNORM));
         renderable.render(pose, writer, lightCoords, false);
-    }
-
-    /**
-     * The plate behind a text display - a leaderboard, a hologram. It is a quad of the font's white glyph, so it
-     * goes through the text layers like the plate of a name tag: the text any-hit shader lets through the share of
-     * rays its opacity says, and it darkens what is behind it without becoming a solid board.
-     */
-    @Override
-    public void submitTextBackground(PoseStack poseStack, float x0, float y0, float x1, float y1, int color,
-        Font.DisplayMode displayMode, int lightCoords) {
-        Font font = Minecraft.getInstance().font;
-        if (font == null || !com.g2806.radiante.client.option.Options.textBackgrounds || ARGB.alpha(color) == 0) {
-            return;
-        }
-        // Moved out with the text (see submitText); the plate itself sits a hair behind the letters.
-        poseStack.pushPose();
-        float glyphScale = poseStack.last().pose().transformDirection(new Vector3f(0.0f, 0.0f, 1.0f)).length();
-        poseStack.translate(0.0f, 0.0f, TEXT_SURFACE_OFFSET / Math.max(glyphScale, 1.0E-6f));
-        if (com.g2806.radiante.client.option.Options.debugLogging) {
-            TextureTracker.reportUse("text background mode=" + displayMode + " color=" + Integer.toHexString(color));
-        }
-        this.writeTextRenderable(font.prepareBackground(x0, y0, x1, y1, color), poseStack.last().pose(), displayMode,
-            lightCoords);
-        poseStack.popPose();
     }
 
     /**

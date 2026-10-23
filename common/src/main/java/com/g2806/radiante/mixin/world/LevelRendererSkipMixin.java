@@ -104,7 +104,6 @@ public class LevelRendererSkipMixin {
         LevelRenderState empty = this.radiante$emptyState;
         empty.cameraRenderState = this.levelRenderState.cameraRenderState;
         empty.gameTime = this.levelRenderState.gameTime;
-        empty.worldPartialTicks = this.levelRenderState.worldPartialTicks;
         empty.shouldShowEntityOutlines = this.levelRenderState.shouldShowEntityOutlines;
         this.radiante$earlyPass = true;
         try {

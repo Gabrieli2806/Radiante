@@ -477,7 +477,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         return this;
     }
 
-    @Override
+    // 26.2 port: VertexConsumer has no setUv3 yet; kept so the writer reads as on main.
     public VertexConsumer setUv3(float u, float v) {
         MemoryUtil.memPutInt(this.current + OFF_USE_GLINT, 1);
         MemoryUtil.memPutFloat(this.current + OFF_GLINT_UV, u);
@@ -514,6 +514,22 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
 
     public void finish() {
         finishQuadIfComplete();
+    }
+
+    /**
+     * 26.2 port: switches the glint on for every vertex written since {@code from}, riding the vertex's own texture
+     * coordinate as setUv does for a glinting writer. 26.2 draws the glint as a separate pass over geometry already
+     * written; see EntityCollector.lastModel.
+     */
+    public void glintSince(int from, int glintTextureId) {
+        finishQuadIfComplete();
+        for (int i = Math.max(from, 0); i < this.vertexCount; i++) {
+            long v = this.address + (long) i * STRIDE;
+            MemoryUtil.memPutInt(v + OFF_USE_GLINT, 1);
+            MemoryUtil.memPutFloat(v + OFF_GLINT_UV, MemoryUtil.memGetFloat(v + OFF_TEXTURE_UV) - this.uOffset);
+            MemoryUtil.memPutFloat(v + OFF_GLINT_UV + 4, MemoryUtil.memGetFloat(v + OFF_TEXTURE_UV + 4) - this.vOffset);
+            MemoryUtil.memPutInt(v + OFF_GLINT_TEXTURE, glintTextureId);
+        }
     }
 
     @Override

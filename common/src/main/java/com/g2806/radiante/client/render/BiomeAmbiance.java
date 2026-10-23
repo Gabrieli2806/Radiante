@@ -191,7 +191,6 @@ public final class BiomeAmbiance {
     static {
         put(PLAINS, Biomes.PLAINS, Biomes.SUNFLOWER_PLAINS, Biomes.MEADOW);
         put(FOREST, Biomes.FOREST, Biomes.FLOWER_FOREST, Biomes.BIRCH_FOREST, Biomes.OLD_GROWTH_BIRCH_FOREST);
-        put(DAPPLED_FOREST, Biomes.DAPPLED_FOREST);
         put(DARK_FOREST, Biomes.DARK_FOREST);
         put(PALE_GARDEN, Biomes.PALE_GARDEN);
         put(TAIGA, Biomes.TAIGA, Biomes.OLD_GROWTH_PINE_TAIGA, Biomes.OLD_GROWTH_SPRUCE_TAIGA);
@@ -991,7 +990,9 @@ public final class BiomeAmbiance {
 
         // The biome's own fog colour, against the overworld's: its hue goes into the tint, and a darker fog thickens
         // the haze. A biome that leaves the fog alone comes out as its base.
-        Vector3fc fog = value.getAttributes().applyModifier(EnvironmentAttributes.FOG_COLOR, OVERWORLD_FOG);
+        int fogRgb = value.getAttributes().applyModifier(EnvironmentAttributes.FOG_COLOR, 0xC0D8FF);
+        Vector3fc fog = new Vector3f(net.minecraft.util.ARGB.redFloat(fogRgb), net.minecraft.util.ARGB.greenFloat(fogRgb),
+            net.minecraft.util.ARGB.blueFloat(fogRgb));
         float rr = fog.x() / OVERWORLD_FOG.x();
         float rg = fog.y() / OVERWORLD_FOG.y();
         float rb = fog.z() / OVERWORLD_FOG.z();

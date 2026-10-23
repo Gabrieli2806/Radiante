@@ -16,7 +16,6 @@ import com.mojang.blaze3d.vulkan.VulkanCommandEncoder;
 import com.mojang.blaze3d.vulkan.VulkanConst;
 import com.mojang.blaze3d.vulkan.VulkanDevice;
 import com.mojang.blaze3d.vulkan.VulkanGpuTexture;
-import com.mojang.renderpearl.frontend.FrontendCommandEncoder;
 import java.nio.ByteBuffer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.blockentity.AbstractEndPortalRenderer;
@@ -263,8 +262,8 @@ public final class RadianteRenderer {
         if (count <= 0) {
             return;
         }
-        VulkanCommandEncoder encoder = (VulkanCommandEncoder) ((FrontendCommandEncoder) RenderSystem.getDevice()
-            .createCommandEncoder()).backend();
+        VulkanCommandEncoder encoder = (VulkanCommandEncoder) ((com.g2806.radiante.mixin.backend.CommandEncoderAccessor)
+            RenderSystem.getDevice().createCommandEncoder()).radiante$backend();
         for (int i = 0; i < count; i++) {
             encoder.execute(new VkCommandBuffer(commandBufferHandles[i], vkDevice));
         }
@@ -430,7 +429,7 @@ public final class RadianteRenderer {
         BufferProxy.updateWorldUniform(new BufferProxy.WorldUniform(view, effectedView, projection,
             glintTextureMatrix(minecraft), dayFraction(levelRenderState),
             TextureTracker.idOf(gameRenderer.overlayTexture().getTextureView().texture()),
-            cameraState.isFirstPerson, EntityManager.handsDrawn(minecraft, levelRenderState),
+            PlayerFrame.isFirstPerson(), EntityManager.handsDrawn(minecraft, levelRenderState),
             fogStart, fogEnd, new Vector4f(fog.color), skyType,
             TextureTracker.idOf(AbstractEndPortalRenderer.END_SKY_LOCATION),
             TextureTracker.idOf(AbstractEndPortalRenderer.END_PORTAL_LOCATION),
@@ -448,10 +447,8 @@ public final class RadianteRenderer {
         SkyRenderState sky = levelRenderState.skyRenderState;
         Vector4f mobEffect = fogControls(minecraft,
             gameRenderer.gameRenderState().lightmapRenderState.darknessEffectScale);
-        Vector3f skyColor = sky.skyColor == null ? new Vector3f(0.5f, 0.6f, 1.0f) : new Vector3f(sky.skyColor);
-        Vector4f horizonColor = sky.sunriseAndSunsetColor == null
-            ? new Vector4f(0.0f)
-            : new Vector4f(sky.sunriseAndSunsetColor);
+        Vector3f skyColor = net.minecraft.util.ARGB.vector3fFromRGB24(sky.skyColor);
+        Vector4f horizonColor = net.minecraft.util.ARGB.vector4fFromARGB32(sky.sunriseAndSunsetColor);
         Matrix4f celestial = com.g2806.radiante.api.RadianteApi.celestialTransform(sky.sunAngle);
         Vector3f sunDirection = celestial.transformDirection(new Vector3f(0.0f, 1.0f, 0.0f)).normalize();
         // The moon on a path of its own when the player gave it one, at the hour opposite the sun's. Following the
@@ -576,19 +573,19 @@ public final class RadianteRenderer {
      * a diagonal axis that turns with spinningEffectAngle. The camera state holds the projection from before it.
      */
     private static void applyScreenWarp(Minecraft minecraft, LevelRenderState levelRenderState, Matrix4f projection) {
-        var player = levelRenderState.playerRenderState;
-        if (player == null) {
+        if (!PlayerFrame.hasPlayer()) {
             return;
         }
         float scale = minecraft.gameRenderer.gameRenderState().optionsRenderState.screenEffectScale;
-        float intensity = Math.max(player.portalEffectIntensity, player.nauseaEffectIntensity) * scale * scale;
+        float intensity = Math.max(PlayerFrame.portalEffectIntensity(), PlayerFrame.nauseaEffectIntensity())
+            * scale * scale;
         if (intensity <= 0.0f) {
             return;
         }
         float squash = 5.0f / (intensity * intensity + 5.0f) - intensity * 0.04f;
         squash *= squash;
         Vector3f axis = new Vector3f(0.0f, Mth.SQRT_OF_TWO / 2.0f, Mth.SQRT_OF_TWO / 2.0f);
-        float angle = player.spinningEffectAngle * Mth.DEG_TO_RAD;
+        float angle = PlayerFrame.spinningEffectAngle() * Mth.DEG_TO_RAD;
         projection.rotate(angle, axis).scale(1.0f / squash, 1.0f, 1.0f).rotate(-angle, axis);
     }
 
@@ -649,7 +646,7 @@ public final class RadianteRenderer {
      * portal jump about instead of drifting.
      */
     private static float dayFraction(LevelRenderState levelRenderState) {
-        return ((float) (levelRenderState.gameTime % 24000L) + levelRenderState.worldPartialTicks) / 24000.0f;
+        return ((float) (levelRenderState.gameTime % 24000L) + PlayerFrame.worldPartialTicks()) / 24000.0f;
     }
 
     /** Mirrors vanilla's armor glint texture animation, which the shaders sample the glint layer with. */
