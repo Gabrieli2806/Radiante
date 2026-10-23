@@ -5,6 +5,7 @@ import com.mojang.renderpearl.backend.vulkan.VulkanDevice;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(VulkanDevice.class)
@@ -18,5 +19,14 @@ public class VulkanDeviceMixin {
     @Inject(method = "close", at = @At("HEAD"))
     private void radiante$closeRenderer(CallbackInfo ci) {
         RadianteRenderer.close();
+    }
+
+    /**
+     * 26.4's experimental DXGI presentation hands the swapchain to D3D12, where HDR output, frame generation and
+     * Reflex cannot follow; the window keeps the Vulkan swapchain they hook.
+     */
+    @ModifyVariable(method = "createSurface", at = @At("HEAD"), argsOnly = true)
+    private boolean radiante$keepVulkanSwapchain(boolean dxgi) {
+        return false;
     }
 }
