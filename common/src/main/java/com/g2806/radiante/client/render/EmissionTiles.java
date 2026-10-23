@@ -588,7 +588,7 @@ public final class EmissionTiles {
     private static final float LAVA_SURFACE_GLOW = 0.09f;
 
     /** How much of a level 15 light's cast each lava block gives the blocks around it. */
-    private static final float LAVA_CAST = 0.25f;
+    private static final float LAVA_CAST = 0.12f;
 
     /** The share of the green and blue of lava's texels its light keeps: an orange-red light, not a white one. */
     private static final float LAVA_LIGHT_GREEN = 0.5f;
