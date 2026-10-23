@@ -8,6 +8,13 @@ import com.mojang.blaze3d.framegraph.FramePass;
 import com.mojang.blaze3d.resource.GraphicsResourceAllocator;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
+import com.mojang.renderpearl.api.commands.CommandEncoder;
+import com.mojang.renderpearl.api.commands.RenderPass;
+import com.mojang.renderpearl.api.textures.GpuSampler;
+import com.mojang.renderpearl.api.textures.GpuTextureView;
+import java.util.Optional;
+import java.util.OptionalDouble;
+import java.util.function.Supplier;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.LevelTargetBundle;
@@ -60,8 +67,7 @@ public class LevelRendererSkipMixin {
 
     @Inject(method = "render", at = @At("HEAD"), cancellable = true)
     private void radiante$skipWhenTracing(GraphicsResourceAllocator resourceAllocator, boolean renderOutline,
-        CameraRenderState cameraState, GpuBufferSlice terrainFog, Vector4f fogColor, boolean shouldRenderSky,
-        boolean consistentDepthRequired, CallbackInfo ci) {
+        CameraRenderState cameraState, GpuBufferSlice fogBuffer, boolean consistentDepthRequired, CallbackInfo ci) {
         this.radiante$traceAdded = false;
         if (!RadianteRenderer.isTracingLevel()) {
             return;
@@ -163,23 +169,10 @@ public class LevelRendererSkipMixin {
     }
 
     /**
-     * The traced picture and its depth go into Minecraft's target before its sky pass. That pass runs with nothing
-     * of Minecraft's own in it (SkyRendererMixin), for what other mods add to the sky there, which so lands on the
-     * traced picture; ModBackdrop then puts the traced world back over it.
-     */
-    @WrapOperation(method = "render", at = @At(value = "INVOKE",
-        target = "Lnet/minecraft/client/renderer/LevelRenderer;addSkyPass(Lcom/mojang/blaze3d/framegraph/FrameGraphBuilder;Lnet/minecraft/client/renderer/state/level/CameraRenderState;Lcom/mojang/renderpearl/api/buffers/GpuBufferSlice;)V"))
-    private void radiante$traceBeforeSkyPass(LevelRenderer levelRenderer, FrameGraphBuilder frame,
-        CameraRenderState cameraState, GpuBufferSlice skyFog, Operation<Void> original) {
-        if (RadianteRenderer.isOverlayFrame() && !this.radiante$traceAdded) {
-            this.radiante$addTracePass(frame);
-        }
-        original.call(levelRenderer, frame, cameraState, skyFog);
-    }
-
-    /**
-     * Or, in a frame without a sky pass, here: after Minecraft's own clear of its target and before its main pass,
-     * which is where everything else other mods add is drawn.
+     * The traced picture and its depth go into Minecraft's target before its main pass, which is where the sky
+     * (without improved transparency) and everything else other mods add are drawn. The sky runs with nothing of
+     * Minecraft's own in it (SkyRendererMixin), for what other mods add to it, which so lands on the traced picture;
+     * ModBackdrop then puts the traced world back over it.
      */
     @WrapOperation(method = "render", at = @At(value = "INVOKE",
         target = "Lnet/minecraft/client/renderer/LevelRenderer;addMainPass(Lcom/mojang/blaze3d/framegraph/FrameGraphBuilder;Lnet/minecraft/client/renderer/feature/FeatureRenderDispatcher$PreparedFrame;Lcom/mojang/renderpearl/api/buffers/GpuBufferSlice;Lnet/minecraft/client/renderer/chunk/ChunkSectionsToRender;Z)V"))
@@ -191,6 +184,34 @@ public class LevelRendererSkipMixin {
         }
         this.radiante$traceAdded = false;
         original.call(levelRenderer, frame, featureFrame, terrainFog, chunkSectionsToRender, consistentDepthRequired);
+    }
+
+    /**
+     * Since 26.4 the main pass clears Minecraft's target itself (there is no separate clear pass), which would wipe
+     * the traced picture; over it, the pass loads what is there instead.
+     */
+    @WrapOperation(method = "lambda$addMainPass$0", at = @At(value = "INVOKE",
+        target = "Lcom/mojang/renderpearl/api/commands/CommandEncoder;createRenderPass(Ljava/util/function/Supplier;Lcom/mojang/renderpearl/api/textures/GpuTextureView;Ljava/util/Optional;Lcom/mojang/renderpearl/api/textures/GpuTextureView;Ljava/util/OptionalDouble;)Lcom/mojang/renderpearl/api/commands/RenderPass;"))
+    private RenderPass radiante$keepTraceInMainPass(CommandEncoder encoder, Supplier<String> label,
+        GpuTextureView color, Optional<Vector4f> clearColor, GpuTextureView depth, OptionalDouble clearDepth,
+        Operation<RenderPass> original) {
+        if (RadianteRenderer.isOverlayFrame()) {
+            return original.call(encoder, label, color, Optional.empty(), depth, OptionalDouble.empty());
+        }
+        return original.call(encoder, label, color, clearColor, depth, clearDepth);
+    }
+
+    /**
+     * With improved transparency the sky is drawn into a target of its own and blitted where nothing was drawn,
+     * which over the traced picture would cover its sky with Minecraft's fog colour: the traced sky stays.
+     */
+    @WrapOperation(method = "lambda$addMainPass$0", at = @At(value = "INVOKE",
+        target = "Lnet/minecraft/client/renderer/LevelRenderer;blitSky(Lcom/mojang/renderpearl/api/commands/RenderPass;Lcom/mojang/renderpearl/api/textures/GpuSampler;)V"))
+    private void radiante$noSkyBlitOverTrace(LevelRenderer levelRenderer, RenderPass pass, GpuSampler sampler,
+        Operation<Void> original) {
+        if (!RadianteRenderer.isOverlayFrame()) {
+            original.call(levelRenderer, pass, sampler);
+        }
     }
 
     /** Minecraft compiles no terrain of its own while the tracer has it. */

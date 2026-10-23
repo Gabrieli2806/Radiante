@@ -2,6 +2,7 @@ package com.g2806.radiante.mixin.world;
 
 import com.g2806.radiante.client.render.RadianteRenderer;
 import net.minecraft.client.renderer.chunk.ChunkSectionsToRender;
+import org.jspecify.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -18,17 +19,12 @@ public class ChunkSectionsToRenderMixin {
     @Inject(method = "renderGroup", at = @At("HEAD"), cancellable = true)
     private void radiante$noTerrainOverTrace(net.minecraft.client.renderer.chunk.ChunkSectionLayerGroup group,
         com.mojang.renderpearl.api.commands.RenderPass pass, com.mojang.renderpearl.api.textures.GpuSampler sampler,
-        com.mojang.renderpearl.api.textures.GpuTextureView lightmap, boolean flag, CallbackInfo ci) {
+        com.mojang.renderpearl.api.textures.GpuTextureView atlas,
+        ChunkSectionsToRender.@Nullable ImprovedFogTextures improvedFogTextures, boolean wireframe,
+        CallbackInfo ci) {
         if (RadianteRenderer.isOverlayFrame()) {
             // Where the terrain would cover what was drawn before it (a mod's sky), the traced world does.
             com.g2806.radiante.client.render.ModBackdrop.restore(pass);
-            ci.cancel();
-        }
-    }
-
-    @Inject(method = "renderOit", at = @At("HEAD"), cancellable = true)
-    private void radiante$noTranslucentTerrainOverTrace(CallbackInfo ci) {
-        if (RadianteRenderer.isOverlayFrame()) {
             ci.cancel();
         }
     }

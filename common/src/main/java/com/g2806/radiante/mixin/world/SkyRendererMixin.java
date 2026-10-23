@@ -2,7 +2,7 @@ package com.g2806.radiante.mixin.world;
 
 import com.g2806.radiante.client.render.ModBackdrop;
 import com.g2806.radiante.client.render.RadianteRenderer;
-import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
+import com.mojang.renderpearl.api.commands.RenderPass;
 import net.minecraft.client.renderer.SkyRenderer;
 import net.minecraft.client.renderer.state.level.SkyRenderState;
 import org.spongepowered.asm.mixin.Mixin;
@@ -22,7 +22,7 @@ public class SkyRendererMixin {
     @Unique
     private boolean radiante$starsDue;
 
-    @Inject(method = {"renderSkyDisc", "renderDarkDisc", "renderSun", "renderMoon", "renderSunriseAndSunset",
+    @Inject(method = {"renderSkyDisc", "renderSkyOccluder", "renderSun", "renderMoon", "renderSunriseAndSunset",
         "renderEndSky", "renderEndFlash"}, at = @At("HEAD"), cancellable = true)
     private void radiante$noSkyOverTrace(CallbackInfo ci) {
         if (RadianteRenderer.isOverlayFrame()) {
@@ -31,7 +31,8 @@ public class SkyRendererMixin {
     }
 
     @Inject(method = "render", at = @At("HEAD"))
-    private void radiante$beforeSky(GpuBufferSlice fog, SkyRenderState state, CallbackInfo ci) {
+    private void radiante$beforeSky(SkyRenderState state, RenderPass pass, org.joml.Vector4f fogColor,
+        boolean withDepthAttachment, CallbackInfo ci) {
         // Stars are due when Minecraft would draw them; a mod that draws its own keeps renderStars from running.
         this.radiante$starsDue = state.starBrightness > 0.0f && RadianteRenderer.isOverlayFrame();
     }
