@@ -11,9 +11,12 @@ import net.minecraft.network.chat.Component;
 /**
  * Applies a settings change that needs the pipeline built again without stopping the game: the renderer compiles the
  * new shaders and ray tracing pipelines in the background ({@link Pipeline#prewarm()}) while the world keeps drawing
- * with the old settings and a line above the hotbar shows the progress; then the ordinary build runs, which finds
- * everything compiled and costs a short hitch instead of seconds behind {@link ApplyingSettingsScreen}. Where that
- * cannot be done (no world drawn, another shader pack, a failed compile) the wait screen is used as before.
+ * with the old settings and a popup in the top right corner ({@link RebuildToast}) shows the progress; then the
+ * ordinary build runs, which finds everything compiled and costs a short hitch instead of seconds behind
+ * {@link ApplyingSettingsScreen}. Outside a world nothing is drawn by the renderer, so there is nothing to keep
+ * running: the build only describes the new pipeline to the renderer, which compiles it with the first frame of the
+ * next world (or in the background before that, when a world was visited already), and the popup reports it. The
+ * wait screen is left for a world that is open and cannot be prewarmed (another shader pack, a failed compile).
  */
 public final class BackgroundRebuild {
 
@@ -41,6 +44,7 @@ public final class BackgroundRebuild {
             return false;
         }
         active = true;
+        RebuildToast.running(Minecraft.getInstance(), 0.0f, Component.translatable("toast.radiante.starting"));
         fallbackPending = false;
         restarts = 0;
         if (Options.debugLogging) {
@@ -51,7 +55,34 @@ public final class BackgroundRebuild {
 
     /** Opens the screen next, through the wait screen only when the change cannot be applied in the background. */
     static void open(Minecraft minecraft, Screen next, boolean rebuild) {
-        minecraft.gui.setScreen(rebuild && !start() ? new ApplyingSettingsScreen(next) : next);
+        if (rebuild && !start()) {
+            if (minecraft.level == null) {
+                buildNow(minecraft);
+            } else {
+                next = new ApplyingSettingsScreen(next);
+            }
+        }
+        minecraft.gui.setScreen(next);
+    }
+
+    /**
+     * The build outside a world: it only hands the description to the renderer (the compile waits for a frame, which
+     * only a world draws), so it is quick and needs no screen. The popup tells how it went.
+     */
+    private static void buildNow(Minecraft minecraft) {
+        active = false;
+        fallbackPending = false;
+        Pipeline.build();
+        finish(minecraft);
+    }
+
+    /** The popup's last state for a build that just ran: applied, or why it was not. */
+    static void finish(Minecraft minecraft) {
+        if (Pipeline.takeStructuralChange()) {
+            RebuildToast.failed(minecraft, Pipeline.lastBuildError());
+        } else {
+            RebuildToast.done(minecraft);
+        }
     }
 
     /** Every client tick: follows the prewarm and builds once it is done. */
@@ -81,7 +112,9 @@ public final class BackgroundRebuild {
                 // A build since (another screen's, a dev command's) already carried the change.
                 if (Pipeline.takeStructuralChange()) {
                     Pipeline.build();
-                    say(minecraft, Component.translatable("options.radiante.prewarm.applying"));
+                    finish(minecraft);
+                } else {
+                    RebuildToast.done(minecraft);
                 }
             }
             case Pipeline.PREWARM_CANCELLED -> {
@@ -101,6 +134,10 @@ public final class BackgroundRebuild {
     private static void fallBack() {
         active = false;
         fallbackPending = Pipeline.takeStructuralChange();
+        if (fallbackPending && Minecraft.getInstance().level == null) {
+            // No world to keep playing in, so no wait screen: build now.
+            buildNow(Minecraft.getInstance());
+        }
     }
 
     /**
@@ -123,13 +160,8 @@ public final class BackgroundRebuild {
         float shaders = STATUS[2] > 0 ? STATUS[1] / (float) STATUS[2] : 0.0f;
         float pipelines = STATUS[4] > 0 ? STATUS[3] / (float) STATUS[4] : 0.0f;
         int percent = Math.min(99, (int) (100.0f * (SHADER_SHARE * shaders + (1.0f - SHADER_SHARE) * pipelines)));
-        // Set every tick: the line fades out a few seconds after it was last set.
-        say(minecraft, Component.translatable("options.radiante.prewarm", percent));
-    }
-
-    private static void say(Minecraft minecraft, Component message) {
-        if (minecraft.gui != null && minecraft.gui.hud != null) {
-            minecraft.gui.hud.setOverlayMessage(message, false);
-        }
+        Component status = shaders < 1.0f ? Component.translatable("toast.radiante.compiling", percent)
+            : Component.translatable("toast.radiante.pipelines", percent);
+        RebuildToast.running(minecraft, percent / 100.0f, status);
     }
 }

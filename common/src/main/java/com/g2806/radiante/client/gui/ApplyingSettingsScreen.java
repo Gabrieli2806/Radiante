@@ -67,6 +67,7 @@ final class ApplyingSettingsScreen extends Screen {
         this.built = true;
         Pipeline.build();
         rebuildKeepingWindowAlive();
+        BackgroundRebuild.finish(this.minecraft);
         this.minecraft.gui.setScreen(this.next);
     }
 

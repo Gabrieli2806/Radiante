@@ -4,8 +4,9 @@
 
 Se abren con `F6` dentro de un mundo, o desde el botón de Radiante en Opciones → Ajustes de vídeo
 (también en el menú principal). Los cambios se acumulan y se aplican juntos al pulsar "Listo", así
-que el renderizador se reconstruye una sola vez. Mientras lo hace se ve la pantalla **Aplicando
-ajustes...**, que dura unos segundos.
+que el renderizador se reconstruye una sola vez. Mientras lo hace, un aviso en la esquina superior
+derecha muestra el progreso (compilando shaders, luego "ajustes aplicados" o el error si falló) y
+puedes seguir usando los menús y el juego. Funciona igual dentro de un mundo y en el menú principal.
 
 ![Ajustes de Radiante: Calidad](../images/ui/settings-quality.png)
 

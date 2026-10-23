@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## [1.0.1] - Unreleased
 
+### Settings
+
+- Applying a settings change (preset, profile, shader switches) no longer shows a blocking "Applying settings..."
+  screen on the title screen. A popup in the top right corner (a vanilla toast with the Radiante icon) shows the
+  progress, then "settings applied" or the error, in a world and out of it, and the menus stay usable. The wait screen
+  is now only used in a world when the change cannot be compiled in the background.
+
 ### Renderer profiles
 
 - New Realistic profile (Settings > Image > Renderer Profile), next to Bedrock RTX (Enhanced) and Custom. It is

@@ -4,7 +4,9 @@
 
 Opened with `F6` in a world, or from Radiante's button in Options → Video Settings (title screen
 included). Changes add up and are applied together when you press "Done", so the renderer rebuilds
-once. While it does, the **Applying settings...** screen shows for a few seconds.
+once. While it does, a popup in the top right corner shows the progress (compiling shaders, then "settings
+applied", or the error if it failed); you can keep using the menus and the game meanwhile. This works the
+same in a world and on the title screen.
 
 ![Radiante settings: Quality](../images/ui/settings-quality.png)
 
