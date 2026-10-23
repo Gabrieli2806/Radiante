@@ -158,6 +158,10 @@ bool bedrockHeightMapNormal(int map,
 }
 #endif
 
+#ifndef VPT_PORTAL_TRANSPARENCY
+#    define VPT_PORTAL_TRANSPARENCY 0.5
+#endif
+
 void sampleSurfaceState(bool useTexture,
                         uint textureID,
                         TextureMapEntry textureMap,
@@ -264,6 +268,8 @@ void sampleSurfaceState(bool useTexture,
     if (!g_hitIsGlass && alphaMode == ALPHA_MODE_TRANSPARENT && albedoValue.a < 0.95 && mat.metallic > 0.0 &&
         mat.transmission <= 0.0) {
         vec3 sheetHue = albedoValue.rgb / max(max(albedoValue.r, max(albedoValue.g, albedoValue.b)), 1e-3);
+        // Portal Transparency: how much of the pack's see-through share is kept (100%), down to an opaque sheet (0%).
+        albedoValue.a = 1.0 - clamp(VPT_PORTAL_TRANSPARENCY, 0.0, 1.0) * (1.0 - albedoValue.a);
         mat.metallic = 0.0;
         mat.transmission = 1.0;
         mat.albedo = mix(vec3(1.0), sheetHue, albedoValue.a);

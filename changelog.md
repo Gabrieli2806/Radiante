@@ -53,6 +53,9 @@ and keeps their credits and licence; what the renderer shares with them is in th
 - Water seen through glass or from inside it stays transparent; the pack's water texture shows only on water seen from
   open air. A Water Texture slider turns it down to clear water.
 
+- The Nether portal is see-through under Bedrock packs (Vanilla RTX gave it a metal material that shaded it as an
+  opaque slab). A Portal Transparency slider sets how much of the pack's transparency it keeps (default 50%).
+
 ### Upscaling and denoising
 
 - DLSS Ray Reconstruction can be turned off while using DLSS (NRD then denoises, DLSS only upscales). It is on by

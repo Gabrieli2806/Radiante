@@ -71,7 +71,8 @@ enum OptionImpact {
         Map.entry("options.radiante.tunable.dof_range", LOW),
         Map.entry("options.radiante.tunable.motion_blur_strength", LOW),
         Map.entry("options.radiante.tunable.glass_reflections", LOW),
-        Map.entry("options.radiante.tunable.water_texture", LOW));
+        Map.entry("options.radiante.tunable.water_texture", LOW),
+        Map.entry("options.radiante.tunable.portal_transparency", LOW));
 
     static OptionImpact of(String optionKey) {
         // Advanced rows without a translation have a literal caption and so no key: nothing is known of their cost.

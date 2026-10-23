@@ -309,6 +309,8 @@
   "options.radiante.tunable.glass_reflections.tooltip": "Cuánto cielo muestran las ventanas sobre lo que hay detrás. 0% es vidrio totalmente limpio.",
   "options.radiante.tunable.water_texture": "Textura del Agua",
   "options.radiante.tunable.water_texture.tooltip": "Cuánto se ve la textura de agua del resource pack sobre la superficie, como la dibuja Bedrock RTX. 0% es agua transparente, sin el patrón.",
+  "options.radiante.tunable.portal_transparency": "Transparencia del Portal",
+  "options.radiante.tunable.portal_transparency.tooltip": "Cuánto de la transparencia del resource pack conserva un portal del Nether. 100% es como lo dibuja el pack, 0% es un portal opaco.",
   "options.radiante.tunable.texture_contrast": "Contraste de Texturas",
   "options.radiante.tunable.texture_contrast.tooltip": "Qué tan profundos y contrastados se ven los colores de bloques y entidades bajo la luz. 100% coincide con Bedrock RTX; menos da el aspecto más pálido y plano de versiones anteriores.",
   "options.radiante.renderer_profile": "Perfil de Render",

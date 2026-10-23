@@ -13,6 +13,7 @@
 |---|---|---|---|
 | **Rebotes de Luz** | 1 – 128 | 4 | Cuántas veces rebota la luz. De 4 a 2 ronda +50% FPS. Más de 4 cuesta mucho y es para GPUs potentes; espejos y vidrio claro reciben rebotes extra por su cuenta. |
 | **Reflejos en Espejos** | 0 – 64 | 8 | Cuántos reflejos dentro de reflejos se trazan además de los Rebotes de Luz: espejos enfrentados, vidrio tras vidrio, agua vista en un espejo. Solo cuentan superficies casi perfectamente lisas, así que necesita un resource pack PBR; el agua y el vidrio siempre cuentan. Solo cuesta FPS donde hay espejos enfrentados. |
+| **Transparencia del Portal** | 0% – 100% | 50% | Cuánto de la transparencia del resource pack conserva un portal del Nether. 100% es como lo dibuja el pack, 0% es opaco. |
 | **Límite de Espejo** | 0% – 200% | 30% | Los metales al menos así de lisos se dibujan como espejos limpios y nítidos. 0% lo desactiva. |
 | **Reflejos del Vidrio** | 0% – 200% | 100% | Cuánto cielo muestran las ventanas sobre lo que hay detrás. 0% es vidrio totalmente limpio. |
 | **Caché en Rebotes Profundos** | Activado / Desactivado | Activado | Tras el primer rebote, la luz sale de la caché de radiancia en vez de seguir trazando, y las superficies rebotadas no buscan luces de bloque, como Bedrock RTX. Mucho más rápido con muchas luces; la luz rebotada puede verse algo más suave. |
