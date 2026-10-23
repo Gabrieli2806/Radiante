@@ -257,6 +257,20 @@ void sampleSurfaceState(bool useTexture,
         }
     }
 #endif
+    // A see-through sheet a pack gives a metal's material (the nether portal: Vanilla RTX authors it with a metalness
+    // of 0.45 and a roughness of 0.97 over a texture of alpha 0.5 to 0.8). A translucent surface is no metal: read as
+    // one it took the metal branch of the conversion, which has no transmission, and was shaded as a rough opaque
+    // slab of purple with none of the world behind it showing. It is a clear tinted sheet, with the glow it keeps.
+    if (!g_hitIsGlass && alphaMode == ALPHA_MODE_TRANSPARENT && albedoValue.a < 0.95 && mat.metallic > 0.0 &&
+        mat.transmission <= 0.0) {
+        vec3 sheetHue = albedoValue.rgb / max(max(albedoValue.r, max(albedoValue.g, albedoValue.b)), 1e-3);
+        mat.metallic = 0.0;
+        mat.transmission = 1.0;
+        mat.albedo = mix(vec3(1.0), sheetHue, albedoValue.a);
+        mat.f0 = vec3(0.04);
+        mat.roughness = 0.02;
+        mat.ior = 1.5;
+    }
 #if VPT_BEDROCK_SPECULAR
     // A texture no Bedrock pack covers (vanilla's, a Java pack's) glows as it does under the other profiles: its
     // emission is brought to the scale this one shows a pack's own at (see main and VPT_BEDROCK_SEEN_EMISSION).
