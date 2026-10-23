@@ -562,7 +562,7 @@ vec3 sampleOneHeldLight(uint slot, vec4 heldPos, vec4 heldColor, vec3 worldPos, 
     float fade = 1.0 - pow(lightDistance / reach, 4.0);
     fade *= fade;
     vec3 contribution =
-        heldColor.rgb * mat.albedo * (diffuseWeight / PI) * cosSurface * fade / distance2;
+        heldColor.rgb * mat.albedo * (diffuseWeight / PI) * cosSurface * fade * vptFlameFalloff(distance2);
     if (dot(contribution, vec3(1.0)) <= 1e-8) { return vec3(0.0); }
 
     vec3 origin = worldPos + geometricNormal * 0.0002;

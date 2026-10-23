@@ -47,10 +47,19 @@ vec3 vptPointLightSample(VptPackedLight light, vec2 xi, vec3 scenePos) {
     return centre + offset;
 }
 
-// How a point light's strength falls off at scenePos: one over the square of the distance to its centre.
+// How a small flame's light falls off with the distance squared d2. Not the pure inverse square of an ideal point:
+// that makes the wall beside a torch burn white and the room a few blocks off nearly dark. This is flat close to the
+// flame and falls more slowly than the square far from it (to 1.09 / (4 + d^1.6), the same strength as the square at
+// three blocks), so the light is softer near and reaches further. Shared by the placed point lights and the held
+// one, so a torch lights alike in the hand and set down.
+float vptFlameFalloff(float d2) {
+    return 1.09 / (4.0 + exp2(0.8 * log2(max(d2, 1e-4))));
+}
+
+// How a point light's strength falls off at scenePos.
 float vptPointLightFalloff(VptPackedLight light, vec3 scenePos) {
     vec3 toCentre = light.p0Area.xyz - vec3(worldUBO.cameraPos.xyz) - scenePos;
-    return 1.0 / max(dot(toCentre, toCentre), 1e-4);
+    return vptFlameFalloff(dot(toCentre, toCentre));
 }
 
 // The light of an exact light (radiance.w 1) on the scale of the others, which the shaders multiply by
