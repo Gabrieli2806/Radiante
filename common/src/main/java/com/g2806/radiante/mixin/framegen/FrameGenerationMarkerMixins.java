@@ -33,10 +33,11 @@ public class FrameGenerationMarkerMixins {
     public static class RenderMixin {
 
         @WrapMethod(method = "render")
-        private void radiante$markRenderSubmit(Operation<Void> original) {
+        private void radiante$markRenderSubmit(net.minecraft.client.DeltaTracker deltaTracker, boolean advanceGameTime,
+            Operation<Void> original) {
             FrameGeneration.marker(FrameGeneration.RENDER_SUBMIT_START);
             try {
-                original.call();
+                original.call(deltaTracker, advanceGameTime);
             } finally {
                 FrameGeneration.marker(FrameGeneration.RENDER_SUBMIT_END);
             }
