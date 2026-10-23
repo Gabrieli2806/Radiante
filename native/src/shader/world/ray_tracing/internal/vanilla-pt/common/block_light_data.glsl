@@ -86,8 +86,13 @@ ivec3 vptSectionOf(vec3 scenePos) {
     return ivec3(floor((scenePos + vec3(worldUBO.cameraPos.xyz)) / 16.0));
 }
 
+// In integers: through a float division, a section a whole number of grids from zero (x 33 of a 33 wide grid, render
+// distance 16) came out a hair under that number on the GPU, its slot a whole grid too far - in the next row, holding
+// another section - and every light in that section's column was lost. GLSL leaves % of a negative number undefined,
+// so a negative value is folded onto a positive one first.
 int vptFloorMod(int value, int divisor) {
-    return value - divisor * int(floor(float(value) / float(divisor)));
+    int quotient = value >= 0 ? value / divisor : -((-value - 1) / divisor) - 1;
+    return value - divisor * quotient;
 }
 
 /** The slot the grid gives a section, or -1 when it is outside the grid. */
