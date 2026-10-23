@@ -352,6 +352,7 @@
   "toast.radiante.failed": "Radiante: ajustes no aplicados",
   "toast.radiante.failed.detail": "Consulta el registro del juego para más detalles.",
   "toast.radiante.warmup": "Radiante: preparando shaders",
+  "toast.radiante.warmup.soon": "Hay una versión nueva: los shaders se compilarán en unos segundos.",
   "toast.radiante.warmup.done": "Radiante: shaders listos",
   "toast.radiante.warmup.done.detail": "El primer mundo cargará más rápido.",
   "toast.radiante.warmup.failed": "Radiante: shaders no preparados",

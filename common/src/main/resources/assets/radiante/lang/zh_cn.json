@@ -352,6 +352,7 @@
   "toast.radiante.failed": "Radiante：设置未能应用",
   "toast.radiante.failed.detail": "详情请查看游戏日志。",
   "toast.radiante.warmup": "Radiante：正在准备着色器",
+  "toast.radiante.warmup.soon": "已安装新版本：几秒后将编译着色器。",
   "toast.radiante.warmup.done": "Radiante：着色器已就绪",
   "toast.radiante.warmup.done.detail": "首次进入世界将更快。",
   "toast.radiante.warmup.failed": "Radiante：着色器准备失败",

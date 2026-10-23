@@ -129,6 +129,9 @@ public final class PipelineWarmUp {
                 RadianteClient.LOGGER.info("[warmup] internals changed (cache {}): compiling shaders after the title "
                     + "screen shows", cold ? "missing" : "stale");
                 state = State.WAITING;
+                // Said at once, not when the work starts: the player sees why the game is about to be busy.
+                RebuildToast.running(minecraft, 0.0f, Component.translatable("toast.radiante.warmup"),
+                    Component.translatable("toast.radiante.warmup.soon"));
             }
             case WAITING -> waiting(minecraft);
             case RUNNING -> running(minecraft);
@@ -138,6 +141,8 @@ public final class PipelineWarmUp {
                     state = State.FINISHED;
                 } else if (RadianteRenderer.levelFrames() > 0) {
                     remember();
+                    RebuildToast.done(minecraft, Component.translatable("toast.radiante.warmup.done"),
+                        Component.translatable("toast.radiante.warmup.done.detail"));
                     state = State.FINISHED;
                 }
             }
@@ -261,8 +266,9 @@ public final class PipelineWarmUp {
     }
 
     /**
-     * A digest of what the compiled shaders depend on: the mod's version, the native library (its bytes), the names
-     * and sizes of the unpacked shader files, and the GPU with its driver. Null when it cannot be worked out.
+     * A digest of what the compiled shaders depend on: the mod's version, the native library and the unpacked shader
+     * files (their bytes: an edit that keeps a file's size changed nothing in a size-only digest), and the GPU with
+     * its driver. Null when it cannot be worked out.
      */
     private static String fingerprint(String gpuIdentity) {
         try {
@@ -296,6 +302,12 @@ public final class PipelineWarmUp {
                 entries.sort(null);
                 for (String entry : entries) {
                     update(digest, entry);
+                    try (InputStream in = Files.newInputStream(root.resolve(entry.substring(0, entry.lastIndexOf(':'))))) {
+                        byte[] buffer = new byte[1 << 16];
+                        for (int read; (read = in.read(buffer)) > 0; ) {
+                            digest.update(buffer, 0, read);
+                        }
+                    }
                 }
             }
             return HexFormat.of().formatHex(digest.digest());
