@@ -11,6 +11,14 @@ All notable changes to this project are documented in this file.
   progress, then "settings applied" or the error, in a world and out of it, and the menus stay usable. The wait screen
   is now only used in a world when the change cannot be compiled in the background.
 
+### Startup
+
+- After an update changes the mod, its shaders or the graphics driver, the shaders and ray tracing pipelines are
+  compiled in the background a few seconds after the title screen shows, with the top right popup showing the
+  progress, so the first world no longer stands still for many seconds while they compile. Radiante remembers the
+  build it compiled for (`radiante/warmup.properties`) and does this only when it changes, or when the pipeline cache
+  is missing. A world opened before it finishes waits for the rest instead of compiling twice.
+
 ### Renderer profiles
 
 - New Realistic profile (Settings > Image > Renderer Profile), next to Bedrock RTX (Enhanced) and Custom. It is

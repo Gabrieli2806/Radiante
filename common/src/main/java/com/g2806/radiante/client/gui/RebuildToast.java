@@ -72,27 +72,40 @@ final class RebuildToast implements Toast {
 
     /** Applying: {@code progress} 0..1, {@code status} the line under the title. */
     static void running(Minecraft minecraft, float progress, Component status) {
+        running(minecraft, progress, Component.translatable("toast.radiante.applying"), status);
+    }
+
+    /** The same under a title of the caller's own (the start-up warm-up has its own). */
+    static void running(Minecraft minecraft, float progress, Component title, Component status) {
         RebuildToast toast = get(minecraft);
         toast.state = State.RUNNING;
         toast.resultAt = -1L;
-        toast.title = Component.translatable("toast.radiante.applying");
+        toast.title = title;
         toast.setMessage(minecraft.font, status);
         toast.progress = Math.max(0.0f, Math.min(1.0f, progress));
     }
 
     static void done(Minecraft minecraft) {
+        done(minecraft, Component.translatable("toast.radiante.done"), Component.translatable("toast.radiante.done.detail"));
+    }
+
+    static void done(Minecraft minecraft, Component title, Component detail) {
         RebuildToast toast = get(minecraft);
         toast.state = State.DONE;
-        toast.title = Component.translatable("toast.radiante.done");
-        toast.setMessage(minecraft.font, Component.translatable("toast.radiante.done.detail"));
+        toast.title = title;
+        toast.setMessage(minecraft.font, detail);
         toast.progress = 1.0f;
         toast.resultAt = JUST_SET;
     }
 
     static void failed(Minecraft minecraft, String reason) {
+        failed(minecraft, Component.translatable("toast.radiante.failed"), reason);
+    }
+
+    static void failed(Minecraft minecraft, Component title, String reason) {
         RebuildToast toast = get(minecraft);
         toast.state = State.FAILED;
-        toast.title = Component.translatable("toast.radiante.failed");
+        toast.title = title;
         Component detail = reason == null || reason.isBlank() ? Component.translatable("toast.radiante.failed.detail")
             : Component.translatable("toast.radiante.failed.reason", reason);
         toast.setMessage(minecraft.font, detail);
