@@ -96,6 +96,13 @@ public final class RadianteClient {
                 }
                 com.g2806.radiante.client.download.UpscalerDownloads.clearSwitchOffer(installed);
             }
+            // One installed earlier with a newer version out: offered an update, never the install again.
+            var outdated = com.g2806.radiante.client.download.UpscalerDownloads.updateOnStartup();
+            if (outdated != null) {
+                minecraft.gui.setScreen(new com.g2806.radiante.client.gui.UpscalerDownloadScreen(title, outdated,
+                    com.g2806.radiante.client.gui.UpscalerDownloadScreen.Mode.UPDATE));
+                return;
+            }
             var offer = com.g2806.radiante.client.download.UpscalerDownloads.offerOnStartup(
                 RadianteRenderer.isNvidiaGpu(), RadianteRenderer.isIntelGpu());
             if (offer != null) {
@@ -155,6 +162,7 @@ public final class RadianteClient {
         loadInstalledNatives();
         removeStaleNatives();
         com.g2806.radiante.client.download.UpscalerDownloads.applyPendingDeletes();
+        com.g2806.radiante.client.download.UpscalerDownloads.applyStagedUpdates();
         copyFolder("shaders", radianceDir.resolve("shaders"));
         copyFolder(null, radianceDir.resolve("modules"), "/modules");
         if (windows) {

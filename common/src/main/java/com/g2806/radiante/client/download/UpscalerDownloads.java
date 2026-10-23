@@ -38,15 +38,18 @@ public final class UpscalerDownloads {
     }
 
     public enum Component {
-        DLSS("dlss", 115_000_000L),
-        XESS("xess", 73_000_000L);
+        DLSS("dlss", "310.9.1", 115_000_000L),
+        XESS("xess", "3.0.2", 73_000_000L);
 
         public final String id;
+        /** The version this build downloads; an installed copy of another size is an older (or newer) one. */
+        public final String version;
         /** Roughly what the download weighs, for the prompt. */
         public final long downloadBytes;
 
-        Component(String id, long downloadBytes) {
+        Component(String id, String version, long downloadBytes) {
             this.id = id;
+            this.version = version;
             this.downloadBytes = downloadBytes;
         }
 
@@ -113,7 +116,10 @@ public final class UpscalerDownloads {
         return RadianteClient.radianceDir;
     }
 
-    /** True when every file of the component is in place at its expected size. */
+    /**
+     * True when every file of the component is there, of whatever version: one installed earlier, or by a build that
+     * pinned another, is still installed and is never offered again as a download.
+     */
     public static boolean isInstalled(Component component) {
         List<Part> parts = component.parts();
         if (parts.isEmpty() || isPendingDelete(component)) {
@@ -122,7 +128,7 @@ public final class UpscalerDownloads {
         for (Part part : parts) {
             Path file = dir().resolve(part.target());
             try {
-                if (!Files.exists(file) || Files.size(file) != part.size()) {
+                if (!Files.exists(file) || Files.size(file) <= 0) {
                     return false;
                 }
             } catch (IOException e) {
@@ -130,6 +136,23 @@ public final class UpscalerDownloads {
             }
         }
         return true;
+    }
+
+    /** True when it is installed but a file is not the size of the version this build downloads: an update exists. */
+    public static boolean isOutdated(Component component) {
+        if (!isInstalled(component)) {
+            return false;
+        }
+        for (Part part : component.parts()) {
+            try {
+                if (Files.size(dir().resolve(part.target())) != part.size()) {
+                    return true;
+                }
+            } catch (IOException e) {
+                return false;
+            }
+        }
+        return false;
     }
 
     private static boolean offered;
@@ -163,6 +186,31 @@ public final class UpscalerDownloads {
             return null;
         }
         return wanted;
+    }
+
+    private static boolean updateOffered;
+
+    /**
+     * An installed upscaler that this build has a newer version of, to offer on the first menu: once per session, and
+     * not again for a version the player skipped. Nothing is offered for one that is up to date or not installed.
+     */
+    public static @Nullable Component updateOnStartup() {
+        if (updateOffered) {
+            return null;
+        }
+        updateOffered = true;
+        for (Component component : Component.values()) {
+            if (isOutdated(component) && !component.version.equals(state().getProperty(component.id + ".update_skipped"))) {
+                return component;
+            }
+        }
+        return null;
+    }
+
+    /** The player does not want this version of the component: asked again only when a newer one comes. */
+    public static void skipUpdate(Component component) {
+        state().setProperty(component.id + ".update_skipped", component.version);
+        saveState();
     }
 
     private static boolean switchOffered;
@@ -274,6 +322,26 @@ public final class UpscalerDownloads {
         }
     }
 
+    /**
+     * At start, before the libraries are loaded: puts in place the files of an update that was downloaded while the
+     * old ones were loaded (Windows will not replace a library in use). They were already checked against their hash.
+     */
+    public static void applyStagedUpdates() {
+        for (Component component : Component.values()) {
+            for (Part part : component.parts()) {
+                Path target = dir().resolve(part.target());
+                Path staged = target.resolveSibling(target.getFileName() + ".download");
+                try {
+                    if (Files.exists(staged) && Files.size(staged) == part.size()) {
+                        Files.move(staged, target, StandardCopyOption.REPLACE_EXISTING);
+                    }
+                } catch (IOException ignored) {
+                    // Another client still running from it; next start.
+                }
+            }
+        }
+    }
+
     // ---- downloading ----
 
     public static synchronized @Nullable Progress running(Component component) {
@@ -316,6 +384,7 @@ public final class UpscalerDownloads {
         HttpClient client = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL)
             .connectTimeout(Duration.ofSeconds(20)).build();
         long before = 0;
+        boolean update = isInstalled(component);
         for (Part part : component.parts()) {
             Path target = dir().resolve(part.target());
             Files.createDirectories(target.getParent());
@@ -357,13 +426,23 @@ public final class UpscalerDownloads {
                 Files.deleteIfExists(temp);
                 throw new IOException("checksum mismatch for " + part.target());
             }
-            Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
+            try {
+                Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException inUse) {
+                if (!update) {
+                    throw inUse;
+                }
+                // The old library is loaded: the new one waits beside it and goes in at the next start.
+            }
             before += part.size();
             progress.done = before;
         }
         RadianteClient.LOGGER.info("Downloaded {}; it takes effect after restarting the game", component.id);
-        // Asked on the next start, once the upscaler can actually be used.
-        state().setProperty(component.id + ".switch", "true");
+        // Asked on the next start, once the upscaler can actually be used; an update is in use already.
+        if (!update) {
+            state().setProperty(component.id + ".switch", "true");
+        }
+        state().remove(component.id + ".update_skipped");
         saveState();
         restartFor = component;
     }
