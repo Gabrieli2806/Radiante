@@ -26,13 +26,14 @@ final class BedrockPointLights {
      * is not there: side by side with Bedrock RTX, a torch lit the wall it hangs on about a third as brightly in
      * daylight, and a room lit by torches alone stayed at the eye's darkest limit, two to five times darker.)
      */
-    static final float STRENGTH = 2.0f / 25.5f * 6.0f;
+    static final float STRENGTH = 2.0f / 25.5f * 7.0f;
 
-    /**
+    /*
      * Not Bedrock's: a torch set down lit a dark room about a quarter as much as the same torch held in the hand
-     * (HeldLight), so walking in with one and putting it down made the room go dark. Placed and held lights now match.
+     * (HeldLight), so walking in with one and putting it down made the room go dark. The 7 is the middle between the
+     * two as they were (the held torch then lit a stone floor a third brighter than the 6 this had), and a held
+     * point light block now casts this very light (HeldLight.pointLightOf).
      */
-    // (The 6 in STRENGTH; HeldLight is brought down to meet it.)
     private static final float RADIUS = 0.115f;
     private static final float LANTERN_RADIUS = 0.23f;
 
@@ -42,25 +43,24 @@ final class BedrockPointLights {
     /** Writes the light Bedrock gives this block, if any, at the block whose corner is (x, y, z). */
     static void emit(BlockState state, float x, float y, float z, PBRVertexWriter writer) {
         Block block = state.getBlock();
-        if (block == Blocks.TORCH) {
-            writer.pointLight(x + 0.5f, y + 0.561f, z + 0.5f, 255, 127, 76, STRENGTH, RADIUS);
-        } else if (block == Blocks.WALL_TORCH) {
-            wallTorch(state, x, y, z, 255, 127, 76, writer);
-        } else if (block == Blocks.REDSTONE_TORCH) {
-            if (state.getValue(RedstoneTorchBlock.LIT)) {
-                writer.pointLight(x + 0.5f, y + 0.561f, z + 0.5f, 255, 51, 25, STRENGTH, RADIUS);
+        int[] rgb = colourOf(block);
+        if (rgb != null) {
+            if (block == Blocks.WALL_TORCH || block == Blocks.SOUL_WALL_TORCH || block == Blocks.REDSTONE_WALL_TORCH) {
+                if (block != Blocks.REDSTONE_WALL_TORCH || state.getValue(RedstoneTorchBlock.LIT)) {
+                    wallTorch(state, x, y, z, rgb[0], rgb[1], rgb[2], writer);
+                }
+            } else if (block == Blocks.REDSTONE_TORCH) {
+                if (state.getValue(RedstoneTorchBlock.LIT)) {
+                    writer.pointLight(x + 0.5f, y + 0.561f, z + 0.5f, rgb[0], rgb[1], rgb[2], STRENGTH, RADIUS);
+                }
+            } else if (block == Blocks.LANTERN || block == Blocks.SOUL_LANTERN) {
+                float height = state.getValue(LanternBlock.HANGING) ? 0.35f : 0.198f;
+                writer.pointLight(x + 0.5f, y + height, z + 0.5f, rgb[0], rgb[1], rgb[2], STRENGTH, LANTERN_RADIUS);
+            } else if (block == Blocks.END_ROD) {
+                writer.pointLight(x + 0.5f, y + 0.5f, z + 0.5f, rgb[0], rgb[1], rgb[2], STRENGTH, RADIUS);
+            } else {
+                writer.pointLight(x + 0.5f, y + 0.561f, z + 0.5f, rgb[0], rgb[1], rgb[2], STRENGTH, RADIUS);
             }
-        } else if (block == Blocks.REDSTONE_WALL_TORCH) {
-            if (state.getValue(RedstoneTorchBlock.LIT)) {
-                wallTorch(state, x, y, z, 255, 51, 25, writer);
-            }
-        } else if (block == Blocks.LANTERN || block == Blocks.SOUL_LANTERN) {
-            float height = state.getValue(LanternBlock.HANGING) ? 0.35f : 0.198f;
-            boolean soul = block == Blocks.SOUL_LANTERN;
-            writer.pointLight(x + 0.5f, y + height, z + 0.5f, soul ? 0 : 255, soul ? 255 : 127, soul ? 255 : 76,
-                STRENGTH, LANTERN_RADIUS);
-        } else if (block == Blocks.END_ROD) {
-            writer.pointLight(x + 0.5f, y + 0.5f, z + 0.5f, 255, 255, 255, STRENGTH, RADIUS);
         } else if (isBerryVine(state)) {
             // Not Bedrock's: the berries of a glow berry vine are level 14 in vanilla and a pack lights only their few
             // texels, so a lush cave of them was dark. Each berried block gives a warm, soft light of its own.
@@ -68,6 +68,27 @@ final class BedrockPointLights {
         }
     }
 
+    /**
+     * The colour (0..255) of the light this block has, or null. Shared with HeldLight, which gives the same item in
+     * the hand this very light, so a torch lights a cave alike held or set down.
+     */
+    static int[] colourOf(Block block) {
+        if (block == Blocks.TORCH || block == Blocks.WALL_TORCH || block == Blocks.LANTERN) {
+            return new int[] {255, 127, 76};
+        }
+        if (block == Blocks.REDSTONE_TORCH || block == Blocks.REDSTONE_WALL_TORCH) {
+            return new int[] {255, 51, 25};
+        }
+        // Not Bedrock's for the soul torch, which has no light of its own there: without one it lit by its few flame
+        // texels alone, far less than in the hand. It takes the soul lantern's.
+        if (block == Blocks.SOUL_LANTERN || block == Blocks.SOUL_TORCH || block == Blocks.SOUL_WALL_TORCH) {
+            return new int[] {0, 255, 255};
+        }
+        if (block == Blocks.END_ROD) {
+            return new int[] {255, 255, 255};
+        }
+        return null;
+    }
     /** How much of a torch's strength a glow berry vine gives: gentle, there are many of them. */
     private static final float BERRY_STRENGTH = 1.2f;
 
@@ -78,9 +99,7 @@ final class BedrockPointLights {
 
     /** Whether the block has one of these lights, in some state. */
     static boolean hasLight(Block block) {
-        return block == Blocks.CAVE_VINES || block == Blocks.CAVE_VINES_PLANT || block == Blocks.TORCH || block == Blocks.WALL_TORCH || block == Blocks.REDSTONE_TORCH
-            || block == Blocks.REDSTONE_WALL_TORCH || block == Blocks.LANTERN || block == Blocks.SOUL_LANTERN
-            || block == Blocks.END_ROD;
+        return block == Blocks.CAVE_VINES || block == Blocks.CAVE_VINES_PLANT || colourOf(block) != null;
     }
 
     /** A torch on a wall: its flame higher, and a little towards the wall it hangs on. */

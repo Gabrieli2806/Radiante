@@ -48,8 +48,8 @@ public final class HeldLight {
             return NONE;
         }
         Vec3 at = handPosition(minecraft, player, hand == InteractionHand.MAIN_HAND, partialTicks);
-        return new Vector4f((float) (at.x - camera.x), (float) (at.y - camera.y), (float) (at.z - camera.z),
-            REACH * level / 15.0f);
+        float reach = pointLightOf(player.getItemInHand(hand)) != null ? POINT_LIGHT_REACH : REACH * level / 15.0f;
+        return new Vector4f((float) (at.x - camera.x), (float) (at.y - camera.y), (float) (at.z - camera.z), reach);
     }
 
     /** Where the hand holding an item is, in the world. */
@@ -95,8 +95,40 @@ public final class HeldLight {
         if (level <= 0) {
             return NONE;
         }
+        int[] pointLight = pointLightOf(stack);
+        if (pointLight != null) {
+            // The light the same block casts set down (BedrockPointLights), on the held light's scale: the shaders
+            // multiply a placed one by (100 / 12) and the Emission Brightness, a held one by 16 and the Held Light
+            // Brightness, both 12 by default.
+            float scale = BedrockPointLights.STRENGTH * POINT_LIGHT_MATCH * (100.0f / 12.0f) / 16.0f / 255.0f;
+            return new Vector4f(pointLight[0] * scale, pointLight[1] * scale, pointLight[2] * scale, 1.0f);
+        }
         return new Vector4f(tintOf(stack).mul(STRENGTH * level / 15.0f), 1.0f);
     }
+
+    /**
+     * The colour of the light the held block casts when set down, when that is one of Bedrock's point lights and the
+     * profile casts them; null otherwise. A torch, lantern or end rod then lights the same in the hand as on the
+     * ground: the same colour, strength and fall-off, so walking into a cave and setting it down changes nothing.
+     */
+    private static int[] pointLightOf(ItemStack stack) {
+        if (!(stack.getItem() instanceof BlockItem blockItem)
+            || !com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow()) {
+            return null;
+        }
+        return BedrockPointLights.colourOf(blockItem.getBlock());
+    }
+
+    /**
+     * A set down light also lights by the glowing texels of its flame (EmissionTiles), which a held one lacks; this
+     * is their share, measured on a stone floor at night so both light it alike from 1 to 12 blocks.
+     */
+    private static final float POINT_LIGHT_MATCH = 1.08f;
+    /**
+     * A set down light has no reach but the inverse square law; the held one's fade (sampleOneHeldLight) starts this
+     * far out, so within the 12 blocks a torch visibly lights it takes off under a few percent.
+     */
+    private static final float POINT_LIGHT_REACH = 40.0f;
 
     private static int levelOf(ItemStack stack) {
         if (stack.isEmpty()) {
