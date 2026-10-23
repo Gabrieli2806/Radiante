@@ -405,7 +405,12 @@ void ptShadeDefault(bool viewMark) {
             worldUBO.emissionBrightness *
             (keepGlowColour ? currentSurface.tint : vptEmissiveColour(currentSurface.tint)) *
             seenEmission * mainRay.throughput;
-        emissionRadiance += currentSurface.tint * albedoEmission * mainRay.throughput;
+        // A glow given as negative (the beacon beam's core) is seen, not cast (transparent_only.rchit).
+        float vertexGlow = albedoEmission;
+        if (vertexGlow < 0.0) {
+            vertexGlow = (bounce == 0u || rayCameraPath(mainRay) || g_viewBounce) ? -vertexGlow : 0.0;
+        }
+        emissionRadiance += currentSurface.tint * vertexGlow * mainRay.throughput;
         mainRay.radiance += emissionRadiance;
 #if VPT_NRD_SIGNALS
         // The surface the camera sees (pass-throughs left out, the paths that fill the cache too). Stored at once:

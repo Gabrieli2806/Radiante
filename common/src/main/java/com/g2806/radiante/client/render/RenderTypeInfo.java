@@ -209,7 +209,9 @@ public final class RenderTypeInfo {
             return Glow.LIGHTNING;
         }
         if (this.name.contains("beacon_beam")) {
-            return Glow.BEACON_BEAM;
+            // Negative: seen, not cast (transparent_only.rchit). Lit by every bounce that found it, the beam's
+            // column lit the ground tens of blocks around however dim its glow was made.
+            return -Glow.BEACON_BEAM;
         }
         if (this.name.equals("energy_swirl")) {
             return this.texture != null && this.texture.getPath().contains("wither_armor") ? Glow.WITHER_ARMOR

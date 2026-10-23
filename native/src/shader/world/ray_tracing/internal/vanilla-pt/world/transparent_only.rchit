@@ -119,6 +119,13 @@ void main() {
     // beacon beams, lightning and the flames on a burning entity are all blended, so this is the only path they
     // ever reach.
     float vertexEmission = bary.x * m0.albedoEmission + bary.y * m1.albedoEmission + bary.z * m2.albedoEmission;
+    // A glow given as negative (a beacon beam, RenderTypeInfo.emission) is seen and not cast: it shows to the camera,
+    // straight or by way of a mirror or glass, and the bounces gathering light for a surface pass through it dark.
+    // A beam is hundreds of blocks of glowing column; found by every bounce, it lit the ground tens of blocks around.
+    if (vertexEmission < 0.0) {
+        bool seen = rayBounce(mainRay) == 0u || rayCameraPath(mainRay) || mainRay.pad0 == RAY_VIEW_BOUNCE_MARK;
+        vertexEmission = seen ? -vertexEmission : 0.0;
+    }
     mainRay.radiance += shadedRgb * alpha * vertexEmission * mainRay.throughput;
     mainRay.throughput *= transmittance;
 
