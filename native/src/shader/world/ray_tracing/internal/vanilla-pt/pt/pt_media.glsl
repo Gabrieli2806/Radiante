@@ -40,17 +40,17 @@ void ptWaterMediumAtHit(uint bounce) {
                 float skyAlong = rand(mainRay.seed);
                 vec3 skyJitter = vec3(rand(mainRay.seed), rand(mainRay.seed), rand(mainRay.seed)) * 2.0 - 1.0;
                 vec3 skyDirection = normalize(vec3(skyJitter.x * 0.5, 1.0, skyJitter.z * 0.5));
-                // The light is 0.35 of it under a roof and all of it in sight of the sky: the part the sky adds is
-                // left to a ray traced as the hit shader ends (see PT_SHADOW_SKY), with the throughput of now.
+                // The light scattered in the water is the sky's and the sun's (waterMediumSegment*), so it is there
+                // only in sight of the sky: left to a ray traced as the hit shader ends (see PT_SHADOW_SKY), with
+                // the throughput of now. A share of it used to be added under a roof as well, and a pool in a
+                // closed cave glowed pale blue at night with no light anywhere near it (0.35 of the open sky's).
                 vec3 ambientLight = mainRay.throughput * waterScatter * waterAmbient;
                 // Started 0.0099 along: deferred rays begin at 0.0001, skyVisibilityAlong's at 0.01.
                 ptDeferShadowRay(PT_SHADOW_SKY,
                                  g_hit.rayOrigin + g_hit.rayDir * (g_hit.hitT * skyAlong) + skyDirection * 0.0099,
-                                 skyDirection, 256.0 - 0.0099, WORLD_MASK, SKY_VISIBILITY_QUERY, ambientLight * 0.65);
+                                 skyDirection, 256.0 - 0.0099, WORLD_MASK, SKY_VISIBILITY_QUERY, ambientLight);
                 g_shadowInsideBoat[PT_SHADOW_SKY] = 0u;
-                waterAmbient *= 0.35;
             }
-            mainRay.radiance += mainRay.throughput * waterScatter * waterAmbient;
             mainRay.throughput *= waterTransmittance;
         } else if (bounce == 0u && skyUBO.cameraSubmersionType == 1 && !rayInGlass(mainRay)) {
             raySetInWater(mainRay, true);
