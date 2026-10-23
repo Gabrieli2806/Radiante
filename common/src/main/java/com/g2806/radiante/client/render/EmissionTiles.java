@@ -503,7 +503,7 @@ public final class EmissionTiles {
     }
 
     /** The share of a firefly bush's pack glow that is kept: its few specks are bright, and were glaring. */
-    private static final float FIREFLY_GLOW = 0.4f;
+    private static final float FIREFLY_GLOW = 0.25f;
 
     /**
      * Tones down a block whose pack glow is a few very bright specks (the firefly bush): emission is the MER green
@@ -522,6 +522,29 @@ public final class EmissionTiles {
                 int index = ((originY + y) * atlasWidth + originX + x) * 4 + 1;
                 if (index < mer.capacity()) {
                     mer.put(index, (byte) Math.round((mer.get(index) & 0xFF) * scale));
+                }
+            }
+        }
+    }
+
+    /**
+     * The same softening for a block whose glow comes from a LabPBR specular map (alpha 1..254, linear) rather than a
+     * MER one: the vanilla textures' own specks, and a pack's _s maps.
+     */
+    static void softenSpecular(TextureAtlasSprite sprite, ByteBuffer specular, int atlasWidth, int atlasHeight) {
+        if (!sprite.contents().name().getPath().startsWith("block/firefly_bush")) {
+            return;
+        }
+        int originX = Math.round(sprite.getU0() * atlasWidth);
+        int originY = Math.round(sprite.getV0() * atlasHeight);
+        for (int y = 0; y < sprite.contents().height(); y++) {
+            for (int x = 0; x < sprite.contents().width(); x++) {
+                int index = ((originY + y) * atlasWidth + originX + x) * 4 + 3;
+                if (index < specular.capacity()) {
+                    int value = specular.get(index) & 0xFF;
+                    if (value != 0 && value != 255) {
+                        specular.put(index, (byte) Math.max(1, Math.round(value * FIREFLY_GLOW)));
+                    }
                 }
             }
         }

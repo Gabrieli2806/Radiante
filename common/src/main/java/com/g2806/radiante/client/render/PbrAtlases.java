@@ -108,6 +108,7 @@ public final class PbrAtlases {
                 if (any) {
                     EmissionTiles.keepSetGlow(entry.getValue(), specular, width, height);
                     EmissionTiles.keepVisibleGlow(entry.getValue(), specular, derivedGlow, width, height);
+                    EmissionTiles.softenSpecular(entry.getValue(), specular, width, height);
                 }
                 any |= stitch(resources, entry.getKey(), entry.getValue(), "_n", normal, width, height);
                 if (any) {
