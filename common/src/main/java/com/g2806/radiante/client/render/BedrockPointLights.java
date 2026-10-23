@@ -72,6 +72,11 @@ final class BedrockPointLights {
             // Not Bedrock's: the berries of a glow berry vine are level 14 in vanilla and a pack lights only their few
             // texels, so a lush cave of them was dark. Each berried block gives a warm, soft light of its own.
             writer.pointLight(x + 0.5f, y + 0.4f, z + 0.5f, 255, 170, 70, CAST_STRENGTH * BERRY_STRENGTH, LANTERN_RADIUS);
+        } else if (block == Blocks.FIREFLY_BUSH) {
+            // Not Bedrock's: the bush glows only in a few specks and lit nothing around it. A soft, greenish-yellow
+            // light of its own, half of what a berried vine gives.
+            writer.pointLight(x + 0.5f, y + 0.4f, z + 0.5f, 215, 255, 120, CAST_STRENGTH * BERRY_STRENGTH * 0.5f,
+                LANTERN_RADIUS);
         }
     }
 
@@ -129,7 +134,8 @@ final class BedrockPointLights {
 
     /** Whether the block has one of these lights, in some state. */
     static boolean hasLight(Block block) {
-        return block == Blocks.CAVE_VINES || block == Blocks.CAVE_VINES_PLANT || colourOf(block) != null;
+        return block == Blocks.CAVE_VINES || block == Blocks.CAVE_VINES_PLANT || block == Blocks.FIREFLY_BUSH
+            || colourOf(block) != null;
     }
 
     /** A torch on a wall: its flame higher, and a little towards the wall it hangs on. */
