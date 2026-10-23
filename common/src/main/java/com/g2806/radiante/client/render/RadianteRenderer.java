@@ -94,6 +94,13 @@ public final class RadianteRenderer {
         return failure;
     }
 
+    /** 26.2 port: every Vulkan device was turned down for lacking ray tracing (VulkanBackendMixin). */
+    public static void markNoRayTracing() {
+        if (!active) {
+            failure = Failure.NO_RAY_TRACING;
+        }
+    }
+
     private static boolean tracingLevel;
 
     /**

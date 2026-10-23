@@ -523,7 +523,13 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
      */
     public void glintSince(int from, int glintTextureId) {
         finishQuadIfComplete();
-        for (int i = Math.max(from, 0); i < this.vertexCount; i++) {
+        glintRange(from, this.vertexCount, glintTextureId);
+    }
+
+    /** As glintSince, for the vertices [from, to). Quads dropped since then may have shortened the buffer. */
+    public void glintRange(int from, int to, int glintTextureId) {
+        finishQuadIfComplete();
+        for (int i = Math.max(from, 0); i < Math.min(to, this.vertexCount); i++) {
             long v = this.address + (long) i * STRIDE;
             MemoryUtil.memPutInt(v + OFF_USE_GLINT, 1);
             MemoryUtil.memPutFloat(v + OFF_GLINT_UV, MemoryUtil.memGetFloat(v + OFF_TEXTURE_UV) - this.uOffset);

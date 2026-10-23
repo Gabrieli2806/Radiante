@@ -64,13 +64,15 @@ public class EntityCollector implements SubmitNodeCollector {
 
     private final Map<RenderType, PBRVertexWriter> writers = new LinkedHashMap<>();
     /**
-     * 26.2 port: the model last drawn, the writer it went into and its first vertex. 26.2 has no render types that
-     * carry the glint alongside the base texture; it draws the glint as a second pass over the same model, so that
-     * pass switches the glint on for the vertices already written, as main's combined glint render types write them.
+     * 26.2 port: where each model's first submission for this entity went (its base layer). 26.2 has no render types
+     * that carry the glint alongside the base texture; it draws the glint as a second pass over the same model
+     * (armor, trident, shield - with banner patterns submitted in between), so that pass switches the glint on for
+     * those vertices, as main's combined glint render types write them.
      */
-    private @Nullable Object lastModel;
-    private @Nullable PBRVertexWriter lastModelWriter;
-    private int lastModelStart;
+    private record BaseLayer(PBRVertexWriter writer, int start, int end) {
+    }
+
+    private final java.util.Map<Object, BaseLayer> baseLayers = new java.util.IdentityHashMap<>();
 
     /** Extra glow the current entity gives off whatever layer it is drawn with, such as a glow item frame. */
     private float entityEmission;
@@ -101,8 +103,7 @@ public class EntityCollector implements SubmitNodeCollector {
     public void reset() {
         this.modelLayers.clear();
         this.writers.clear();
-        this.lastModel = null;
-        this.lastModelWriter = null;
+        this.baseLayers.clear();
         this.nameTagLayers.clear();
         this.used = 0;
         this.entityEmission = 0.0f;
@@ -254,9 +255,10 @@ public class EntityCollector implements SubmitNodeCollector {
         ModelFeatureRenderer.@Nullable CrumblingOverlay crumblingOverlay) {
         net.minecraft.resources.Identifier glintTexture = glintPassTexture(renderType);
         if (glintTexture != null) {
-            // 26.2 port: the glint pass over the model just drawn glints that model's vertices instead.
-            if (this.lastModel == model && this.lastModelWriter != null) {
-                this.lastModelWriter.glintSince(this.lastModelStart, TextureTracker.idOf(glintTexture));
+            // 26.2 port: the glint pass over a model already drawn glints that model's base vertices instead.
+            BaseLayer base = this.baseLayers.get(model);
+            if (base != null) {
+                base.writer().glintRange(base.start(), base.end(), TextureTracker.idOf(glintTexture));
             }
             return;
         }
@@ -286,12 +288,12 @@ public class EntityCollector implements SubmitNodeCollector {
         }
 
         writer.finish();
-        this.lastModel = model;
-        this.lastModelWriter = writer;
-        this.lastModelStart = writer.vertexCount();
+        int start = writer.vertexCount();
         model.setupAnim(state);
         model.renderToBuffer(poseStack, buffer, lightCoords, overlayCoords, tintedColor);
         writer.layerOffset(0.0f);
+        writer.finish();
+        this.baseLayers.putIfAbsent(model, new BaseLayer(writer, start, writer.vertexCount()));
         if (crumblingOverlay != null) {
             this.submitCrumblingOverlay(model, state, poseStack, renderType, lightCoords, overlayCoords, tintedColor,
                 crumblingOverlay);

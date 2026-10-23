@@ -31,7 +31,25 @@ public class VulkanBackendMixin {
     @Inject(method = "isDeviceSuitable", at = @At("RETURN"), cancellable = true)
     private static void radiante$requireRayTracing(VkPhysicalDevice device, CallbackInfoReturnable<Boolean> cir) {
         if (cir.getReturnValueZ() && !RendererProxy.isRayTracingCapable(device.address())) {
+            radiante$rejectedForRayTracing = true;
             cir.setReturnValue(false);
+        }
+    }
+
+    /** A device that Minecraft would have taken was turned down above for lacking hardware ray tracing. */
+    @org.spongepowered.asm.mixin.Unique
+    private static boolean radiante$rejectedForRayTracing;
+
+    /**
+     * 26.2 port: no device was left, so Minecraft gives up on Vulkan and falls back to OpenGL. When the check above
+     * is what emptied the list, the warning screen names the missing ray tracing rather than OpenGL (26.3 carries
+     * that in the BackendCreationException reason instead).
+     */
+    @Inject(method = "findPhysicalDevice", at = @At(value = "INVOKE",
+        target = "Lcom/mojang/blaze3d/vulkan/VulkanBackend;throwForMissingRequrements(Lorg/lwjgl/vulkan/VkPhysicalDevice;)V"))
+    private static void radiante$noRayTracingDevice(CallbackInfoReturnable<?> cir) {
+        if (radiante$rejectedForRayTracing) {
+            com.g2806.radiante.client.render.RadianteRenderer.markNoRayTracing();
         }
     }
 }
