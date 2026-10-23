@@ -59,9 +59,10 @@ public class LevelRendererSkipMixin {
     private LevelTargetBundle targets;
 
     @Inject(method = "render", at = @At("HEAD"), cancellable = true)
-    private void radiante$skipWhenTracing(GraphicsResourceAllocator resourceAllocator, boolean renderOutline,
-        CameraRenderState cameraState, GpuBufferSlice terrainFog, Vector4f fogColor, boolean shouldRenderSky,
-        boolean consistentDepthRequired, CallbackInfo ci) {
+    private void radiante$skipWhenTracing(GraphicsResourceAllocator resourceAllocator,
+        net.minecraft.client.DeltaTracker deltaTracker, boolean renderOutline, CameraRenderState cameraState,
+        org.joml.Matrix4fc modelViewMatrix, GpuBufferSlice terrainFog, Vector4f fogColor, boolean shouldRenderSky,
+        CallbackInfo ci) {
         this.radiante$traceAdded = false;
         if (!RadianteRenderer.isTracingLevel()) {
             return;
@@ -181,15 +182,16 @@ public class LevelRendererSkipMixin {
      * which is where everything else other mods add is drawn.
      */
     @WrapOperation(method = "render", at = @At(value = "INVOKE",
-        target = "Lnet/minecraft/client/renderer/LevelRenderer;addMainPass(Lcom/mojang/blaze3d/framegraph/FrameGraphBuilder;Lnet/minecraft/client/renderer/feature/FeatureRenderDispatcher$PreparedFrame;Lcom/mojang/blaze3d/buffers/GpuBufferSlice;Lnet/minecraft/client/renderer/chunk/ChunkSectionsToRender;Z)V"))
+        target = "Lnet/minecraft/client/renderer/LevelRenderer;addMainPass(Lcom/mojang/blaze3d/framegraph/FrameGraphBuilder;Lnet/minecraft/client/renderer/feature/FeatureRenderDispatcher$PreparedFrame;Lcom/mojang/blaze3d/buffers/GpuBufferSlice;Lnet/minecraft/client/renderer/state/level/LevelRenderState;Lnet/minecraft/util/profiling/ProfilerFiller;Lnet/minecraft/client/renderer/chunk/ChunkSectionsToRender;)V"))
     private void radiante$traceBeforeMainPass(LevelRenderer levelRenderer, FrameGraphBuilder frame,
-        FeatureRenderDispatcher.PreparedFrame featureFrame, GpuBufferSlice terrainFog,
-        ChunkSectionsToRender chunkSectionsToRender, boolean consistentDepthRequired, Operation<Void> original) {
+        FeatureRenderDispatcher.PreparedFrame featureFrame, GpuBufferSlice terrainFog, LevelRenderState state,
+        net.minecraft.util.profiling.ProfilerFiller profiler, ChunkSectionsToRender chunkSectionsToRender,
+        Operation<Void> original) {
         if (RadianteRenderer.isOverlayFrame() && !this.radiante$traceAdded) {
             this.radiante$addTracePass(frame);
         }
         this.radiante$traceAdded = false;
-        original.call(levelRenderer, frame, featureFrame, terrainFog, chunkSectionsToRender, consistentDepthRequired);
+        original.call(levelRenderer, frame, featureFrame, terrainFog, state, profiler, chunkSectionsToRender);
     }
 
     /** Minecraft compiles no terrain of its own while the tracer has it. */
@@ -222,15 +224,7 @@ public class LevelRendererSkipMixin {
         }
     }
 
-    /** Blocks just placed, shown until their section is rebuilt: the tracer rebuilds its own sections. */
-    @WrapOperation(method = "submitFeatures", at = @At(value = "INVOKE",
-        target = "Lnet/minecraft/client/renderer/LevelRenderer;submitTransientBlocks(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;Lnet/minecraft/client/renderer/state/level/LevelRenderState;)V"))
-    private void radiante$noTransientBlocksOverTrace(LevelRenderer levelRenderer, PoseStack poseStack,
-        SubmitNodeCollector collector, LevelRenderState state, Operation<Void> original) {
-        if (!RadianteRenderer.isOverlayFrame()) {
-            original.call(levelRenderer, poseStack, collector, state);
-        }
-    }
+    // 26.2 port: no transient blocks (blocks shown until their section rebuilds) in 26.2's submitFeatures.
 
     /** Debug gizmos (hitboxes, chunk borders) are traced too; see OverlayLines. */
     @WrapOperation(method = "submitFeatures", at = @At(value = "INVOKE",

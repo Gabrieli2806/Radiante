@@ -34,8 +34,8 @@ public class VivecraftHandsMixin {
     }
 
     @ModifyArg(method = {"renderVRHand_Main", "renderVRHand_Offhand"}, at = @At(value = "INVOKE",
-        target = "Lnet/minecraft/client/renderer/FirstPersonHandsAndItemsRenderer;submitArmWithItem(Lnet/minecraft/client/renderer/state/level/PlayerRenderState;Lnet/minecraft/client/renderer/state/level/FirstPersonHandsAndItemsRenderState;FFLnet/minecraft/world/InteractionHand;FLnet/minecraft/world/item/ItemStack;FLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;I)V"),
-        index = 9, require = 0, remap = false)
+        target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;submitArmWithItem(Lnet/minecraft/client/player/AbstractClientPlayer;FFLnet/minecraft/world/InteractionHand;FLnet/minecraft/world/item/ItemStack;FLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;I)V"),
+        index = 8, require = 0, remap = false) // 26.2: ItemInHandRenderer, no render states
     private static SubmitNodeCollector radiante$traceArm(SubmitNodeCollector collector) {
         return radiante$hands != null ? radiante$hands : collector;
     }

@@ -15,20 +15,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value = ChunkSectionsToRender.class, priority = 500)
 public class ChunkSectionsToRenderMixin {
 
+    // 26.2 port: renderGroup opens its own render pass (26.3 is handed one), and translucent terrain is a
+    // renderGroup of its own rather than renderOit.
     @Inject(method = "renderGroup", at = @At("HEAD"), cancellable = true)
     private void radiante$noTerrainOverTrace(net.minecraft.client.renderer.chunk.ChunkSectionLayerGroup group,
-        com.mojang.blaze3d.systems.RenderPass pass, com.mojang.blaze3d.textures.GpuSampler sampler,
-        com.mojang.blaze3d.textures.GpuTextureView lightmap, boolean flag, CallbackInfo ci) {
+        com.mojang.blaze3d.textures.GpuSampler sampler, CallbackInfo ci) {
         if (RadianteRenderer.isOverlayFrame()) {
-            // Where the terrain would cover what was drawn before it (a mod's sky), the traced world does.
-            com.g2806.radiante.client.render.ModBackdrop.restore(pass);
-            ci.cancel();
-        }
-    }
-
-    @Inject(method = "renderOit", at = @At("HEAD"), cancellable = true)
-    private void radiante$noTranslucentTerrainOverTrace(CallbackInfo ci) {
-        if (RadianteRenderer.isOverlayFrame()) {
+            if (group == net.minecraft.client.renderer.chunk.ChunkSectionLayerGroup.OPAQUE) {
+                // Where the terrain would cover what was drawn before it (a mod's sky), the traced world does.
+                com.mojang.blaze3d.pipeline.RenderTarget target = group.outputTarget();
+                try (com.mojang.blaze3d.systems.RenderPass pass = com.mojang.blaze3d.systems.RenderSystem.getDevice()
+                    .createCommandEncoder().createRenderPass(() -> "Radiante traced world", target.getColorTextureView(),
+                        java.util.Optional.empty(), target.getDepthTextureView(), java.util.OptionalDouble.empty())) {
+                    com.g2806.radiante.client.render.ModBackdrop.restore(pass);
+                }
+            }
             ci.cancel();
         }
     }

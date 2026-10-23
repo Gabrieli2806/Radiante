@@ -30,10 +30,13 @@ public class SkyRendererMixin {
         }
     }
 
-    @Inject(method = "render", at = @At("HEAD"))
-    private void radiante$beforeSky(GpuBufferSlice fog, SkyRenderState state, CallbackInfo ci) {
+    // 26.2 port: no SkyRenderer.render; the sky pass calls renderSunMoonAndStars with the star brightness.
+    @Inject(method = "renderSunMoonAndStars", at = @At("HEAD"))
+    private void radiante$beforeSky(com.mojang.blaze3d.vertex.PoseStack poseStack, float sunAngle, float moonAngle,
+        float starAngle, net.minecraft.world.level.MoonPhase moonPhase, float rainBrightness, float starBrightness,
+        CallbackInfo ci) {
         // Stars are due when Minecraft would draw them; a mod that draws its own keeps renderStars from running.
-        this.radiante$starsDue = state.starBrightness > 0.0f && RadianteRenderer.isOverlayFrame();
+        this.radiante$starsDue = starBrightness > 0.0f && RadianteRenderer.isOverlayFrame();
     }
 
     @Inject(method = "renderStars", at = @At("HEAD"), cancellable = true)
