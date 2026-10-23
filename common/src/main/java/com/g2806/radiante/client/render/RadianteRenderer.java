@@ -66,6 +66,12 @@ public final class RadianteRenderer {
     /** PCI vendor of the GPU in use: 0x10DE NVIDIA, 0x1002 AMD, 0x8086 Intel; 0 before the device exists. */
     private static int gpuVendorId;
     private static String gpuName = "";
+    private static int gpuDriverVersion;
+
+    /** The GPU's name and driver version: a new driver invalidates the compiled pipelines kept on disk. */
+    public static String gpuIdentity() {
+        return gpuName + " / " + gpuDriverVersion;
+    }
 
     public static boolean isNvidiaGpu() {
         return gpuVendorId == 0x10DE;
@@ -175,6 +181,7 @@ public final class RadianteRenderer {
             org.lwjgl.vulkan.VK10.vkGetPhysicalDeviceProperties(vkDevice.getPhysicalDevice(), properties);
             gpuVendorId = properties.vendorID();
             gpuName = properties.deviceNameString();
+            gpuDriverVersion = properties.driverVersion();
         }
 
         long instance = device.instance().vkInstance().address();

@@ -42,6 +42,9 @@ import org.lwjgl.system.MemoryUtil;
  * rotating section grid so the shaders can look a chunk up from a section coordinate.
  */
 public final class ChunkManager {
+    /** Blocks a quad lying on another's plane is lifted: enough for the tracer to tell them apart, too little to see. */
+    private static final float COPLANAR_LIFT = 0.0008f;
+
     /**
      * Glass blocks (plain, stained, tinted) and glass panes. Their see-through texels are clear glass for the tracer,
      * as Bedrock RTX renders them: a surface that reflects and refracts, not a hole. Iron bars share the pane class.
@@ -551,7 +554,22 @@ public final class ChunkManager {
                     instance.scaleColor(1.0f / shade);
                 }
             }
-            scratch.writer(quad.materialInfo().layer(), atlasId).putBlockBakedQuad(x, y, z, quad, instance);
+            PBRVertexWriter quadWriter = scratch.writer(quad.materialInfo().layer(), atlasId);
+            // A second face on the plane of one already written (the grass block's tinted side overlay over its side
+            // texture) would tie with it for every ray: the tracer showed the untinted base on some blocks and the
+            // overlay on others. Lifted a hair, the overlay always wins, as it is drawn over the base in vanilla.
+            Direction face = quad.direction();
+            float plane = face.getStepX() * quad.position0().x() + face.getStepY() * quad.position0().y()
+                + face.getStepZ() * quad.position0().z();
+            int faceIndex = face.ordinal();
+            boolean stacked = scratch.faceSeen[faceIndex] && Math.abs(scratch.facePlane[faceIndex] - plane) < 1.0E-4f;
+            if (!scratch.faceSeen[faceIndex]) {
+                scratch.faceSeen[faceIndex] = true;
+                scratch.facePlane[faceIndex] = plane;
+            }
+            quadWriter.layerOffset(stacked ? COPLANAR_LIFT : 0.0f);
+            quadWriter.putBlockBakedQuad(x, y, z, quad, instance);
+            quadWriter.layerOffset(0.0f);
             if (scratch.collectPanel) {
                 scratch.panelQuads.add(quad);
             }
@@ -608,6 +626,7 @@ public final class ChunkManager {
                 scratch.dropInwardFaces = blockState.is(Blocks.POWDER_SNOW);
                 scratch.collectPanel = blockState.is(BlockTags.DOORS) || blockState.is(BlockTags.TRAPDOORS);
                 scratch.panelQuads.clear();
+                java.util.Arrays.fill(scratch.faceSeen, false);
                 int sx = SectionPos.sectionRelative(pos.getX());
                 int sy = SectionPos.sectionRelative(pos.getY());
                 int sz = SectionPos.sectionRelative(pos.getZ());
@@ -880,6 +899,9 @@ public final class ChunkManager {
         private Object fluidModels;
         private PBRVertexWriter current;
         private boolean dropInwardFaces;
+        /** Per face direction, whether this block has written one yet and the plane it lies on (see the quad output). */
+        private final boolean[] faceSeen = new boolean[6];
+        private final float[] facePlane = new float[6];
         private boolean collectPanel;
         private boolean fluidIsWater;
         private boolean fluidIsLava;

@@ -76,6 +76,14 @@ public class RendererProxy {
      */
     public static native void rebuildPendingPipeline();
 
+    /**
+     * Builds the world pipeline now, on the calling thread, at the given trace size, when it is not built or a change
+     * is pending: the start-up warm-up compiles the shaders and ray tracing pipelines this way before the first
+     * world. Waits for a frame or rebuild already running, and does nothing when the pipeline is up to date. False
+     * when the build failed.
+     */
+    public static native boolean warmUpPipeline(int traceWidth, int traceHeight);
+
     /** Rebuild progress: 0-100 while shaders compile, 1000-1100 while the passes' pipelines are created. */
     public static native int rebuildProgress();
 

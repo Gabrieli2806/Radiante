@@ -438,6 +438,19 @@ void Framework::recreatePending() {
     recreate();
 }
 
+bool Framework::warmUp(uint32_t traceWidth, uint32_t traceHeight) {
+    std::unique_lock<std::recursive_mutex> lock(recreateMtx_);
+    if (!running_) return false;
+    if (!(pipeline_->isRecreationNeeded || Renderer::options.needRecreate)) return !lastRebuildFailed_;
+    // The size the first world frame will ask for, so it does not build the pipeline again.
+    if (traceWidth > 0 && traceHeight > 0) {
+        const VkExtent2D extent = swapchain_->vkExtent();
+        if (extent.width != traceWidth || extent.height != traceHeight) swapchain_->reconstruct(traceWidth, traceHeight);
+    }
+    recreate();
+    return !lastRebuildFailed_;
+}
+
 void Framework::submitPartialFrame() {
     std::unique_lock<std::recursive_mutex> lock(recreateMtx_);
     if (currentContext_ == nullptr || !currentContext_->recording) return;

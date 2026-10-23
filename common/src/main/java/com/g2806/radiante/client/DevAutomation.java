@@ -11,7 +11,7 @@ import net.minecraft.client.Screenshot;
  * the player is in a world, where the action is {@code shot=name} (screenshot to {@code screenshots/name.png}),
  * {@code cmd=/command} (run a chat command), {@code break=x,y,z,stage} (show block cracks), {@code packs=a,b} or {@code packs=none} (set the
  * resource packs and reload), {@code reload} (reload resource packs), {@code fps} (log
- * the frame rate) or {@code quit}.
+ * the frame rate), {@code warmup} (start the title screen's shader warm-up now, whatever the stored fingerprint says) or {@code quit}.
  */
 public final class DevAutomation {
 
@@ -533,6 +533,9 @@ public final class DevAutomation {
         } else if (action.equals("options")) {
             minecraft.gui.setScreen(new com.g2806.radiante.client.gui.RadianteOptionsScreen(null, minecraft.options));
             RadianteClient.LOGGER.info("[dev] options screen");
+        } else if (action.equals("warmup")) {
+            com.g2806.radiante.client.gui.PipelineWarmUp.force();
+            RadianteClient.LOGGER.info("[dev] warm-up forced");
         } else if (action.equals("fps")) {
             RadianteClient.LOGGER.info("[dev] fps {} at tick {}", minecraft.getFps(), worldTicks);
         } else if (action.equals("quit")) {

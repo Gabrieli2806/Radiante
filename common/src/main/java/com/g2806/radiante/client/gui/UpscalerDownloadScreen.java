@@ -99,7 +99,7 @@ public class UpscalerDownloadScreen extends Screen {
                 UpscalerDownloads.clearSwitchOffer(this.component);
                 com.g2806.radiante.client.pipeline.Pipeline.switchToPresetMode(presetOf(this.component).key, false);
                 com.g2806.radiante.client.pipeline.Pipeline.savePipeline();
-                this.minecraft.gui.setScreen(new ApplyingSettingsScreen(this.parent));
+                BackgroundRebuild.open(this.minecraft, this.parent, true);
             }).width(WIDGET_WIDTH).build());
             layout.addChild(Button.builder(text("screen.radiante.download.switch.no"), button -> {
                 UpscalerDownloads.clearSwitchOffer(this.component);

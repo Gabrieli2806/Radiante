@@ -812,16 +812,27 @@ public class Pipeline {
         }
         return changed;
     }
+    /** Why the last {@link #build()} failed, for the progress toast; null when it succeeded. */
+    private static volatile String lastBuildError;
+
+    public static String lastBuildError() {
+        return lastBuildError;
+    }
+
     public static void build() {
         com.g2806.radiante.client.render.EntityManager.onPipelineRebuilt();
         boolean built = false;
+        lastBuildError = null;
         try {
             buildInternal();
             built = true;
         } catch (Exception e) {
             RadianteClient.LOGGER.error("Failed to build render pipeline.", e);
+            lastBuildError = e.getMessage() != null && !e.getMessage().isBlank() ? e.getMessage()
+                : e.getClass().getSimpleName();
             if (isPipelineCompatibilityFailure(e) && tryRebuildCompatiblePipeline(e)) {
                 built = true;
+                lastBuildError = null;
             }
         } finally {
             // A build carries every value, those the profile writes on the way (enforce) included, so nothing is left

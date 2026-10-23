@@ -112,7 +112,8 @@ Before it starts it:
 
 A failed rebuild sets `lastRebuildFailed()`; frames then draw no world until a later rebuild succeeds.
 `recreatePending()` lets Java run a pending rebuild from a worker thread while the render thread keeps the window
-alive (`ApplyingSettingsScreen`).
+alive (`ApplyingSettingsScreen`, only used inside a world when the change cannot be prewarmed; outside a
+world the build just hands the blueprint over and the compile happens with the first frame, see `BackgroundRebuild`).
 
 ## The GPU layer (`native/src/prism/gpu`)
 

@@ -449,6 +449,9 @@ void Pipeline::createContexts(const std::shared_ptr<Framework> &framework) {
 void Pipeline::buildWorldPipelineBlueprint(WorldPipelineBuildParams *params) {
     // Read first: a description that cannot be built leaves the current one in place, with no rebuild pending.
     auto blueprint = WorldPipelineBlueprint::create(params);
+    // Not while the title screen's warm-up (Framework::warmUp) builds the pipeline from the description it holds.
+    std::unique_lock<std::recursive_mutex> rebuilding;
+    if (auto framework = framework_.lock()) rebuilding = std::unique_lock<std::recursive_mutex>(framework->recreateMtx());
     beginNativeRebuild();
     worldPipelineBlueprint_ = std::move(blueprint);
     isRecreationNeeded = true;
