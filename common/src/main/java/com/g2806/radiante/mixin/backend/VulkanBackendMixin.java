@@ -1,9 +1,9 @@
 package com.g2806.radiante.mixin.backend;
 
 import com.g2806.radiante.client.proxy.vulkan.RendererProxy;
-import com.mojang.renderpearl.api.device.BackendCreationException;
-import com.mojang.renderpearl.backend.vulkan.VulkanBackend;
-import com.mojang.renderpearl.backend.vulkan.init.FeatureSet;
+import com.mojang.blaze3d.systems.BackendCreationException;
+import com.mojang.blaze3d.vulkan.VulkanBackend;
+import com.mojang.blaze3d.vulkan.init.FeatureSet;
 import java.util.List;
 import java.util.Set;
 import org.lwjgl.PointerBuffer;
@@ -19,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(VulkanBackend.class)
 public class VulkanBackendMixin {
 
-    @Redirect(method = "createDevice(Lcom/mojang/renderpearl/backend/vulkan/init/FeatureSet;Lcom/mojang/renderpearl/backend/vulkan/VulkanPhysicalDevice;)Lorg/lwjgl/vulkan/VkDevice;",
+    @Redirect(method = "createDevice(Lcom/mojang/blaze3d/vulkan/init/FeatureSet;Lcom/mojang/blaze3d/vulkan/VulkanPhysicalDevice;)Lorg/lwjgl/vulkan/VkDevice;",
         at = @At(value = "INVOKE",
             target = "Lorg/lwjgl/vulkan/VK12;vkCreateDevice(Lorg/lwjgl/vulkan/VkPhysicalDevice;Lorg/lwjgl/vulkan/VkDeviceCreateInfo;Lorg/lwjgl/vulkan/VkAllocationCallbacks;Lorg/lwjgl/PointerBuffer;)I"))
     private static int radiante$createMergedDevice(VkPhysicalDevice physicalDevice, VkDeviceCreateInfo createInfo,

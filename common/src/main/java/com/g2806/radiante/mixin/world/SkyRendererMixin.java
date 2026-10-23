@@ -2,7 +2,7 @@ package com.g2806.radiante.mixin.world;
 
 import com.g2806.radiante.client.render.ModBackdrop;
 import com.g2806.radiante.client.render.RadianteRenderer;
-import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
+import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import net.minecraft.client.renderer.SkyRenderer;
 import net.minecraft.client.renderer.state.level.SkyRenderState;
 import org.spongepowered.asm.mixin.Mixin;

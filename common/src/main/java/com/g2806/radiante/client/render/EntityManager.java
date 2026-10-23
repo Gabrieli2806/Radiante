@@ -680,7 +680,7 @@ public final class EntityManager {
                 }
 
                 @Override
-                public com.mojang.blaze3d.vertex.VertexConsumer quads(com.mojang.renderpearl.api.textures.GpuTexture texture,
+                public com.mojang.blaze3d.vertex.VertexConsumer quads(com.mojang.blaze3d.textures.GpuTexture texture,
                     com.g2806.radiante.api.RadianteGeometry.Alpha alpha) {
                     return writer(TextureTracker.idOf(texture), alpha);
                 }

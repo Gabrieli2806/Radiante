@@ -11,11 +11,11 @@ import com.g2806.radiante.mixin.backend.VulkanCommandEncoderAccessor;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.logging.LogUtils;
-import com.mojang.renderpearl.api.textures.GpuTexture;
-import com.mojang.renderpearl.backend.vulkan.VulkanCommandEncoder;
-import com.mojang.renderpearl.backend.vulkan.VulkanConst;
-import com.mojang.renderpearl.backend.vulkan.VulkanDevice;
-import com.mojang.renderpearl.backend.vulkan.VulkanGpuTexture;
+import com.mojang.blaze3d.textures.GpuTexture;
+import com.mojang.blaze3d.vulkan.VulkanCommandEncoder;
+import com.mojang.blaze3d.vulkan.VulkanConst;
+import com.mojang.blaze3d.vulkan.VulkanDevice;
+import com.mojang.blaze3d.vulkan.VulkanGpuTexture;
 import com.mojang.renderpearl.frontend.FrontendCommandEncoder;
 import java.nio.ByteBuffer;
 import net.minecraft.client.Minecraft;
@@ -206,7 +206,7 @@ public final class RadianteRenderer {
      */
     private static void reserveFallbackTexture() {
         int id = TextureProxy.generateTextureId();
-        TextureProxy.prepareImage(id, 1, 1, 1, VulkanConst.toVk(com.mojang.renderpearl.api.GpuFormat.RGBA8_UNORM));
+        TextureProxy.prepareImage(id, 1, 1, 1, VulkanConst.toVk(com.mojang.blaze3d.GpuFormat.RGBA8_UNORM));
         ByteBuffer white = MemoryUtil.memAlloc(4);
         white.put(0, (byte) 0xFF).put(1, (byte) 0xFF).put(2, (byte) 0xFF).put(3, (byte) 0xFF);
         TextureProxy.queueUpload(MemoryUtil.memAddress(white), 4, 1, id, 0, 0, 0, 0, 1, 1, 0);

@@ -17,8 +17,8 @@ public class ChunkSectionsToRenderMixin {
 
     @Inject(method = "renderGroup", at = @At("HEAD"), cancellable = true)
     private void radiante$noTerrainOverTrace(net.minecraft.client.renderer.chunk.ChunkSectionLayerGroup group,
-        com.mojang.renderpearl.api.commands.RenderPass pass, com.mojang.renderpearl.api.textures.GpuSampler sampler,
-        com.mojang.renderpearl.api.textures.GpuTextureView lightmap, boolean flag, CallbackInfo ci) {
+        com.mojang.blaze3d.systems.RenderPass pass, com.mojang.blaze3d.textures.GpuSampler sampler,
+        com.mojang.blaze3d.textures.GpuTextureView lightmap, boolean flag, CallbackInfo ci) {
         if (RadianteRenderer.isOverlayFrame()) {
             // Where the terrain would cover what was drawn before it (a mod's sky), the traced world does.
             com.g2806.radiante.client.render.ModBackdrop.restore(pass);
