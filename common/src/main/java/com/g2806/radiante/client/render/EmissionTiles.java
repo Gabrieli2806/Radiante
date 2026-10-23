@@ -390,8 +390,10 @@ public final class EmissionTiles {
             return;
         }
         float coverage = Math.max(MIN_GLOW_COVERAGE, spriteEmission / (float) (width * height));
+        // Lava lies in seas, every block of them a full light: blocks beside it were lit burning orange.
+        float scale = lava ? LAVA_CAST : 1.0f;
         for (float[] cell : cells) {
-            cell[4] /= coverage;
+            cell[4] *= scale / coverage;
         }
 
         long address = MemoryUtil.nmemAllocChecked((long) cells.size() * CELL_BYTES);
@@ -532,6 +534,9 @@ public final class EmissionTiles {
 
     /** How brightly lava's surface glows against a level 15 light's: at full it was overexposed into a pale peach. */
     private static final float LAVA_SURFACE_GLOW = 0.12f;
+
+    /** How much of a level 15 light's cast each lava block gives the blocks around it. */
+    private static final float LAVA_CAST = 0.4f;
 
     private static boolean isLava(TextureAtlasSprite sprite) {
         Identifier name = sprite.contents().name();
