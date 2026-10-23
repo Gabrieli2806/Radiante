@@ -52,15 +52,13 @@ final class BedrockPointLights {
         Block block = state.getBlock();
         int[] rgb = colourOf(block);
         if (rgb != null) {
-            if (block == Blocks.WALL_TORCH || block == Blocks.SOUL_WALL_TORCH || block == Blocks.REDSTONE_WALL_TORCH) {
-                if (block != Blocks.REDSTONE_WALL_TORCH || state.getValue(RedstoneTorchBlock.LIT)) {
-                    wallTorch(state, x, y, z, rgb[0], rgb[1], rgb[2], writer);
-                }
-            } else if (block == Blocks.REDSTONE_TORCH) {
-                if (state.getValue(RedstoneTorchBlock.LIT)) {
-                    writer.pointLight(x + 0.5f, y + 0.561f, z + 0.5f, rgb[0], rgb[1], rgb[2], CAST_STRENGTH, RADIUS);
-                }
-            } else if (block == Blocks.LANTERN || block == Blocks.SOUL_LANTERN) {
+            boolean lit = !state.hasProperty(RedstoneTorchBlock.LIT) || state.getValue(RedstoneTorchBlock.LIT);
+            if (!lit) {
+                return;
+            }
+            if (state.hasProperty(WallTorchBlock.FACING) && !(block instanceof LanternBlock)) {
+                wallTorch(state, x, y, z, rgb[0], rgb[1], rgb[2], writer);
+            } else if (block instanceof LanternBlock) {
                 float height = state.getValue(LanternBlock.HANGING) ? 0.35f : 0.198f;
                 writer.pointLight(x + 0.5f, y + height, z + 0.5f, rgb[0], rgb[1], rgb[2], CAST_STRENGTH, LANTERN_RADIUS);
             } else if (block == Blocks.END_ROD) {
@@ -80,21 +78,39 @@ final class BedrockPointLights {
      * the hand this very light, so a torch lights a cave alike held or set down.
      */
     static int[] colourOf(Block block) {
-        if (block == Blocks.TORCH || block == Blocks.WALL_TORCH || block == Blocks.LANTERN) {
-            return new int[] {255, 127, 76};
-        }
-        if (block == Blocks.REDSTONE_TORCH || block == Blocks.REDSTONE_WALL_TORCH) {
-            return new int[] {255, 51, 25};
-        }
-        // Not Bedrock's for the soul torch, which has no light of its own there: without one it lit by its few flame
-        // texels alone, far less than in the hand. It takes the soul lantern's.
-        if (block == Blocks.SOUL_LANTERN || block == Blocks.SOUL_TORCH || block == Blocks.SOUL_WALL_TORCH) {
-            return new int[] {0, 255, 255};
-        }
+        // Asked for every block of every chunk built: worked out once per block.
+        return COLOURS.computeIfAbsent(block, BedrockPointLights::colourFor).orElse(null);
+    }
+
+    private static final java.util.Map<Block, java.util.Optional<int[]>> COLOURS =
+        java.util.Collections.synchronizedMap(new java.util.IdentityHashMap<>());
+
+    private static java.util.Optional<int[]> colourFor(Block block) {
+        return java.util.Optional.ofNullable(colourOf0(block));
+    }
+
+    private static int[] colourOf0(Block block) {
         if (block == Blocks.END_ROD) {
             return new int[] {255, 255, 255};
         }
-        return null;
+        // Every torch and lantern, by its kind rather than a list of blocks: the copper torch and the copper lanterns
+        // (all their weathered and waxed forms) were left out and lit only by their flame, which the light list no
+        // longer takes for blocks with a point light, so some torches cast nothing. Not Bedrock's for the soul and
+        // copper ones, which have no light of their own there.
+        if (!(block instanceof net.minecraft.world.level.block.BaseTorchBlock) && !(block instanceof LanternBlock)) {
+            return null;
+        }
+        String name = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).getPath();
+        if (name.contains("redstone")) {
+            return new int[] {255, 51, 25};
+        }
+        if (name.contains("soul")) {
+            return new int[] {0, 255, 255};
+        }
+        if (name.contains("copper")) {
+            return new int[] {120, 255, 140};
+        }
+        return new int[] {255, 127, 76};
     }
     /** How much of a torch's strength a glow berry vine gives: gentle, there are many of them. */
     private static final float BERRY_STRENGTH = 0.6f;
