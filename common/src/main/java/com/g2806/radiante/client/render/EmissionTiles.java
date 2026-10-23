@@ -584,7 +584,7 @@ public final class EmissionTiles {
     private static final float LAVA_SURFACE_GLOW = 0.12f;
 
     /** How much of a level 15 light's cast each lava block gives the blocks around it. */
-    private static final float LAVA_CAST = 0.4f;
+    private static final float LAVA_CAST = 0.25f;
 
     private static boolean isLava(TextureAtlasSprite sprite) {
         Identifier name = sprite.contents().name();

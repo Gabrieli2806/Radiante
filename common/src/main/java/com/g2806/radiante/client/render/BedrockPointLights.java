@@ -26,7 +26,7 @@ final class BedrockPointLights {
      * is not there: side by side with Bedrock RTX, a torch lit the wall it hangs on about a third as brightly in
      * daylight, and a room lit by torches alone stayed at the eye's darkest limit, two to five times darker.)
      */
-    static final float STRENGTH = 2.0f / 25.5f * 14.0f;
+    static final float STRENGTH = 2.0f / 25.5f * 11.0f;
 
     /**
      * The strength each light is written with, and the held one's (HeldLight): STRENGTH and the share the glowing
