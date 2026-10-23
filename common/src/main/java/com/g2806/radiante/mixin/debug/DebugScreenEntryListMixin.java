@@ -5,7 +5,8 @@ import java.util.Map;
 import net.minecraft.client.gui.components.debug.DebugScreenEntryList;
 import net.minecraft.client.gui.components.debug.DebugScreenEntryStatus;
 import net.minecraft.client.gui.components.debug.DebugScreenProfile;
-import net.minecraft.resources.Identifier;
+import net.minecraft.client.gui.components.debug.DebugScreenEntry;
+import net.minecraft.resources.ResourceKey;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -22,11 +23,11 @@ public class DebugScreenEntryListMixin {
 
     @Shadow
     @Final
-    private Map<Identifier, DebugScreenEntryStatus> allStatuses;
+    private Map<ResourceKey<DebugScreenEntry>, DebugScreenEntryStatus> allStatuses;
 
     @Inject(method = "resetToProfile", at = @At("TAIL"))
     private void radiante$showRadianteEntries(DebugScreenProfile profile, CallbackInfo ci) {
-        for (Identifier id : RadianteDebugEntries.ALL) {
+        for (ResourceKey<DebugScreenEntry> id : RadianteDebugEntries.ALL) {
             this.allStatuses.putIfAbsent(id, DebugScreenEntryStatus.IN_OVERLAY);
         }
     }

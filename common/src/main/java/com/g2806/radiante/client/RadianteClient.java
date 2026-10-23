@@ -59,7 +59,6 @@ public final class RadianteClient {
         com.g2806.radiante.client.compat.litematica.LitematicaCompat.init();
         com.g2806.radiante.client.compat.distanthorizons.DistantHorizonsCompat.init();
         DevAutomation.register();
-        com.g2806.radiante.client.gui.RadianteDebugEntries.register();
         LOGGER.info("Radiante {} running on {} (Bedrock pack converter {})", RadiantePlatform.INSTANCE.modVersion(),
             RadiantePlatform.INSTANCE.loaderName(), com.g2806.radiante.client.bedrock.BedrockPackConverter.converterVersion());
     }

@@ -24,7 +24,7 @@
     "backend.VulkanQueueLockMixins$QueueMixin",
     "backend.VulkanQueueLockMixins$SubmissionMixin",
     "backend.VulkanQueueLockMixins$SurfaceMixin",
-    "debug.DebugScreenEntriesInvoker",
+    "debug.DebugScreenEntriesMixin",
     "debug.DebugScreenEntryListMixin",
     "framegen.FrameGenerationMarkerMixins$PresentMixin",
     "framegen.FrameGenerationPresentMixin",
