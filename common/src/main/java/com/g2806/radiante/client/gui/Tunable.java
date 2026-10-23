@@ -56,7 +56,7 @@ enum Tunable {
     PORTAL_TRANSPARENCY(null, "render_pipeline.module.ray_tracing.attribute.portal_transparency", 0.01, 0, 100, 50,
         Format.PERCENT),
     // How much of a rain streak shows: thin, nearly clear falling water at the default, an opaque sheet at 100%.
-    RAIN_OPACITY(null, "render_pipeline.module.ray_tracing.attribute.rain_opacity", 0.01, 0, 100, 25,
+    RAIN_OPACITY(null, "render_pipeline.module.ray_tracing.attribute.rain_opacity", 0.01, 0, 100, 0,
         Format.PERCENT),
     STARS(Pipeline.POST_RENDER_MODULE_NAME, "render_pipeline.module.post_render.attribute.star_count", 100.0, 1, 200,
         30, Format.NUMBER),

@@ -58,7 +58,7 @@ and keeps their credits and licence; what the renderer shares with them is in th
 
 - Rain is falling water: thin, nearly clear streaks that tint what is behind them a little and catch the sun, sky
   and lamps, instead of the grey, opaque streaks of vanilla's rain texture. A Rain Opacity slider sets how much of
-  each streak shows (default 25%).
+  each streak shows (default 0%, clear water that only catches the light).
 
 ### Upscaling and denoising
 

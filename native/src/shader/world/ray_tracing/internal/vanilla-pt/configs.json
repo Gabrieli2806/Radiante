@@ -452,7 +452,7 @@
         {
             "name": "render_pipeline.module.ray_tracing.attribute.rain_opacity",
             "type": "float_range:0.0-1.0",
-            "default_value": "0.25",
+            "default_value": "0.0",
             "runtime": true,
             "define": "VPT_RAIN_OPACITY"
         },

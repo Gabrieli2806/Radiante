@@ -164,7 +164,7 @@ bool bedrockHeightMapNormal(int map,
 
 // How much of a kept raindrop streak is there: 0 is invisible water, 1 the pack's rain texture as an opaque sheet.
 #ifndef VPT_RAIN_OPACITY
-#    define VPT_RAIN_OPACITY 0.25
+#    define VPT_RAIN_OPACITY 0.0
 #endif
 
 void sampleSurfaceState(bool useTexture,
