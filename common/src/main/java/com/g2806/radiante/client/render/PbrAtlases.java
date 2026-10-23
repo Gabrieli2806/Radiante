@@ -99,6 +99,7 @@ public final class PbrAtlases {
                     merStitched = stitchResource(raw.get(), entry.getValue(), rawMer, width, height, true, true);
                     hasRawMer |= merStitched;
                     if (merStitched) {
+                        EmissionTiles.softenMer(entry.getValue(), rawMer, width, height);
                         EmissionTiles.uploadFromMer(albedoTextureId, entry.getValue(), rawMer, width, height);
                     }
                 }
