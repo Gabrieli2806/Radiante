@@ -26,7 +26,7 @@ final class BedrockPointLights {
      * is not there: side by side with Bedrock RTX, a torch lit the wall it hangs on about a third as brightly in
      * daylight, and a room lit by torches alone stayed at the eye's darkest limit, two to five times darker.)
      */
-    static final float STRENGTH = 2.0f / 25.5f * 7.0f;
+    static final float STRENGTH = 2.0f / 25.5f * 14.0f;
 
     /*
      * Not Bedrock's: a torch set down lit a dark room about a quarter as much as the same torch held in the hand
@@ -90,7 +90,7 @@ final class BedrockPointLights {
         return null;
     }
     /** How much of a torch's strength a glow berry vine gives: gentle, there are many of them. */
-    private static final float BERRY_STRENGTH = 1.2f;
+    private static final float BERRY_STRENGTH = 0.6f;
 
     private static boolean isBerryVine(BlockState state) {
         Block block = state.getBlock();
