@@ -162,6 +162,11 @@ bool bedrockHeightMapNormal(int map,
 #    define VPT_PORTAL_TRANSPARENCY 0.5
 #endif
 
+// How much of a kept raindrop streak is there: 0 is invisible water, 1 the pack's rain texture as an opaque sheet.
+#ifndef VPT_RAIN_OPACITY
+#    define VPT_RAIN_OPACITY 0.25
+#endif
+
 void sampleSurfaceState(bool useTexture,
                         uint textureID,
                         TextureMapEntry textureMap,
@@ -393,8 +398,27 @@ void sampleSurfaceState(bool useTexture,
     }
 #endif
 
+    // A rain streak is falling water, not a grey slab: the stochastic any-hit decides where a streak is (by the
+    // texture's alpha and the rain's strength) and a kept one is shaded here as a thin, nearly clear, very smooth
+    // sheet of water. It lets the view through (tinted a little blue-grey, by Rain Opacity), takes the sun, the sky
+    // and the lamps as a faint glint through Fresnel, glows with nothing of its own, and keeps its face's normal.
+    // The pack's own rain texture and material are read only for the shape of the streaks.
+    bool isRainStreak = isRainSurface(g_hit.packedData);
+    if (isRainStreak) {
+        float rainOpacity = clamp(VPT_RAIN_OPACITY, 0.0, 1.0);
+        albedoValue.a = rainOpacity;
+        mat.metallic = 0.0;
+        mat.transmission = 1.0;
+        mat.albedo = mix(vec3(1.0), vec3(0.82, 0.90, 1.0), rainOpacity);
+        mat.f0 = vec3(0.02);
+        mat.roughness = 0.06;
+        mat.ior = 1.02;
+        mat.emission = 0.0;
+        shadingNormal = geometricNormal;
+    }
+
     // Rain soaks the ground under open sky: darker, glossy, and the bumps of the normal map drown.
-    if (!useWaterMaterial && !isFftWaterSurface && !g_hitIsGlass) {
+    if (!useWaterMaterial && !isFftWaterSurface && !g_hitIsGlass && !isRainStreak) {
         float wetness = vptGroundWetness(worldPos, baseGeoNormal);
         if (wetness > 0.0) {
             vptApplyGroundWetness(mat, wetness);

@@ -1397,6 +1397,7 @@ public class RadianteOptionsScreen extends Screen {
             tunable(Tunable.GLASS_REFLECTIONS, false),
             tunable(Tunable.WATER_TEXTURE, false),
             tunable(Tunable.PORTAL_TRANSPARENCY, false),
+            tunable(Tunable.RAIN_OPACITY, false),
             packToggle(Pipeline.CACHE_DEEP_BOUNCES_ATTRIBUTE, "options.radiante.cache_deep_bounces"),
             packToggle(Pipeline.BEDROCK_ONE_BOUNCE_ATTRIBUTE, "options.radiante.bedrock_one_bounce"),
             packToggle(Pipeline.TRANSPARENT_CHECKERBOARD_ATTRIBUTE, "options.radiante.transparent_checkerboard"),

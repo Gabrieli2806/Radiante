@@ -311,6 +311,8 @@
   "options.radiante.tunable.water_texture.tooltip": "资源包的水纹理在水面上显示的程度，与基岩版 RTX 一致。0% 为无纹理的清澈透明水面。",
   "options.radiante.tunable.portal_transparency": "传送门透明度",
   "options.radiante.tunable.portal_transparency.tooltip": "下界传送门保留资源包透明度的程度。100% 为资源包原样，0% 为不透明。",
+  "options.radiante.tunable.rain_opacity": "雨滴不透明度",
+  "options.radiante.tunable.rain_opacity.tooltip": "每道雨丝的可见程度。较低时为纤细、近乎透明且会反光的落水；100% 为资源包雨纹理的不透明薄片。",
   "options.radiante.tunable.texture_contrast": "材质对比度",
   "options.radiante.tunable.texture_contrast.tooltip": "方块和实体颜色在光照下的深度与对比度。100% 与基岩版 RTX 一致；调低则是早期版本较淡、较平的观感。",
   "options.radiante.renderer_profile": "渲染配置",

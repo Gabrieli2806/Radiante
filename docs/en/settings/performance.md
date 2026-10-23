@@ -16,6 +16,7 @@
 | **Mirror Smoothness Limit** | 0% – 200% | 30% | Metals at least this smooth are drawn as clean, sharp mirrors. 0% turns this off. |
 | **Glass Reflections** | 0% – 200% | 100% | How much of the sky windows show on top of what is behind them. 0% is perfectly clear glass. |
 | **Portal Transparency** | 0% – 100% | 50% | How much of the pack's see-through share a Nether portal keeps. 100% is as the resource pack draws it, 0% is opaque. |
+| **Rain Opacity** | 0% – 100% | 25% | How much of each rain streak shows. Low is thin, nearly clear falling water that catches the light; 100% is the pack's rain texture as an opaque sheet. |
 | **Cache Deep Bounces** | On / Off | On | After the first bounce, light comes from the radiance cache instead of more tracing, and bounced surfaces skip block light lookups, as in Bedrock RTX. Much faster with many lights; bounced light may look slightly softer. |
 | **One Bounce + Cache** | On / Off | Off | Like Bedrock RTX: only one bounce of light is traced everywhere, and the rest comes from the radiance cache where it lands. The biggest gain; indirect light in uncached spots is a little darker for a moment. |
 | **Glass/Water Checkerboard** | On / Off | Off | Water and glass trace either their reflection or their refraction per pixel, alternating in a checkerboard, instead of both: one ray per pixel instead of two, as Bedrock RTX does. |
