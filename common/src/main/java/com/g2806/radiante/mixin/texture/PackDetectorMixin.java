@@ -4,10 +4,8 @@ import com.g2806.radiante.client.bedrock.BedrockPackConverter;
 import com.g2806.radiante.platform.RadiantePlatform;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import net.minecraft.server.packs.FilePackResources;
 import net.minecraft.server.packs.repository.PackDetector;
-import net.minecraft.world.level.validation.ForbiddenSymlinkInfo;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -22,7 +20,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class PackDetectorMixin {
 
     @Inject(method = "detectPackResources", at = @At("HEAD"), cancellable = true)
-    private void radiante$detectBedrockPack(Path content, List<ForbiddenSymlinkInfo> issues,
+    private void radiante$detectBedrockPack(Path content,
         CallbackInfoReturnable<Object> cir) {
         if (!BedrockPackConverter.isBedrockPack(content) || !Files.isRegularFile(content)) {
             return;

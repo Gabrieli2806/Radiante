@@ -145,7 +145,7 @@ final class BiomeTour {
                     int x = from.getX() + dx * HORIZONTAL_STEP;
                     int z = from.getZ() + dz * HORIZONTAL_STEP;
                     // The cheap look first; the surface's height costs a column of terrain noise.
-                    if (!level.getUncachedNoiseBiome(x >> 2, probeY >> 2, z >> 2).is(wanted)) {
+                    if (!level.getUncachedBiome(x, probeY, z).is(wanted)) {
                         continue;
                     }
                     boolean inside = biomeIs(level, wanted, x - INSIDE_MARGIN, probeY, z)
@@ -156,7 +156,7 @@ final class BiomeTour {
                         continue;
                     }
                     int y = roofed ? probeY
-                        : generator.getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level, random);
+                        : generator.getFirstFreeHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, level, random);
                     if (y <= level.getMinY() + 1 || !biomeIs(level, wanted, x, y, z)) {
                         continue;
                     }
@@ -172,7 +172,7 @@ final class BiomeTour {
     }
 
     private static boolean biomeIs(ServerLevel level, ResourceKey<Biome> wanted, int x, int y, int z) {
-        return level.getUncachedNoiseBiome(x >> 2, y >> 2, z >> 2).is(wanted);
+        return level.getUncachedBiome(x, y, z).is(wanted);
     }
 
     /** The y of an open place to stand in a column of a roofed dimension, nearest below {@code from} first. */
