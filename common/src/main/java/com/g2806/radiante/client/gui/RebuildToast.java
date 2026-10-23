@@ -20,7 +20,7 @@ import net.minecraft.util.FormattedCharSequence;
  */
 final class RebuildToast implements Toast {
 
-    private static final Identifier BACKGROUND_SPRITE = Identifier.withDefaultNamespace("toast/system");
+    private static final Identifier BACKGROUND_SPRITE = Identifier.withDefaultNamespace("toast/advancement");
     private static final Identifier ICON =
         Identifier.fromNamespaceAndPath("radiante", "textures/gui/settings/icon.png");
     private static final int ICON_SOURCE_SIZE = 32;

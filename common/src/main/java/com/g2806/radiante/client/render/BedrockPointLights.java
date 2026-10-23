@@ -74,8 +74,8 @@ final class BedrockPointLights {
             writer.pointLight(x + 0.5f, y + 0.4f, z + 0.5f, 255, 170, 70, CAST_STRENGTH * BERRY_STRENGTH, LANTERN_RADIUS);
         } else if (block == Blocks.FIREFLY_BUSH) {
             // Not Bedrock's: the bush glows only in a few specks and lit nothing around it. A soft, greenish-yellow
-            // light of its own, half of what a berried vine gives.
-            writer.pointLight(x + 0.5f, y + 0.4f, z + 0.5f, 215, 255, 120, CAST_STRENGTH * BERRY_STRENGTH * 0.5f,
+            // light of its own, a quarter of what a berried vine gives.
+            writer.pointLight(x + 0.5f, y + 0.4f, z + 0.5f, 215, 255, 120, CAST_STRENGTH * BERRY_STRENGTH * 0.25f,
                 LANTERN_RADIUS);
         }
     }
