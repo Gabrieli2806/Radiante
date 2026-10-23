@@ -6,7 +6,7 @@ import com.g2806.radiante.mixin.render.RenderTypeAccessors.TextureBindingAccesso
 import java.util.Map;
 import com.mojang.renderpearl.api.GpuFormat;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.AbstractTexture;
+import net.minecraft.client.renderer.texture.TextureHandle;
 import net.minecraft.client.renderer.rendertype.RenderSetup;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.resources.Identifier;
@@ -97,7 +97,7 @@ public final class RenderTypeInfo {
         if (!scrolling) {
             CACHE.put(renderType, info);
             if (com.g2806.radiante.client.option.Options.debugLogging) {
-                AbstractTexture found = texture == null ? null
+                TextureHandle found = texture == null ? null
                     : Minecraft.getInstance().getTextureManager().getTexture(texture);
                 com.mojang.renderpearl.api.textures.GpuTexture gpu = found == null ? null
                     : TextureTracker.gpuTextureOrNull(found);
@@ -173,9 +173,10 @@ public final class RenderTypeInfo {
         if (this.texture == null) {
             return false;
         }
-        AbstractTexture texture = Minecraft.getInstance().getTextureManager().getTexture(this.texture);
-        return texture != null && texture.getTexture() != null
-            && texture.getTexture().getFormat() == GpuFormat.R8_UNORM;
+        TextureHandle texture = Minecraft.getInstance().getTextureManager().getTexture(this.texture);
+        com.mojang.renderpearl.api.textures.GpuTexture gpu = texture == null ? null : TextureTracker.gpuTextureOrNull(texture);
+        return gpu != null
+            && gpu.getFormat() == GpuFormat.R8_UNORM;
     }
 
     /** True when this layer samples the block atlas: a block drawn as an item, not a skin or a model texture. */
@@ -190,7 +191,7 @@ public final class RenderTypeInfo {
         }
         int id = TextureTracker.idOf(this.texture);
         if (id == 0) {
-            net.minecraft.client.renderer.texture.AbstractTexture found =
+            net.minecraft.client.renderer.texture.TextureHandle found =
                 net.minecraft.client.Minecraft.getInstance().getTextureManager().getTexture(this.texture);
             TextureTracker.reportMissing("layer " + this.name + " texture " + this.texture
                 + (found == null ? " (not registered)" : " (" + found.getClass().getSimpleName() + ")"),
