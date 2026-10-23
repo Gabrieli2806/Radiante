@@ -18,7 +18,12 @@ public class TextureTrackingMixins {
     @Mixin(VulkanDevice.class)
     public static class DeviceMixin {
 
-        @Inject(method = "createTexture(Ljava/lang/String;ILcom/mojang/blaze3d/GpuFormat;IIII)Lcom/mojang/blaze3d/textures/GpuTexture;",
+        // 26.2 port: GpuDevice.createTexture(Supplier<String> label, ...) reaches the backend through its own
+        // overload, which most textures (entity skins, atlases, glyph pages) are created by; 26.3 has only the
+        // String one. Hooking just that left nearly every texture without an id, drawn white.
+        @Inject(method = {
+            "createTexture(Ljava/lang/String;ILcom/mojang/blaze3d/GpuFormat;IIII)Lcom/mojang/blaze3d/textures/GpuTexture;",
+            "createTexture(Ljava/util/function/Supplier;ILcom/mojang/blaze3d/GpuFormat;IIII)Lcom/mojang/blaze3d/textures/GpuTexture;"},
             at = @At("RETURN"))
         private void radiante$trackTexture(CallbackInfoReturnable<GpuTexture> cir) {
             TextureTracker.onCreated(cir.getReturnValue());
