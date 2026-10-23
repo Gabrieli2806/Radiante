@@ -17,8 +17,9 @@ neoForge {
 	runs {
 		client {
 			client()
-			// Shared with the other loaders' runs, so worlds and settings carry over.
-			gameDirectory = rootProject.file('run')
+			// Its own folder, not Fabric's run: two clients on one game folder fight over the unpacked renderer, the
+			// options, the log and the world locks, so starting the loaders together left only one standing.
+			gameDirectory = rootProject.file('run-neoforge')
 			programArguments.addAll('--width', '1280', '--height', '720')
 		}
 	}

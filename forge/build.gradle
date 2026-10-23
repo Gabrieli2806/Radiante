@@ -14,8 +14,9 @@ sourceSets.main {
 minecraft {
 	runs {
 		configureEach {
-			// Shared with the other loaders' runs, so worlds and settings carry over.
-			workingDir = rootProject.layout.projectDirectory.dir('run')
+			// Its own folder, not Fabric's run: two clients on one game folder fight over the unpacked renderer, the
+			// options, the log and the world locks, so starting the loaders together left only one standing.
+			workingDir = rootProject.layout.projectDirectory.dir('run-forge')
 			args '-mixin.config=radiante.mixins.json'
 		}
 		register('client') {

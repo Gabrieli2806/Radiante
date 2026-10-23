@@ -31,7 +31,7 @@ dependencies {
 
 loom {
 	runs {
-		// Shared with the other loaders' runs, so worlds and settings carry over.
+		// Forge and NeoForge run in run-forge and run-neoforge: clients sharing a game folder cannot run together.
 		client {
 			runDir = "../run"
 		}
