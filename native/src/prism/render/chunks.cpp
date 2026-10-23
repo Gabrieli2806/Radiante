@@ -8,6 +8,7 @@
 #include <glm/gtc/packing.hpp>
 
 #include <algorithm>
+#include <array>
 #include <bit>
 #include <cassert>
 #include <cmath>
@@ -264,11 +265,34 @@ void ChunkBuildData::buildLights(const Emission *emission,
     }
     if (lights.empty()) return;
 
+    // A block with one of Bedrock's point lights (a torch, a lantern) casts its light through that alone: the glowing
+    // texels of its flame stay off the list. As candidates they outnumbered the point light twenty to one, so most
+    // surfaces picked a speck of flame and the light on the floor around a torch set down was grainy where the same
+    // torch held, a single light, was clean. Their share of the light is in the point light's strength instead
+    // (BedrockPointLights.CAST_STRENGTH).
+    auto blockOf = [](const glm::vec3 &p) {
+        const glm::ivec3 b = glm::ivec3(glm::floor(p));
+        return (static_cast<uint32_t>(b.x & 15) << 8) | (static_cast<uint32_t>(b.y & 15) << 4) |
+               static_cast<uint32_t>(b.z & 15);
+    };
+    std::array<uint64_t, 64> pointLightBlocks{};
+    bool anyPointLight = false;
+    for (const LightInfo &light : lights) {
+        if (light.kind < 1.5f) continue;
+        const uint32_t block = blockOf(light.p0);
+        pointLightBlocks[block >> 6] |= 1ull << (block & 63u);
+        anyPointLight = true;
+    }
+
     std::vector<PackedLightData> packed;
     packed.reserve(lights.size());
     const glm::vec3 origin(x, y, z);
     for (const LightInfo &light : lights) {
         if (light.area <= 1e-6f || std::max({light.radiance.r, light.radiance.g, light.radiance.b}) <= 1e-6f) continue;
+        if (anyPointLight && light.kind < 1.5f) {
+            const uint32_t block = blockOf((light.p0 + light.p1 + light.p2) / 3.0f);
+            if ((pointLightBlocks[block >> 6] >> (block & 63u)) & 1ull) continue;
+        }
         packed.push_back(packLightAt(light, origin));
     }
     if (packed.empty()) return;

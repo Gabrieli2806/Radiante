@@ -100,7 +100,7 @@ public final class HeldLight {
             // The light the same block casts set down (BedrockPointLights), on the held light's scale: the shaders
             // multiply a placed one by (100 / 12) and the Emission Brightness, a held one by 16 and the Held Light
             // Brightness, both 12 by default.
-            float scale = BedrockPointLights.STRENGTH * POINT_LIGHT_MATCH * (100.0f / 12.0f) / 16.0f / 255.0f;
+            float scale = BedrockPointLights.CAST_STRENGTH * (100.0f / 12.0f) / 16.0f / 255.0f;
             return new Vector4f(pointLight[0] * scale, pointLight[1] * scale, pointLight[2] * scale, 1.0f);
         }
         return new Vector4f(tintOf(stack).mul(STRENGTH * level / 15.0f), 1.0f);
@@ -119,11 +119,6 @@ public final class HeldLight {
         return BedrockPointLights.colourOf(blockItem.getBlock());
     }
 
-    /**
-     * A set down light also lights by the glowing texels of its flame (EmissionTiles), which a held one lacks; this
-     * is their share, measured on a stone floor at night so both light it alike from 1 to 12 blocks.
-     */
-    private static final float POINT_LIGHT_MATCH = 1.08f;
     /**
      * A set down light has no reach but the inverse square law; the held one's fade (sampleOneHeldLight) starts this
      * far out, so within the 12 blocks a torch visibly lights it takes off under a few percent.

@@ -28,6 +28,13 @@ final class BedrockPointLights {
      */
     static final float STRENGTH = 2.0f / 25.5f * 14.0f;
 
+    /**
+     * The strength each light is written with, and the held one's (HeldLight): STRENGTH and the share the glowing
+     * texels of the flame were measured to add. Those no longer light the world where a point light does (they made
+     * the light around a torch set down grainy, see ChunkBuildData::buildLights), so placed and held are one light.
+     */
+    static final float CAST_STRENGTH = STRENGTH * 1.08f;
+
     /*
      * Not Bedrock's: a torch set down lit a dark room about a quarter as much as the same torch held in the hand
      * (HeldLight), so walking in with one and putting it down made the room go dark. The 7 is the middle between the
@@ -51,20 +58,20 @@ final class BedrockPointLights {
                 }
             } else if (block == Blocks.REDSTONE_TORCH) {
                 if (state.getValue(RedstoneTorchBlock.LIT)) {
-                    writer.pointLight(x + 0.5f, y + 0.561f, z + 0.5f, rgb[0], rgb[1], rgb[2], STRENGTH, RADIUS);
+                    writer.pointLight(x + 0.5f, y + 0.561f, z + 0.5f, rgb[0], rgb[1], rgb[2], CAST_STRENGTH, RADIUS);
                 }
             } else if (block == Blocks.LANTERN || block == Blocks.SOUL_LANTERN) {
                 float height = state.getValue(LanternBlock.HANGING) ? 0.35f : 0.198f;
-                writer.pointLight(x + 0.5f, y + height, z + 0.5f, rgb[0], rgb[1], rgb[2], STRENGTH, LANTERN_RADIUS);
+                writer.pointLight(x + 0.5f, y + height, z + 0.5f, rgb[0], rgb[1], rgb[2], CAST_STRENGTH, LANTERN_RADIUS);
             } else if (block == Blocks.END_ROD) {
-                writer.pointLight(x + 0.5f, y + 0.5f, z + 0.5f, rgb[0], rgb[1], rgb[2], STRENGTH, RADIUS);
+                writer.pointLight(x + 0.5f, y + 0.5f, z + 0.5f, rgb[0], rgb[1], rgb[2], CAST_STRENGTH, RADIUS);
             } else {
-                writer.pointLight(x + 0.5f, y + 0.561f, z + 0.5f, rgb[0], rgb[1], rgb[2], STRENGTH, RADIUS);
+                writer.pointLight(x + 0.5f, y + 0.561f, z + 0.5f, rgb[0], rgb[1], rgb[2], CAST_STRENGTH, RADIUS);
             }
         } else if (isBerryVine(state)) {
             // Not Bedrock's: the berries of a glow berry vine are level 14 in vanilla and a pack lights only their few
             // texels, so a lush cave of them was dark. Each berried block gives a warm, soft light of its own.
-            writer.pointLight(x + 0.5f, y + 0.4f, z + 0.5f, 255, 170, 70, STRENGTH * BERRY_STRENGTH, LANTERN_RADIUS);
+            writer.pointLight(x + 0.5f, y + 0.4f, z + 0.5f, 255, 170, 70, CAST_STRENGTH * BERRY_STRENGTH, LANTERN_RADIUS);
         }
     }
 
@@ -107,6 +114,6 @@ final class BedrockPointLights {
         PBRVertexWriter writer) {
         Direction facing = state.getValue(WallTorchBlock.FACING);
         writer.pointLight(x + 0.5f - facing.getStepX() * 0.273f, y + 0.774f, z + 0.5f - facing.getStepZ() * 0.273f,
-            r, g, b, STRENGTH, RADIUS);
+            r, g, b, CAST_STRENGTH, RADIUS);
     }
 }
