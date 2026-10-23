@@ -9,7 +9,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.pipeline.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
@@ -301,8 +301,10 @@ final class ShareSettingsScreen extends Screen {
     // ---- drawing ----
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
-        super.extractRenderState(g, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor g) {
+        int mouseX = g.mouseX();
+        int mouseY = g.mouseY();
+        super.extractRenderState(g);
         drawSidebar(g, mouseX, mouseY);
         drawList(g, mouseX, mouseY);
         drawDetails(g);

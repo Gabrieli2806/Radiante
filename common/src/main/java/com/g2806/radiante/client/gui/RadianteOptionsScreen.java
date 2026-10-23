@@ -1752,9 +1752,10 @@ public class RadianteOptionsScreen extends Screen {
     }
 
     @Override
-    public void extractRenderState(net.minecraft.client.gui.GuiGraphicsExtractor graphics, int mouseX, int mouseY,
-        float partialTick) {
-        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+    public void extractRenderState(net.minecraft.client.gui.GuiGraphicsExtractor graphics) {
+        int mouseX = graphics.mouseX();
+        int mouseY = graphics.mouseY();
+        super.extractRenderState(graphics);
         if (this.layout != null) {
             this.layout.extract(graphics, mouseX, mouseY);
         }

@@ -159,8 +159,8 @@ public class UpscalerDownloadScreen extends Screen {
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor graphics) {
+        super.extractRenderState(graphics);
         // Above the widgets, which are centred on the screen as a block.
         ApplyingSettingsScreen.drawIcon(graphics, this.width / 2, Math.max(4, this.iconY));
         Progress current = this.progress;

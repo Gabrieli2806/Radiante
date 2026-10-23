@@ -26,13 +26,13 @@ final class ApplyingSettingsScreen extends Screen {
     }
 
     @Override
-    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+    public void extractBackground(GuiGraphicsExtractor graphics) {
         graphics.fill(0, 0, this.width, this.height, 0xFF0E1010);
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor graphics) {
+        super.extractRenderState(graphics);
         int centerX = this.width / 2;
         int centerY = this.height / 2;
         drawIcon(graphics, centerX, centerY - 62);
@@ -51,7 +51,7 @@ final class ApplyingSettingsScreen extends Screen {
 
     /** The mod's icon (the one beside its name in the settings), centred on {@code centerX} with its top at y. */
     static void drawIcon(GuiGraphicsExtractor graphics, int centerX, int y) {
-        graphics.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, ICON, centerX - ICON_SIZE / 2, y, 0.0f,
+        graphics.blit(net.minecraft.client.renderer.pipeline.RenderPipelines.GUI_TEXTURED, ICON, centerX - ICON_SIZE / 2, y, 0.0f,
             0.0f, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
     }
 
