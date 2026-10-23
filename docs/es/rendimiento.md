@@ -64,6 +64,15 @@ no hace falta tocarlos por rendimiento.
   cargarlos — un lote más pequeño reparte el trabajo en construcciones más cortas y frecuentes en
   vez de una grande que bloquea un fotograma entero.
 
+## El primer mundo tras una actualización tarda
+
+Tras una actualización (o un controlador gráfico nuevo) Radiante tiene que compilar otra vez sus shaders y pipelines de
+trazado de rayos, lo que puede tardar de unos segundos a un minuto según la GPU. Lo hace solo unos segundos después de
+que aparezca la pantalla de título, con un aviso en la esquina superior derecha que muestra el progreso, y recuerda la
+versión para la que compiló (`radiante/warmup.properties`), así que solo ocurre tras un cambio. Los menús siguen
+usables mientras tanto. Si abres un mundo antes de que termine, el mundo espera el resto en lugar de empezar de cero.
+Borrar `radiante/cache` hace que se ejecute de nuevo.
+
 ## Generación de fotogramas como alternativa
 
 Si ya tienes 60+ FPS reales y un monitor de 144 Hz o más, la

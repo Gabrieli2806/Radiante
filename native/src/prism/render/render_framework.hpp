@@ -113,6 +113,11 @@ class Framework : public SharedObject<Framework> {
 
     // Runs the rebuild a setting asked for, if one is pending, rather than leaving it to the next frame.
     void recreatePending();
+    // Builds the world pipeline now, at the given trace size, when nothing has built it yet or a change is pending:
+    // the title screen's warm-up, so the first world frame finds the shaders and ray tracing pipelines compiled
+    // instead of spending many seconds on them. Waits for (and so shares the result of) a frame or rebuild already
+    // running; does nothing when the pipeline is up to date. False when the build failed.
+    bool warmUp(uint32_t traceWidth, uint32_t traceHeight);
     // Also destroys everything retired so far (gpu::retire::drain).
     void waitDeviceIdle();
     void waitRenderQueueIdle();

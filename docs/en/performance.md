@@ -63,6 +63,15 @@ them for performance.
   load — a smaller batch spreads the work into shorter, more frequent builds instead of one large one
   that blocks a whole frame.
 
+## The first world after an update takes a while
+
+After an update (or a new graphics driver) Radiante has to compile its shaders and ray tracing pipelines again, which
+can take from several seconds to a minute depending on the GPU. It does this by itself a few seconds after the title
+screen shows, with a popup in the top right corner showing the progress, and remembers the build it compiled for
+(`radiante/warmup.properties`), so it only happens after a change. The menus stay usable meanwhile. If you open a
+world before it finishes, the world waits for the rest instead of starting over. Deleting `radiante/cache` makes it
+run again.
+
 ## Frame Generation as an alternative
 
 If you already get 60+ real FPS on a 144 Hz or faster monitor,

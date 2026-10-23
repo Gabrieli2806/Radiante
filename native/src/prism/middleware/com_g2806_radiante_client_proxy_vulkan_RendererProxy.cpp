@@ -284,6 +284,19 @@ JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_RendererProxy
     });
 }
 
+// The title screen's warm-up: builds the world pipeline on the calling thread (a worker; the render thread keeps
+// drawing the menus) so its shaders and ray tracing pipelines are compiled before the first world.
+JNIEXPORT jboolean JNICALL Java_com_g2806_radiante_client_proxy_vulkan_RendererProxy_warmUpPipeline(JNIEnv *,
+                                                                                                    jclass,
+                                                                                                    jint width,
+                                                                                                    jint height) {
+    return jni::boolean(jni::guard("[Radiante] pipeline warm-up", false, [=] {
+        auto framework = jni::framework();
+        return framework != nullptr && framework->warmUp(static_cast<uint32_t>(std::max(width, 0)),
+                                                        static_cast<uint32_t>(std::max(height, 0)));
+    }));
+}
+
 // 0-100 while the shaders compile, then 1000-1100 while the passes' pipelines are created from them.
 JNIEXPORT jint JNICALL Java_com_g2806_radiante_client_proxy_vulkan_RendererProxy_rebuildProgress(JNIEnv *, jclass) {
     const uint32_t passes = Pipeline::rebuildPassesTotal.load();
