@@ -967,7 +967,7 @@ public class RadianteOptionsScreen extends Screen {
             },
             new OptionInstance.IntRange(tunable.min, tunable.max, false), current, value -> {
                 this.pendingTunables.put(tunable, value);
-                if (PROFILE_SETTINGS.contains(tunable.key())) {
+                if (PROFILE_SETTINGS.contains(tunable.key()) || tunableManaged(tunable)) {
                     leaveProfile();
                 }
                 if (affectsStyle) {
@@ -1102,13 +1102,14 @@ public class RadianteOptionsScreen extends Screen {
             tooltip("options.radiante.renderer_profile"),
             (caption, value) -> Component.translatable("options.radiante.renderer_profile." + value.name().toLowerCase(java.util.Locale.ROOT)),
             new OptionInstance.Enum<>(this.pendingProfile == RendererProfile.CUSTOM
-                    ? List.of(RendererProfile.BEDROCK_RTX_ENHANCED, RendererProfile.CUSTOM)
-                    : List.of(RendererProfile.BEDROCK_RTX_ENHANCED),
+                    ? List.of(RendererProfile.BEDROCK_RTX_ENHANCED, RendererProfile.REALISTIC, RendererProfile.CUSTOM)
+                    : List.of(RendererProfile.BEDROCK_RTX_ENHANCED, RendererProfile.REALISTIC),
                 Codec.STRING.xmap(RendererProfile::of, RendererProfile::name)),
             this.pendingProfile,
             value -> {
                 this.pendingProfile = value;
                 adoptProfileSwitches();
+                adoptProfileTunables();
                 // Fog Style is only offered outside Bedrock RTX: the list is laid out again.
                 refreshQualityLater();
             });
@@ -1556,7 +1557,8 @@ public class RadianteOptionsScreen extends Screen {
                     return null;
                 }
                 String profileSwitch = PROFILE_SWITCHES.get(optionKey);
-                if ((pendingProfile.isBedrock() && PROFILE_SETTINGS.contains(optionKey))
+                if ((pendingProfile.isBedrock() && (PROFILE_SETTINGS.contains(optionKey)
+                    || realisticManages(optionKey)))
                     || (profileSwitch != null && pendingProfile.managedValue(profileSwitch) != null)) {
                     return Component.translatable("options.radiante.notice.profile", profileName(pendingProfile));
                 }
@@ -1635,6 +1637,45 @@ public class RadianteOptionsScreen extends Screen {
         O + "bedrock_materials", Pipeline.BEDROCK_MATERIALS_ATTRIBUTE,
         O + "atmosphere_style", Pipeline.BEDROCK_ATMOSPHERE_ATTRIBUTE);
 
+    /** A slider the chosen profile sets (the Realistic profile's extra rows; the Enhanced ones are PROFILE_SETTINGS). */
+    private boolean tunableManaged(Tunable tunable) {
+        return this.pendingProfile == RendererProfile.REALISTIC && this.pendingProfile.managedValue(tunable.attribute) != null;
+    }
+
+    private boolean realisticManages(String optionKey) {
+        if (this.pendingProfile != RendererProfile.REALISTIC) {
+            return false;
+        }
+        for (Tunable tunable : Tunable.values()) {
+            if (tunable.key().equals(optionKey) && tunableManaged(tunable)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** A profile was picked: the sliders it sets show what it sets them to, and the ones it leaves go back to the values the other profile had. */
+    private void adoptProfileTunables() {
+        if (this.pendingTunables == null) {
+            return;
+        }
+        for (Tunable tunable : Tunable.values()) {
+            if (!this.pendingTunables.containsKey(tunable)) {
+                continue;
+            }
+            String managed = this.pendingProfile.managedValue(tunable.attribute);
+            if (managed == null) {
+                continue;
+            }
+            try {
+                int steps = (int) Math.round(Double.parseDouble(managed.trim()) / tunable.unit);
+                this.pendingTunables.put(tunable, Math.max(tunable.min, Math.min(tunable.max, steps)));
+            } catch (NumberFormatException notANumber) {
+                // A managed value that is not a number (a mode) has no slider.
+            }
+        }
+    }
+
     /** A switch was flipped by hand: against what the chosen profile sets it to, the profile becomes Custom. */
     private void profileSwitchChanged(String attribute, boolean on) {
         String managed = this.pendingProfile.managedValue(attribute);
@@ -1669,7 +1710,7 @@ public class RadianteOptionsScreen extends Screen {
     /** Bedrock's fog volume is what fogs the air, as things are chosen here. */
     private boolean bedrockFog() {
         return switch (this.pendingProfile) {
-            case BEDROCK_RTX_ENHANCED -> true;
+            case BEDROCK_RTX_ENHANCED, REALISTIC -> true;
             case CUSTOM -> packToggleOn("render_pipeline.module.ray_tracing.attribute.bedrock_volumetric_fog");
         };
     }

@@ -15,6 +15,10 @@ import java.util.Map;
  * tone mapping as calibrated to Bedrock RTX, its materials, water, glass and fog; see {@link BedrockRtxProfile})
  * with a few things on top that look better than Bedrock RTX; what Bedrock does is kept everywhere else. Today:
  * light blocks whose pack gives them little glow look lit by their own light, and the end portal glows.
+ * <li>{@link #REALISTIC}: the Enhanced profile (so the Bedrock materials, exposure and fog machinery are all in
+ * place) with the settings that make a picture read as plastic or toy-like set the other way: less ambient and bounce
+ * fill, a steeper tone curve, calmer colour and bloom, rougher-looking water and glass. See {@link #REALISTIC_VALUES}
+ * for every value and the reason for it.
  * <li>{@link #CUSTOM}: the profile's values with some of them changed by hand. It writes nothing and holds nothing:
  * every attribute stays as it is. The settings screen turns the profile into this the moment one of the settings it
  * manages is changed, so the change is kept instead of being written over on the next build.
@@ -28,6 +32,7 @@ import java.util.Map;
  */
 public enum RendererProfile {
     BEDROCK_RTX_ENHANCED,
+    REALISTIC,
     CUSTOM;
 
     /** The profile saved in the options; {@link #BEDROCK_RTX_ENHANCED} when it is missing, unknown or removed. */
@@ -38,6 +43,9 @@ public enum RendererProfile {
     public static RendererProfile of(String name) {
         if (name != null && name.trim().equalsIgnoreCase(CUSTOM.name())) {
             return CUSTOM;
+        }
+        if (name != null && name.trim().equalsIgnoreCase(REALISTIC.name())) {
+            return REALISTIC;
         }
         return BEDROCK_RTX_ENHANCED;
     }
@@ -67,6 +75,53 @@ public enum RendererProfile {
         Pipeline.FACE_SHADING_ATTRIBUTE, FALSE);
 
     private static final String TONE = "render_pipeline.module.tone_mapping.attribute.";
+
+    private static final String RT = "render_pipeline.module.ray_tracing.attribute.";
+
+    /**
+     * What {@link #REALISTIC} sets on top of the Enhanced profile: the attribute, the value, the value it has under
+     * the Enhanced profile when that profile does not set it itself (so that going back to Enhanced restores it; the
+     * shader pack's or the module's default), and why. An attribute the Enhanced profile does set takes the
+     * realistic value instead of its own.
+     */
+    public record Override(String attribute, String value, String enhanced, String reason) {
+    }
+
+    /** See {@link Override}. */
+    public static final java.util.List<Override> REALISTIC_VALUES = java.util.List.of(
+        // ---- light: less fill, so shadows keep their depth and a lit room falls off the way light does
+        new Override(RT + "bounce_light_boost", "0.8", "1.5",
+            "bounced light below the default's lift: the default fills every shadow like a second light"),
+        new Override(RT + "sky_light_boost", "1.0", "1.8",
+            "the sky's light at its own strength: the default adds an even blue-white ambient that flattens shade"),
+        new Override(RT + "exposure_day_scale", "0.42", "0.48",
+            "a touch less daylight brightness, so skies and snow keep detail instead of sitting near white"),
+        new Override(RT + "light_shafts", "0.008", "0.015",
+            "half the light shafts: haze that glows everywhere reads as a soft-focus filter"),
+        new Override(RT + "sun_glow", "0.04", "0.08",
+            "half the glow around the sun, which blooms into a milky halo"),
+        // ---- materials and water
+        new Override(RT + "mirror_max_roughness", "0.02", "0.03",
+            "only truly polished metal is a clean mirror; slightly rough metal reads as metal, not chrome"),
+        new Override(RT + "water_surface_mode", RT + "water_surface_mode.realistic",
+            RT + "water_surface_mode.bedrock",
+            "finer, irregular waves instead of Bedrock's magnified water texture, whose pixels show at grazing angles"),
+        new Override(RT + "water_wave_strength", "0.5", "0.35",
+            "waves strong enough to break the mirror into ripples"),
+        new Override(RT + "water_texture_layer", "0.4", "1.0",
+            "the pack's water pattern only faintly, so the surface is not uniformly speckled"),
+        // ---- tone: Bedrock's filmic curve with more contrast, calm colour, no glow, an eye that adapts like one
+        new Override(TONE + "contrast", "1.08", "1.0",
+            "more separation between light and dark about middle grey"),
+        new Override(TONE + "saturation", "0.92", "1.0",
+            "colour a little below the textures' own, which look like toy plastic at full strength"),
+        new Override(TONE + "bloom_intensity", "0.004", "0.01",
+            "bloom almost off: a cinematic glow around everything is the soft, plastic look"),
+        new Override(TONE + "exposure_up_speed", "4.0", "8.0",
+            "opening up in the dark takes a moment, as an eye does"),
+        new Override(TONE + "exposure_down_speed", "6.0", "8.0",
+            "closing in the light is quicker than opening in the dark")
+    );
 
     /**
      * The profile's exposure and tone mapping: Bedrock RTX's own values
@@ -99,6 +154,10 @@ public enum RendererProfile {
      * of being written over without a word.
      */
     public String managedValue(String attribute) {
+        Override realistic = realisticOverride(attribute);
+        if (realistic != null) {
+            return realistic.value();
+        }
         if (isBedrock() && attribute.equals(ENHANCED_ATTRIBUTE)) {
             return TRUE;
         }
@@ -118,7 +177,57 @@ public enum RendererProfile {
         return null;
     }
 
+    /** The Realistic profile's row for the attribute while this profile is Realistic; otherwise null. */
+    private Override realisticOverride(String attribute) {
+        if (this != REALISTIC) {
+            return null;
+        }
+        for (Override row : REALISTIC_VALUES) {
+            if (row.attribute().equals(attribute)) {
+                return row;
+            }
+        }
+        return null;
+    }
+
+    /** Whether the Realistic profile sets the attribute (whatever profile is chosen now). */
+    public static boolean realisticSets(String attribute) {
+        return REALISTIC.realisticOverride(attribute) != null;
+    }
+
+    private static boolean isToneAttribute(String attribute) {
+        return attribute.startsWith(TONE);
+    }
+
+    private static boolean writeAttribute(String attribute, String value) {
+        return isToneAttribute(attribute) ? Pipeline.setModuleValue(Pipeline.TONE_MAPPING_MODULE_NAME, attribute, value)
+            : Pipeline.setShaderPackValue(attribute, value);
+    }
+
+    private static boolean tableHas(String attribute) {
+        return BedrockRtxProfile.PARAMETERS.stream().anyMatch(p -> p.attribute().equals(attribute))
+            || ORIGINAL_TONE_VALUES.containsKey(attribute) || ORIGINAL_VALUES.containsKey(attribute);
+    }
+
+    /**
+     * The Realistic rows no table covers (the Enhanced profile leaves them to the player): written here when the
+     * profile is Realistic, and set back to their Enhanced value when the profile that replaces Realistic is not.
+     */
+    private boolean setRealisticExtras(boolean restore) {
+        boolean changed = false;
+        for (Override row : REALISTIC_VALUES) {
+            if (!tableHas(row.attribute())) {
+                changed |= writeAttribute(row.attribute(), restore ? row.enhanced() : row.value());
+            }
+        }
+        return changed;
+    }
+
     private String valueFor(CompatParameter parameter) {
+        Override realistic = realisticOverride(parameter.attribute());
+        if (realistic != null) {
+            return realistic.value();
+        }
         if (isBedrock() && ORIGINAL_TONE_VALUES.containsKey(parameter.attribute())) {
             return ORIGINAL_TONE_VALUES.get(parameter.attribute());
         }
@@ -134,8 +243,13 @@ public enum RendererProfile {
         for (Map.Entry<String, String> value : ORIGINAL_TONE_VALUES.entrySet()) {
             boolean shared = BedrockRtxProfile.PARAMETERS.stream().anyMatch(p -> p.attribute().equals(value.getKey()));
             if (!shared) {
-                changed |= Pipeline.setModuleValue(Pipeline.TONE_MAPPING_MODULE_NAME, value.getKey(), value.getValue());
+                Override realistic = realisticOverride(value.getKey());
+                changed |= Pipeline.setModuleValue(Pipeline.TONE_MAPPING_MODULE_NAME, value.getKey(),
+                    realistic != null ? realistic.value() : value.getValue());
             }
+        }
+        if (this == REALISTIC) {
+            changed |= setRealisticExtras(false);
         }
         return changed;
     }
@@ -183,6 +297,9 @@ public enum RendererProfile {
             return false;
         }
         boolean changed = setOriginalMode();
+        if (this != REALISTIC && RendererProfile.current() == REALISTIC) {
+            changed |= setRealisticExtras(true);
+        }
         changed |= setOriginalToneExtras();
         for (CompatParameter parameter : BedrockRtxProfile.PARAMETERS) {
             String value = valueFor(parameter);

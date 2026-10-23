@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [1.0.1] - Unreleased
+
+### Renderer profiles
+
+- New Realistic profile (Settings > Image > Renderer Profile), next to Bedrock RTX (Enhanced) and Custom. It is
+  Bedrock RTX (Enhanced) with the settings that make a picture look like plastic set the other way: bounce light 0.8
+  and sky light 1.0 (less ambient fill), daylight exposure 0.42, contrast 1.08, saturation 92 %, bloom 0.004, light
+  shafts and sun glow halved, water waves 0.5 with the realistic surface and a 40 % water pattern, mirror roughness
+  limit 0.02, slower eye adaptation. Enhanced is unchanged.
+
 ## [1.0.0] - 2026-10-20
 
 First stable release of Radiante with its own renderer, PrismRT. Radiante began as a fork of Radiance and MCVR (GPL-3.0)
