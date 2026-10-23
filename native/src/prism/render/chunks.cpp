@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
+#include <functional>
 #include <iostream>
 #include <span>
 #include <unordered_map>
@@ -296,6 +297,26 @@ void ChunkBuildData::buildLights(const Emission *emission,
         packed.push_back(packLightAt(light, origin));
     }
     if (packed.empty()) return;
+
+    // A shader picks a light of a section's list at random, each as likely as the next. Beside the hundreds of
+    // glowing texels of a nether portal a torch was one among hundreds, all but never picked, and the floor around it
+    // stayed dark. Each point light is listed that many times over, up to about as many entries as the rest, each
+    // with its share of the light: the same light in all, picked as often as the others together.
+    const auto isPoint = [](const PackedLightData &light) { return light.radiance.w > 1.5f; };
+    const auto others = static_cast<size_t>(std::count_if(packed.begin(), packed.end(), std::not_fn(isPoint)));
+    const size_t points = packed.size() - others;
+    if (points > 0 && others > points) {
+        constexpr size_t kMaxCopies = 64;
+        const size_t copies = std::min((others + points - 1) / points, kMaxCopies);
+        const size_t count = packed.size();
+        packed.reserve(others + points * copies);
+        for (size_t i = 0; i < count; i++) {
+            if (!isPoint(packed[i])) continue;
+            const glm::vec4 radiance = packed[i].radiance;
+            packed[i].radiance = glm::vec4(glm::vec3(radiance) / static_cast<float>(copies), radiance.w);
+            for (size_t copy = 1; copy < copies; copy++) packed.push_back(packed[i]);
+        }
+    }
 
     lightCount = static_cast<uint32_t>(packed.size());
     const size_t bytes = packed.size() * sizeof(PackedLightData);
