@@ -99,6 +99,7 @@ public final class PbrAtlases {
                     merStitched = stitchResource(raw.get(), entry.getValue(), rawMer, width, height, true, true);
                     hasRawMer |= merStitched;
                     if (merStitched) {
+                        EmissionTiles.softenMer(entry.getValue(), rawMer, width, height);
                         EmissionTiles.uploadFromMer(albedoTextureId, entry.getValue(), rawMer, width, height);
                     }
                 }
@@ -107,6 +108,7 @@ public final class PbrAtlases {
                 if (any) {
                     EmissionTiles.keepSetGlow(entry.getValue(), specular, width, height);
                     EmissionTiles.keepVisibleGlow(entry.getValue(), specular, derivedGlow, width, height);
+                    EmissionTiles.softenSpecular(entry.getValue(), specular, width, height);
                 }
                 any |= stitch(resources, entry.getKey(), entry.getValue(), "_n", normal, width, height);
                 if (any) {
