@@ -94,6 +94,16 @@ float vptBlockLightDiffuseWeight(LabPBRMat mat) {
  * shadow ray to the winner (or leaves it to the end of the hit shader, see pt_deferred_shadow.glsl, and returns
  * nothing yet).
  */
+/**
+ * How much of a block light still reaches this far. A surface only looks for lights in its own section and the
+ * ones next to it, so a light was felt in full up to that edge and not at all a block past it: a Nether lava sea
+ * lit every wall up to y 47 orange and none from y 48, a hard line across the cavern. The light now fades out
+ * before the edge of what is searched, so nothing ends at a section line.
+ */
+float vptLightRangeFade(float distance) {
+    return 1.0 - smoothstep(10.0, 16.0, distance);
+}
+
 vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, vec3 viewDir, LabPBRMat mat,
                       bool lean) {
     if (worldUBO.blockLightSampling == 0u) { return vec3(0.0); }
@@ -147,7 +157,8 @@ vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, v
         float cosSurface = dot(dir, shadingNormal);
         float cosLight = pointLight ? 1.0 : dot(light.normal.xyz, -dir);
         if (cosSurface <= 0.0 || cosLight <= 0.0) { continue; }
-        float falloff = pointLight ? vptPointLightFalloff(light, worldPos) : cosLight / distance2;
+        float falloff = (pointLight ? vptPointLightFalloff(light, worldPos) : cosLight / distance2) *
+                        vptLightRangeFade(lightDistance);
 
         vec3 contribution = vptCastLight(light.radiance, light.p0Area.w) * diffuse * (cosSurface * falloff);
         float target = dot(contribution, vec3(0.2126, 0.7152, 0.0722));
@@ -303,7 +314,8 @@ float vptRestirTarget(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, v
     float cosSurface = dot(dir, shadingNormal);
     float cosLight = pointFalloff >= 0.0 ? 1.0 : dot(lightNormal, -dir);
     if (cosSurface <= 0.0 || cosLight <= 0.0) { return 0.0; }
-    contribution = radiance * diffuse * (cosSurface * (pointFalloff >= 0.0 ? pointFalloff : cosLight / distance2));
+    contribution = radiance * diffuse *
+                   (cosSurface * (pointFalloff >= 0.0 ? pointFalloff : cosLight / distance2) * vptLightRangeFade(distance));
     return dot(contribution, vec3(0.2126, 0.7152, 0.0722));
 }
 
