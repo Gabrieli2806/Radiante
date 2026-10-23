@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.option.Options;
+import com.g2806.radiante.client.render.RadianteRenderer;
 import net.minecraft.client.PreferredGraphicsApi;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.MultiLineTextWidget;
@@ -10,9 +11,10 @@ import net.minecraft.network.chat.Component;
 
 /**
  * Shown once when the ray tracer cannot start on this machine. Saying nothing would leave the player with a game
- * that looks like vanilla and no idea why, so this explains it. There are two reasons it can happen and they need
- * different answers: a graphics card that cannot ray trace at all, or a game that was told to run on OpenGL, where
- * the choice is simply the wrong one and switching back to Vulkan fixes it.
+ * that looks like vanilla and no idea why, so this explains it, by the cause that was actually met: the game put on
+ * OpenGL by the player, OpenGL forced for one session after a start that never finished (often a second instance
+ * opened at the same time), a graphics card that cannot ray trace, or a renderer that failed to start on one that
+ * can. Each was once told as an unsupported graphics card.
  */
 public class UnsupportedHardwareScreen extends Screen {
 
@@ -20,18 +22,46 @@ public class UnsupportedHardwareScreen extends Screen {
 
     private static boolean shown;
 
-    private final Screen parent;
-    private final boolean onOpenGl;
+    private enum Reason {
+        OPENGL("opengl"),
+        FAILED_START("failed_start"),
+        NO_RAY_TRACING(""),
+        INIT_FAILED("init_failed");
 
-    public UnsupportedHardwareScreen(Screen parent) {
-        super(Component.translatable(onOpenGl() ? "screen.radiante.unsupported.title.opengl"
-            : "screen.radiante.unsupported.title"));
-        this.parent = parent;
-        this.onOpenGl = onOpenGl();
+        private final String suffix;
+
+        Reason(String suffix) {
+            this.suffix = suffix;
+        }
+
+        String key(String base) {
+            return this.suffix.isEmpty() ? base : base + "." + this.suffix;
+        }
     }
 
-    /** True when the game is on OpenGL, which is a setting rather than a limit of the machine. */
-    private static boolean onOpenGl() {
+    private final Screen parent;
+    private final Reason reason;
+
+    public UnsupportedHardwareScreen(Screen parent) {
+        this(parent, reason());
+    }
+
+    private UnsupportedHardwareScreen(Screen parent, Reason reason) {
+        super(Component.translatable(reason.key("screen.radiante.unsupported.title")));
+        this.parent = parent;
+        this.reason = reason;
+    }
+
+    private static Reason reason() {
+        return switch (RadianteRenderer.failure()) {
+            case NO_RAY_TRACING -> Reason.NO_RAY_TRACING;
+            case INIT_FAILED -> Reason.INIT_FAILED;
+            case NOT_VULKAN -> choseOpenGl() || !Options.openGlAfterFailedStart ? Reason.OPENGL : Reason.FAILED_START;
+        };
+    }
+
+    /** True when the player put the game on OpenGL, a setting rather than a limit of the machine. */
+    private static boolean choseOpenGl() {
         if (Options.useOpenGl) {
             return true;
         }
@@ -55,28 +85,31 @@ public class UnsupportedHardwareScreen extends Screen {
         layout.defaultCellSetting().alignHorizontallyCenter();
 
         layout.addChild(new MultiLineTextWidget(this.title, this.font).setMaxWidth(320).setCentered(true));
-        layout.addChild(new MultiLineTextWidget(Component.translatable(this.onOpenGl
-            ? "screen.radiante.unsupported.message.opengl" : "screen.radiante.unsupported.message"), this.font)
+        layout.addChild(new MultiLineTextWidget(
+            Component.translatable(this.reason.key("screen.radiante.unsupported.message")), this.font)
             .setMaxWidth(320).setCentered(true));
 
-        if (this.onOpenGl) {
-            layout.addChild(Button.builder(Component.translatable("screen.radiante.unsupported.vulkan"), button -> {
-                this.minecraft.options.preferredGraphicsBackend().set(PreferredGraphicsApi.VULKAN);
-                Options.useOpenGl = false;
-                Options.overwriteConfig();
-                this.minecraft.options.save();
-                this.minecraft.gui.setScreen(new OpenGlSwitchedScreen(this.parent, true));
-            }).width(WIDGET_WIDTH).build());
-            layout.addChild(Button.builder(Component.translatable("screen.radiante.unsupported.continue"),
-                button -> this.onClose()).width(WIDGET_WIDTH).build());
-        } else {
-            layout.addChild(Button.builder(Component.translatable("screen.radiante.unsupported.continue"),
-                button -> this.onClose()).width(WIDGET_WIDTH).build());
-            layout.addChild(Button.builder(Component.translatable("screen.radiante.unsupported.opengl"), button -> {
-                Options.useOpenGl = true;
-                Options.overwriteConfig();
-                this.minecraft.gui.setScreen(new OpenGlSwitchedScreen(this.parent, false));
-            }).width(WIDGET_WIDTH).build());
+        switch (this.reason) {
+            case OPENGL -> {
+                layout.addChild(Button.builder(Component.translatable("screen.radiante.unsupported.vulkan"), button -> {
+                    this.minecraft.options.preferredGraphicsBackend().set(PreferredGraphicsApi.VULKAN);
+                    Options.useOpenGl = false;
+                    Options.overwriteConfig();
+                    this.minecraft.options.save();
+                    this.minecraft.gui.setScreen(new OpenGlSwitchedScreen(this.parent, true));
+                }).width(WIDGET_WIDTH).build());
+                layout.addChild(continueButton());
+            }
+            case NO_RAY_TRACING -> {
+                layout.addChild(continueButton());
+                layout.addChild(Button.builder(Component.translatable("screen.radiante.unsupported.opengl"), button -> {
+                    Options.useOpenGl = true;
+                    Options.overwriteConfig();
+                    this.minecraft.gui.setScreen(new OpenGlSwitchedScreen(this.parent, false));
+                }).width(WIDGET_WIDTH).build());
+            }
+            // Nothing to switch: a restart is all it takes.
+            case FAILED_START, INIT_FAILED -> layout.addChild(continueButton());
         }
 
         layout.arrangeElements();
@@ -84,6 +117,10 @@ public class UnsupportedHardwareScreen extends Screen {
         layout.setPosition(this.width / 2 - layout.getWidth() / 2, this.height / 2 - layout.getHeight() / 2);
     }
 
+    private Button continueButton() {
+        return Button.builder(Component.translatable("screen.radiante.unsupported.continue"),
+            button -> this.onClose()).width(WIDGET_WIDTH).build();
+    }
 
     @Override
     public void onClose() {
