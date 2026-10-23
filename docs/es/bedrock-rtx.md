@@ -61,6 +61,8 @@ volumen de niebla propio de Bedrock, agua más densa y las cáusticas de Bedrock
 un `.mcpack`; los dos juntos son lo más cercano a Bedrock RTX. **Radiante** es el aspecto de
 siempre.
 
+El perfil **Realista** parte del mismo aspecto y pone menos luz de relleno, más contraste, color más calmado y agua más fina para que nada parezca de plástico.
+
 ## Cielo y cáusticas de una instalación de Bedrock
 
 Con el ajuste **Atmósfera** en "Bedrock" (categoría [Cielo, Niebla y Agua](opciones/cielo-niebla-agua.md)),

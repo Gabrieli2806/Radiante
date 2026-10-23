@@ -19,6 +19,8 @@ public class UpscalerDownloadScreen extends Screen {
     public enum Mode {
         /** Offered on startup: download, not now, or never ask again. */
         OFFER,
+        /** An installed one has a newer version: update, not now, or skip this version. */
+        UPDATE,
         /** Chosen in the settings: download or cancel. */
         CONFIRM,
         /** Delete or cancel. */
@@ -122,17 +124,25 @@ public class UpscalerDownloadScreen extends Screen {
             layout.addChild(Button.builder(text("gui.cancel"), button -> this.onClose()).width(WIDGET_WIDTH).build());
         } else {
             long megabytes = Math.round(this.component.downloadBytes / 1_000_000.0);
-            layout.addChild(new MultiLineTextWidget(text("screen.radiante.download." + this.component.id + ".message",
-                megabytes), this.font).setMaxWidth(320).setCentered(true));
-            layout.addChild(Button.builder(text("screen.radiante.download.start", megabytes), button -> {
+            boolean update = this.mode == Mode.UPDATE;
+            layout.addChild(new MultiLineTextWidget(text("screen.radiante.download." + this.component.id
+                + (update ? ".update" : ".message"), update ? this.component.version : megabytes, megabytes),
+                this.font).setMaxWidth(320).setCentered(true));
+            layout.addChild(Button.builder(text(update ? "screen.radiante.download.update"
+                : "screen.radiante.download.start", megabytes), button -> {
                 this.progress = UpscalerDownloads.start(this.component);
                 this.rebuildWidgets();
             }).width(WIDGET_WIDTH).build());
-            if (this.mode == Mode.OFFER) {
+            if (this.mode == Mode.OFFER || update) {
                 layout.addChild(Button.builder(text("screen.radiante.download.later"), button -> this.onClose())
                     .width(WIDGET_WIDTH).build());
-                layout.addChild(Button.builder(text("screen.radiante.download.never"), button -> {
-                    UpscalerDownloads.setDeclined(this.component, true);
+                layout.addChild(Button.builder(text(update ? "screen.radiante.download.skip_update"
+                    : "screen.radiante.download.never"), button -> {
+                    if (update) {
+                        UpscalerDownloads.skipUpdate(this.component);
+                    } else {
+                        UpscalerDownloads.setDeclined(this.component, true);
+                    }
                     this.onClose();
                 }).width(WIDGET_WIDTH).build());
             } else {

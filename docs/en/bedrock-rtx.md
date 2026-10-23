@@ -54,7 +54,7 @@ the rest of the look closer to Bedrock RTX: bloom, a Bedrock-style tone curve bu
 picture's histogram, exposure metered on the light reaching the surfaces in view, exact sRGB
 colours, Bedrock's glass and water reflections, sunlight filtered by glass, Bedrock's own fog
 volume, denser water and Bedrock's caustics. It works with or without a `.mcpack`; the two
-together are the closest to Bedrock RTX. **Radiante** is the look Radiante has always had.
+together are the closest to Bedrock RTX. The **Realistic** profile starts from the same look and sets less fill light, more contrast, calmer colour and finer water so that nothing looks like plastic.
 
 ## Sky and caustics from a Bedrock install
 
