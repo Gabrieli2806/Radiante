@@ -34,7 +34,8 @@ public final class Glow {
     public static final float WITHER_ARMOR = FULL * 2.0f;
     /** The flames on a burning entity. */
     public static final float ENTITY_FLAME = FULL * 3.0f;
-    public static final float BEACON_BEAM = FULL * 5.0f;
+    /** Bright enough to stand out at night, not to light up everything around it as five lava blocks did. */
+    public static final float BEACON_BEAM = FULL * 1.5f;
     public static final float LIGHTNING = FULL * 10.0f;
 
     private Glow() {
