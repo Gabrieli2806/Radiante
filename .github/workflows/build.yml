@@ -235,16 +235,25 @@ jobs:
             /^## / { if (found) exit; if (index($0, "[" v "]")) { found = 1; next } }
             found { print }' changelog.md > notes.md || true
           test -s notes.md || echo "Radiante ${{ needs.version.outputs.mod }}" > notes.md
-          ls dist/radiante-${{ matrix.loader }}-*.jar
+      # A branch that builds only some loaders (the port to a snapshot is Fabric only) skips the others.
+      - id: jar
+        run: |
+          if ls dist/radiante-${{ matrix.loader }}-*.jar >/dev/null 2>&1; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "No ${{ matrix.name }} jar in this build: not published."
+          fi
       - uses: Kir-Antipov/mc-publish@v3.3.1
+        if: steps.jar.outputs.found == 'true'
         with:
           modrinth-id: ${{ vars.MODRINTH_ID }}
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
           curseforge-id: ${{ vars.CURSEFORGE_ID }}
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
           files: dist/radiante-${{ matrix.loader }}-*.jar
-          name: Radiante ${{ needs.version.outputs.mod }} (${{ matrix.name }})
-          version: ${{ needs.version.outputs.mod }}+${{ matrix.loader }}
+          name: Radiante ${{ needs.version.outputs.mod }} for ${{ needs.version.outputs.mc }} (${{ matrix.name }})
+          version: ${{ needs.version.outputs.mod }}+${{ needs.version.outputs.mc }}-${{ matrix.loader }}
           version-type: ${{ needs.version.outputs.type }}
           loaders: ${{ matrix.loader }}
           game-versions: ${{ needs.version.outputs.mc }}

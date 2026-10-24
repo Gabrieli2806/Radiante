@@ -1,0 +1,58 @@
+name: Bug report
+description: Something looks wrong, is slow, or crashes
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. The more of this you fill in, the faster it can be reproduced.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: What you see, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to reproduce
+      description: Where you are in the world, what you did, whether it always happens. "Not always" is fine, say so.
+    validations:
+      required: false
+  - type: input
+    id: radiante
+    attributes:
+      label: Radiante version
+      placeholder: "1.1.0"
+    validations:
+      required: true
+  - type: input
+    id: minecraft
+    attributes:
+      label: Minecraft version and loader
+      placeholder: "26.3, Fabric"
+    validations:
+      required: true
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU and driver version
+      placeholder: "RTX 4070, 591.74"
+    validations:
+      required: true
+  - type: input
+    id: settings
+    attributes:
+      label: Renderer profile, pipeline and upscaler
+      placeholder: "Bedrock RTX (Enhanced), DLSS Ray Reconstruction, Balanced"
+  - type: input
+    id: packs
+    attributes:
+      label: Resource packs and other mods that touch rendering
+      placeholder: "Vanilla RTX 1.26.34, Distant Horizons"
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots, video or log
+      description: Drag files here. For a crash or an error, attach `logs/latest.log` and any `hs_err_pid*.log`.
