@@ -393,6 +393,19 @@ void ptShadeDefault(bool viewMark) {
 
     SampledSurface currentSurface = surface;
     vec3 currentViewDir = viewDir;
+    // What the camera's own hand holds up against a wall is lit from the open side of it (see ptHandLightPos).
+    bool handShifted = false;
+    // The light held in the hand sits inside the held item, where it is: its own ray to the surface starts from the
+    // point the surface really is at (a torch pushed into the wall lights its own handle), not from the shifted one.
+    vec3 heldLightPos = currentSurface.worldPos;
+    if (bounce == 0u && isHeldSurface(packedData) && rayCameraPath(mainRay)) {
+        vec3 lightPos = ptHandLightPos(g_hit.rayOrigin, currentSurface.worldPos);
+        if (lightPos != currentSurface.worldPos) {
+            currentSurface.worldPos = lightPos;
+            handShifted = true;
+        }
+        g_shadowPlayerMask = 0u;
+    }
     bool storedLobeType = false;
     for (int localBounce = 0; localBounce < 1; ++localBounce) {
         // A glowing surface is seen brighter than the light it casts (Bedrock keeps the two apart): glowstone and
@@ -443,7 +456,7 @@ void ptShadeDefault(bool viewMark) {
         g_deferredToDirect = localBounce == 0;
         vec3 directLight =
             sampleSurfaceDirectLight(litSurface, currentViewDir, textureUV, planeHitWorldPos, atlasUvMin, atlasUvMax,
-                                     dPduWorld, dPdvWorld, baseGeoNormal, traceLocalHeight,
+                                     dPduWorld, dPdvWorld, baseGeoNormal, traceLocalHeight && !handShifted,
                                      textureMap.normal, maxDepthWorld, hasFftWaterSurface);
         // The surface the camera sees first, straight or through glass: full block light sampling (and ReSTIR).
         bool blockLightPrimary = rayBounce(mainRay) == 0u || rayCameraPath(mainRay);
@@ -477,7 +490,7 @@ void ptShadeDefault(bool viewMark) {
                                    litSurface.shadingNormal, currentViewDir, litSurface.mat, blockLightPrimary);
         }
         directLight += blockLight;
-        directLight += sampleHeldLight(litSurface.worldPos, litSurface.geometricNormal,
+        directLight += sampleHeldLight(handShifted ? heldLightPos : litSurface.worldPos, litSurface.geometricNormal,
                                        litSurface.shadingNormal, litSurface.mat);
         g_deferShadowRays = false;
         if (localBounce == 0) { mainRay.directLightRadiance = directLight; }
@@ -624,12 +637,12 @@ void ptShadeDefault(bool viewMark) {
             mainRay.throughput *= clamp(0.95 / max(bounceAlbedo, 1e-3), 1.0, VPT_BOUNCE_LIGHT_BOOST);
         }
 
-        if (!traceLocalHeight) {
+        if (!traceLocalHeight || handShifted) {
             if (hasFftWaterSurface) {
                 vec3 exitNormal = dot(sampleDir, currentSurface.geometricNormal) >= 0.0 ? currentSurface.geometricNormal :
                                                                                            -currentSurface.geometricNormal;
                 mainRay.origin = currentSurface.worldPos + exitNormal * VPT_FFT_WATER_ORIGIN_BIAS;
-            } else if (hasHeightMapSurface) {
+            } else if (hasHeightMapSurface && !handShifted) {
                 vec3 exitBasePos =
                     basePlaneWorldPosAtUv(currentSurface.uv, textureUV, planeHitWorldPos, dPduWorld, dPdvWorld);
                 vec3 exitNormal = dot(sampleDir, baseGeoNormal) >= 0.0 ? baseGeoNormal : -baseGeoNormal;

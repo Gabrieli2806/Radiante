@@ -88,7 +88,7 @@ vec3 sampleSurfaceDirectLight(SampledSurface surface,
         vec3 visibilityNormal = dot(sampledLightDir, exitGeoNormal) >= 0.0 ? exitGeoNormal : -exitGeoNormal;
         shadowOrigin = baseWorldPos + visibilityNormal * 0.0002;
     }
-    uint shadowMask = WORLD_MASK | PLAYER_MASK;
+    uint shadowMask = WORLD_MASK | g_shadowPlayerMask;
     if (VPT_CLOUD_MODE != 2u) { shadowMask |= CLOUD_MASK; }
     float progress = skyUBO.rainGradient;
     if (g_deferShadowRays) {
@@ -178,6 +178,32 @@ bool loadPreviousScenePos(uint geometryBufferIndex, uint primitiveID, vec3 baryC
     mat4 lastModelMat = lastObjToWorldMats.mat[g_hit.instanceId];
     prevScenePos = mat3(lastModelMat) * prevLocalPos + lastModelMat[3].xyz;
     return true;
+}
+
+/**
+ * Where the light on a first person hand (or what it holds) is worked out. The hand is drawn in front of the eye
+ * wherever the eye is, so with the camera against a wall it reaches into the block: every sun, light and bounce ray
+ * from a point of it met the block at once, and the hand came out black (Minecraft and Remix draw it lit however
+ * close the view is). A point of the hand that lies behind the first world surface along the way from the eye is
+ * lit as if it stood just in front of that surface, on the eye's side; a point in the open is lit where it is.
+ */
+vec3 ptHandLightPos(vec3 eye, vec3 position) {
+    vec3 toPosition = position - eye;
+    float distanceToPosition = length(toPosition);
+    if (distanceToPosition < 1e-4) { return position; }
+    vec3 direction = toPosition / distanceToPosition;
+    shadowRay.radiance = vec3(1e6);
+    shadowRay.throughput = vec3(1.0);
+    shadowRay.insideBoat = 0u;
+    shadowRay.pad0 = HAND_CLEARANCE_QUERY;
+    traceRayEXT(topLevelAS, gl_RayFlagsNoOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT, WORLD_MASK, 0, 0, 0, eye, 0.0,
+                direction, distanceToPosition, 1);
+    float wallDistance = shadowRay.radiance.x;
+    shadowRay.radiance = vec3(0.0);
+    shadowRay.pad0 = 0u;
+    // Nothing between the eye and the point (a world surface right at the point itself does not count).
+    if (wallDistance >= distanceToPosition - 0.002) { return position; }
+    return eye + direction * max(wallDistance - 0.05, 0.0);
 }
 
 // How much of the open sky is seen from here along a direction: 0 under a roof or behind a wall.

@@ -135,7 +135,7 @@ void main() {
     uint flags = m0.packedData;
     // A query for the open sky goes through water whatever its texture says (see below): chunk water, marked in its
     // vertices, is let through before anything of it is read.
-    if (shadowRay.pad0 == SKY_VISIBILITY_QUERY && isWaterSurface(flags)) {
+    if ((shadowRay.pad0 == SKY_VISIBILITY_QUERY || shadowRay.pad0 == HAND_CLEARANCE_QUERY) && isWaterSurface(flags)) {
         ignoreIntersectionEXT;
     }
     uint albedoID = m0.textureID;
@@ -214,6 +214,12 @@ void main() {
     }
     // Plain opaque surfaces block the light.
     if (!authoredCoverage && !water && alphaMode != ALPHA_MODE_TRANSPARENT) {
+        // A clearance query wants the nearest one, whatever order they are reported in: it keeps the smallest and
+        // lets the ray run on.
+        if (shadowRay.pad0 == HAND_CLEARANCE_QUERY) {
+            shadowRay.radiance.x = min(shadowRay.radiance.x, gl_HitTEXT);
+            ignoreIntersectionEXT;
+        }
         terminateRayEXT;
     }
 
@@ -225,7 +231,7 @@ void main() {
         // it) cross its surface, and every one read the maps for nothing.
         // A query for the open sky only asks whether anything blocks the way, and water does not: what it takes
         // from the light (its depth, the caustics) is not asked for, so it is not worked out either.
-        if (shadowRay.pad0 == SKY_VISIBILITY_QUERY) {
+        if (shadowRay.pad0 == SKY_VISIBILITY_QUERY || shadowRay.pad0 == HAND_CLEARANCE_QUERY) {
             ignoreIntersectionEXT;
         }
         bool underwaterQuery = false;
@@ -283,6 +289,10 @@ void main() {
         LabPBRMat material = convertLabPBRMaterial(surface, specular, vec4(0.0));
         bool passesLight = material.transmission > 0.0 || alpha < 0.95;
         if (!passesLight) {
+            if (shadowRay.pad0 == HAND_CLEARANCE_QUERY) {
+                shadowRay.radiance.x = min(shadowRay.radiance.x, gl_HitTEXT);
+                ignoreIntersectionEXT;
+            }
             terminateRayEXT;
         }
 
