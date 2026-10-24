@@ -11,7 +11,7 @@
 // How strongly the pack's water texture shows over the surface (the Water Texture slider): 1 as Bedrock RTX
 // draws it, 0 for clear water.
 #ifndef VPT_WATER_TEXTURE_LAYER
-#    define VPT_WATER_TEXTURE_LAYER 1.0
+#    define VPT_WATER_TEXTURE_LAYER 0.1
 #endif
 
 #ifndef PT_PARALLAX_ALLOWED
@@ -216,6 +216,9 @@ void ptShadeDefault(bool viewMark) {
         if (isGlassSurface(packedData) && !isHeldSurface(packedData)) {
             textureUV = seamlessGlassUV(textureUV, baryCoords.x * p0.pos + baryCoords.y * p1.pos + baryCoords.z * p2.pos,
                                         dposdu, dposdv, packedData);
+            if (seamlessGlassUniform(packedData)) {
+                textureUV = seamlessGlassUniformUV(m0.textureUV, m1.textureUV, m2.textureUV);
+            }
             // Kept half a texel inside the sprite: on the frame's last column the filtered lookups of the material
             // maps reached into the next sprite of the atlas, and that column came out black in places.
             vec2 halfTexel = 0.5 / vec2(textureSize(textures[nonuniformEXT(textureID)], 0));

@@ -161,6 +161,9 @@ void main() {
             computedposduDv(p0.pos, p1.pos, p2.pos, m0.textureUV, m1.textureUV, m2.textureUV, dPdu, dPdv);
             vec3 objectPos = bary.x * p0.pos + bary.y * p1.pos + bary.z * p2.pos;
             uv = seamlessGlassUV(uv, objectPos, dPdu, dPdv, flags);
+            if (seamlessGlassUniform(flags)) {
+                uv = seamlessGlassUniformUV(m0.textureUV, m1.textureUV, m2.textureUV);
+            }
         }
         albedo = sampleTexture(textures[nonuniformEXT(albedoID)], uv, false);
     }

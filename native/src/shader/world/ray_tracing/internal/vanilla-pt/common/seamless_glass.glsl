@@ -64,6 +64,21 @@ vec2 seamlessGlassUV(vec2 uv, vec3 objectPos, vec3 dposdu, vec3 dposdv, uint pac
 #endif
 }
 
+// A glass block (not a pane) under seamless glass shows one texel of its texture, the middle one, all over: the
+// streaks and specks drawn inside a glass texture showed in the middle of every block of a joined sheet, so it read
+// as a grid all the same. The middle texel keeps the glass's colour and clarity (a stained glass stays its colour).
+bool seamlessGlassUniform(uint packedData) {
+#if VPT_SEAMLESS_GLASS != 0
+    return seamlessGlassApplies(packedData) && !isPaneSurface(packedData);
+#else
+    return false;
+#endif
+}
+
+vec2 seamlessGlassUniformUV(vec2 uv0, vec2 uv1, vec2 uv2) {
+    return 0.5 * (min(uv0, min(uv1, uv2)) + max(uv0, max(uv1, uv2)));
+}
+
 // The thin tops and bottoms of panes: between two panes stacked they stay inside the glass, and through its clear
 // front they showed as a line along every join. With seamless glass they are left out, so a wall of panes is one
 // clear sheet. A pane's upright thin faces stay: a pane standing on its own is only those.
