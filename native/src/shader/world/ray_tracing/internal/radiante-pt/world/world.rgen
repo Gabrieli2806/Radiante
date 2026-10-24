@@ -103,6 +103,7 @@
 #include "util/ray.glsl"
 #include "util/util.glsl"
 #include "common/constants.glsl"
+#include "common/homogeneous_medium.glsl"
 #if USE_SHARC
 // clang-format off
 #    include "extern/sharc/include/SharcGlsl.h"
@@ -121,6 +122,44 @@
 #include "pt/pt_bounce.glsl"
 #include "pt/pt_sharc_update.glsl"
 #include "pt/pt_outputs.glsl"
+
+// The medium the camera is in, when it is one fogged as a medium of its own (lava, powder snow; water has its own
+// branches): how thick it is and the light it shows, as homogeneousMediumSegment takes them, and the light the
+// exposure meters in it, which the surfaces hidden behind it say nothing of, with how far the eye is held below that
+// reading. False in air and in water.
+bool cameraMedium(vec3 eyePos, out vec3 sigmaT, out vec3 sourceRadiance, out vec3 meterLight, out float exposureScale) {
+    // As thick as vanilla's fog end says (MEDIUM_FOG_END_TRANSMITTANCE), so Fire Resistance and spectator mode see as
+    // far as they do in vanilla.
+    float extinction = -log(MEDIUM_FOG_END_TRANSMITTANCE) / max(float(worldUBO.fogEnd), 0.01);
+    if (skyUBO.cameraSubmersionType == 0) {
+        // Lava glows: the eye meters that glow, held at vanilla's dark red.
+        sigmaT = vec3(extinction);
+        sourceRadiance = LAVA_GLOW;
+        meterLight = LAVA_GLOW;
+        exposureScale = LAVA_EXPOSURE_SCALE;
+        return true;
+    }
+    if (skyUBO.cameraSubmersionType == 2) {
+        // Powder snow shows the light that reaches it, metered as the light on a white surface would be: bright
+        // under an open sky, dim under a roof.
+        // Asked from the top of the block the eye is in: from the eye itself the query met that block's own top face
+        // and read every powder snow as roofed, under an open sky too.
+        float toBlockTop = 1.0 - fract(float(worldUBO.cameraPos.y) + eyePos.y);
+        float skyVisibility = volumetricSkyVisibility(eyePos + vec3(0.0, toBlockTop, 0.0), false);
+        float skyLight = dot(texture(skyFull, vec3(0.0, 1.0, 0.0)).rgb, vec3(0.2126, 0.7152, 0.0722)) *
+                         mix(POWDER_SNOW_SHADE, 1.0, skyVisibility);
+        sigmaT = vec3(extinction);
+        sourceRadiance = POWDER_SNOW_COLOR * skyLight;
+        meterLight = vec3(skyLight);
+        exposureScale = mix(POWDER_SNOW_SHADE_EXPOSURE, 1.0, skyVisibility);
+        return true;
+    }
+    sigmaT = vec3(0.0);
+    sourceRadiance = vec3(0.0);
+    meterLight = vec3(0.0);
+    exposureScale = 1.0;
+    return false;
+}
 
 #if VPT_NRD_SIGNALS
 // The hit distance NRD gets for a bounce that left for the sky: far, as NRD wants a miss.
@@ -214,6 +253,15 @@ void main() {
     float composeFogTransmittance = -1.0;
     vec3 composeFogTransmissionRGB = vec3(1.0);
     bool composeFogIsRgb = false;
+    // The medium the camera is in (cameraMedium), and how much of what the camera's ray hit shows through it, for the
+    // denoiser's guides below; 1 outside any.
+    vec3 cameraMediumSigmaT;
+    vec3 cameraMediumLight;
+    vec3 cameraMediumMeter;
+    float cameraMediumExposure;
+    bool cameraInMedium =
+        cameraMedium(eyePos, cameraMediumSigmaT, cameraMediumLight, cameraMediumMeter, cameraMediumExposure);
+    vec3 cameraMediumTransmittance = vec3(1.0);
 #    if SHARC_QUERY && USE_SHARC
     SharcParameters sharcParameters = makeSharcParameters();
     int sharcDebugBounceCount = 0;
@@ -713,6 +761,26 @@ void main() {
                 applyFog(preFogRadiance, surfaceDepth, worldUBO.fogStart, densityAir, densityFog, waterColor * 0.01,
                          mainRay.radiance, composeFogTransmittance, composeFogAdditive);
             }
+        } else if (cameraInMedium) {
+            // The camera in lava or powder snow: a medium of its own, the same in every dimension. Both used to fall
+            // through to the dimension's air haze: lava opaque in the Nether only by chance (vanilla's lava fog
+            // distance and colour) and see-through in the overworld, powder snow black.
+            vec3 mediumTransmittance;
+            vec3 mediumLight;
+            homogeneousMediumSegment(surfaceDepth, cameraMediumSigmaT, cameraMediumLight, mediumTransmittance,
+                                     mediumLight);
+            float mediumComposeTransmittance = clamp(volumetricLightLuminance(mediumTransmittance), 0.0, 1.0);
+            cameraMediumTransmittance = mediumTransmittance;
+            if (useTransparentSplit) {
+                transparentReflectionRadiance *= mediumTransmittance;
+                transparentRefractionRadiance *= mediumTransmittance;
+                transparentFogAdditive = mediumLight;
+                transparentFogTransmittance = mediumComposeTransmittance;
+            } else {
+                mainRay.radiance = mainRay.radiance * mediumTransmittance + mediumLight;
+                composeFogTransmittance = mediumComposeTransmittance;
+                composeFogAdditive = mediumLight;
+            }
         } else {
             if (worldUBO.skyType == 0) {
                 if (useTransparentSplit) {
@@ -818,6 +886,21 @@ void main() {
         composeFogTransmittance = -1.0;
     }
 
+    // In lava or powder snow the denoiser's guides fade into the medium as the picture does. They were written for the
+    // surface the ray hit, behind it, and DLSS Ray Reconstruction rebuilt that surface's texture and edges from them
+    // through a medium that hid it. Where the medium hides everything the guides are the medium's: its colour, scaled
+    // as the sky's guide is (by its brightest channel), no specular and no normal.
+    if (cameraInMedium) {
+        float mediumLevel = max(max(cameraMediumLight.r, max(cameraMediumLight.g, cameraMediumLight.b)), 1e-6);
+        vec3 mediumGuide = clamp(cameraMediumLight / mediumLevel, 0.0, 1.0);
+        vec3 surfaceGuide = psrHitSky ? mediumGuide : firstHitMat.albedoValue.rgb * firstHitMat.albedoValue.a;
+        vec3 surfaceSpecular = psrHitSky ? vec3(0.0) : firstHitMat.f0;
+        vec3 shown = cameraMediumTransmittance;
+        imageStore(diffuseAlbedoImage, pixel, vec4(mix(mediumGuide, surfaceGuide, shown), 0.0));
+        imageStore(specularAlbedoImage, pixel, vec4(surfaceSpecular * shown, 0.0));
+        if (volumetricLightLuminance(shown) < 0.01) { imageStore(normalRoughnessImage, pixel, vec4(0.0)); }
+    }
+
 #if VPT_NRD_SIGNALS
     bool nrdSplit = false;
 #endif
@@ -906,6 +989,14 @@ void main() {
                 vec3 reading = max(surfaceLight / albedo, vec3(0.0));
                 if (!any(isnan(reading)) && !any(isinf(reading))) { white = reading; }
             }
+            // In lava or powder snow the camera sees nothing but the medium, so the medium is what it meters
+            // (cameraMedium): the light on the surfaces hidden behind it opened the eye wide in a dark cave and burnt
+            // lava to a bright orange, where by day it read dark red.
+            bool meterMedium = cameraInMedium;
+            if (meterMedium) {
+                white = cameraMediumMeter;
+                meterWeight = 1.0;
+            }
             uint meterSlot = uint(meterIndex.y * 16 + meterIndex.x);
 #if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
             // Bedrock meters the light its denoiser leaves, not one path's: each sample here is accumulated over the
@@ -916,7 +1007,12 @@ void main() {
             // single paths averaged low where the light comes in rare bright paths, and read the place darker.
             vec4 history = lightMeter.sampleHistory[meterSlot];
             vec4 historySurface = lightMeter.sampleSurface[meterSlot];
-            if (!psrHitSky && isHand == 0 && isFirstHitNoisy && !useTransparentSplit) {
+            if (meterMedium) {
+                // The medium's light is the same every frame: nothing to accumulate, and no surface to follow.
+                lightMeter.sampleHistory[meterSlot] = vec4(white, 1.0);
+                lightMeter.sampleSurface[meterSlot] = vec4(0.0);
+                meterSample = vec4(exp2(log2(max(white, vec3(1e-12))) / 3.0), meterWeight);
+            } else if (!psrHitSky && isHand == 0 && isFirstHitNoisy && !useTransparentSplit) {
                 vec3 axisSize = abs(firstHitNormal);
                 int axisIndex = axisSize.x >= axisSize.y && axisSize.x >= axisSize.z ? 0 :
                                 (axisSize.y >= axisSize.z ? 1 : 2);
@@ -983,6 +1079,9 @@ void main() {
             // back up and the picture came out as bright as before, only flatter; held under, daylight is softer.
             darkness *= mix(1.0, BEDROCK_DAY_EXPOSURE_SCALE, day);
 #endif
+            // In lava or powder snow the eye is held below what the medium meters (cameraMedium), by day or night and
+            // in any dimension alike.
+            if (cameraInMedium) { darkness = cameraMediumExposure; }
             // w: a negative one marks the Nether for the tone mapper (exposure.comp); the other dimensions' day maximum.
             lightMeter.daylight = vec4(day, darkness, underWater, worldUBO.skyType == 0 ? -1.0 : VPT_EXPOSURE_DAY_MAX);
         }
@@ -1029,8 +1128,8 @@ void main() {
     if (composeFogIsRgb) { composeFogTransmittance = -2.0; }
 #endif
     bool applyVolumetricCompose =
-        useVolumetricFog && !raySkipFog(mainRay) && skyUBO.cameraSubmersionType != 1 && worldUBO.skyType == 1 &&
-        skyUBO.hasBlindnessOrDarkness == 0;
+        useVolumetricFog && !raySkipFog(mainRay) && skyUBO.cameraSubmersionType != 1 && !cameraInMedium &&
+        worldUBO.skyType == 1 && skyUBO.hasBlindnessOrDarkness == 0;
     if (applyVolumetricCompose) {
         // Only as far as the first surface, as the biome haze: a ray carried on off water or glass crosses its own
         // air, and marching the whole reflected or refracted length hid every pool under a white wall of fog.

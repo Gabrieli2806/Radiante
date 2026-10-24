@@ -21,6 +21,43 @@
 #    define UNDERWATER_DEPTH_DIMMING 0.5
 #endif
 
+// Lava and powder snow are as thick as vanilla's fog in them says: what gets through at the distance where vanilla's
+// fog ends (worldUBO.fogEnd), which vanilla sets for the camera's entity: a block in lava, five with Fire Resistance,
+// two in powder snow, half the render distance for a spectator in either. Vanilla's fog is linear and is whole there;
+// the medium thins exponentially and never is, so it is taken as whole where this much is left.
+#ifndef MEDIUM_FOG_END_TRANSMITTANCE
+#    define MEDIUM_FOG_END_TRANSMITTANCE 0.01
+#endif
+
+// In lava: the glow it shows where it is too thick to see through. The glow is matched by eye, through the tone
+// mapping, to vanilla's lava fog colour on screen (0x991A00): the tone curve's contrast crushes a dim green to black,
+// so the linear colour itself (0.318, 0.0103, 0.0) showed a flat dark red.
+#ifndef LAVA_GLOW
+#    define LAVA_GLOW vec3(0.5, 0.064, 0.0)
+#endif
+// How far the eye is held below what the lava's glow meters (world.rgen meters the glow itself while the camera is in
+// lava), so it shows vanilla's dark red instead of a mid tone.
+#ifndef LAVA_EXPOSURE_SCALE
+#    define LAVA_EXPOSURE_SCALE 0.3
+#endif
+
+// In powder snow: unlike lava it gives off no light of its own: it shows the light around it, lit by the sky over the
+// camera and at POWDER_SNOW_SHADE of it under a roof. Its colour is matched by eye, through the tone mapping, to vanilla's powder
+// snow fog on screen under an open noon sky (183, 195, 200): the hue is vanilla's, and it stands well above white
+// because the tone curve's shoulder holds a bright mist down (it reaches about 166 of vanilla's 183).
+#ifndef POWDER_SNOW_COLOR
+#    define POWDER_SNOW_COLOR vec3(3.0, 3.45, 3.65)
+#endif
+#ifndef POWDER_SNOW_SHADE
+#    define POWDER_SNOW_SHADE 0.2
+#endif
+// How far the eye is held below what the snow's light meters where no sky reaches it: the eye adapted to a roofed
+// snow all the way and showed it as bright as under the open sky, where vanilla's goes a darker grey. Eased from 1
+// under the open sky to this under a roof.
+#ifndef POWDER_SNOW_SHADE_EXPOSURE
+#    define POWDER_SNOW_SHADE_EXPOSURE 0.05
+#endif
+
 // The Nether's distance fog and the sky it leaves behind, at this share of vanilla's fog colour. The fog is light here,
 // and a cavern lit by lava alone is metered up to the brightest exposure (64 times): vanilla's dark red (0.2) came out
 // as a flat pink sky.
