@@ -8,8 +8,6 @@ public class TextureProxy {
 
     public synchronized static native void setFilter(int id, int samplingMode, int mipmapMode);
 
-    public synchronized static native void setClamp(int id, int addressMode);
-
     public synchronized static native void queueUpload(long srcPointer,
         int srcSizeInBytes,
         int srcRowPixels,

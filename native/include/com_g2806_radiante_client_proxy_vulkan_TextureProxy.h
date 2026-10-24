@@ -33,14 +33,6 @@ JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_TextureProxy_
 
 /*
  * Class:     com_g2806_radiante_client_proxy_vulkan_TextureProxy
- * Method:    setClamp
- * Signature: (II)V
- */
-JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_TextureProxy_setClamp
-  (JNIEnv *, jclass, jint, jint);
-
-/*
- * Class:     com_g2806_radiante_client_proxy_vulkan_TextureProxy
  * Method:    queueUpload
  * Signature: (JIIIIIIIIII)V
  */

@@ -13,30 +13,10 @@ extern "C" {
 #define com_g2806_radiante_client_option_Options_MAX_PATH_TILT 45L
 #undef com_g2806_radiante_client_option_Options_MAX_ROTATION
 #define com_g2806_radiante_client_option_Options_MAX_ROTATION 180L
-/*
- * Class:     com_g2806_radiante_client_option_Options
- * Method:    nativeSetMaxFps
- * Signature: (IZ)V
- */
-JNIEXPORT void JNICALL Java_com_g2806_radiante_client_option_Options_nativeSetMaxFps
-  (JNIEnv *, jclass, jint, jboolean);
-
-/*
- * Class:     com_g2806_radiante_client_option_Options
- * Method:    nativeSetInactivityFpsLimit
- * Signature: (IZ)V
- */
-JNIEXPORT void JNICALL Java_com_g2806_radiante_client_option_Options_nativeSetInactivityFpsLimit
-  (JNIEnv *, jclass, jint, jboolean);
-
-/*
- * Class:     com_g2806_radiante_client_option_Options
- * Method:    nativeSetVsync
- * Signature: (ZZ)V
- */
-JNIEXPORT void JNICALL Java_com_g2806_radiante_client_option_Options_nativeSetVsync
-  (JNIEnv *, jclass, jboolean, jboolean);
-
+#undef com_g2806_radiante_client_option_Options_MIN_CLOUD_HEIGHT_OFFSET
+#define com_g2806_radiante_client_option_Options_MIN_CLOUD_HEIGHT_OFFSET -96L
+#undef com_g2806_radiante_client_option_Options_MAX_CLOUD_HEIGHT_OFFSET
+#define com_g2806_radiante_client_option_Options_MAX_CLOUD_HEIGHT_OFFSET 320L
 /*
  * Class:     com_g2806_radiante_client_option_Options
  * Method:    nativeSetChunkBuildingBatchSize

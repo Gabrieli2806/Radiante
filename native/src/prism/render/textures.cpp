@@ -145,18 +145,6 @@ void Textures::setSamplingMode(uint32_t id, VkFilter samplingMode, VkSamplerMipm
     bind(*framework, id, entry);
 }
 
-void Textures::setAddressMode(uint32_t id, VkSamplerAddressMode addressMode) {
-    auto framework = this->framework();
-    std::scoped_lock lock(mutex_, framework->recreateMtx());
-    Entry &entry = this->entry(id, "set the address mode of");
-    if (entry.sampler == nullptr) return;
-    if (entry.sampler->vkAddressMode() != addressMode) {
-        entry.sampler = sharedSampler(framework->device(), entry.sampler->vkSamplingMode(),
-                                      entry.sampler->vkMipmapMode(), addressMode);
-    }
-    bind(*framework, id, entry);
-}
-
 void Textures::queueUpload(uint8_t *srcPointer,
                            uint32_t srcSizeInBytes,
                            uint32_t srcRowPixels,

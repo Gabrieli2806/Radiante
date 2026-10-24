@@ -19,28 +19,6 @@ void restartChunkScheduler() {
 
 extern "C" {
 
-JNIEXPORT void JNICALL Java_com_g2806_radiante_client_option_Options_nativeSetMaxFps(JNIEnv *,
-                                                                                     jclass,
-                                                                                     jint maxFps,
-                                                                                     jboolean) {
-    Renderer::options.maxFps = static_cast<uint32_t>(maxFps);
-}
-
-JNIEXPORT void JNICALL Java_com_g2806_radiante_client_option_Options_nativeSetInactivityFpsLimit(JNIEnv *,
-                                                                                                 jclass,
-                                                                                                 jint limit,
-                                                                                                 jboolean) {
-    Renderer::options.inactivityFpsLimit = static_cast<uint32_t>(limit);
-}
-
-JNIEXPORT void JNICALL Java_com_g2806_radiante_client_option_Options_nativeSetVsync(JNIEnv *,
-                                                                                    jclass,
-                                                                                    jboolean vsync,
-                                                                                    jboolean write) {
-    Renderer::options.vsync = jni::isTrue(vsync);
-    if (jni::isTrue(write)) Renderer::options.needRecreate = true;
-}
-
 JNIEXPORT void JNICALL Java_com_g2806_radiante_client_option_Options_nativeSetChunkBuildingBatchSize(JNIEnv *,
                                                                                                      jclass,
                                                                                                      jint size,

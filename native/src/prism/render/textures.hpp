@@ -30,7 +30,6 @@ class Textures : public SharedObject<Textures> {
     // still queued for the image it replaces are dropped: they were sized for that one.
     void initializeTexture(uint32_t id, uint32_t mipLevels, uint32_t width, uint32_t height, VkFormat format);
     void setSamplingMode(uint32_t id, VkFilter samplingMode, VkSamplerMipmapMode mipmapMode);
-    void setAddressMode(uint32_t id, VkSamplerAddressMode addressMode);
     // Queues the copy of a width x height block of texels, read at (srcOffsetX, srcOffsetY) from rows of srcRowPixels
     // texels at srcPointer (srcSizeInBytes long), to (dstOffsetX, dstOffsetY) of mip level `level`. A copy that would
     // write outside the image or read outside its source is dropped.
