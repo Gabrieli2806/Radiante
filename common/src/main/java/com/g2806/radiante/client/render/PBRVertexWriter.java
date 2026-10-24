@@ -507,12 +507,13 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     public VertexConsumer setLineWidth(float width) {
         return this;
     }
-    /** Call once all vertices are written so a trailing quad gets its computed normal. */
+
     /** A coordinate the acceleration structure can hold: finite, and inside the world the renderer traces. */
     private static boolean placeable(float value) {
         return Float.isFinite(value) && Math.abs(value) <= POSITION_LIMIT;
     }
 
+    /** Call once all vertices are written so a trailing quad gets its computed normal. */
     public void finish() {
         finishQuadIfComplete();
     }

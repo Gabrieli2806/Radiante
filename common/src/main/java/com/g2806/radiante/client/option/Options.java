@@ -137,7 +137,7 @@ public class Options {
     public static int hdrPaperWhiteNits = 200;
     /** HDR: tints blue what is shown as SDR (menus, text), to check the world is in HDR. Not saved. */
     public static boolean hdrDebugView = false;
-    /** Loading Streamline replaces Minecraft's Vulkan loader, so it only happens when the player asks for it. */
+    /** Frame generation (FrameGeneration), off until the player turns it on; generatedFrames says how many. */
     public static boolean frameGeneration = false;
     /** Frames DLSS generates per rendered frame: 0 is off, 1 is 2x, up to 5 for 6x. */
     public static int generatedFrames = 1;

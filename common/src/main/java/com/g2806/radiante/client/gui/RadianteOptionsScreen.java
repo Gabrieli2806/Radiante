@@ -605,9 +605,8 @@ public class RadianteOptionsScreen extends Screen {
             });
     }
 
-    // The options that only take effect after a restart; kept to mark them on the list.
+    // The one option that only takes effect after a restart; kept to mark it on the list.
     private OptionInstance<?> hdrToggle;
-    private OptionInstance<?> reflexToggle;
 
     /** HDR output chosen differently from what the window was created with. */
     private boolean hdrPending() {
@@ -1078,7 +1077,6 @@ public class RadianteOptionsScreen extends Screen {
                     refreshQualityLater();
                 });
         }
-        this.reflexToggle = reflex;
         addRows(preset, dlssMode, rayReconstructionOption(), upscalerModeOption(), renderScaleOption(),
             outputResolutionOption(), outputScaleOption(), frameGenerationBackendOption(), frameGeneration, reflex);
     }

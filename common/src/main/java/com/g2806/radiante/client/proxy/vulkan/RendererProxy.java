@@ -39,7 +39,6 @@ public class RendererProxy {
 
     public static native void shouldRenderWorld(boolean renderWorld);
 
-    /** Loads NVIDIA Streamline from `folder`; must run before Minecraft creates its Vulkan instance. */
     /** Frames DLSS can generate per rendered frame, 0 when frame generation is unavailable. */
     public static native int maxGeneratedFrames();
 

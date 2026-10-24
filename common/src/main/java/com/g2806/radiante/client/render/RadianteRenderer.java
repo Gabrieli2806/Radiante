@@ -248,7 +248,6 @@ public final class RadianteRenderer {
         }
     }
 
-    /** Replaces {@code GameRenderer.renderLevel} while the renderer is active. */
     /** Frames of the world this renderer has drawn since the level was opened. See {@link #levelFrames()}. */
     private static final java.util.concurrent.atomic.AtomicInteger LEVEL_FRAMES =
         new java.util.concurrent.atomic.AtomicInteger();
