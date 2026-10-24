@@ -496,8 +496,9 @@ public class Pipeline {
         "render_pipeline.module.ray_tracing.attribute.bedrock_enhanced";
 
     /**
-     * Whether block lights cast what their Bedrock MER maps show (EmissionTiles.uploadFromMer): only the experimental
-     * profile shows that glow and lights its world with it; the others keep the light levels' scale.
+     * Whether block lights cast what their Bedrock MER maps show (EmissionTiles.uploadFromMer): the Bedrock RTX
+     * profiles show that glow and light the world with it; with either switch off (Custom) the light levels' scale
+     * is kept.
      */
     public static boolean castsBedrockGlow() {
         return isShaderPackToggleOn(BEDROCK_MATERIALS_ATTRIBUTE) && isShaderPackToggleOn(BEDROCK_ORIGINAL_ATTRIBUTE);

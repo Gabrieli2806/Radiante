@@ -190,7 +190,7 @@ public final class PbrAtlases {
 
     private static Optional<Resource> rawMerResource(ResourceManager resources, Identifier spriteId,
         Map<String, Integer> packHeights) {
-        // Nor for a sprite whose glow Radiante sets itself: the experimental Bedrock profile takes emission from
+        // Nor for a sprite whose glow Radiante sets itself: the Bedrock RTX profiles take emission from
         // the MER as authored, and the eye of ender sat dark again in the light it casts.
         if (!spriteId.getNamespace().equals("minecraft") || !spriteId.getPath().startsWith("block/")
             || EmissionTiles.setsOwnGlow(spriteId)) {

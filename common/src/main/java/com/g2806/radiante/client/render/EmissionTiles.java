@@ -416,8 +416,8 @@ public final class EmissionTiles {
     }
 
     /**
-     * Re-registers a light emitting block's cells from its Bedrock MER map (see PbrAtlases), for the experimental
-     * Bedrock profile, which casts light as Bedrock RTX does: a glowing texel lights its surroundings with exactly
+     * Re-registers a light emitting block's cells from its Bedrock MER map (see PbrAtlases), for the Bedrock RTX
+     * profiles, which cast light as Bedrock RTX does: a glowing texel lights its surroundings with exactly
      * the light it shows, its colour times MER green squared (times 5 and the emissive multiplier, in the shaders).
      * Each cell holds the mean of that over its texels, the dark ones included, and is marked exact (a negative
      * emission, see emission.cpp) so the shaders take it at that scale and not at a light level's. Before, how much
@@ -760,7 +760,7 @@ public final class EmissionTiles {
      * shape (which texels glow, and how much more than each other), and its brightest texel is brought up to what a
      * light of that level shows when Radiante works the glow out itself (the level times that texel's brightness); a
      * map that gives the block no glow at all gives way to the worked out one. Lights the pack already makes brighter
-     * than that are left as they are. (The experimental Bedrock profile shows and casts the glow of the MER map as
+     * than that are left as they are. (The Bedrock RTX profiles show and cast the glow of the MER map as
      * the pack authors it, as Bedrock RTX does: see uploadFromMer.)
      */
     static void keepVisibleGlow(TextureAtlasSprite sprite, ByteBuffer specular, byte[] derived, int atlasWidth,
