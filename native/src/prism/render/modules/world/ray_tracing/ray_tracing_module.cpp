@@ -171,7 +171,8 @@ constexpr BindingSpec kUniformBindings[] = {
     {kUniformBuffer, kAllStages},
     {kUniformBuffer, kTraceStages | VK_SHADER_STAGE_COMPUTE_BIT},
     {kUniformBuffer, kAllStages},
-    {kStorageBuffer, VK_SHADER_STAGE_RAYGEN_BIT_KHR},
+    // (Closest hits read the meter too, for lava's steady brightness: see pt_shade_default.glsl.)
+    {kStorageBuffer, VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR},
 };
 
 template <size_t N>

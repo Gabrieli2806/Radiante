@@ -22,6 +22,30 @@ struct SampledSurface {
     bool authoredMer;
 };
 
+// How much of lava's colour its surface shows once the exposure is applied (the Bedrock profile; linear, before
+// the tone curve), and the share of its colour that is left to the light other things throw on it.
+#ifndef LAVA_DISPLAY
+#    define LAVA_DISPLAY 1.3
+#endif
+#ifndef LAVA_LIT_SHARE
+#    define LAVA_LIT_SHARE 0.1
+#endif
+
+// Lava as a self-lit sheet; see pt_shade_default.glsl. Only the Bedrock profile has the meter that tells the
+// exposure here, so the others keep lava's fixed glow.
+void ptShapeLava(inout SampledSurface surface) {
+#if VPT_BEDROCK_SPECULAR
+    float exposure = 1.0;
+    if (lightMeter.bedrockMeter.w == 1.0) {
+        exposure = exp2(clamp(lightMeter.bedrockMeter.x, -1.0, 6.0) + log2(clamp(lightMeter.daylight.y, 0.05, 1.0)));
+    }
+    surface.mat.albedo *= LAVA_LIT_SHARE;
+    surface.mat.f0 *= LAVA_LIT_SHARE;
+    surface.mat.emission = LAVA_DISPLAY / (max(exposure, 1e-3) * VPT_BEDROCK_SEEN_EMISSION *
+                                            max(worldUBO.emissionBrightness, 1e-3));
+#endif
+}
+
 vec3 applyNormalMapToBasis(vec3 matNormal,
                            vec3 tangent,
                            vec3 bitangent,
@@ -158,6 +182,15 @@ bool bedrockHeightMapNormal(int map,
 }
 #endif
 
+#ifndef VPT_PORTAL_TRANSPARENCY
+#    define VPT_PORTAL_TRANSPARENCY 0.5
+#endif
+
+// How much of a kept raindrop streak is there: 0 is invisible water, 1 the pack's rain texture as an opaque sheet.
+#ifndef VPT_RAIN_OPACITY
+#    define VPT_RAIN_OPACITY 0.0
+#endif
+
 void sampleSurfaceState(bool useTexture,
                         uint textureID,
                         TextureMapEntry textureMap,
@@ -257,6 +290,22 @@ void sampleSurfaceState(bool useTexture,
         }
     }
 #endif
+    // A see-through sheet a pack gives a metal's material (the nether portal: Vanilla RTX authors it with a metalness
+    // of 0.45 and a roughness of 0.97 over a texture of alpha 0.5 to 0.8). A translucent surface is no metal: read as
+    // one it took the metal branch of the conversion, which has no transmission, and was shaded as a rough opaque
+    // slab of purple with none of the world behind it showing. It is a clear tinted sheet, with the glow it keeps.
+    if (!g_hitIsGlass && alphaMode == ALPHA_MODE_TRANSPARENT && albedoValue.a < 0.95 && mat.metallic > 0.0 &&
+        mat.transmission <= 0.0) {
+        vec3 sheetHue = albedoValue.rgb / max(max(albedoValue.r, max(albedoValue.g, albedoValue.b)), 1e-3);
+        // Portal Transparency: how much of the pack's see-through share is kept (100%), down to an opaque sheet (0%).
+        albedoValue.a = 1.0 - clamp(VPT_PORTAL_TRANSPARENCY, 0.0, 1.0) * (1.0 - albedoValue.a);
+        mat.metallic = 0.0;
+        mat.transmission = 1.0;
+        mat.albedo = mix(vec3(1.0), sheetHue, albedoValue.a);
+        mat.f0 = vec3(0.04);
+        mat.roughness = 0.02;
+        mat.ior = 1.5;
+    }
 #if VPT_BEDROCK_SPECULAR
     // A texture no Bedrock pack covers (vanilla's, a Java pack's) glows as it does under the other profiles: its
     // emission is brought to the scale this one shows a pack's own at (see main and VPT_BEDROCK_SEEN_EMISSION).
@@ -284,9 +333,11 @@ void sampleSurfaceState(bool useTexture,
 #endif
     // In the Nether the glow a surface shows is held down by as much as the eye is opened up there (pt_fog.glsl's
     // NETHER_EXPOSURE_SCALE): held low for the sake of the lava, the eye left torchlit rock barely readable, and
-    // opened up, lava itself came out a pale peach. Lights cast as before; only what the glowing surface shows.
+    // opened up, lava itself came out a pale peach. Lights cast as before; only what the glowing surface shows. Raised
+    // from 0.25 so flames (fire, soul fire, campfires) show brighter; lava's own glow is held down at its source
+    // (EmissionTiles.LAVA_MER_GLOW) and the tone mapper keeps the hue of what is over white.
 #ifndef NETHER_GLOW_SCALE
-#    define NETHER_GLOW_SCALE 0.25
+#    define NETHER_GLOW_SCALE 0.5
 #endif
     if (worldUBO.skyType == 0) { mat.emission *= NETHER_GLOW_SCALE; }
 
@@ -373,8 +424,27 @@ void sampleSurfaceState(bool useTexture,
     }
 #endif
 
+    // A rain streak is falling water, not a grey slab: the stochastic any-hit decides where a streak is (by the
+    // texture's alpha and the rain's strength) and a kept one is shaded here as a thin, nearly clear, very smooth
+    // sheet of water. It lets the view through (tinted a little blue-grey, by Rain Opacity), takes the sun, the sky
+    // and the lamps as a faint glint through Fresnel, glows with nothing of its own, and keeps its face's normal.
+    // The pack's own rain texture and material are read only for the shape of the streaks.
+    bool isRainStreak = isRainSurface(g_hit.packedData);
+    if (isRainStreak) {
+        float rainOpacity = clamp(VPT_RAIN_OPACITY, 0.0, 1.0);
+        albedoValue.a = rainOpacity;
+        mat.metallic = 0.0;
+        mat.transmission = 1.0;
+        mat.albedo = mix(vec3(1.0), vec3(0.82, 0.90, 1.0), rainOpacity);
+        mat.f0 = vec3(0.02);
+        mat.roughness = 0.06;
+        mat.ior = 1.02;
+        mat.emission = 0.0;
+        shadingNormal = geometricNormal;
+    }
+
     // Rain soaks the ground under open sky: darker, glossy, and the bumps of the normal map drown.
-    if (!useWaterMaterial && !isFftWaterSurface && !g_hitIsGlass) {
+    if (!useWaterMaterial && !isFftWaterSurface && !g_hitIsGlass && !isRainStreak) {
         float wetness = vptGroundWetness(worldPos, baseGeoNormal);
         if (wetness > 0.0) {
             vptApplyGroundWetness(mat, wetness);

@@ -443,9 +443,30 @@
             "define": "VPT_GLASS_REFLECTION"
         },
         {
+            "name": "render_pipeline.module.ray_tracing.attribute.portal_transparency",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "VPT_PORTAL_TRANSPARENCY"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.rain_opacity",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.0",
+            "runtime": true,
+            "define": "VPT_RAIN_OPACITY"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.water_clear_teal",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.0",
+            "runtime": true,
+            "define": "VPT_WATER_CLEAR_TEAL"
+        },
+        {
             "name": "render_pipeline.module.ray_tracing.attribute.water_texture_layer",
             "type": "float_range:0.0-1.0",
-            "default_value": "1.0",
+            "default_value": "0.1",
             "runtime": true,
             "define": "VPT_WATER_TEXTURE_LAYER"
         },

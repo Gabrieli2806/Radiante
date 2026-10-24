@@ -49,7 +49,10 @@ final class RebuildToast implements Toast {
 
     private State state = State.RUNNING;
     private Component title = Component.empty();
+    private Component messageText = Component.empty();
+    /** The message cut into lines, worked out when it is first drawn and again if the language changed since. */
     private List<FormattedCharSequence> message = ImmutableList.of();
+    private net.minecraft.locale.Language messageLanguage;
     private float progress;
     /** Smoothed value drawn, so the bar moves rather than jumps. */
     private float shownProgress;
@@ -112,9 +115,24 @@ final class RebuildToast implements Toast {
         toast.resultAt = JUST_SET;
     }
 
+    /**
+     * Keeps the text, not its lines: the lines are made from the translation at the time they are cut, and a toast
+     * raised on the first tick after start-up came before the language was loaded, so its message showed as the bare
+     * key (the title, which stays a component until it is drawn, was right).
+     */
     private void setMessage(Font font, Component text) {
-        List<FormattedCharSequence> lines = font.split(text, TEXT_WIDTH);
-        this.message = lines.size() > MAX_MESSAGE_LINES ? lines.subList(0, MAX_MESSAGE_LINES) : lines;
+        this.messageText = text;
+        this.messageLanguage = null;
+    }
+
+    private List<FormattedCharSequence> lines() {
+        net.minecraft.locale.Language language = net.minecraft.locale.Language.getInstance();
+        if (this.messageLanguage != language) {
+            List<FormattedCharSequence> lines = Minecraft.getInstance().font.split(this.messageText, TEXT_WIDTH);
+            this.message = lines.size() > MAX_MESSAGE_LINES ? lines.subList(0, MAX_MESSAGE_LINES) : lines;
+            this.messageLanguage = language;
+        }
+        return this.message;
     }
 
     @Override
@@ -124,7 +142,7 @@ final class RebuildToast implements Toast {
 
     @Override
     public int height() {
-        return 26 + Math.max(this.message.size(), 1) * LINE_HEIGHT;
+        return 26 + Math.max(lines().size(), 1) * LINE_HEIGHT;
     }
 
     @Override
@@ -159,8 +177,9 @@ final class RebuildToast implements Toast {
             ICON_SIZE, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE);
         graphics.text(font, this.title, TEXT_X, 7, this.state == State.FAILED ? FAILED_TITLE_COLOR : TITLE_COLOR,
             false);
-        for (int i = 0; i < this.message.size(); i++) {
-            graphics.text(font, this.message.get(i), TEXT_X, 7 + (i + 1) * LINE_HEIGHT, MESSAGE_COLOR, false);
+        List<FormattedCharSequence> lines = lines();
+        for (int i = 0; i < lines.size(); i++) {
+            graphics.text(font, lines.get(i), TEXT_X, 7 + (i + 1) * LINE_HEIGHT, MESSAGE_COLOR, false);
         }
         if (this.state != State.FAILED) {
             int barWidth = WIDTH - TEXT_X - 8;

@@ -983,7 +983,8 @@ void main() {
             // back up and the picture came out as bright as before, only flatter; held under, daylight is softer.
             darkness *= mix(1.0, BEDROCK_DAY_EXPOSURE_SCALE, day);
 #endif
-            lightMeter.daylight = vec4(day, darkness, underWater, VPT_EXPOSURE_DAY_MAX);
+            // w: a negative one marks the Nether for the tone mapper (exposure.comp); the other dimensions' day maximum.
+            lightMeter.daylight = vec4(day, darkness, underWater, worldUBO.skyType == 0 ? -1.0 : VPT_EXPOSURE_DAY_MAX);
         }
     }
 

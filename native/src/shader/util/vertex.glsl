@@ -34,6 +34,8 @@ const uint BLEND_SURFACE_BIT = 1u << 25u;
 // A light block in a state that gives no light while drawing the sprites its lit states glow with (unlit redstone
 // ore): it does not glow.
 const uint UNLIT_SURFACE_BIT = 1u << 26u;
+// The surface of lava, marked by the section builder.
+const uint LAVA_SURFACE_BIT = 1u << 28u;
 
 #ifndef CONST_ONLY
 // The per-geometry vertex buffer address tables (set 1 bindings 4 and 5) are visible to the hit stages only. A ray
@@ -164,6 +166,10 @@ bool isBlendSurface(uint packedData) {
 
 bool isUnlitSurface(uint packedData) {
     return (packedData & UNLIT_SURFACE_BIT) != 0u;
+}
+
+bool isLavaSurface(uint packedData) {
+    return (packedData & LAVA_SURFACE_BIT) != 0u;
 }
 
 bool isWaterSurface(uint packedData) {

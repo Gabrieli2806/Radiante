@@ -11,7 +11,7 @@
 // How strongly the pack's water texture shows over the surface (the Water Texture slider): 1 as Bedrock RTX
 // draws it, 0 for clear water.
 #ifndef VPT_WATER_TEXTURE_LAYER
-#    define VPT_WATER_TEXTURE_LAYER 1.0
+#    define VPT_WATER_TEXTURE_LAYER 0.1
 #endif
 
 #ifndef PT_PARALLAX_ALLOWED
@@ -70,6 +70,16 @@ layout(set = 2, binding = 0) uniform WorldUniform {
 layout(set = 2, binding = 2) uniform SkyUniform {
     SkyUBO skyUBO;
 };
+
+// The incident light meter, as pt_bindings.glsl declares it for the ray generation shader: read here for the exposure.
+layout(set = 2, binding = 3) readonly buffer LightMeterBuffer {
+    vec4 samples[256];
+    vec4 daylight;
+    vec4 bedrockMeter;
+    vec4 sampleHistory[256];
+    vec4 sampleSurface[256];
+}
+lightMeter;
 
 #include "common/celestial.glsl"
 
@@ -206,6 +216,9 @@ void ptShadeDefault(bool viewMark) {
         if (isGlassSurface(packedData) && !isHeldSurface(packedData)) {
             textureUV = seamlessGlassUV(textureUV, baryCoords.x * p0.pos + baryCoords.y * p1.pos + baryCoords.z * p2.pos,
                                         dposdu, dposdv, packedData);
+            if (seamlessGlassUniform(packedData)) {
+                textureUV = seamlessGlassUniformUV(m0.textureUV, m1.textureUV, m2.textureUV);
+            }
             // Kept half a texel inside the sprite: on the frame's last column the filtered lookups of the material
             // maps reached into the next sprite of the atlas, and that column came out black in places.
             vec2 halfTexel = 0.5 / vec2(textureSize(textures[nonuniformEXT(textureID)], 0));
@@ -311,6 +324,12 @@ void ptShadeDefault(bool viewMark) {
                        isWaterMaterial, hasFftWaterSurface, surface);
     // A light block in a state that gives no light draws the sprite its lit state glows with (unlit redstone ore).
     if (isUnlitSurface(packedData)) { surface.mat.emission = 0.0; }
+    // Lava is a self-lit sheet: shown by its own colour at a steady brightness. Its glow was a fixed light, and the
+    // eye opens and closes with the place (the darker, the further): in a dark cavern or at night the same glow was
+    // far over white and lost its texture (a pale peach), by day in the open it was dull. The glow is now what the
+    // current exposure brings to LAVA_DISPLAY of its colour, and the light other things throw on it counts for
+    // little. (What lava casts on its surroundings is the light list's, unchanged.)
+    if (isLavaSurface(packedData) && bounce == 0u) { ptShapeLava(surface); }
 #if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     // Small plants (grass, flowers, ferns) are lit as if they faced half way up, as Bedrock RTX lights them: side by
     // side its short grass is three quarters as bright as the grass block under it, where lit by their own upright
@@ -377,6 +396,19 @@ void ptShadeDefault(bool viewMark) {
 
     SampledSurface currentSurface = surface;
     vec3 currentViewDir = viewDir;
+    // What the camera's own hand holds up against a wall is lit from the open side of it (see ptHandLightPos).
+    bool handShifted = false;
+    // The light held in the hand sits inside the held item, where it is: its own ray to the surface starts from the
+    // point the surface really is at (a torch pushed into the wall lights its own handle), not from the shifted one.
+    vec3 heldLightPos = currentSurface.worldPos;
+    if (bounce == 0u && isHeldSurface(packedData) && rayCameraPath(mainRay)) {
+        vec3 lightPos = ptHandLightPos(g_hit.rayOrigin, currentSurface.worldPos);
+        if (lightPos != currentSurface.worldPos) {
+            currentSurface.worldPos = lightPos;
+            handShifted = true;
+        }
+        g_shadowPlayerMask = 0u;
+    }
     bool storedLobeType = false;
     for (int localBounce = 0; localBounce < 1; ++localBounce) {
         // A glowing surface is seen brighter than the light it casts (Bedrock keeps the two apart): glowstone and
@@ -427,7 +459,7 @@ void ptShadeDefault(bool viewMark) {
         g_deferredToDirect = localBounce == 0;
         vec3 directLight =
             sampleSurfaceDirectLight(litSurface, currentViewDir, textureUV, planeHitWorldPos, atlasUvMin, atlasUvMax,
-                                     dPduWorld, dPdvWorld, baseGeoNormal, traceLocalHeight,
+                                     dPduWorld, dPdvWorld, baseGeoNormal, traceLocalHeight && !handShifted,
                                      textureMap.normal, maxDepthWorld, hasFftWaterSurface);
         // The surface the camera sees first, straight or through glass: full block light sampling (and ReSTIR).
         bool blockLightPrimary = rayBounce(mainRay) == 0u || rayCameraPath(mainRay);
@@ -461,7 +493,7 @@ void ptShadeDefault(bool viewMark) {
                                    litSurface.shadingNormal, currentViewDir, litSurface.mat, blockLightPrimary);
         }
         directLight += blockLight;
-        directLight += sampleHeldLight(litSurface.worldPos, litSurface.geometricNormal,
+        directLight += sampleHeldLight(handShifted ? heldLightPos : litSurface.worldPos, litSurface.geometricNormal,
                                        litSurface.shadingNormal, litSurface.mat);
         g_deferShadowRays = false;
         if (localBounce == 0) { mainRay.directLightRadiance = directLight; }
@@ -608,12 +640,12 @@ void ptShadeDefault(bool viewMark) {
             mainRay.throughput *= clamp(0.95 / max(bounceAlbedo, 1e-3), 1.0, VPT_BOUNCE_LIGHT_BOOST);
         }
 
-        if (!traceLocalHeight) {
+        if (!traceLocalHeight || handShifted) {
             if (hasFftWaterSurface) {
                 vec3 exitNormal = dot(sampleDir, currentSurface.geometricNormal) >= 0.0 ? currentSurface.geometricNormal :
                                                                                            -currentSurface.geometricNormal;
                 mainRay.origin = currentSurface.worldPos + exitNormal * VPT_FFT_WATER_ORIGIN_BIAS;
-            } else if (hasHeightMapSurface) {
+            } else if (hasHeightMapSurface && !handShifted) {
                 vec3 exitBasePos =
                     basePlaneWorldPosAtUv(currentSurface.uv, textureUV, planeHitWorldPos, dPduWorld, dPdvWorld);
                 vec3 exitNormal = dot(sampleDir, baseGeoNormal) >= 0.0 ? baseGeoNormal : -baseGeoNormal;

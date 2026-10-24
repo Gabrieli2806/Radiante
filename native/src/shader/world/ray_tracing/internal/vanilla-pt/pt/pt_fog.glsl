@@ -32,7 +32,7 @@
 // stays a dim cavern with a dark red haze. Lava is kept orange by holding down what it shows (NETHER_GLOW_SCALE,
 // pt_material.glsl), not by the eye: held as low as lava asked (0.15), torchlit rock was near black.
 #ifndef NETHER_EXPOSURE_SCALE
-#    define NETHER_EXPOSURE_SCALE 0.5
+#    define NETHER_EXPOSURE_SCALE 0.25
 #endif
 
 // The Bedrock profile's picture by day, against what the meter would bring it to.
