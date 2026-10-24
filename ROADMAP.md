@@ -207,21 +207,34 @@ before releases), built from scratch rather than grown out of the ad-hoc
 - **Report.** One HTML page per run with each case's screenshot next to its
   golden image and diff, pass/fail, and the log excerpt; failures first.
 
-### Inside lava / powder snow looks transparent — revisit
+### Inside lava / powder snow looks transparent — done
 
-With the camera in lava (or powder snow) the world stays visible instead of
-vanilla's opaque dark red (lava fog `0x991A00`, opaque by `fogEnd` = 1 block
-without fire resistance). Cause found: the fog pass in `world.rgen` (both
-packs) has a dense-fog branch only for water (`cameraSubmersionType == 1`);
-lava (0) and powder snow (2) fall through to the normal distance haze.
+With the camera in lava (or powder snow) the world stayed visible instead of
+vanilla's opaque dark red: the fog pass in `world.rgen` had a dense-fog branch
+only for water, so lava (0) and powder snow (2) fell through to the distance
+haze. The earlier attempt (commit e6c92e6) went opaque but bright orange, for
+the two reasons noted then, and both are now handled:
 
-A fix was tried and reverted because it did not look right in game: a
-submerged branch with exponential fog in the vanilla fog colour, plus fading
-the DLSS-RR albedo guides into the fog (RR otherwise rebuilds block texture
-through it). It went opaque but toned bright orange instead of dark red -
-auto exposure brightens an all-fog screen and the tonemapper desaturates it.
-A better attempt probably needs the colour applied after tonemapping, or
-exposure held while submerged. Reference: commit e6c92e6.
+- **Exposure.** The eye metered the surfaces hidden behind the lava, and in a
+  dark cave opened all the way. Inside a medium it now meters the medium's own
+  light (`cameraMedium` in `world.rgen`) and is held below it
+  (`LAVA_EXPOSURE_SCALE`; for powder snow, eased down under a roof).
+- **Colour.** Vanilla's linear lava colour, put through the tone curve, shows a
+  flat dark red, its dim green crushed to black. The glow (`LAVA_GLOW`) and the
+  powder snow colour are instead matched by eye on screen, after tone mapping,
+  to vanilla's fog (`0x991A00`; `(183, 195, 200)` under an open noon sky).
+
+Both are a medium of even density (`common/homogeneous_medium.glsl`, a closed
+form water could also use), as thick as vanilla's own fog end says: what is
+left at `fogEnd` is `MEDIUM_FOG_END_TRANSMITTANCE`. Vanilla sets that end for
+the camera's entity, so Fire Resistance (5 blocks) and spectator mode (half the
+render distance) see as far as in vanilla with no case of their own. Powder
+snow shows the light that reaches it: the sky over the camera, a fifth of it
+under a roof. The DLSS-RR guides fade into the medium as the picture does, so
+RR no longer rebuilds hidden blocks through it, and the volumetric fog pass is
+skipped inside it. Verified with DLSS-RR and with NRD: opaque dark red lava,
+blocks at 3 seen and at 6 hidden with Fire Resistance, open-sky powder snow
+white-blue and roofed powder snow grey.
 
 ### Black corners with PBR / 3D resource packs — investigate
 
