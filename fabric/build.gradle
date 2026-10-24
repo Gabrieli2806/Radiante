@@ -67,5 +67,5 @@ tasks.named("runClient", JavaExec) {
 rootProject.packNatives(tasks.jar)
 
 jar {
-	archiveFileName.set("${rootProject.archives_base_name}-fabric-${project.version}.jar") // mod_version already ends in +26.2
+	archiveFileName.set("${rootProject.archives_base_name}-fabric-${project.version}+${rootProject.minecraft_version}.jar")
 }

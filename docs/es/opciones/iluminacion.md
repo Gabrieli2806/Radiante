@@ -16,7 +16,6 @@
 | **ReSTIR para Luces de Bloque** | Activado / Desactivado | Activado | Reutiliza la luz elegida por cada píxel entre fotogramas y vecinos. Mucho menos ruido en cuartos con muchas luces. Requiere Muestreo de Luz de Bloques. |
 | **Reordenamiento de Ejecución (SER)** | Activado / Desactivado | Desactivado | Shader Execution Reordering: la GPU agrupa rayos parecidos. Solo RTX 40 o superior. Experimental: el agua puede verse blanca. |
 | **Luz del Objeto en Mano** | Activado / Desactivado | Activado | Una antorcha o farol en cualquier mano ilumina alrededor. |
-| **Distancia de Luz de Objetos** | 8 – 256 bloques | 64 | Hasta dónde iluminan los objetos tirados y las entidades que brillan. |
 | **Sombra en Primera Persona** | Activado / Desactivado | Activado | Dibuja al jugador para sombras y reflejos en primera persona. |
 
 ## Luz Rebotada y Luz del Cielo también son parte del Estilo de Imagen

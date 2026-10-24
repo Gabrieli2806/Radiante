@@ -72,6 +72,9 @@ struct Vertex {
     // read into the section's light list and never traced. Colour, strength (albedoEmission) and radius (norm.x)
     // are the light's. Never packed into the material word.
     static constexpr uint32_t alphaModePointLightFlag = 0x4000u;
+    // The surface of lava: shown by its colour at a steady brightness, not by the light on it.
+    static constexpr uint32_t alphaModeLavaFlag = 0x8000u;
+    static constexpr uint32_t lavaSurfaceBit = 1u << 28u;
 
     // The layout of vertex format T: one per format, made on first use and kept for the process, so pipelines may
     // point into it. Only the formats specialized below have one; asking for any other does not compile.
@@ -167,11 +170,11 @@ VertexLayoutInfo &Vertex::vertexLayoutInfo<VertexFormat::PBRVertex>();
 inline uint32_t Vertex::packMaterialFlags(const VertexFormat::PBRVertex &vertex) {
     // The surface flags fill alphaMode bits 4 to 13 and keep their order thirteen bits higher in the packed word, so
     // they move together.
-    constexpr uint32_t surfaceFlags = 0x3FF0u;
+    constexpr uint32_t surfaceFlags = 0xBFF0u;
     constexpr uint32_t surfaceShift = 13u;
     static_assert((alphaModeWaterFlag | alphaModeRainFlag | alphaModeHeldFlag | alphaModeGlassFlag |
                    alphaModePlantFlag | alphaModePaneFlag | alphaModeCapUpFlag | alphaModeCapDownFlag |
-                   alphaModeBlendFlag | alphaModeUnlitFlag) == surfaceFlags);
+                   alphaModeBlendFlag | alphaModeUnlitFlag | alphaModeLavaFlag) == surfaceFlags);
     static_assert((alphaModeWaterFlag << surfaceShift) == waterSurfaceBit &&
                   (alphaModeRainFlag << surfaceShift) == rainSurfaceBit &&
                   (alphaModeHeldFlag << surfaceShift) == heldSurfaceBit &&
@@ -181,7 +184,8 @@ inline uint32_t Vertex::packMaterialFlags(const VertexFormat::PBRVertex &vertex)
                   (alphaModeCapUpFlag << surfaceShift) == paneCapUpBit &&
                   (alphaModeCapDownFlag << surfaceShift) == paneCapDownBit &&
                   (alphaModeBlendFlag << surfaceShift) == blendSurfaceBit &&
-                  (alphaModeUnlitFlag << surfaceShift) == unlitSurfaceBit);
+                  (alphaModeUnlitFlag << surfaceShift) == unlitSurfaceBit &&
+                  (alphaModeLavaFlag << surfaceShift) == lavaSurfaceBit);
     static_assert((alphaModePointLightFlag & surfaceFlags) == 0);
 
     uint32_t packed = 0;

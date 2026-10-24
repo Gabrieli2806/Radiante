@@ -119,7 +119,7 @@ void preparePrimary(int step, int isHand, out float len, out uint mask, out uint
     }
 }
 
-void prepareSecondary(int bounce, int isHand, out float len, out uint mask) {
+void prepareSecondaryBase(int bounce, int isHand, out float len, out uint mask) {
     if (bounce == 0) {
         len = worldTraceDistance();
         if (worldUBO.isFirstPerson > 0) {
@@ -140,6 +140,14 @@ void prepareSecondary(int bounce, int isHand, out float len, out uint mask) {
         len = 384.0;
         mask = WORLD_MASK | PLAYER_MASK | FISHING_BOBBER_MASK;
     }
+}
+
+/** Rays bounced off or bent by a surface. In first person the player's own body is never among what they find (it
+ *  only casts shadows, see g_shadowPlayerMask): the water's surface mirrors it, seen from above, as a flat dark
+ *  silhouette lying on the reflection, which Bedrock's renderer does not show. */
+void prepareSecondary(int bounce, int isHand, out float len, out uint mask) {
+    prepareSecondaryBase(bounce, isHand, len, mask);
+    if (worldUBO.isFirstPerson > 0) { mask &= ~PLAYER_MASK; }
 }
 
 void tracePrimary(vec3 eyePos,

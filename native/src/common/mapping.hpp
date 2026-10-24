@@ -66,6 +66,9 @@
 // Whether the open sky is in sight that way: a miss means "unblocked", like a block light query, but what the
 // see-through surfaces on the way take from the light is not asked for.
 #    define SKY_VISIBILITY_QUERY 4u
+// How far from the camera the first world surface lies along a ray (first person hand lighting): the any-hit shader
+// keeps the nearest opaque hit in the payload's radiance.x and lets every ray run on, the miss shader leaves it be.
+#    define HAND_CLEARANCE_QUERY 5u
 
 #endif
 

@@ -121,10 +121,6 @@ public class RadianteOptionsScreen extends Screen {
                 this.options.renderDistance().set((Integer) entry.getValue());
                 continue;
             }
-            if (entry.getKey().equals("entityLightReach")) {
-                Options.setEntityLightReach((Integer) entry.getValue(), false);
-                continue;
-            }
             try {
                 Options.class.getField(entry.getKey()).set(null, entry.getValue());
             } catch (ReflectiveOperationException e) {
@@ -413,6 +409,24 @@ public class RadianteOptionsScreen extends Screen {
         UpscalerDownloadScreen.Mode mode = UpscalerDownloads.isInstalled(component)
             ? UpscalerDownloadScreen.Mode.DELETE : UpscalerDownloadScreen.Mode.CONFIRM;
         this.minecraft.gui.setScreen(new UpscalerDownloadScreen(back, component, mode));
+    }
+
+    /**
+     * Whether Bedrock's own data files (Content/data/ray_tracing) can be found, where the renderer looks for them: in
+     * radiante/bedrock, or in the Bedrock install. The Bedrock atmosphere and caustics need them and fall back
+     * without.
+     */
+    static boolean bedrockFilesPresent(String... names) {
+        java.nio.file.Path local = RadianteClient.radianceDir == null ? null : RadianteClient.radianceDir.resolve("bedrock");
+        java.nio.file.Path install = java.nio.file.Path.of("C:/XboxGames/Minecraft for Windows/Content/data/ray_tracing");
+        for (String name : names) {
+            boolean found = (local != null && java.nio.file.Files.isRegularFile(local.resolve(name)))
+                || java.nio.file.Files.isRegularFile(install.resolve(name));
+            if (!found) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** Clouds come from the shader pack, which ray marches them, so nothing has to be submitted for them. */
@@ -861,9 +875,9 @@ public class RadianteOptionsScreen extends Screen {
         stage("nightBrightness", 35);
         stage("emissionBrightness", 12);
         stage("heldLightBrightness", 12);
-        stage("entityLightReach", 64);
         stage("volumetricFogStrength", 100);
         stage("starAltitude", 100);
+        stage("cloudHeightOffset", 0);
         stage("sunPathTilt", 0);
         stage("sunPathAzimuth", 0);
         stage("sunSpriteRotation", 0);
@@ -886,7 +900,7 @@ public class RadianteOptionsScreen extends Screen {
         syncChunkAuto();
         this.pendingCollectEmission = true;
         this.pendingDebugLogging = true;
-        this.pendingBiomeAmbiance = true;
+        this.pendingBiomeAmbiance = false;
         this.pendingFirstPersonShadow = true;
         this.pendingBiomeAmbianceStrength = 100;
         this.pendingVolumetricFog = Pipeline.supportsVolumetricFog() ? Boolean.FALSE : null;
@@ -1161,23 +1175,33 @@ public class RadianteOptionsScreen extends Screen {
             OptionInstance.createBoolean("options.radiante.held_item_light",
                 tooltip("options.radiante.held_item_light"), staged("heldItemLight", Options.heldItemLight),
                 value -> stage("heldItemLight", value)),
-            slider("options.radiante.entity_light_reach", 8, 256, staged("entityLightReach", Options.entityLightReach),
-                value -> stage("entityLightReach", value)),
             OptionInstance.createBoolean("options.radiante.first_person_shadow",
                 OptionInstance.cachedConstantTooltip(Component.translatable("options.radiante.first_person_shadow.tooltip")),
                 this.pendingFirstPersonShadow, value -> this.pendingFirstPersonShadow = value));
     }
 
     private void addSkyAndWaterOptions(OptionInstance<String> clouds) {
+        // Without Bedrock's sky tables the renderer draws the Java sky whatever this says: shown as Java, greyed,
+        // with the reason, and the stored choice left alone for when the files turn up.
+        boolean bedrockSky = bedrockFilesPresent("sky.png", "look_up_tables.png");
         OptionInstance<Boolean> atmosphere = this.pendingBedrockAtmosphere == null ? null
             : OptionInstance.createBoolean("options.radiante.atmosphere_style",
                 tooltip("options.radiante.atmosphere_style"),
-                (caption, value) -> Component.translatable(value ? "options.radiante.atmosphere_style.bedrock"
-                    : "options.radiante.atmosphere_style.java"),
-                this.pendingBedrockAtmosphere, value -> {
+                (caption, value) -> Component.translatable(!bedrockSky ? "options.radiante.atmosphere_style.java_fallback"
+                    : value ? "options.radiante.atmosphere_style.bedrock" : "options.radiante.atmosphere_style.java"),
+                bedrockSky && this.pendingBedrockAtmosphere, value -> {
+                    if (!bedrockSky) {
+                        return;
+                    }
                     this.pendingBedrockAtmosphere = value;
                     profileSwitchChanged(Pipeline.BEDROCK_ATMOSPHERE_ATTRIBUTE, value);
                 });
+        OptionInstance<Integer> cloudHeight = new OptionInstance<Integer>("options.radiante.cloud_height",
+            RadianteOptionsScreen.<Integer>tooltip("options.radiante.cloud_height"),
+            (caption, value) -> Component.translatable("options.radiante.blocks_value", caption,
+                (value > 0 ? "+" : "") + value),
+            new OptionInstance.IntRange(Options.MIN_CLOUD_HEIGHT_OFFSET, Options.MAX_CLOUD_HEIGHT_OFFSET, false),
+            staged("cloudHeightOffset", Options.cloudHeightOffset), value -> stage("cloudHeightOffset", value));
         OptionInstance<Boolean> volumetricFog = null;
         OptionInstance<Integer> volumetricStrength = null;
         OptionInstance<Boolean> fogStyle = null;
@@ -1246,7 +1270,7 @@ public class RadianteOptionsScreen extends Screen {
                     SEAMLESS_SCOPE + ".panes"), com.mojang.serialization.Codec.STRING),
                 this.pendingSeamlessScope, value -> this.pendingSeamlessScope = value);
         }
-        addRows(atmosphere, clouds, cloudShadows, tunable(Tunable.CLOUD_COVERAGE, false),
+        addRows(atmosphere, clouds, cloudHeight, cloudShadows, tunable(Tunable.CLOUD_COVERAGE, false),
             tunable(Tunable.CLOUD_DENSITY, false), tunable(Tunable.CLOUD_QUALITY, false), tunable(Tunable.STARS, false),
             brightnessSlider("options.radiante.star_altitude", staged("starAltitude", Options.starAltitude),
                 value -> stage("starAltitude", value)),
@@ -1396,6 +1420,9 @@ public class RadianteOptionsScreen extends Screen {
         addRows(bounces, tunable(Tunable.MIRROR_BOUNCES, false), tunable(Tunable.MIRROR_SMOOTHNESS, false),
             tunable(Tunable.GLASS_REFLECTIONS, false),
             tunable(Tunable.WATER_TEXTURE, false),
+            tunable(Tunable.WATER_CLEAR_TEAL, false),
+            tunable(Tunable.PORTAL_TRANSPARENCY, false),
+            tunable(Tunable.RAIN_OPACITY, false),
             packToggle(Pipeline.CACHE_DEEP_BOUNCES_ATTRIBUTE, "options.radiante.cache_deep_bounces"),
             packToggle(Pipeline.BEDROCK_ONE_BOUNCE_ATTRIBUTE, "options.radiante.bedrock_one_bounce"),
             packToggle(Pipeline.TRANSPARENT_CHECKERBOARD_ATTRIBUTE, "options.radiante.transparent_checkerboard"),
@@ -1529,7 +1556,8 @@ public class RadianteOptionsScreen extends Screen {
                     Options.advancedSettings = !Options.advancedSettings;
                     Options.overwriteConfig();
                     reopenWithSameChoices();
-                }),
+                },
+                this::rebuildShaders),
             value -> this.scroll = value);
         this.layout.restartInfo(new SettingsLayout.RestartInfo() {
             @Override
@@ -1603,8 +1631,8 @@ public class RadianteOptionsScreen extends Screen {
         java.util.Map.entry(O + "held_item_light", List.of(O + "held_light_brightness")),
         java.util.Map.entry(O + "biome_ambiance", List.of(O + "biome_ambiance_strength")),
         java.util.Map.entry(O + "seamless_glass", List.of(SEAMLESS_SCOPE)),
-        java.util.Map.entry(O + "cloud_mode", List.of(O + "cloud_shadows", T + "cloud_coverage", T + "cloud_density",
-            T + "cloud_quality")),
+        java.util.Map.entry(O + "cloud_mode", List.of(O + "cloud_height", O + "cloud_shadows", T + "cloud_coverage",
+            T + "cloud_density", T + "cloud_quality")),
         java.util.Map.entry(O + "parallax", List.of(O + "parallax_transparent_edges")),
         java.util.Map.entry(O + "bedrock_one_bounce", List.of(O + "ray_bounces")),
         java.util.Map.entry(O + "preset", List.of(T + "fsr_sharpness")),
@@ -1759,6 +1787,10 @@ public class RadianteOptionsScreen extends Screen {
         if (key.equals(SEAMLESS_SCOPE)) {
             return Boolean.TRUE.equals(this.pendingSeamlessGlass) ? null : needs(O + "seamless_glass");
         }
+        if (key.equals("render_pipeline.module.ray_tracing.attribute.bedrock_caustics")) {
+            return bedrockFilesPresent("caustics.png") ? null
+                : Component.translatable("options.radiante.blocked.bedrock_files");
+        }
         if (!key.startsWith(O)) {
             return null;
         }
@@ -1780,6 +1812,11 @@ public class RadianteOptionsScreen extends Screen {
             case "held_light_brightness" ->
                 staged("heldItemLight", Options.heldItemLight) ? null : needs(O + "held_item_light");
             case "biome_ambiance_strength" -> this.pendingBiomeAmbiance ? null : needs(O + "biome_ambiance");
+            case "atmosphere_style" -> bedrockFilesPresent("sky.png", "look_up_tables.png") ? null
+                : Component.translatable("options.radiante.blocked.bedrock_files");
+            case "cloud_height" -> this.pendingCloudMode == null
+                || this.pendingCloudMode.equals(Pipeline.CLOUD_MODES.get(1)) ? null
+                : needsValue(O + "cloud_mode", Pipeline.CLOUD_MODES.get(1));
             case "cloud_shadows", "tunable.cloud_coverage", "tunable.cloud_density", "tunable.cloud_quality" ->
                 volumetricClouds ? null : needsValue(O + "cloud_mode", volumetricCloudMode);
             case "parallax_transparent_edges" ->
@@ -2017,6 +2054,44 @@ public class RadianteOptionsScreen extends Screen {
             Pipeline.savePipeline();
         }
         return rebuild;
+    }
+
+    /**
+     * Ctrl + Reset to Defaults: what is changed here is applied, then the pipeline is built anew whether or not
+     * anything asks for it, a way out of a renderer left in a bad state by a change (normally a restart).
+     */
+    private void rebuildShaders() {
+        if (this.minecraft == null) {
+            return;
+        }
+        double scroll = this.layout != null ? this.layout.scroll() : this.scroll;
+        List<Component> restart = restartChanges();
+        applyChanges();
+        RadianteOptionsScreen fresh = new RadianteOptionsScreen(this.lastScreen, this.options);
+        fresh.scroll = scroll;
+        Screen next = restart.isEmpty() ? fresh : new RestartRequiredScreen(fresh, restart);
+        BackgroundRebuild.open(this.minecraft, next, true);
+    }
+
+    @Override
+    public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
+        if (this.layout != null && !this.layout.searchFocused() && this.minecraft != null
+            && this.layout.keyPressed(event.key(), this.minecraft.hasShiftDown())) {
+            return true;
+        }
+        return super.keyPressed(event);
+    }
+
+    @Override
+    public boolean keyReleased(net.minecraft.client.input.KeyEvent event) {
+        // A change made with the keys that lays the screen out again waits for the key to be let go, as a drag waits
+        // for the mouse.
+        if (this.refreshPending) {
+            this.refreshPending = false;
+            reopenWithSameChoices();
+            return true;
+        }
+        return super.keyReleased(event);
     }
 
     /**

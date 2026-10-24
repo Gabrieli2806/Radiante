@@ -21,6 +21,14 @@ extern "C" {
 #define com_g2806_radiante_client_pipeline_Pipeline_SETTINGS_DEFAULTS_VERSION 3L
 /*
  * Class:     com_g2806_radiante_client_pipeline_Pipeline
+ * Method:    isRayReconstructionAvailable
+ * Signature: ()Z
+ */
+JNIEXPORT jboolean JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_isRayReconstructionAvailable
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_g2806_radiante_client_pipeline_Pipeline
  * Method:    buildNative
  * Signature: (J)V
  */
@@ -74,6 +82,14 @@ JNIEXPORT jboolean JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_prew
  */
 JNIEXPORT void JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_prewarmStatus
   (JNIEnv *, jclass, jintArray);
+
+/*
+ * Class:     com_g2806_radiante_client_pipeline_Pipeline
+ * Method:    gpuStats
+ * Signature: ()Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_gpuStats
+  (JNIEnv *, jclass);
 
 #ifdef __cplusplus
 }

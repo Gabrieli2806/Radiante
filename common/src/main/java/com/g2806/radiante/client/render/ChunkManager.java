@@ -579,7 +579,7 @@ public final class ChunkManager {
         // glow on top washed it out into a flat orange.
         boolean lavaGlow = !pointLights;
         FluidRenderer.Output fluidOutput =
-            layer -> scratch.writer(layer, atlasId).water(scratch.fluidIsWater).computeQuadNormals(true)
+            layer -> scratch.writer(layer, atlasId).water(scratch.fluidIsWater).lava(scratch.fluidIsLava).computeQuadNormals(true)
                 .unshadeQuads(unshade ? cardinal : null)
                 .albedoEmission(scratch.fluidIsLava && lavaGlow ? Glow.LAVA : 0.0f);
 
@@ -617,7 +617,7 @@ public final class ChunkManager {
                 // Water with water or solid blocks on every side draws no face, and never asks for a writer: when
                 // that is the first fluid of the section there is none yet, and the whole section failed to build.
                 if (scratch.currentWriter() != null) {
-                    scratch.currentWriter().computeQuadNormals(false).unshadeQuads(null).water(false)
+                    scratch.currentWriter().computeQuadNormals(false).unshadeQuads(null).water(false).lava(false)
                         .albedoEmission(0.0f);
                 }
             }
@@ -962,7 +962,7 @@ public final class ChunkManager {
                 writer = new PBRVertexWriter(4096);
                 writers.put(layer, writer);
             }
-            writer.textureId(atlasId).alphaMode(alphaModeOf(layer)).coordinate(0).water(false).glass(this.blockIsGlass).plant(this.blockIsPlant)
+            writer.textureId(atlasId).alphaMode(alphaModeOf(layer)).coordinate(0).water(false).lava(false).glass(this.blockIsGlass).plant(this.blockIsPlant)
                 .glassPane(this.blockIsPane, this.paneCapUp, this.paneCapDown).blend(this.blockIsBlend)
                 .unlit(this.blockIsUnlit);
             this.current = writer;

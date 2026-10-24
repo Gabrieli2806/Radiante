@@ -83,7 +83,7 @@ processResources {
 rootProject.packNatives(tasks.jar)
 
 jar {
-	archiveFileName.set("${rootProject.archives_base_name}-forge-${project.version}.jar") // mod_version already ends in +26.2
+	archiveFileName.set("${rootProject.archives_base_name}-forge-${project.version}+${rootProject.minecraft_version}.jar")
 	manifest {
 		attributes 'MixinConfigs': 'radiante.mixins.json'
 	}

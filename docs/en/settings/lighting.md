@@ -16,7 +16,6 @@
 | **ReSTIR Block Lights** | On / Off | On | Reuses the light each pixel picked across frames and neighbours. Much less noise in rooms with many lights. Needs Block Light Sampling. |
 | **Shader Execution Reordering** | On / Off | Off | SER: the GPU groups similar rays. RTX 40 or newer only. Experimental: water may look white. |
 | **Held Item Light** | On / Off | On | A torch or lantern in either hand lights its surroundings. |
-| **Glowing Item Light Distance** | 8 – 256 blocks | 64 | How far dropped items and glowing entities cast light. |
 | **First Person Shadow** | On / Off | On | Draws the player for shadows and reflections in first person. |
 
 ## Bounced Light and Sky Light are part of the Picture Style too

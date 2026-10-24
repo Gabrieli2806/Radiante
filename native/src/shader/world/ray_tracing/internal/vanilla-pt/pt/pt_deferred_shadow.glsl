@@ -25,6 +25,10 @@ const uint PT_SHADOW_SKY = 4u;
 const int PT_SHADOW_SLOTS = 5;
 
 bool g_deferShadowRays = false;
+// What the shadow rays of the surface being shaded take for the player's own model. The first person hand is that
+// model's arm: left in, the invisible body and arm round the camera shaded the hand it belongs to (a black patch on
+// it), so the hand's rays leave the model out (ptShadeDefault).
+uint g_shadowPlayerMask = PLAYER_MASK;
 bool g_shadowPending[PT_SHADOW_SLOTS] = bool[PT_SHADOW_SLOTS](false, false, false, false, false);
 vec3 g_shadowOrigin[PT_SHADOW_SLOTS];
 vec3 g_shadowDirection[PT_SHADOW_SLOTS];

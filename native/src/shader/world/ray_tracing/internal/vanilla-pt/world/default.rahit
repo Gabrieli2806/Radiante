@@ -102,6 +102,9 @@ void main() {
         if (isGlassSurface(packedData) && !isHeldSurface(packedData)) {
             vec3 objectPos = baryCoords.x * p0.pos + baryCoords.y * p1.pos + baryCoords.z * p2.pos;
             uv = seamlessGlassUV(uv, objectPos, dposdu, dposdv, packedData);
+            if (seamlessGlassUniform(packedData)) {
+                uv = seamlessGlassUniformUV(m0.textureUV, m1.textureUV, m2.textureUV);
+            }
         }
         lod = lodWithCone(textures[nonuniformEXT(textureID)], uv, coneRadiusWorld, dposdu, dposdv);
 

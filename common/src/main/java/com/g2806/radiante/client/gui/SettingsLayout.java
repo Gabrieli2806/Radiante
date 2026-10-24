@@ -43,7 +43,7 @@ final class SettingsLayout {
 
     /** What the bottom buttons do. {@code advanced} is whether the Advanced options show; the toggle flips it. */
     record Actions(Runnable reset, Runnable undo, Runnable apply, Runnable done, Extra extra, Runnable share,
-                   boolean advanced, Runnable toggleAdvanced) {
+                   boolean advanced, Runnable toggleAdvanced, Runnable rebuild) {
     }
 
     /**
@@ -118,7 +118,27 @@ final class SettingsLayout {
     private int dragWidth;
 
     private record FlatButton(Component label, Runnable action, boolean enabled, Component tooltip, int x, int y,
-                              int w) {
+                              int w, Component ctrlLabel, Runnable ctrlAction, Component ctrlTooltip) {
+        FlatButton(Component label, Runnable action, boolean enabled, Component tooltip, int x, int y, int w) {
+            this(label, action, enabled, tooltip, x, y, w, null, null, null);
+        }
+
+        /** Held Ctrl turns a button with a second action (Reset to Defaults: Rebuild Shaders) into that one. */
+        private boolean alternate() {
+            return this.ctrlAction != null && Minecraft.getInstance().hasControlDown();
+        }
+
+        Component shownLabel() {
+            return alternate() ? this.ctrlLabel : this.label;
+        }
+
+        Runnable shownAction() {
+            return alternate() ? this.ctrlAction : this.action;
+        }
+
+        Component shownTooltip() {
+            return alternate() ? this.ctrlTooltip : this.tooltip;
+        }
     }
 
     private final List<FlatButton> buttons = new ArrayList<>();
@@ -255,19 +275,27 @@ final class SettingsLayout {
         }
         int left = this.sidebarX;
         List<FlatButton> leftButtons = new ArrayList<>();
-        leftButtons.add(flat("options.radiante.reset_defaults", "options.radiante.reset_defaults.tooltip",
-            this.actions.reset(), true));
+        FlatButton reset = flat("options.radiante.reset_defaults", "options.radiante.reset_defaults.tooltip",
+            this.actions.reset(), true);
+        leftButtons.add(new FlatButton(reset.label(), reset.action(), true, reset.tooltip(), 0, 0, 0,
+            Component.translatable("options.radiante.rebuild_shaders"), this.actions.rebuild(),
+            Component.translatable("options.radiante.rebuild_shaders.tooltip")));
         leftButtons.add(new FlatButton(Component.translatable(this.actions.advanced() ? "options.radiante.advanced.on"
             : "options.radiante.advanced.off"), this.actions.toggleAdvanced(), true,
             Component.translatable("options.radiante.advanced.tooltip"), 0, 0, 0));
         Extra extra = this.actions.extra();
-        if (extra != null && (extra.anchorKey() == null || extra.anchorKey().equals(focusedKey))) {
+        // Installing or deleting an upscaler belongs with the pipeline it serves: shown on the Quality section only.
+        if (extra != null && selected == RadianteOptionsScreen.Category.QUALITY
+            && (extra.anchorKey() == null || extra.anchorKey().equals(focusedKey))) {
             leftButtons.add(new FlatButton(extra.label(), extra.action(), extra.enabled(), extra.tooltip(), 0, 0, 0));
         }
         for (FlatButton button : leftButtons) {
             int w = this.font.width(button.label()) + 16;
+            if (button.ctrlLabel() != null) {
+                w = Math.max(w, this.font.width(button.ctrlLabel()) + 16);
+            }
             this.buttons.add(new FlatButton(button.label(), button.action(), button.enabled(), button.tooltip(), left, y,
-                w));
+                w, button.ctrlLabel(), button.ctrlAction(), button.ctrlTooltip()));
             left += w + 4;
         }
     }
@@ -463,16 +491,20 @@ final class SettingsLayout {
             if (hover) {
                 g.fill(button.x(), button.y() + 15, button.x() + button.w(), button.y() + 16, ACCENT);
             }
-            g.centeredText(this.font, button.label(), button.x() + button.w() / 2, button.y() + 4,
+            g.centeredText(this.font, button.shownLabel(), button.x() + button.w() / 2, button.y() + 4,
                 button.enabled() ? (hover ? ACCENT : TEXT) : 0xFF606060);
-            if (button.tooltip() != null && inside(mouseX, mouseY, button.x(), button.y(), button.w(), 16)) {
-                g.setTooltipForNextFrame(this.font.split(button.tooltip(), 200), mouseX, mouseY);
+            if (button.shownTooltip() != null && inside(mouseX, mouseY, button.x(), button.y(), button.w(), 16)) {
+                g.setTooltipForNextFrame(this.font.split(button.shownTooltip(), 200), mouseX, mouseY);
             }
         }
     }
 
     private void drawRow(GuiGraphicsExtractor g, OptionInstance<?> option, int y, boolean hover, boolean advanced) {
         int right = this.listX + this.listW - PAD - 4;
+        if (keyboardFocus && focusedKey != null && focusedKey.equals(keyOf(caption(option)))) {
+            // The row the arrow keys work on.
+            g.outline(this.listX + 4, y, this.listW - 8, ROW, ACCENT);
+        }
         // Grey all over while another setting keeps it from doing anything; its description says which.
         boolean blocked = blocked(option);
         // Advanced options sit a step in and a shade dimmer than the everyday ones above them.
@@ -592,10 +624,11 @@ final class SettingsLayout {
     }
 
     boolean mouseClicked(double mouseX, double mouseY, int button) {
+        keyboardFocus = false;
         for (FlatButton flat : this.buttons) {
             if (flat.enabled() && inside(mouseX, mouseY, flat.x(), flat.y(), flat.w(), 16)) {
                 clickSound();
-                flat.action().run();
+                flat.shownAction().run();
                 return true;
             }
         }
@@ -612,6 +645,7 @@ final class SettingsLayout {
                         this.search.setValue("");
                     }
                     layoutLines();
+                    layoutButtons();
                 }
                 return true;
             }
@@ -691,6 +725,120 @@ final class SettingsLayout {
         if (value != this.dragging.get()) {
             this.dragging.set(value);
         }
+    }
+
+    /** Set while the keyboard moves through the list: the row in focus is outlined. */
+    private static boolean keyboardFocus;
+
+    private static final int KEY_RIGHT = 262;
+    private static final int KEY_LEFT = 263;
+    private static final int KEY_DOWN = 264;
+    private static final int KEY_UP = 265;
+    private static final int KEY_ENTER = 257;
+    private static final int KEY_KP_ENTER = 335;
+    private static final int KEY_SPACE = 32;
+    private static final int KEY_TAB = 258;
+
+    /**
+     * Keyboard: Up and Down move through the options, Left and Right step a slider by one (ten with Shift) or a list
+     * of values to its neighbour, Enter or Space flips a switch or steps a list, Tab moves to the next section (Shift:
+     * the previous). Without a row picked yet, the keys work on the one under the mouse. True when used.
+     */
+    @SuppressWarnings("unchecked")
+    boolean keyPressed(int key, boolean shift) {
+        if (key == KEY_TAB) {
+            RadianteOptionsScreen.Category[] all = RadianteOptionsScreen.Category.values();
+            selected = all[Math.floorMod(selected.ordinal() + (shift ? -1 : 1), all.length)];
+            this.scroll = 0.0;
+            this.onScroll.accept(this.scroll);
+            if (this.search != null) {
+                this.search.setValue("");
+            }
+            layoutLines();
+            layoutButtons();
+            clickSound();
+            return true;
+        }
+        List<Line> rows = new ArrayList<>();
+        for (Line line : this.lines) {
+            if (line.option() != null) {
+                rows.add(line);
+            }
+        }
+        if (rows.isEmpty()) {
+            return false;
+        }
+        int index = -1;
+        for (int i = 0; i < rows.size(); i++) {
+            if (focusedKey != null && focusedKey.equals(keyOf(caption(rows.get(i).option())))) {
+                index = i;
+                break;
+            }
+        }
+        if (index < 0 && this.described != null) {
+            for (int i = 0; i < rows.size(); i++) {
+                if (rows.get(i).option() == this.described) {
+                    index = i;
+                    break;
+                }
+            }
+        }
+        if (key == KEY_UP || key == KEY_DOWN) {
+            index = index < 0 ? 0 : Math.max(0, Math.min(rows.size() - 1, index + (key == KEY_DOWN ? 1 : -1)));
+            Line line = rows.get(index);
+            focusedKey = keyOf(caption(line.option()));
+            this.described = line.option();
+            keyboardFocus = true;
+            // Into view.
+            int view = this.bottom - this.top;
+            if (line.y() < this.scroll) {
+                this.scroll = clampScroll(line.y() - HEADER);
+            } else if (line.y() + ROW > this.scroll + view) {
+                this.scroll = clampScroll(line.y() + ROW - view);
+            }
+            this.onScroll.accept(this.scroll);
+            layoutButtons();
+            return true;
+        }
+        if (key != KEY_LEFT && key != KEY_RIGHT && key != KEY_ENTER && key != KEY_KP_ENTER && key != KEY_SPACE) {
+            return false;
+        }
+        if (index < 0) {
+            return false;
+        }
+        OptionInstance<?> option = rows.get(index).option();
+        focusedKey = keyOf(caption(option));
+        this.described = option;
+        keyboardFocus = true;
+        if (blocked(option)) {
+            return true;
+        }
+        int direction = key == KEY_LEFT ? -1 : 1;
+        Object value = option.get();
+        if (value instanceof Boolean on) {
+            ((OptionInstance<Boolean>) option).set(!on);
+            clickSound();
+        } else if (option.values() instanceof OptionInstance.IntRange range) {
+            if (key != KEY_LEFT && key != KEY_RIGHT) {
+                return true;
+            }
+            int step = shift ? 10 : 1;
+            int next = Math.max(range.minInclusive(), Math.min(range.maxInclusive(), (Integer) value + direction * step));
+            if (next != (Integer) value) {
+                ((OptionInstance<Integer>) option).set(next);
+            }
+        } else if (option.values() instanceof OptionInstance.Enum<?> values) {
+            List<Object> list = (List<Object>) values.valueListSupplier().getDefaultList();
+            int at = list.indexOf(value);
+            ((OptionInstance<Object>) option).set(list.get(Math.floorMod(at + direction, list.size())));
+            clickSound();
+        }
+        layoutButtons();
+        return true;
+    }
+
+    boolean searchFocused() {
+        return this.search != null && this.search.isFocused();
     }
 
     boolean scrollBy(double mouseX, double mouseY, double amount) {

@@ -31,6 +31,8 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private static final int UNLIT_FLAG = 0x2000;
     /** Not a surface: the marker of a light Bedrock RTX adds at a small light block; see pointLight(). */
     private static final int POINT_LIGHT_FLAG = 0x4000;
+    /** The surface of lava, a self-lit sheet the shaders show by its colour, not by the light on it; see lava(). */
+    private static final int LAVA_FLAG = 0x8000;
 
     public static final int ALPHA_MODE_OPAQUE = 0;
     public static final int ALPHA_MODE_CUTOUT = 1;
@@ -93,6 +95,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private boolean glass;
     private boolean blend;
     private boolean unlit;
+    private boolean lava;
     private boolean plant;
     private int paneFlags;
     private boolean computeQuadNormals;
@@ -203,6 +206,12 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
      * Marks what follows as a light block in a state that gives no light although it draws the sprites its lit
      * states glow with (unlit redstone ore): it neither glows nor casts light (see EmissionTiles.isUnlit).
      */
+    /** Whether the vertices from here on are lava's surface (LAVA_SURFACE_BIT in the shaders). */
+    public PBRVertexWriter lava(boolean lava) {
+        this.lava = lava;
+        return this;
+    }
+
     public PBRVertexWriter unlit(boolean unlit) {
         this.unlit = unlit;
         return this;
@@ -410,7 +419,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         MemoryUtil.memPutInt(v + OFF_ALPHA_MODE,
             this.alphaMode | (this.water ? WATER_FLAG : 0) | (this.rain ? RAIN_FLAG : 0) | (this.held ? HELD_FLAG : 0) | (this.glass ? GLASS_FLAG : 0)
                 | (this.plant ? PLANT_FLAG : 0) | this.paneFlags | (this.blend ? BLEND_FLAG : 0)
-                | (this.unlit ? UNLIT_FLAG : 0));
+                | (this.unlit ? UNLIT_FLAG : 0) | (this.lava ? LAVA_FLAG : 0));
         if (this.colorOverride != 0) {
             setColor(255, 255, 255, 255);
         }

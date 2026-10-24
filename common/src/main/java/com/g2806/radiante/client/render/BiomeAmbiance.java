@@ -680,6 +680,29 @@ public final class BiomeAmbiance {
     }
 
     /**
+     * The clear teal water: red is absorbed within a few blocks while green and blue carry on for dozens, and the
+     * light the water scatters is nearly all green-blue. The numbers are real clear water's, per block as the
+     * shaders take them (the camera's own view of it is thinned a tenth, as the pack's is): red 0.25, green 0.053,
+     * blue 0.058. The scattering albedo (0.21 / 1.0 / 0.90 for real clear water) is held to a fifth of that, so the water
+     * glows as lit water does and not as milk. {@code water_clear_teal} blends each biome's water towards it.
+     */
+    private static final Vector3fc CLEAR_TEAL_EXTINCTION = new Vector3f(0.255f, 0.053f, 0.058f);
+    private static final Vector3fc CLEAR_TEAL_ALBEDO = new Vector3f(0.03f, 0.22f, 0.20f);
+    private static final String CLEAR_TEAL_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.water_clear_teal";
+
+    private static float clearTealShare() {
+        String value = com.g2806.radiante.client.pipeline.Pipeline.getShaderPackValue(CLEAR_TEAL_ATTRIBUTE);
+        if (value == null) {
+            return 0.0f;
+        }
+        try {
+            return Math.max(0.0f, Math.min(1.0f, Float.parseFloat(value)));
+        } catch (NumberFormatException e) {
+            return 0.0f;
+        }
+    }
+
+    /**
      * The water around the camera, averaged and eased like the haze: a Bedrock pack's where it has one, and otherwise
      * one worked out from the biome's vanilla water colour, so every biome's water keeps its own tone as it gets
      * deeper, and each kind of water its own reach and darkness.
@@ -705,6 +728,11 @@ public final class BiomeAmbiance {
             albedo.add(water.albedoR() * weight, water.albedoG() * weight, water.albedoB() * weight);
             fog.add(water.fogR() * weight, water.fogG() * weight, water.fogB() * weight,
                 water.visibility() * weight);
+        }
+        float clearTeal = clearTealShare();
+        if (clearTeal > 0.0f) {
+            extinction.lerp(CLEAR_TEAL_EXTINCTION, clearTeal);
+            albedo.lerp(CLEAR_TEAL_ALBEDO, clearTeal);
         }
         if (!hasWater) {
             waterExtinction.set(extinction, 1.0f);
