@@ -121,7 +121,6 @@ class Framework : public SharedObject<Framework> {
     // Also destroys everything retired so far (gpu::retire::drain).
     void waitDeviceIdle();
     void waitRenderQueueIdle();
-    void waitBackendQueueIdle();
     void close();
     bool isRunning();
 

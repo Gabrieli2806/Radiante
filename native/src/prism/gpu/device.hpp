@@ -25,7 +25,6 @@ class Device : public SharedObject<Device> {
     VkQueue &mainVkQueue();
     VkQueue &secondaryQueue();
 
-    bool hasExtendedDynamicState2LogicOp() const;
     bool isDlssDeviceExtensionsCompatible() const;
     bool isXessDeviceExtensionsCompatible() const;
     bool isDlssFrameGenerationDeviceExtensionsCompatible() const;

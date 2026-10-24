@@ -34,7 +34,6 @@ std::ostream &deviceError() {
 // What createMerged enabled on the device it made last. A wrapper answers for its own device only.
 struct CreatedDevice {
     VkDevice handle = VK_NULL_HANDLE;
-    bool extendedDynamicState2LogicOp = false;
     bool dlss = false;
     bool dlssFrameGeneration = false;
     bool fsrFrameGeneration = false;
@@ -520,7 +519,6 @@ VkResult Device::createMerged(VkPhysicalDevice physicalDeviceHandle,
     FeatureChain enabled(reorderEnabled);
     enabled.invocationReorder.rayTracingInvocationReorder = reorderEnabled ? VK_TRUE : VK_FALSE;
     enableRendererFeatures(enabled, supported, extensions);
-    const bool logicOp = enabled.dynamicState2.extendedDynamicState2LogicOp == VK_TRUE;
 
     MinecraftFeatures minecraft;
     minecraft.merge(*baseInfo, enabled);
@@ -573,7 +571,6 @@ VkResult Device::createMerged(VkPhysicalDevice physicalDeviceHandle,
 
     g_created = {
         .handle = *outDevice,
-        .extendedDynamicState2LogicOp = logicOp,
         .dlss = dlssCompatible,
         .dlssFrameGeneration = dlssFrameGenerationCompatible,
         .fsrFrameGeneration = fsrFrameGenerationCompatible,
@@ -621,10 +618,6 @@ VkQueue &Device::mainVkQueue() {
 
 VkQueue &Device::secondaryQueue() {
     return secondaryQueue_;
-}
-
-bool Device::hasExtendedDynamicState2LogicOp() const {
-    return g_created.handle == device_ && g_created.extendedDynamicState2LogicOp;
 }
 
 bool Device::isDlssDeviceExtensionsCompatible() const {

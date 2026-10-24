@@ -50,7 +50,6 @@ class NativeFrameGeneration {
     uint32_t maxGeneratedFramesFor(Backend which);
 
     void setGeneratedFrames(uint32_t frames);
-    uint32_t generatedFrames() const;
     bool active();
 
     // Frames reaching the display per second, real plus generated.

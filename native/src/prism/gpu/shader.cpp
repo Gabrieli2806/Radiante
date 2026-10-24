@@ -106,7 +106,7 @@ std::string toHex(uint64_t value) {
 // Bumped whenever decorateNonUniformResources (below) changes what it writes.
 constexpr std::string_view kSpirvPostProcessVersion = "nonuniform-1";
 
-// computeCompiledHash for a source whose canonical path is known.
+// The name, without its .spv extension, of the cache file of one compile of a source whose canonical path is known.
 std::string compiledHash(std::string_view canonicalSource,
                          VkShaderStageFlagBits stage,
                          const std::unordered_map<std::string, std::string> &definitions,
@@ -564,22 +564,6 @@ shaderc_shader_kind shaderKindFromStage(VkShaderStageFlagBits stage) {
 }
 
 // ---- ShaderSpirvCache
-
-std::optional<uint64_t> ShaderSpirvCache::computeDependencyHash(const std::string &sourcePath,
-                                                                const std::vector<std::string> &includeDirectories) {
-    SourceIndex index(includeDirectories);
-    return DependencyWalk(index).hash(index.file(makeCanonical(sourcePath)));
-}
-
-std::string ShaderSpirvCache::computeCompiledHash(const std::string &sourcePath,
-                                                  VkShaderStageFlagBits stage,
-                                                  const std::unordered_map<std::string, std::string> &definitions,
-                                                  const std::vector<std::string> &includeDirectories,
-                                                  const std::string &injectedSource,
-                                                  uint64_t dependencyHash) {
-    return compiledHash(makeCanonical(sourcePath).string(), stage, definitions, includeDirectories, injectedSource,
-                        dependencyHash);
-}
 
 std::vector<uint32_t> ShaderSpirvCache::readCachedSpirv(const std::filesystem::path &path) {
     std::ifstream file(path, std::ios::binary | std::ios::ate);

@@ -331,10 +331,6 @@ void NativeFrameGeneration::setGeneratedFrames(uint32_t frames) {
     reset();
 }
 
-uint32_t NativeFrameGeneration::generatedFrames() const {
-    return generatedFrames_;
-}
-
 bool NativeFrameGeneration::active() {
     return generatedFrames_ > 0 && probe();
 }

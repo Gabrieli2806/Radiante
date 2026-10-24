@@ -400,7 +400,7 @@ uint8_t encodeSrgb(uint8_t linear) {
 } // namespace
 
 ImageLoader::ImageLoader(std::vector<std::string> imagePaths, uint32_t forceChannel, bool convertLinearToSrgb)
-    : channel_(forceChannel), layers_(static_cast<uint32_t>(imagePaths.size())) {
+    : layers_(static_cast<uint32_t>(imagePaths.size())) {
     if (imagePaths.empty()) throw std::invalid_argument("no image to load");
     if (forceChannel != 4) throw std::invalid_argument("images are loaded as RGBA only");
 

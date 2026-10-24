@@ -90,10 +90,6 @@ const ShaderPackLoader::ShaderPack &ShaderPack::shaderPack() const {
     return shaderPack_;
 }
 
-const std::unordered_map<std::string, std::string> &ShaderPack::shaderAttributes() const {
-    return shaderAttributes_;
-}
-
 bool ShaderPack::hasSharcRuntime() const {
     return hasSharcRuntime_;
 }

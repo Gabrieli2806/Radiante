@@ -24,8 +24,8 @@ class RenderPass : public SharedObject<RenderPass> {
     VkRenderPass renderPass_ = VK_NULL_HANDLE;
 };
 
-// A render pass from attachment descriptions, a list of attachment references, subpasses that pick from that list
-// by index, and dependencies. Indices are checked when the pass is built.
+// A render pass from attachment descriptions, a list of attachment references and subpasses that pick from that list
+// by index. Indices are checked when the pass is built.
 //
 // The begin...() scopes hand out parts of this builder, so it is neither copied nor moved.
 class RenderPassBuilder {
@@ -79,17 +79,6 @@ class RenderPassBuilder {
         RenderPassBuilder &parent_;
     };
 
-    class SubpassDependencyBuilder {
-      public:
-        explicit SubpassDependencyBuilder(RenderPassBuilder &parent);
-
-        SubpassDependencyBuilder &defineSubpassDependency(VkSubpassDependency subpassDependency);
-        RenderPassBuilder &endSubpassDependency();
-
-      private:
-        RenderPassBuilder &parent_;
-    };
-
     RenderPassBuilder() = default;
     RenderPassBuilder(const RenderPassBuilder &) = delete;
     RenderPassBuilder &operator=(const RenderPassBuilder &) = delete;
@@ -97,7 +86,6 @@ class RenderPassBuilder {
     AttachmentDescriptionBuilder &beginAttachmentDescription();
     AttachmentReferenceBuilder &beginAttachmentReference();
     SubpassDescriptionBuilder &beginSubpassDescription();
-    SubpassDependencyBuilder &beginSubpassDependency();
 
     // Throws when a subpass names a reference that was not defined, or when the driver cannot make the pass.
     std::shared_ptr<RenderPass> build(std::shared_ptr<Device> device) const;
@@ -108,12 +96,10 @@ class RenderPassBuilder {
     AttachmentDescriptionBuilder attachmentDescriptionBuilder_{*this};
     AttachmentReferenceBuilder attachmentReferenceBuilder_{*this};
     SubpassDescriptionBuilder subpassDescriptionBuilder_{*this};
-    SubpassDependencyBuilder subpassDependencyBuilder_{*this};
 
     std::vector<VkAttachmentDescription> attachments_;
     std::vector<VkAttachmentReference> references_;
     std::vector<SubpassDescription> subpasses_;
-    std::vector<VkSubpassDependency> dependencies_;
 };
 
 } // namespace gpu

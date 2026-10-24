@@ -208,24 +208,6 @@ std::string compileKey(const ShaderPack::ShaderCreateInfo &request,
     return key;
 }
 
-} // namespace
-
-std::shared_ptr<gpu::Shader> ShaderPack::createShader(std::shared_ptr<gpu::Device> device,
-                                                      const std::filesystem::path &path,
-                                                      VkShaderStageFlagBits stage,
-                                                      const std::unordered_map<std::string, std::string> &definitions,
-                                                      ShaderPackLoader::Stage executionStage,
-                                                      uint32_t executionSet) const {
-    Definitions merged = shaderAttributes_;
-    for (const auto &[name, value] : definitions) merged.insert_or_assign(name, value);
-    return gpu::Shader::create(device, gpu::Shader::compileGlslToSpv(path.string(), stage, std::move(merged),
-                                                                     shaderPack_.includeDirectories,
-                                                                     executionSource(executionStage, executionSet),
-                                                                     shaderCacheFolder()));
-}
-
-namespace {
-
 // How a batch went: requests, distinct compiles, and how many of those the SPIR-V cache had.
 struct BatchCounts {
     size_t requests = 0;
