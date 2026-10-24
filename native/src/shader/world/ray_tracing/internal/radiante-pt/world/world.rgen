@@ -146,8 +146,8 @@ bool cameraMedium(vec3 eyePos, out vec3 sigmaT, out vec3 sourceRadiance, out vec
         // and read every powder snow as roofed, under an open sky too.
         float toBlockTop = 1.0 - fract(float(worldUBO.cameraPos.y) + eyePos.y);
         float skyVisibility = volumetricSkyVisibility(eyePos + vec3(0.0, toBlockTop, 0.0), false);
-        float skyLight = dot(texture(skyFull, vec3(0.0, 1.0, 0.0)).rgb, vec3(0.2126, 0.7152, 0.0722)) *
-                         mix(POWDER_SNOW_SHADE, 1.0, skyVisibility);
+        float skyLight = max(dot(texture(skyFull, vec3(0.0, 1.0, 0.0)).rgb, vec3(0.2126, 0.7152, 0.0722)) *
+                             mix(POWDER_SNOW_SHADE, 1.0, skyVisibility), POWDER_SNOW_MIN_LIGHT);
         sigmaT = vec3(extinction);
         sourceRadiance = POWDER_SNOW_COLOR * skyLight;
         meterLight = vec3(skyLight);

@@ -51,6 +51,11 @@
 #ifndef POWDER_SNOW_SHADE
 #    define POWDER_SNOW_SHADE 0.2
 #endif
+// The least light powder snow shows: vanilla draws its fog in the same colour by night and in a cave, and with only the
+// sky's light it went near black at night and the effect was barely there. A dim snow-grey mist instead.
+#ifndef POWDER_SNOW_MIN_LIGHT
+#    define POWDER_SNOW_MIN_LIGHT 0.12
+#endif
 // How far the eye is held below what the snow's light meters where no sky reaches it: the eye adapted to a roofed
 // snow all the way and showed it as bright as under the open sky, where vanilla's goes a darker grey. Eased from 1
 // under the open sky to this under a roof.

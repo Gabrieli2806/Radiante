@@ -41,6 +41,61 @@ public abstract class GameRendererMixin {
     @Final
     private net.minecraft.client.renderer.ProjectionMatrixBuffer hud3dProjectionMatrixBuffer;
 
+    @Shadow
+    @Final
+    private net.minecraft.client.renderer.ScreenEffectRenderer screenEffectRenderer;
+
+    @Shadow
+    @Final
+    private net.minecraft.client.renderer.feature.FeatureRenderDispatcher featureRenderDispatcher;
+
+    @Shadow
+    @Final
+    private net.minecraft.client.renderer.SubmitNodeStorage handAndScreenSubmitNodeStorage;
+
+    /**
+     * What Minecraft lays over the view from inside the camera: the flames when the player burns, the block the head is
+     * in, the totem's flash. They are drawn in the pass that draws the hand, which is skipped while tracing because the
+     * hand is traced, so they were never seen; they are drawn here the same way, over the traced picture. (The water
+     * overlay is left out, ScreenEffectRendererMixin: the traced water is the view under water.)
+     */
+    private void radiante$screenEffects() {
+        net.minecraft.client.renderer.state.GameRenderState state = this.gameRenderState();
+        if (this.mainRenderTarget.getDepthTexture() == null) {
+            return;
+        }
+        net.minecraft.client.renderer.state.level.CameraRenderState cameraState =
+            state.levelRenderState.cameraRenderState;
+        net.minecraft.client.renderer.state.level.PlayerRenderState playerState =
+            state.levelRenderState.playerRenderState;
+        if (playerState == null) {
+            return;
+        }
+        this.hudProjection.setupPerspective(0.05F, cameraState.depthFar, cameraState.hudFov,
+            state.windowRenderState.width, state.windowRenderState.height);
+        com.mojang.blaze3d.systems.RenderSystem.setProjectionMatrix(
+            this.hud3dProjectionMatrixBuffer.getBuffer(this.hudProjection),
+            com.mojang.blaze3d.ProjectionType.PERSPECTIVE);
+        this.screenEffectRenderer.submit(state.levelRenderState.worldPartialTicks, this.handAndScreenSubmitNodeStorage,
+            playerState, cameraState, state.guiRenderState.isHudHidden);
+        try (net.minecraft.client.renderer.feature.FeatureRenderDispatcher.PreparedFrame frame =
+                 this.featureRenderDispatcher.prepareFrame(this.handAndScreenSubmitNodeStorage)) {
+            if (frame.isEmpty()) {
+                return;
+            }
+            var encoder = com.mojang.blaze3d.systems.RenderSystem.getDevice().createCommandEncoder();
+            // In front of everything, as in vanilla, where this pass starts from a cleared depth.
+            encoder.clearDepthTexture(this.mainRenderTarget.getDepthTexture(), 0.0);
+            try (com.mojang.renderpearl.api.commands.RenderPass pass = encoder.createRenderPass(
+                () -> "Radiante screen effects", this.mainRenderTarget.getColorTextureView(),
+                java.util.Optional.empty(), this.mainRenderTarget.getDepthTextureView(),
+                java.util.OptionalDouble.empty())) {
+                com.mojang.blaze3d.systems.RenderSystem.bindDefaultUniforms(pass);
+                net.minecraft.client.renderer.feature.FeatureRenderDispatcher.renderAllFeatures(pass, frame);
+            }
+        }
+    }
+
     /**
      * The three coloured axes F3 puts at the crosshair. Minecraft draws them at the end of the pass that draws the
      * hand, which is skipped while tracing because the hand is traced; they are drawn here the same way, over the
@@ -89,6 +144,7 @@ public abstract class GameRendererMixin {
         // then went on over the traced picture; otherwise it is traced now.
         if (!RadianteRenderer.wasFrameTraced()) {
             RadianteRenderer.renderLevel(gameRenderer, this.gameRenderState().levelRenderState);
+            radiante$screenEffects();
             radiante$debugCrosshair();
         }
         com.g2806.radiante.client.DevAutomation.frameDrawn();
@@ -111,6 +167,7 @@ public abstract class GameRendererMixin {
                 net.minecraft.client.renderer.fog.FogRenderer.FogMode.NONE));
             if (RadianteRenderer.wasFrameTraced()) {
                 // The traced picture is already in the target; without the overlay pass it is not yet (see above).
+                radiante$screenEffects();
                 radiante$debugCrosshair();
             }
         }
