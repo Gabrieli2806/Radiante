@@ -50,7 +50,7 @@ enum Tunable {
     GLASS_REFLECTIONS(null, "render_pipeline.module.ray_tracing.attribute.glass_reflection", 0.005, 0, 200, 100,
         Format.PERCENT),
     // How much of the pack's water texture shows over the surface: Bedrock RTX's faint pattern, or clear water at 0.
-    WATER_TEXTURE(null, "render_pipeline.module.ray_tracing.attribute.water_texture_layer", 0.01, 0, 100, 100,
+    WATER_TEXTURE(null, "render_pipeline.module.ray_tracing.attribute.water_texture_layer", 0.01, 0, 100, 10,
         Format.PERCENT),
     // How far each biome's water is moved towards clear teal water (red absorbed first, green and blue far-reaching).
     WATER_CLEAR_TEAL(null, "render_pipeline.module.ray_tracing.attribute.water_clear_teal", 0.01, 0, 100, 0,

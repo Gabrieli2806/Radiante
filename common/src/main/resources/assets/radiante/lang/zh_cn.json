@@ -240,7 +240,7 @@
   "options.radiante.quality.ultra": "极高",
   "options.radiante.quality.custom": "自定义",
   "options.radiante.reset_defaults": "恢复默认",
-  "options.radiante.reset_defaults.tooltip": "打开以将本页所有设置恢复为默认值。",
+  "options.radiante.reset_defaults.tooltip": "将所有 Radiante 设置恢复为默认值。按住 Ctrl 则改为重新编译着色器。",
   "options.radiante.emission_brightness": "光源亮度",
   "options.radiante.emission_brightness.tooltip": "发光方块(火把、岩浆、荧石……)的亮度。",
   "options.radiante.held_light_brightness": "手持光源亮度",
@@ -373,8 +373,6 @@
   "options.radiante.restart.later": "稍后",
   "options.radiante.rain_wetness": "雨天地面湿润",
   "options.radiante.rain_wetness.tooltip": "下雨时露天的表面会变暗并反光，雨停后慢慢变干。",
-  "options.radiante.entity_light_reach": "发光物品照明距离",
-  "options.radiante.entity_light_reach.tooltip": "发光的掉落物和展示框物品在距你多少格内仍会照亮周围。越远开销稍高。",
   "options.radiante.cache_deep_bounces": "深层反弹使用缓存",
   "options.radiante.cache_deep_bounces.tooltip": "首次反弹后，光照取自辐射缓存而不再继续追踪，与 Bedrock RTX 一致。灯多的地方快得多；反弹光可能略柔和。",
   "options.radiante.bedrock_one_bounce": "单次反弹 + 缓存",
@@ -581,5 +579,11 @@
   "options.radiante.notice.profile": "由 %1$s 配置设定。修改后配置会变为“自定义”；再次选择 %1$s 可恢复。",
   "options.radiante.preset.tooltip": "完成画面的降噪器和放大器：NVIDIA RTX 上用 DLSS 光线重建，其他显卡用 NRD 配合 FSR 或 XeSS。DLSS 和 XeSS 首次使用时下载。",
   "options.radiante.renderer_profile.custom": "自定义",
-  "render_pipeline.module.ray_tracing.attribute.seamless_glass_scope.tooltip": "无缝玻璃连接哪些玻璃：方块和玻璃板、仅方块，或仅玻璃板。"
+  "render_pipeline.module.ray_tracing.attribute.seamless_glass_scope.tooltip": "无缝玻璃连接哪些玻璃：方块和玻璃板、仅方块，或仅玻璃板。",
+  "options.radiante.atmosphere_style.java_fallback": "Java（Bedrock 不可用）",
+  "options.radiante.blocked.bedrock_files": "Bedrock 不可用：未找到 Bedrock 安装（Minecraft for Windows），radiante/bedrock 中也没有 Bedrock 文件。将使用 Java。",
+  "options.radiante.cloud_height": "云层高度",
+  "options.radiante.cloud_height.tooltip": "升高或降低原版云层，单位为高于默认高度的方块数。",
+  "options.radiante.rebuild_shaders": "重新编译着色器",
+  "options.radiante.rebuild_shaders.tooltip": "应用更改并重新编译着色器。若更改设置后画面异常，可使用此项。"
 }

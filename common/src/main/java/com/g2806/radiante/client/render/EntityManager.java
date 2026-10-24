@@ -890,7 +890,8 @@ public final class EntityManager {
             ((LevelRendererGizmoAccess) minecraft.levelRenderer).radiante$cloudRenderer();
         PBRVertexWriter writer = CLOUDS.update(
             ((com.g2806.radiante.mixin.world.CloudRendererAccessor) renderer).radiante$texture(),
-            minecraft.options.getCloudStatus(), levelRenderState.cloudColor, levelRenderState.cloudHeight,
+            minecraft.options.getCloudStatus(), levelRenderState.cloudColor,
+            levelRenderState.cloudHeight + com.g2806.radiante.client.option.Options.cloudHeightOffset,
             minecraft.options.cloudRange().get(), cameraState.pos, levelRenderState.gameTime,
             levelRenderState.worldPartialTicks);
         if (writer == null || writer.vertexCount() % 4 != 0) {

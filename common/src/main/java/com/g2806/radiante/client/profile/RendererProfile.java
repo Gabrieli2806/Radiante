@@ -108,8 +108,6 @@ public enum RendererProfile {
             "finer, irregular waves instead of Bedrock's magnified water texture, whose pixels show at grazing angles"),
         new Override(RT + "water_wave_strength", "0.5", "0.35",
             "waves strong enough to break the mirror into ripples"),
-        new Override(RT + "water_texture_layer", "0.4", "1.0",
-            "the pack's water pattern only faintly, so the surface is not uniformly speckled"),
         new Override(RT + "water_clear_teal", "0.7", "0.0",
             "water that absorbs red first and stays clear in green and blue: a teal you see the bottom through, "
                 + "where the pack's water closes in as a deep blue murk"),

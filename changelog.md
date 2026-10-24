@@ -10,6 +10,18 @@ All notable changes to this project are documented in this file.
   screen on the title screen. A popup in the top right corner (a vanilla toast with the Radiante icon) shows the
   progress, then "settings applied" or the error, in a world and out of it, and the menus stay usable. The wait screen
   is now only used in a world when the change cannot be compiled in the background.
+- The settings can be used from the keyboard: Up and Down move through the options, Left and Right move a slider by
+  one step (ten with Shift) or step a list, Enter or Space flips a switch, Tab moves to the next section.
+- Holding Ctrl turns Reset to Defaults into Rebuild Shaders: it applies the changes and builds the shaders again, for
+  when the picture looks wrong after changing settings.
+- The Install / Delete button of DLSS and XeSS shows only on the Quality section.
+- New Cloud Height slider (Sky, Fog & Water): raises or lowers the Vanilla clouds.
+- Glowing Item Light Distance is removed: Minecraft stops drawing dropped items long before it mattered.
+- Atmosphere shows Java (Bedrock not available), greyed with the reason, when no Bedrock install or files are found,
+  instead of a Bedrock choice that did nothing. Bedrock Caustics is greyed the same way, and off by default.
+- Biome Ambiance is off by default; Water Texture defaults to 10 %.
+- Seamless Glass on glass blocks shows the glass's colour and clarity evenly, without the streaks drawn inside the
+  texture, so a wall of glass reads as one clear sheet.
 
 ### Startup
 
@@ -24,7 +36,7 @@ All notable changes to this project are documented in this file.
 - New Realistic profile (Settings > Image > Renderer Profile), next to Bedrock RTX (Enhanced) and Custom. It is
   Bedrock RTX (Enhanced) with the settings that make a picture look like plastic set the other way: bounce light 0.8
   and sky light 1.0 (less ambient fill), daylight exposure 0.42, contrast 1.08, saturation 92 %, bloom 0.004, light
-  shafts and sun glow halved, water waves 0.5 with the realistic surface and a 40 % water pattern, mirror roughness
+  shafts and sun glow halved, water waves 0.5 with the realistic surface, mirror roughness
   limit 0.02, slower eye adaptation. Enhanced is unchanged.
 
 ### Water

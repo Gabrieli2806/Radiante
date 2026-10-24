@@ -125,7 +125,8 @@ public final class BedrockRtxProfile {
             "sunlight through a see-through surface = texture colour x (1 - saturate(2 alpha - 1)), shadow when the "
                 + "remainder is nearly nothing"),
 
-        new CompatParameter("transmission", null, RT + "bedrock_caustics", TRUE, FALSE, ParameterStatus.MATCHES_BEDROCK,
+        // Off by default: it needs the caustics texture from a Bedrock install, and is subtle at best.
+        new CompatParameter("transmission", null, RT + "bedrock_caustics", FALSE, FALSE, ParameterStatus.MATCHES_BEDROCK,
             "sunlight under water is scaled by 1 + exp(-0.1 depth) (7 c + 0.8 - 1); "
                 + "the repeat size of the pattern is a run-time value"),
         new CompatParameter("transmission", null, RT + "bedrock_medium_clamp", TRUE, FALSE,

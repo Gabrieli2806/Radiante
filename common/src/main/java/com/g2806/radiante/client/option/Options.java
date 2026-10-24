@@ -37,10 +37,10 @@ public class Options {
     public static boolean debugLogging = true;
     /**
      * Each biome's own air and water (BiomeAmbiance): a faint haze in the biome's tone and water that is clear by a
-     * beach and dark in the deep ocean. On its own switch, apart from the volumetric fog, and on by default: it is
-     * subtle. (Stored under a new name than the "biomeFog" of before 1.0, which was off by default and far heavier.)
+     * beach and dark in the deep ocean. On its own switch, apart from the volumetric fog, and off by default. (Stored
+     * under a new name than the "biomeFog" of before 1.0, which was off by default and far heavier.)
      */
-    public static boolean biomeAmbiance = true;
+    public static boolean biomeAmbiance = false;
     /** Whether the settings screen shows the Advanced options; their values apply either way. */
     public static boolean advancedSettings = false;
     /**
@@ -119,6 +119,10 @@ public class Options {
      * as from sea level. 0 leaves them the same everywhere.
      */
     public static int starAltitude = 100;
+    /** Blocks added to the height vanilla's clouds float at (the Vanilla clouds; the volumetric ones have their own). */
+    public static int cloudHeightOffset = 0;
+    public static final int MIN_CLOUD_HEIGHT_OFFSET = -96;
+    public static final int MAX_CLOUD_HEIGHT_OFFSET = 320;
     /** How thick the biome haze is, in percent of the tuned values. */
     public static int biomeAmbianceStrength = 100;
     /**
@@ -276,6 +280,8 @@ public class Options {
         bool("advancedSettings", () -> advancedSettings, v -> advancedSettings = v),
         bool("biomeAmbiance", () -> biomeAmbiance, v -> biomeAmbiance = v),
         number("starAltitude", () -> starAltitude, v -> starAltitude = Math.max(0, Math.min(400, v))),
+        number("cloudHeightOffset", () -> cloudHeightOffset,
+            v -> cloudHeightOffset = Math.max(MIN_CLOUD_HEIGHT_OFFSET, Math.min(MAX_CLOUD_HEIGHT_OFFSET, v))),
         number("volumetricFogStrength", () -> volumetricFogStrength,
             v -> volumetricFogStrength = Math.max(0, Math.min(400, v))),
         number("biomeAmbianceStrength", () -> biomeAmbianceStrength,

@@ -12,8 +12,9 @@
 
 | Control | Range / Values | Default | What it does |
 |---|---|---|---|
-| **Atmosphere** | Java · Bedrock | Bedrock | Bedrock: Bedrock RTX's sky and sunlight colours, read from a Bedrock install on this PC (or from `radiante/bedrock/sky.png` and `look_up_tables.png`). Java: Radiante's own sky. Without Bedrock files available, the Java sky is used even if this is set to Bedrock. Full detail in [bedrock-rtx.md](../bedrock-rtx.md). |
+| **Atmosphere** | Java · Bedrock | Bedrock | Bedrock: Bedrock RTX's sky and sunlight colours, read from a Bedrock install on this PC (or from `radiante/bedrock/sky.png` and `look_up_tables.png`). Java: Radiante's own sky. Without Bedrock files available, the Java sky is used even if this is set to Bedrock. Full detail in [bedrock-rtx.md](../bedrock-rtx.md). Without those files the option is grey and shows Java (Bedrock not available). |
 | **Clouds** | Off · Vanilla · Volumetric | Vanilla | How clouds are drawn. Volumetric are real 3D clouds that cast shadows and cost the most GPU time; vanilla-style are cheaper (the usual flat cloud mesh, but traced and lit); off is fastest. |
+| **Cloud Height** | -96 – +320 blocks | 0 | Raises or lowers the Vanilla clouds above their usual height. |
 | **Cloud Shadows** | On / Off | Off | Volumetric clouds cast soft shadows on the ground. Volumetric clouds only. |
 | **Cloud Coverage** | 0% – 100% | 50% | How much of the sky volumetric clouds cover. |
 | **Cloud Density** | 0% – 400% | 100% | How thick volumetric clouds are. |
@@ -24,7 +25,7 @@
 | **Light Shafts** | 0% – 400% | 100% | Beams of light through windows, skylights and leaves. Needs Volumetric Fog turned on below. |
 | **Sun Path** | Vanilla · Tilted · Custom | Vanilla | Vanilla: sun and moon cross straight overhead from east to west. Tilted: the path leans ten degrees south, so noon shadows are not straight down. Custom shows when the [Sun & Moon Path](#sun--moon-path-advanced) settings hold anything else. |
 | **Vanilla Sun/Moon Rotation** | On/Off | On | Keeps the sun and moon squares lined up with their path as in vanilla, instead of turning as they cross the sky. |
-| **Biome Ambiance** | On/Off | On | Each biome's own air and water, kept subtle: warm dust over deserts, a green murk over swamps, a cold bright mist over snow, red, teal and ash in the Nether, violet in the End; under water, clear and bright by a beach, dark and close in the deep ocean. Fades from one biome to the next, stays out of overworld caves, and works with or without Volumetric Fog. More under [Biome Ambiance](#biome-ambiance) below. |
+| **Biome Ambiance** | On/Off | Off | Each biome's own air and water, kept subtle: warm dust over deserts, a green murk over swamps, a cold bright mist over snow, red, teal and ash in the Nether, violet in the End; under water, clear and bright by a beach, dark and close in the deep ocean. Fades from one biome to the next, stays out of overworld caves, and works with or without Volumetric Fog. More under [Biome Ambiance](#biome-ambiance) below. |
 | **Biome Ambiance Strength** | 0% – 400% | 100% | How thick each biome's haze is. 100% is the tuned, subtle look; no effect on performance. |
 | **Volumetric Fog** | On/Off | On (if the pipeline supports it) | Ray marches the air, like Bedrock RTX: sunlight and moonlight scatter in the biome fog, and trees and terrain cast light shafts through it. Costs noticeably more GPU time than the plain haze. Its quality (samples per ray) is set in [Performance](performance.md). |
 | **Fog Style** | Froxel · Radiante | Froxel | Froxel: a 3D grid (froxels) lit once per cell and kept across frames; sharper shafts, block lights glow in the fog, and it costs less. Radiante: each pixel marches the air itself; follows every surface exactly but costs more. Hidden with the Bedrock RTX profile, whose fog is Bedrock's own volume. |

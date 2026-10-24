@@ -240,7 +240,7 @@
   "options.radiante.quality.ultra": "Ultra",
   "options.radiante.quality.custom": "Custom",
   "options.radiante.reset_defaults": "Reset to Defaults",
-  "options.radiante.reset_defaults.tooltip": "Puts every setting on this screen back to its default.",
+  "options.radiante.reset_defaults.tooltip": "Puts every Radiante setting back to its default. Hold Ctrl to rebuild the shaders instead.",
   "options.radiante.emission_brightness": "Light Source Brightness",
   "options.radiante.emission_brightness.tooltip": "Brightness of blocks that give off light (torches, lava, glowstone...).",
   "options.radiante.held_light_brightness": "Held Light Brightness",
@@ -373,8 +373,6 @@
   "options.radiante.restart.later": "Later",
   "options.radiante.rain_wetness": "Wet Ground in Rain",
   "options.radiante.rain_wetness.tooltip": "Surfaces under open sky turn darker and glossy while it rains, and dry slowly after it stops.",
-  "options.radiante.entity_light_reach": "Glowing Item Light Distance",
-  "options.radiante.entity_light_reach.tooltip": "How far from you, in blocks, glowing dropped items and framed items still light their surroundings. Further costs a little more.",
   "options.radiante.cache_deep_bounces": "Cache Deep Bounces",
   "options.radiante.cache_deep_bounces.tooltip": "After the first bounce, light comes from the radiance cache instead of being traced further, as in Bedrock RTX. Much faster near many lights; bounced light can look softer.",
   "options.radiante.bedrock_one_bounce": "One Bounce + Cache",
@@ -582,5 +580,11 @@
   "options.radiante.renderer_profile.custom": "Custom",
   "options.radiante.notice.profile": "Set by the %1$s profile. Changing it turns the profile into Custom; pick %1$s again to restore it.",
   "options.radiante.notice.custom_profile": "Custom: the Bedrock RTX (Enhanced) profile with settings changed by hand. Pick the profile again to restore its values.",
-  "options.radiante.blocked.bedrock_fog": "No effect right now: Bedrock's fog does not use it. Works with the Radiante profile or with Bedrock Volumetric Fog off under Advanced."
+  "options.radiante.blocked.bedrock_fog": "No effect right now: Bedrock's fog does not use it. Works with the Radiante profile or with Bedrock Volumetric Fog off under Advanced.",
+  "options.radiante.atmosphere_style.java_fallback": "Java (Bedrock not available)",
+  "options.radiante.blocked.bedrock_files": "Bedrock not available: no Bedrock install (Minecraft for Windows) was found, and there are no Bedrock files in radiante/bedrock. Java is used instead.",
+  "options.radiante.cloud_height": "Cloud Height",
+  "options.radiante.cloud_height.tooltip": "Raises or lowers the Vanilla clouds, in blocks above their usual height.",
+  "options.radiante.rebuild_shaders": "Rebuild Shaders",
+  "options.radiante.rebuild_shaders.tooltip": "Applies the changes and builds the shaders again. Use it if the picture looks wrong after changing settings."
 }
