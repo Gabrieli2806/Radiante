@@ -9,7 +9,7 @@ hace que ese selector muestre "Personalizado" — no existe un estado "a medias"
 
 ## Niveles de calidad
 
-El selector **Calidad**, arriba en la categoría [Calidad y Escalado](opciones/calidad-y-escalado.md),
+El selector **Calidad**, arriba en la sección [Calidad](opciones/calidad-y-escalado.md),
 ajusta de una vez los controles medidos como los que más cuestan en fotogramas por segundo:
 
 | Nivel | Modo DLSS / de Escalado | Niebla Volumétrica | Nubes | Muestreo de Luz de Bloques | Distancia de Renderizado | Rebotes de Luz | Relieve de Texturas | Calidad de Niebla Vol. |
@@ -60,6 +60,12 @@ Luz del Cielo (y el método de Mapeo de Tonos) a la vez:
 - **Vívido** — más contraste (vía el mapeo de tonos ACES, más cinematográfico) y más color que
   Natural, pero sin llegar a la luz rebotada extra de Bedrock.
 
+Los perfiles de render ponen estos valores por su cuenta (Bedrock RTX (Mejorado): saturación 100%,
+luz rebotada 150%, luz del cielo 180%), que no coinciden con ningún estilo, así que con un perfil el
+selector muestra **Personalizado**. Elegir un estilo convierte el perfil en Personalizado. Los
+perfiles usan además la curva de tonos propia de Bedrock, que el estilo no cambia: la columna Mapeo
+de Tonos solo se aplica cuando está en uso una de las tres curvas de arriba.
+
 **Estilos de imagen.** Natural, Bedrock y Vívido cambian la saturación, el mapeo de tonos y cuánta luz rebotada llega.
 
 *Natural*
@@ -77,7 +83,7 @@ Luz del Cielo (y el método de Mapeo de Tonos) a la vez:
 ## Cómo se relacionan con "Atmósfera"
 
 El Estilo de Imagen no cambia el ajuste **Atmósfera** (Java/Bedrock, en
-[Cielo, Niebla y Agua](opciones/cielo-niebla-agua.md)) — son cosas independientes. Atmósfera decide
+[Cielo y Agua](opciones/cielo-niebla-agua.md)) — son cosas independientes. Atmósfera decide
 de dónde vienen los colores del cielo y la luz solar; Estilo de Imagen decide cómo se procesa el
 color final en pantalla. Se pueden combinar libremente: por ejemplo, cielo Java con Estilo Bedrock,
 o cielo Bedrock con Estilo Natural.

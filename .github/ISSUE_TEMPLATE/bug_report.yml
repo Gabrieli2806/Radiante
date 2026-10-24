@@ -45,7 +45,7 @@ body:
     id: settings
     attributes:
       label: Renderer profile, pipeline and upscaler
-      placeholder: "Bedrock RTX (Enhanced), DLSS Ray Reconstruction, Balanced"
+      placeholder: "Bedrock RTX (Enhanced), RT-DLSS with Ray Reconstruction, Balanced"
   - type: input
     id: packs
     attributes:

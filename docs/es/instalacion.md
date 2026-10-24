@@ -13,7 +13,7 @@ sirve para Windows y Linux. Descárgalo de [Modrinth](https://modrinth.com/proje
 ## Fabric
 
 1. Instala [Fabric Loader](https://fabricmc.net/use/) `0.19.5` o superior para Minecraft 26.3.
-2. Pon **Fabric API** `0.160.5+26.3` o superior en `mods`.
+2. Pon **Fabric API** para 26.3 en `mods` (Radiante está compilado contra `0.162.0+26.3`).
 3. Pon el jar de Radiante para Fabric en `mods`.
 4. Inicia el perfil de Fabric.
 
@@ -28,6 +28,12 @@ sirve para Windows y Linux. Descárgalo de [Modrinth](https://modrinth.com/proje
 1. Instala [Forge](https://files.minecraftforge.net/) `26.3-66.0.3` o superior.
 2. Pon el jar de Radiante para Forge en `mods`.
 3. Inicia el perfil de Forge.
+
+## Minecraft 26.2 y 26.4
+
+Los mismos pasos sirven para la versión de 26.2 (Fabric Loader 0.19.5+ con Fabric API, NeoForge
+26.2.0.93+ o Forge 26.2-65.1.5+) y para la de las snapshots de 26.4, que es solo Fabric (Fabric
+Loader 0.20.1+ con Fabric API). Elige el archivo de tu versión de Minecraft.
 
 ## Qué loader elegir
 
@@ -45,7 +51,10 @@ tiene que ver el driver de tu GPU.
 
 La primera vez, Radiante desempaqueta sus librerías nativas en la carpeta `radiante/` del juego y
 comprueba cada una contra su SHA-256. Tarda un momento; en los inicios siguientes solo se repite si
-cambió la versión.
+cambió la versión. Unos segundos después de que aparezca el menú principal, también compila sus
+shaders y pipelines de trazado de rayos en segundo plano, con un aviso en la esquina superior
+derecha que muestra el progreso; solo vuelve a pasar tras una actualización o un driver gráfico
+nuevo.
 
 ### Se ofrece DLSS o XeSS
 
@@ -55,8 +64,8 @@ dejarlo para después o no volver a verlo. Detalle en [Escaladores](escaladores.
 
 ### El juego tiene que estar en Vulkan
 
-Minecraft 26.3 deja elegir la API gráfica. Radiante necesita Vulkan. Si el juego arranca en OpenGL,
-una pantalla lo explica y ofrece cambiar y reiniciar. Ver
+Minecraft deja elegir la API gráfica. Radiante necesita Vulkan. Si el juego arranca en OpenGL,
+una pantalla lo explica y ofrece **Cambiar a Vulkan**, y después reiniciar. Ver
 [Problemas comunes](problemas.md#el-juego-está-en-opengl).
 
 ### Si tu GPU no tiene trazado de rayos
@@ -69,17 +78,18 @@ Pasa también con Vulkan por software (`llvmpipe`). Ver
 
 ### Si todo va bien
 
-Radiante se activa al entrar a un mundo. Pipeline por defecto: RT-DLSS si DLSS ya está instalado,
-si no RT-NRD-FSR.
+Radiante se activa al entrar a un mundo, con el perfil Bedrock RTX (Mejorado). Pipeline por
+defecto: RT-DLSS si DLSS ya está instalado, si no RT-FSR.
 
 ### Teclas
 
 | Tecla | Acción |
 |---|---|
 | `F6` | Abre los ajustes de Radiante. |
-| `F7` | Enciende o apaga el trazado de rayos al instante. |
+| Alternar Trazado de Rayos (sin asignar) | Enciende o apaga el trazado de rayos al instante. Asígnale una tecla en los controles de Minecraft. |
 
-Se pueden cambiar en los controles de Minecraft, en la categoría Varios.
+Las dos están en los controles de Minecraft, en la categoría propia de Radiante, y se pueden
+cambiar ahí.
 
 ## Después de instalar
 

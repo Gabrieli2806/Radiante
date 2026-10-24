@@ -3,13 +3,13 @@
 # Guía de rendimiento
 
 > Esta página son consejos generales para ganar FPS. Si buscas qué hace exactamente cada control de
-> la categoría "Rendimiento" de la pantalla de ajustes, esa es una página distinta:
+> la sección "Rendimiento" de la pantalla de ajustes, esa es una página distinta:
 > **[opciones/rendimiento.md](opciones/rendimiento.md)**.
 
 ## Primero, usa el selector de Calidad
 
 Antes de tocar controles individuales, prueba los niveles del selector **Calidad** en
-[Calidad y Escalado](opciones/calidad-y-escalado.md) — Baja, Media, Alta, Ultra. Cada uno ajusta a
+[Calidad](opciones/calidad-y-escalado.md) — Baja, Media, Alta, Ultra. Cada uno ajusta a
 la vez los controles medidos como los que más cuestan (modo DLSS, muestreo de luces de bloque,
 niebla volumétrica, nubes, distancia de renderizado, rebotes de luz y más), en combinaciones ya
 probadas. El detalle exacto de qué pone cada nivel está en
@@ -29,7 +29,7 @@ Medido en una escena de referencia, con el Modo DLSS Rendimiento Ultra (~150 FPS
 1. **Modo DLSS** (o **Modo de Escalado** con FSR/XeSS) — el cambio más grande de todos.
    Partiendo de Rendimiento Ultra como base, pasar a Rendimiento cuesta cerca de -45% FPS, y pasar a
    Calidad, cerca de -65%. Es lo primero a tocar si necesitas más FPS ya.
-2. **Rebotes de Luz** (categoría Rendimiento, 1 – 8) — de 4 a 2 ronda +55% FPS, con poco cambio
+2. **Rebotes de Luz** (sección Rendimiento, 1 – 128, 4 por defecto) — de 4 a 2 ronda +55% FPS, con poco cambio
    visible. Más de 4 es para GPUs potentes.
    **Caché en Rebotes Profundos** (activado por defecto) ahorra mucho en zonas con muchas luces, y
    **Un rebote + caché** va más allá: un solo rebote trazado en todo y el resto de la caché de
@@ -48,7 +48,7 @@ no hace falta tocarlos por rendimiento.
 
 ## Si vas justo de VRAM
 
-- Baja **Lotes de Chunks** (categoría Rendimiento) — menos construcciones de estructura de
+- Baja **Lotes de Chunks** (sección Rendimiento) — menos construcciones de estructura de
   aceleración en curso a la vez en la GPU usan menos memoria de vídeo, a costa de cargar terreno
   algo más despacio.
 - Baja la distancia de renderizado.
@@ -84,5 +84,5 @@ en NVIDIA (hasta 4x en RTX 50).
 
 Con el objetivo de que una GPU de gama media (por ejemplo RTX 3060 o RX 6700) sostenga 60 FPS a 12
 chunks de distancia con DLSS o FSR, ese preset documentado todavía se está construyendo — ver
-[ROADMAP.md](../../ROADMAP.md). Si tienes una GPU de esa gama y quieres compartir
+[issue #21](https://github.com/Gabrieli2806/Radiante/issues/21). Si tienes una GPU de esa gama y quieres compartir
 tus propios números, el [Discord](https://discord.gg/DhBbAzugZ9) es el lugar.

@@ -2,50 +2,43 @@
 
 Radiante itself is licensed under the GNU General Public License v3.0, as is Radiance,
 the mod it derives from. This file covers the third party components redistributed
-inside the mod jar, which are **not** under the GPL and carry their own terms.
+inside the mod jar, or downloaded by it, which are **not** under the GPL and carry their
+own terms.
 
 This software contains source code provided by NVIDIA Corporation.
 
-## Binaries shipped in `radiante-native/`
+## Radiante's renderer
 
-| File | Component | Owner | License |
-| --- | --- | --- | --- |
-| `streamline/sl.interposer.dll`, `sl.common.dll`, `sl.pcl.dll` | Streamline SDK | NVIDIA | [MIT](NVIDIA-Streamline-LICENSE.txt) |
-| `streamline/sl.dlss_g.dll` | DLSS Frame Generation (Streamline plugin) | NVIDIA | [NVIDIA RTX SDK](NVIDIA-RTX-SDK-LICENSE.txt) |
-| `streamline/sl.reflex.dll`, `streamline/NvLowLatencyVk.dll` | Reflex | NVIDIA | [NVIDIA RTX SDK](NVIDIA-RTX-SDK-LICENSE.txt) |
-| `libxess.dll`, `libxess_dx11.dll`, `libxess_fg.dll` | XeSS | Intel | [Intel XeSS](Intel-XeSS-LICENSE.txt) |
-
-`core.dll` is Radiante's own renderer and is GPL-3.0. It links statically against the
-components below.
-
-## Statically linked components
+`radiante-native/prismrt.dll` (Windows) and `radiante-native/linux-x64/libprismrt.so`
+(Linux) are PrismRT, Radiante's own renderer, and are GPL-3.0. They link statically
+against the components below.
 
 | Component | Owner | License |
 | --- | --- | --- |
-| DLSS / NGX SDK (Super Resolution, Ray Reconstruction) | NVIDIA | [NVIDIA RTX SDK](NVIDIA-RTX-SDK-LICENSE.txt) |
+| DLSS / NGX SDK (Super Resolution, Ray Reconstruction, Frame Generation) | NVIDIA | [NVIDIA RTX SDK](NVIDIA-RTX-SDK-LICENSE.txt) |
 | NRD (NVIDIA Real-time Denoisers) | NVIDIA | [NVIDIA RTX SDK](NVIDIA-NRD-LICENSE.txt) |
-| FidelityFX SDK (FSR, and FSR 1 EASU/RCAS for the output resolution upscale) | AMD | [MIT](AMD-FidelityFX-LICENSE.txt) |
+| FidelityFX SDK (FSR upscaling and frame generation, and FSR 1 EASU/RCAS for the output resolution upscale) | AMD | [MIT](AMD-FidelityFX-LICENSE.txt) |
 
-## DLSS feature DLLs
+## Source shipped in the shader pack
 
-The DLSS Super Resolution and Ray Reconstruction feature libraries are redistributed in
-`radiante-native/dlss/` and extracted to `radiante/dlss` at start, so players need no
-manual download:
+The built-in shader pack (`radiante-native/shaders/world/ray_tracing/radiante-pt.zip`)
+carries the shader headers of SHaRC (Spatially Hashed Radiance Cache), by NVIDIA, under
+the [NVIDIA RTX SDK](NVIDIA-RTX-SDK-LICENSE.txt) license.
+
+## Downloaded on request, not in the jar
+
+The DLSS and XeSS runtimes are not shipped. When a player asks for them in game, Radiante
+downloads them from the vendors' own repositories into the game's `radiante/` folder:
 
 | File | Component | Owner | License |
 | --- | --- | --- | --- |
-| `dlss/nvngx_dlss.dll` | DLSS Super Resolution | NVIDIA | [NVIDIA RTX SDK](NVIDIA-RTX-SDK-LICENSE.txt) |
-| `dlss/nvngx_dlssd.dll` | DLSS Ray Reconstruction | NVIDIA | [NVIDIA RTX SDK](NVIDIA-RTX-SDK-LICENSE.txt) |
-| `dlss/nvngx_dlssg.dll` | DLSS Frame Generation | NVIDIA | [NVIDIA RTX SDK](NVIDIA-RTX-SDK-LICENSE.txt) |
-| `linux-x64/dlss/libnvidia-ngx-dlss.so.*` | DLSS Super Resolution (Linux) | NVIDIA | [NVIDIA RTX SDK](NVIDIA-RTX-SDK-LICENSE.txt) |
-| `linux-x64/dlss/libnvidia-ngx-dlssd.so.*` | DLSS Ray Reconstruction (Linux) | NVIDIA | [NVIDIA RTX SDK](NVIDIA-RTX-SDK-LICENSE.txt) |
-| `linux-x64/dlss/libnvidia-ngx-dlssg.so.*` | DLSS Frame Generation (Linux) | NVIDIA | [NVIDIA RTX SDK](NVIDIA-RTX-SDK-LICENSE.txt) |
+| `dlss/nvngx_dlss.dll`, `nvngx_dlssd.dll`, `nvngx_dlssg.dll` (Windows); `dlss/libnvidia-ngx-dlss*.so.*` (Linux) | DLSS Super Resolution, Ray Reconstruction and Frame Generation | NVIDIA | [NVIDIA RTX SDK](NVIDIA-RTX-SDK-LICENSE.txt) |
+| `libxess.dll` (Windows) | XeSS Super Resolution | Intel | [Intel XeSS](Intel-XeSS-LICENSE.txt) |
 
-`linux-x64/libcore.so` is the Linux build of Radiante's renderer (GPL-3.0), with the same
-statically linked components as `core.dll` below.
-
-They stay proprietary NVIDIA files, are not licensed under the GPL, and are combined with
+They stay proprietary files, are not licensed under the GPL, and are combined with
 Radiante under the additional permission in [LICENSE-EXCEPTION.md](LICENSE-EXCEPTION.md).
+NVIDIA Reflex is used through the driver's `VK_NV_low_latency2` extension; no Reflex or
+Streamline library is shipped or downloaded.
 
 ## Note on the NVIDIA RTX SDK terms
 
