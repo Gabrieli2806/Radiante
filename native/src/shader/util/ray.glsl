@@ -29,9 +29,6 @@ const uint rayLobeShift = 12u;
 const uint rayLobeMask = 0x3u << rayLobeShift;
 const uint raySkipFogBit = 1u << 14u;
 const uint rayIgnoreWaterSelfBit = 1u << 15u;
-const uint rayCaptureSurfaceBit = 1u << 16u;
-const uint raySurfaceCacheWrittenBit = 1u << 17u;
-const uint raySurfaceCacheTargetSecondaryBit = 1u << 18u;
 const uint rayIndirectVolumetricCloudBit = 1u << 19u;
 // The surface the ray just left gathered its block light from the light list, and the ray left it through the
 // diffuse lobe, so a light the ray now runs into has been counted already. Survives bounces (resetMainRay keeps it).
@@ -58,14 +55,6 @@ const uint rayGlassParentWaterBit = 1u << 26u;
 const uint rayCrossedGlassBit = 1u << 27u;
 // The path is filling the radiance cache (traceSharcUpdate). Survives bounces.
 const uint rayCacheUpdateBit = 1u << 28u;
-// The hit shader only recorded the hit in MainRay.rec and left the shading to the raygen. A per-trace flag: the
-// raygen clears it before each main trace, since a miss or a still-shading hit shader never sets it.
-const uint rayRecordedBit = 1u << 29u;
-
-bool rayRecorded(MainRay ray) { return (ray.stateBits & rayRecordedBit) != 0u; }
-void raySetRecorded(inout MainRay ray, bool enabled) {
-    ray.stateBits = enabled ? ray.stateBits | rayRecordedBit : ray.stateBits & ~rayRecordedBit;
-}
 
 // Every flag accessor below has one of two shapes: test the bit, or set / clear it.
 
@@ -140,23 +129,6 @@ void raySetIgnoreWaterSelf(inout MainRay ray, bool enabled) {
 }
 bool rayIgnoreWaterSelf(MainRay ray) { return (ray.stateBits & rayIgnoreWaterSelfBit) != 0u; }
 
-void raySetCaptureSurface(inout MainRay ray, bool enabled) {
-    ray.stateBits = enabled ? (ray.stateBits | rayCaptureSurfaceBit) : (ray.stateBits & ~rayCaptureSurfaceBit);
-}
-bool rayCaptureSurface(MainRay ray) { return (ray.stateBits & rayCaptureSurfaceBit) != 0u; }
-
-void raySetSurfaceCacheWritten(inout MainRay ray, bool enabled) {
-    ray.stateBits = enabled ? (ray.stateBits | raySurfaceCacheWrittenBit) : (ray.stateBits & ~raySurfaceCacheWrittenBit);
-}
-bool raySurfaceCacheWritten(MainRay ray) { return (ray.stateBits & raySurfaceCacheWrittenBit) != 0u; }
-
-void raySetSurfaceCacheTargetSecondary(inout MainRay ray, bool enabled) {
-    ray.stateBits = enabled ? (ray.stateBits | raySurfaceCacheTargetSecondaryBit) : (ray.stateBits & ~raySurfaceCacheTargetSecondaryBit);
-}
-bool raySurfaceCacheTargetSecondary(MainRay ray) {
-    return (ray.stateBits & raySurfaceCacheTargetSecondaryBit) != 0u;
-}
-
 void raySetIndirectVolumetricCloud(inout MainRay ray, bool enabled) {
     ray.stateBits = enabled ? (ray.stateBits | rayIndirectVolumetricCloudBit) : (ray.stateBits & ~rayIndirectVolumetricCloudBit);
 }
@@ -215,12 +187,6 @@ vec3 vptSurfaceColour(vec3 stored) {
 // ---- material hand-off ---------------------------------------------------------------------------------------
 // Layer 0: albedo (rgba). Layer 1: f0 and roughness. Layer 2: metallic, transmission, ior, emission.
 // The ray argument is unused; it stays so call sites read as operations on the path.
-
-void rayClearMaterial(inout MainRay ray) {
-    imageStore(rayMaterialStateImage, rayMaterialStateCoord(0), vec4(0.0));
-    imageStore(rayMaterialStateImage, rayMaterialStateCoord(1), vec4(0.0));
-    imageStore(rayMaterialStateImage, rayMaterialStateCoord(2), vec4(0.0));
-}
 
 void rayStoreMaterial(inout MainRay ray,
                       vec4 albedoValue,

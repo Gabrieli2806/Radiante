@@ -46,14 +46,6 @@ void makeBasis(in vec3 n, out vec3 t, out vec3 b) {
     b = normalize(b);
 }
 
-vec4 sampleTextureLod0(sampler2D tex, vec2 uv) {
-    ivec2 texSize = textureSize(tex, 0);
-    if (texSize.x <= 0 || texSize.y <= 0) return vec4(0.0);
-    vec2 halfTexel = 0.5 / vec2(texSize);
-    vec2 clampedUv = clamp(uv, halfTexel, vec2(1.0) - halfTexel);
-    return sampleTexture(tex, clampedUv, 0.0, false);
-}
-
 vec4 sampleSpriteLod0(sampler2D tex, vec2 uv01, vec4 uvRect) {
     // The sun and the moon phases live in one runtime-stitched atlas, so each is a rectangle inside it rather
     // than a texture of its own or a tile of a fixed grid. Half a texel is trimmed off every edge so the sampler
@@ -76,20 +68,6 @@ vec4 sampleSpriteNearest(sampler2D tex, vec2 uv01, vec4 uvRect) {
     vec2 atlasUv = mix(uvRect.xy, uvRect.zw, clamp(uv01, 0.0, 0.9999));
     ivec2 texel = clamp(ivec2(atlasUv * vec2(texSize)), ivec2(0), texSize - 1);
     return texelFetch(tex, texel, 0);
-}
-
-vec4 sampleAtlasLod0(sampler2D tex, vec2 uv01, uvec2 tileCount, uvec2 tile) {
-    ivec2 texSize = textureSize(tex, 0);
-    if (texSize.x <= 0 || texSize.y <= 0) return vec4(0.0);
-
-    vec2 invTileCount = 1.0 / vec2(tileCount);
-    vec2 tileMin = vec2(tile) * invTileCount;
-    vec2 tileMax = tileMin + invTileCount;
-    vec2 halfTexel = 0.5 / vec2(texSize);
-    vec2 minUv = tileMin + halfTexel;
-    vec2 maxUv = tileMax - halfTexel;
-    vec2 atlasUv = mix(minUv, maxUv, clamp(uv01, 0.0, 1.0));
-    return sampleTexture(tex, atlasUv, 0.0, false);
 }
 
 // The sun and moon sprites' frame. Vanilla keeps one edge along the axis the body's path turns around, so the
