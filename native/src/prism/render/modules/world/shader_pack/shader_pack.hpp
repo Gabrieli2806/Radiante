@@ -382,30 +382,15 @@ struct FullScreenPass {
     std::shared_ptr<gpu::DeviceLocalBuffer> executionBuffer;
 };
 
+// A post render pass that draws the stars.
 struct RenderPass {
-    enum class Target {
-        Weather,
-        Particle,
-        Text,
-        NameTag,
-        Star,
-    };
-
-    struct ShaderVariant {
-        std::shared_ptr<gpu::Shader> vertexShader;
-        std::shared_ptr<gpu::Shader> fragmentShader;
-        std::shared_ptr<gpu::GraphicsPipeline> pipeline;
-    };
-
     ShaderPackLoader::RenderPassConfig config;
-    Target target = Target::Particle;
     bool writesFirstHitDepth = false;
     std::shared_ptr<gpu::RenderPass> renderPass;
     std::vector<std::shared_ptr<gpu::Framebuffer>> framebuffers;
     std::shared_ptr<gpu::Shader> vertexShader;
     std::shared_ptr<gpu::Shader> fragmentShader;
     std::shared_ptr<gpu::GraphicsPipeline> pipeline;
-    std::unordered_map<std::string, ShaderVariant> shaderVariants;
     std::shared_ptr<gpu::DeviceLocalBuffer> executionBuffer;
 };
 

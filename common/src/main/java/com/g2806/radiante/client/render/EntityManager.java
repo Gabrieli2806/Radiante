@@ -1200,7 +1200,7 @@ public final class EntityManager {
      */
     private static final class Scratch {
 
-        private static final int SLOTS = 17;
+        private static final int SLOTS = 15;
 
         private final long[] addresses = new long[SLOTS];
         private final long[] sizes = new long[SLOTS];
@@ -1217,14 +1217,7 @@ public final class EntityManager {
             return reserve(slot, (long) count * Double.BYTES);
         }
 
-        /** For the arrays the upload never writes: they have to read as zero, as a fresh allocation did. */
-        long zeroedInts(int slot, int count) {
-            long size = (long) count * Integer.BYTES;
-            long address = reserve(slot, size);
-            MemoryUtil.memSet(address, 0, size);
-            return address;
-        }
-
+        /** For an array the upload may leave unwritten: it has to read as zero, as a fresh allocation did. */
         long zeroedLongs(int slot, int count) {
             long size = (long) count * Long.BYTES;
             long address = reserve(slot, size);
@@ -1258,25 +1251,23 @@ public final class EntityManager {
             layerCount += entity.layers().size();
         }
 
-        // These seventeen arrays are the same shape every frame and only ever grow, so they are kept between
+        // These fifteen arrays are the same shape every frame and only ever grow, so they are kept between
         // frames. Allocating and freeing them per frame was pure overhead on the render thread.
         long hashCodes = SCRATCH.ints(0, entityCount);
         long posXs = SCRATCH.doubles(1, entityCount);
         long posYs = SCRATCH.doubles(2, entityCount);
         long posZs = SCRATCH.doubles(3, entityCount);
         long rayTracingFlags = SCRATCH.ints(4, entityCount);
-        long postRenderFlags = SCRATCH.zeroedInts(5, entityCount);
-        long prebuiltBlas = SCRATCH.ints(6, entityCount);
-        long posts = SCRATCH.zeroedInts(7, entityCount);
-        long layerCounts = SCRATCH.ints(8, entityCount);
-        long geometryTypes = SCRATCH.ints(9, layerCount);
-        long geometryGroupNames = SCRATCH.longs(10, layerCount);
-        long geometryContentNames = SCRATCH.zeroedLongs(11, layerCount);
-        long geometryTextures = SCRATCH.ints(12, layerCount);
-        long vertexFormats = SCRATCH.ints(13, layerCount);
-        long indexFormats = SCRATCH.ints(14, layerCount);
-        long vertexCounts = SCRATCH.ints(15, layerCount);
-        long vertices = SCRATCH.longs(16, layerCount);
+        long prebuiltBlas = SCRATCH.ints(5, entityCount);
+        long layerCounts = SCRATCH.ints(6, entityCount);
+        long geometryTypes = SCRATCH.ints(7, layerCount);
+        long geometryGroupNames = SCRATCH.longs(8, layerCount);
+        long geometryContentNames = SCRATCH.zeroedLongs(9, layerCount);
+        long geometryTextures = SCRATCH.ints(10, layerCount);
+        long vertexFormats = SCRATCH.ints(11, layerCount);
+        long indexFormats = SCRATCH.ints(12, layerCount);
+        long vertexCounts = SCRATCH.ints(13, layerCount);
+        long vertices = SCRATCH.longs(14, layerCount);
 
         try {
             int layerIndex = 0;
@@ -1310,7 +1301,7 @@ public final class EntityManager {
             }
 
             EntityProxy.queue(0.0125f, coordinate, false, entityCount, hashCodes, posXs,
-                posYs, posZs, rayTracingFlags, postRenderFlags, prebuiltBlas, posts, layerCounts, geometryTypes,
+                posYs, posZs, rayTracingFlags, prebuiltBlas, layerCounts, geometryTypes,
                 geometryGroupNames, geometryContentNames, geometryTextures, vertexFormats, indexFormats,
                 vertexCounts, vertices);
         } finally {

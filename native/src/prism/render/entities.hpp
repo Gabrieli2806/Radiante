@@ -32,11 +32,8 @@ struct EntitiesBuildTask {
     double *entityYs;
     double *entityZs;
     int *entityRayTracingFlags;
-    int *entityPostRenderFlags;
     // Negative: the structure is built here. CACHEABLE_BLAS and KEYED_BLAS allow it to be kept between frames.
     int *entityPrebuiltBLASs;
-    // Non-zero: rasterised after the frame by the post render pass named by the post render flag, not traced.
-    int *entityPosts;
     int *entityGeometryCounts;
     int *geometryTypes;
     // Hit group of each geometry; "Entity" where null.
@@ -90,26 +87,8 @@ struct EntityBatch : public SharedObject<EntityBatch> {
     std::shared_ptr<gpu::DeviceLocalBuffer> materialBuffer;
 };
 
-// An entity rasterised after the frame by the post render pass its flag names (weather 1, particles 2, text 4, name
-// tags 8): per geometry, a vertex buffer in the PBRVertex layout and a buffer of 32-bit indices.
-struct EntityPost : public SharedObject<EntityPost> {
-    int postRenderFlag = 0;
-    double x = 0.0, y = 0.0, z = 0.0;
-
-    uint32_t geometryCount = 0;
-    std::vector<std::string> geometryContentNames;
-    std::vector<uint32_t> indexCounts;
-
-    std::vector<std::shared_ptr<gpu::DeviceLocalBuffer>> vertexBuffers;
-    std::vector<std::shared_ptr<gpu::DeviceLocalBuffer>> indexBuffers;
-};
-
-struct EntityPostBatch : public SharedObject<EntityPostBatch> {
-    std::vector<std::shared_ptr<EntityPost>> entities;
-};
-
 // The entities of each frame. The Java side queues them (queueBuild) and then has them built (build); the ray
-// tracing pass records the structure builds and instances them, the post render pass draws the rest.
+// tracing pass records the structure builds and instances them.
 //
 // Block entities and others that stand still are kept between frames with their structure (the static cache),
 // instead of being built again every frame with everything else.
@@ -123,7 +102,6 @@ class Entities : public SharedObject<Entities> {
     void build();
     void close();
     std::shared_ptr<EntityBatch> entityBatch();
-    std::shared_ptr<EntityPostBatch> entityPostBatch();
     // The structure builds of the entities built this frame; null when there are none.
     std::shared_ptr<gpu::BlasBatch> blasBatch();
     // Builds for newly cached entities, submitted alongside the frame's batch.

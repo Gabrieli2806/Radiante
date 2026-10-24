@@ -12,17 +12,16 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
-struct EntityPost;
-struct EntityPostBatch;
 struct PostRenderModuleContext;
 
 // The world pipeline's last module. Every frame it turns the tracer's first-hit distances into a depth buffer, copies
 // the tone mapped image into the pipeline's output and runs the shader pack's post_render stage on that output, in
-// the order the stage's execution script gives: render passes that draw what the tracer leaves out (particles,
-// weather, text, name tags, stars) and full-screen passes.
+// the order the stage's execution script gives: render passes that draw the stars, which the tracer leaves out, and
+// full-screen passes.
 class PostRenderModule : public WorldModule, public SharedObject<PostRenderModule> {
     friend PostRenderModuleContext;
 
@@ -76,13 +75,6 @@ class PostRenderModule : public WorldModule, public SharedObject<PostRenderModul
         std::shared_ptr<gpu::DescriptorTable> descriptorTable;
     };
 
-    // One piece of entity geometry a render pass draws, and the shader variant it is drawn with.
-    struct EntityDraw {
-        const RenderPass::ShaderVariant *variant;
-        const EntityPost *entity;
-        uint32_t geometry;
-    };
-
     struct Recording;
 
     std::shared_ptr<gpu::DescriptorTable> createDescriptorTable(const std::shared_ptr<gpu::Device> &device) const;
@@ -97,7 +89,7 @@ class PostRenderModule : public WorldModule, public SharedObject<PostRenderModul
                                                  size_t executionBufferSize);
     void
     buildFullScreenPipeline(const std::shared_ptr<gpu::Device> &device, FullScreenPass &pass, VkExtent2D extent) const;
-    void buildRenderPipelines(const std::shared_ptr<gpu::Device> &device, RenderPass &pass) const;
+    void buildRenderPipeline(const std::shared_ptr<gpu::Device> &device, RenderPass &pass) const;
 
     void recordFrame(FrameworkContext &frameworkContext);
     void recordFirstHitDepth(Recording &recording);
@@ -107,7 +99,6 @@ class PostRenderModule : public WorldModule, public SharedObject<PostRenderModul
     void runPass(Recording &recording, const std::string &passName, const ExecutionVariables &variables);
     void runFullScreenPass(Recording &recording, const FullScreenPass &pass, const ExecutionVariables &variables);
     void runRenderPass(Recording &recording, const RenderPass &pass, const ExecutionVariables &variables);
-    bool collectEntityDraws(const RenderPass &pass, const EntityPostBatch *batch);
     void syncInputs(Recording &recording, const ShaderPackLoader::ResourceList &inputs, VkPipelineStageFlags2 stages);
     void uploadExecutionValues(Recording &recording,
                                const std::shared_ptr<gpu::DeviceLocalBuffer> &executionBuffer,
@@ -145,11 +136,12 @@ class PostRenderModule : public WorldModule, public SharedObject<PostRenderModul
     std::vector<std::shared_ptr<RenderPass>> renderPasses_;
     std::unordered_map<std::string, std::shared_ptr<FullScreenPass>> fullScreenPassByName_;
     std::unordered_map<std::string, std::shared_ptr<RenderPass>> renderPassByName_;
+    // Render passes of content the tracer draws (particles, weather, text, name tags): running one does nothing.
+    std::unordered_set<std::string> inertPassNames_;
     bool dynamicPipelinesReady_ = false;
 
     // Reused by every frame.
     std::vector<gpu::ImageUse> imageUses_;
-    std::vector<EntityDraw> entityDraws_;
 
     uint32_t starCount_ = 3000;
     float starSizeMin_ = 0.5f;

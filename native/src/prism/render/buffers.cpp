@@ -164,12 +164,6 @@ void Buffers::queueImportantWorldUpload(std::shared_ptr<gpu::DeviceLocalBuffer> 
     importantUploads_.push_back(std::move(buffer));
 }
 
-void Buffers::queueImportantWorldUpload(std::shared_ptr<gpu::DeviceLocalBuffer> vertexBuffer,
-                                        std::shared_ptr<gpu::DeviceLocalBuffer> indexBuffer) {
-    queueImportantWorldUpload(std::move(vertexBuffer));
-    queueImportantWorldUpload(std::move(indexBuffer));
-}
-
 void Buffers::setAndUploadWorldUniformBuffer(gpu::Data::WorldUBO &ubo) {
     auto framework = this->framework();
     const uint32_t frame = framework->safeAcquireCurrentContext()->frameIndex;
