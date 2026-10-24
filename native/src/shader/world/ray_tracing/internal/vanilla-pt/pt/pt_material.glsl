@@ -25,7 +25,7 @@ struct SampledSurface {
 // How much of lava's colour its surface shows once the exposure is applied (the Bedrock profile; linear, before
 // the tone curve), and the share of its colour that is left to the light other things throw on it.
 #ifndef LAVA_DISPLAY
-#    define LAVA_DISPLAY 0.14
+#    define LAVA_DISPLAY 1.3
 #endif
 #ifndef LAVA_LIT_SHARE
 #    define LAVA_LIT_SHARE 0.1

@@ -426,7 +426,6 @@ public final class EmissionTiles {
      * A block whose MER marks nothing emissive casts nothing, as in Bedrock.
      */
     static void uploadFromMer(int atlasId, TextureAtlasSprite sprite, ByteBuffer mer, int atlasWidth, int atlasHeight) {
-        if (isLava(sprite)) { RadianteRenderer.LOGGER.info("[lavadbg] uploadFromMer {} level={} casts={}", sprite.contents().name(), lightLevels.get(sprite), com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow()); }
         Integer level = lightLevels.get(sprite);
         if (level == null || level <= 0 || !com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow()) {
             return;
@@ -527,7 +526,6 @@ public final class EmissionTiles {
         // only here (the atlas keeps the first of lava's 32), while the colour animates: a glow pattern of its own
         // stood still under the moving colour, and a hot fleck's glow was far above the dark cells' (the texture's
         // contrast was burnt out). Constant, the surface shows the colour as it flows.
-        if (lava) { RadianteRenderer.LOGGER.info("[lavadbg] softenMer {}", sprite.contents().name()); }
         int lavaGreen = Math.round(255.0f * (float) Math.sqrt(LAVA_MER_GLOW));
         int originX = Math.round(sprite.getU0() * atlasWidth);
         int originY = Math.round(sprite.getV0() * atlasHeight);
