@@ -24,7 +24,7 @@ frame.
 - Hardware ray tracing (`VK_KHR_ray_tracing_pipeline`) for terrain, with path-traced direct lighting,
   shadows and global illumination, on Windows and Linux.
 - Physically based sky, sun and atmospheric scattering.
-- One built-in shader pack, `vanilla-pt`, with direct sampling of block lights (torches, lava, lamps) and ReSTIR
+- One built-in shader pack, `radiante-pt`, with direct sampling of block lights (torches, lava, lamps) and ReSTIR
   reuse of them, froxel or ray-marched volumetric fog, volumetric clouds with optional shadows, rain refraction and
   wet ground, and seamless glass.
 - Biome Ambiance: every biome of the overworld, the Nether and the End has an air of its own and every kind of
@@ -138,7 +138,7 @@ built `core.dll` goes into the same folder. `./gradlew.bat :fabric:runClient`, `
 #### Which build a change needs
 
 Gradle does **not** rebuild the native part. Shaders are packed into
-`radiante-native/shaders/world/ray_tracing/vanilla-pt.zip` (and the other shader folders) only by the CMake
+`radiante-native/shaders/world/ray_tracing/radiante-pt.zip` (and the other shader folders) only by the CMake
 install step, so a change under `native/` that is followed by Gradle alone builds a jar with the **old** shaders,
 and the change never shows in game.
 
@@ -149,7 +149,7 @@ and the change never shows in game.
 | Native C++ (`native/src/core/**`, `native/include/**`) | native build, then Gradle |
 
 To check a shader change made it in, the timestamp of
-`common/src/main/resources/radiante-native/shaders/world/ray_tracing/vanilla-pt.zip` must be newer than the edit.
+`common/src/main/resources/radiante-native/shaders/world/ray_tracing/radiante-pt.zip` must be newer than the edit.
 Restart the game after installing the new jar: shaders are loaded once at start.
 
 On Linux the native renderer is `libcore.so`, installed into `radiante-native/linux-x64/`:

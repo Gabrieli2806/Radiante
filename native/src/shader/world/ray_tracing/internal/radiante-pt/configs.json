@@ -1,7 +1,7 @@
 {
     "radiance": {
         "shader_pack": true,
-        "display_name": "Vanilla PT"
+        "display_name": "Radiante PT"
     },
     "requires_emission": false,
     "sharc": {

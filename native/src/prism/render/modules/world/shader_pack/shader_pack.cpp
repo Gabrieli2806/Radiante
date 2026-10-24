@@ -10,7 +10,7 @@
 ShaderPack::ShaderPack(std::shared_ptr<Framework> framework) : framework_(framework) {}
 
 std::filesystem::path ShaderPack::builtInShaderPackPath() {
-    return Renderer::folderPath / "shaders/world/ray_tracing/vanilla-pt.zip";
+    return Renderer::folderPath / "shaders/world/ray_tracing/radiante-pt.zip";
 }
 
 ShaderPack::BuildConfig ShaderPack::buildConfigFromRayTracingAttributes(const std::vector<std::string> &attributeKVs) {

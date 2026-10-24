@@ -76,7 +76,7 @@ uint32_t readSharcDebugMode(const std::string &text) {
 }
 
 std::filesystem::path builtInShaderPackPath() {
-    return Renderer::folderPath / "shaders/world/ray_tracing/vanilla-pt.zip";
+    return Renderer::folderPath / "shaders/world/ray_tracing/radiante-pt.zip";
 }
 
 // ---- Outputs

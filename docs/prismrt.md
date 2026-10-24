@@ -243,8 +243,8 @@ polls `Pipeline.prewarmStatus` (state, shaders done/total, pipelines done/total)
 
 ## The path tracer
 
-The built-in pack is `vanilla-pt`, in
-`native/src/shader/world/ray_tracing/internal/vanilla-pt/`. It is installed as a zip next to the library and
+The built-in pack is `radiante-pt`, in
+`native/src/shader/world/ray_tracing/internal/radiante-pt/`. It is installed as a zip next to the library and
 loaded as a shader pack, like any external one.
 
 ### Hit shaders shade
@@ -296,7 +296,7 @@ Shadow and visibility rays use `ShadowRay` at location 1.
 | `pt_sharc.glsl`, `pt_sharc_update.glsl` | SHaRC query and update paths |
 | `pt_outputs.glsl`, `pt_side_channels.glsl` | glow outlines; what shading hands back besides the path state |
 
-Shared code (atmosphere, water, block light, clouds, LOD coverage) is in `vanilla-pt/common/`, and generic helpers
+Shared code (atmosphere, water, block light, clouds, LOD coverage) is in `radiante-pt/common/`, and generic helpers
 (BRDF, LabPBR, sampling, ray cones) in `native/src/shader/util/`.
 
 ### Shader Execution Reordering
@@ -464,7 +464,7 @@ step and CI are in [Building and releasing](en/building.md).
 | `native/src/prism/util/` | logging, background threads, parallel helpers |
 | `native/src/common/` | structs shared by C++ and GLSL (`shared.hpp`: `WorldUBO`, `packParams`), singletons |
 | `native/src/shader/` | fixed shaders: display, tone mapping, NRD prepare/compose, upscaler helpers, `util/` |
-| `native/src/shader/world/ray_tracing/internal/vanilla-pt/` | the built-in path tracer pack: `configs.json`, `world/`, `pt/`, `common/`, post passes, clouds, froxels |
+| `native/src/shader/world/ray_tracing/internal/radiante-pt/` | the built-in path tracer pack: `configs.json`, `world/`, `pt/`, `common/`, post passes, clouds, froxels |
 | `common/src/main/java/com/g2806/radiante/client/proxy/` | Java side of the JNI calls |
 | `common/src/main/java/com/g2806/radiante/client/pipeline/` | presets, `pipeline.yaml`, live values, prewarm |
 | `common/src/main/resources/modules/` | module image and attribute declarations |

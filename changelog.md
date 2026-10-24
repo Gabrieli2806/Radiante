@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+- The built-in shader pack is renamed from `vanilla-pt` to `radiante-pt` (shown as Radiante PT). Its stored
+  settings and the pipeline's pointer to it move over by themselves on the first start; the old zip is removed.
+
 ## [1.1.0] - 2026-10-24
 
 ### Settings

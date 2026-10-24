@@ -40,7 +40,7 @@ public class Pipeline {
     public static Pipeline INSTANCE = new Pipeline();
     public static final String RAY_TRACING_MODULE_NAME = "render_pipeline.module.ray_tracing.name";
     private static final String RAY_TRACING_SHADER_PACK_PATH_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.shader_pack_path";
-    private static final String VANILLA_RAY_TRACING_SHADER_PACK_PATH = "shaders/world/ray_tracing/vanilla-pt.zip";
+    private static final String VANILLA_RAY_TRACING_SHADER_PACK_PATH = "shaders/world/ray_tracing/radiante-pt.zip";
     private static final String INTERNAL_RAY_TRACING_SHADER_PACK_PATH = VANILLA_RAY_TRACING_SHADER_PACK_PATH;
     private static final String SHADER_PACK_CONFIG_FILE = "configs.json";
     public static final String DLSS_MODULE_NAME = "render_pipeline.module.dlss.name";
@@ -72,6 +72,37 @@ public class Pipeline {
 
     public static void initFolderPath(Path folderPath) {
         PIPELINE_CONFIG_PATH = folderPath.resolve("pipeline.yaml");
+        migrateRenamedPack(folderPath);
+    }
+
+    /**
+     * The built-in shader pack was called vanilla-pt before it was renamed radiante-pt. What a player stored under
+     * the old name moves over: the pack's settings file (next to the zip), and the pipeline's pointer to the zip.
+     * The old zip is left to go, or the shader pack list would offer a second copy.
+     */
+    private static void migrateRenamedPack(Path folderPath) {
+        try {
+            Path packs = folderPath.resolve("shaders/world/ray_tracing");
+            Path oldSettings = packs.resolve("vanilla-pt.zip.txt");
+            Path newSettings = packs.resolve("radiante-pt.zip.txt");
+            if (Files.isRegularFile(oldSettings)) {
+                if (!Files.exists(newSettings)) {
+                    Files.move(oldSettings, newSettings);
+                } else {
+                    Files.delete(oldSettings);
+                }
+            }
+            Files.deleteIfExists(packs.resolve("vanilla-pt.zip"));
+            if (PIPELINE_CONFIG_PATH != null && Files.isRegularFile(PIPELINE_CONFIG_PATH)) {
+                String stored = Files.readString(PIPELINE_CONFIG_PATH);
+                String moved = stored.replace("ray_tracing/vanilla-pt.zip", "ray_tracing/radiante-pt.zip");
+                if (!moved.equals(stored)) {
+                    Files.writeString(PIPELINE_CONFIG_PATH, moved);
+                }
+            }
+        } catch (IOException | RuntimeException e) {
+            RadianteClient.LOGGER.warn("Could not move the stored settings of the renamed shader pack", e);
+        }
     }
 
     public static void reloadAllModuleEntries() {

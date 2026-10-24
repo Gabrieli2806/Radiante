@@ -25,7 +25,7 @@ mismo frame.
 - Trazado de rayos por hardware (`VK_KHR_ray_tracing_pipeline`) para el terreno, con iluminación directa
   path-traced, sombras e iluminación global, en Windows y Linux.
 - Cielo, sol y dispersión atmosférica físicamente basados.
-- Un shader pack incluido, `vanilla-pt`, con muestreo directo de luces de bloque (antorchas, lava, lámparas) y su
+- Un shader pack incluido, `radiante-pt`, con muestreo directo de luces de bloque (antorchas, lava, lámparas) y su
   reutilización con ReSTIR, niebla volumétrica por froxels o por ray marching, nubes volumétricas con sombras
   opcionales, refracción de la lluvia y suelo mojado, y vidrio sin juntas.
 - Ambiente de Bioma: cada bioma del Overworld, el Nether y el End tiene su propio aire, y cada tipo de agua su
@@ -142,7 +142,7 @@ el `core.dll` compilado va a la misma carpeta. `./gradlew.bat :fabric:runClient`
 #### Qué compilar según el cambio
 
 Gradle **no** recompila la parte nativa. Los shaders se empaquetan en
-`radiante-native/shaders/world/ray_tracing/vanilla-pt.zip` (y las demás carpetas de shaders) solo en el paso de
+`radiante-native/shaders/world/ray_tracing/radiante-pt.zip` (y las demás carpetas de shaders) solo en el paso de
 instalación de CMake: un cambio en `native/` seguido solo de Gradle genera un jar con los shaders **viejos**, y el
 cambio nunca se ve en el juego.
 
@@ -153,7 +153,7 @@ cambio nunca se ve en el juego.
 | C++ nativo (`native/src/core/**`, `native/include/**`) | compilación nativa y luego Gradle |
 
 Para comprobar que un cambio de shader entró, la fecha de
-`common/src/main/resources/radiante-native/shaders/world/ray_tracing/vanilla-pt.zip` debe ser posterior a la
+`common/src/main/resources/radiante-native/shaders/world/ray_tracing/radiante-pt.zip` debe ser posterior a la
 edición. Reinicia el juego tras instalar el jar nuevo: los shaders se cargan una sola vez al arrancar.
 
 En Linux el renderizador nativo es `libcore.so` y se instala en `radiante-native/linux-x64/`:
