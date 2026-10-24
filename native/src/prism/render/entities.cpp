@@ -110,9 +110,7 @@ struct EntityInput {
     int hashCode;
     double x, y, z;
     int rayTracingFlag;
-    int postRenderFlag;
     int prebuiltBLAS;
-    bool post;
     size_t firstGeometry;
     int geometryCount;
 };
@@ -124,9 +122,7 @@ EntityInput readEntity(const EntitiesBuildTask &task, int entity, size_t firstGe
         .y = task.entityYs[entity],
         .z = task.entityZs[entity],
         .rayTracingFlag = task.entityRayTracingFlags[entity],
-        .postRenderFlag = task.entityPostRenderFlags[entity],
         .prebuiltBLAS = task.entityPrebuiltBLASs[entity],
-        .post = task.entityPosts[entity] != 0,
         .firstGeometry = firstGeometry,
         .geometryCount = std::max(task.entityGeometryCounts[entity], 0),
     };
@@ -364,9 +360,6 @@ void readVertices(const void *source, size_t count, uint32_t texture, std::vecto
 // What every vertex a geometry keeps is told about where it is.
 struct Placement {
     World::Coordinates coordinate;
-    // Drawn after the frame, around postBase (the entity's position).
-    bool post;
-    glm::vec3 postBase;
     bool normalOffset;
     float lineWidth;
 };
@@ -374,8 +367,6 @@ struct Placement {
 Placement placementOf(const EntitiesBuildTask &task, const EntityInput &entity) {
     return {
         .coordinate = task.coordinate,
-        .post = entity.post,
-        .postBase = glm::vec3(entity.x, entity.y, entity.z),
         .normalOffset = task.normalOffset,
         .lineWidth = task.lineWidth,
     };
@@ -383,7 +374,6 @@ Placement placementOf(const EntitiesBuildTask &task, const EntityInput &entity) 
 
 void place(PBRVertex &vertex, const Placement &placement) {
     vertex.coordinate = placement.coordinate;
-    if (placement.post) vertex.postBase = placement.postBase;
 }
 
 // Working memory for turning one geometry into triangles, reused from geometry to geometry and frame to frame.
@@ -814,13 +804,11 @@ struct Entities::State {
     // What the frame has queued.
     PackedGeometry packed;
     std::vector<PendingEntity> pending;
-    std::vector<std::shared_ptr<EntityPost>> posts;
     std::vector<std::shared_ptr<Entity>> reused;
     std::vector<StaticBuild> newStaticBuilds;
 
     // What build() made of it.
     std::shared_ptr<EntityBatch> entityBatch;
-    std::shared_ptr<EntityPostBatch> entityPostBatch;
     std::shared_ptr<gpu::BlasBatch> blasBatch;
     std::shared_ptr<gpu::DeviceLocalBuffer> lightBuffer;
     // Kept until a frame records them, across frames that are prepared but never rendered.
@@ -842,7 +830,6 @@ struct Entities::State {
                                          int prebuiltBLAS,
                                          PackedGeometry &target,
                                          EmissionLookup &emission);
-    std::shared_ptr<EntityPost> gatherPost(const EntitiesBuildTask &task, const EntityInput &input);
     std::optional<StaticBuild> buildCached(Entity &entity);
 };
 
@@ -881,40 +868,6 @@ std::shared_ptr<Entity> Entities::State::gatherTraced(const EntitiesBuildTask &t
     return entity;
 }
 
-// Triangulates an entity drawn after the frame into vertex and index buffers of each geometry's own. Null when no
-// geometry has triangles.
-std::shared_ptr<EntityPost> Entities::State::gatherPost(const EntitiesBuildTask &task, const EntityInput &input) {
-    const Placement placement = placementOf(task, input);
-    auto framework = Renderer::instance().framework();
-    std::shared_ptr<EntityPost> post;
-    for (int i = 0; i < input.geometryCount; i++) {
-        const size_t geometry = input.firstGeometry + i;
-        if (!triangulate(task, geometry, placement, triangles)) continue;
-        if (post == nullptr) {
-            post = EntityPost::create();
-            post->postRenderFlag = input.postRenderFlag;
-            post->x = input.x;
-            post->y = input.y;
-            post->z = input.z;
-        }
-
-        auto vertexBuffer = gpu::DeviceLocalBuffer::create(framework->vma(), framework->device(), false,
-                                                           triangles.vertices.size() * sizeof(PBRVertex),
-                                                           VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-        auto indexBuffer = gpu::DeviceLocalBuffer::create(framework->vma(), framework->device(), false,
-                                                          triangles.indices.size() * sizeof(uint32_t),
-                                                          VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-        vertexBuffer->uploadToStagingBuffer(triangles.vertices.data());
-        indexBuffer->uploadToStagingBuffer(triangles.indices.data());
-        post->vertexBuffers.push_back(std::move(vertexBuffer));
-        post->indexBuffers.push_back(std::move(indexBuffer));
-        post->geometryContentNames.emplace_back(contentName(task, geometry));
-        post->indexCounts.push_back(static_cast<uint32_t>(triangles.indices.size()));
-    }
-    if (post != nullptr) post->geometryCount = static_cast<uint32_t>(post->indexCounts.size());
-    return post;
-}
-
 // Builds an entity gathered into `single` in buffers and a structure of its own, for the static cache. Nothing when
 // there was nothing to upload.
 std::optional<Entities::State::StaticBuild> Entities::State::buildCached(Entity &entity) {
@@ -938,9 +891,7 @@ void Entities::resetFrame() {
     // What the previous frame built retires itself once no frame in flight uses it.
     s.packed.clear();
     s.pending.clear();
-    s.posts.clear();
     s.entityBatch = nullptr;
-    s.entityPostBatch = nullptr;
     s.blasBatch = nullptr;
     s.reused.clear();
     s.newStaticBuilds.clear();
@@ -968,14 +919,6 @@ void Entities::queueBuild(const EntitiesBuildTask &task) {
     for (int e = 0; e < task.entityCount; e++) {
         const EntityInput input = readEntity(task, e, firstGeometry);
         firstGeometry += static_cast<size_t>(input.geometryCount);
-
-        if (input.post) {
-            if (auto post = s.gatherPost(task, input); post != nullptr) {
-                s.posts.push_back(std::move(post));
-                timer.entity(false);
-            }
-            continue;
-        }
 
         // The static cache. A cacheable entity is cached only once its content has stayed the same for two frames
         // in a row, so geometry that animates every frame (a waving banner, a chest while it opens) never pays for
@@ -1065,9 +1008,6 @@ void Entities::build() {
     s.entityBatch->positionBuffer = frameBuffers.position;
     s.entityBatch->materialBuffer = frameBuffers.material;
 
-    s.entityPostBatch = EntityPostBatch::create();
-    s.entityPostBatch->entities = s.posts;
-
     for (State::StaticBuild &build : s.newStaticBuilds) {
         queueUploads(uploads, build.buffers);
         s.staticBlasBatches.push_back(std::move(build.blasBatch));
@@ -1076,12 +1016,6 @@ void Entities::build() {
     // Cached entities come after the ones built this frame.
     s.entityBatch->entities.insert(s.entityBatch->entities.end(), s.reused.begin(), s.reused.end());
     buildLightBuffer();
-
-    for (const auto &post : s.posts) {
-        for (uint32_t geometry = 0; geometry < post->geometryCount; geometry++) {
-            uploads.queueImportantWorldUpload(post->vertexBuffers[geometry], post->indexBuffers[geometry]);
-        }
-    }
 }
 
 // The lights of the entities just built, in the buffer WorldUBO points the shaders at. The world uniform of a frame
@@ -1149,11 +1083,6 @@ void Entities::close() {
 std::shared_ptr<EntityBatch> Entities::entityBatch() {
     Renderer::instance().framework()->safeAcquireCurrentContext();
     return state_->entityBatch;
-}
-
-std::shared_ptr<EntityPostBatch> Entities::entityPostBatch() {
-    Renderer::instance().framework()->safeAcquireCurrentContext();
-    return state_->entityPostBatch;
 }
 
 std::shared_ptr<gpu::BlasBatch> Entities::blasBatch() {

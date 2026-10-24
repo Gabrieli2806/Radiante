@@ -203,18 +203,6 @@ GraphicsPipelineBuilder &GraphicsPipelineBuilder::useVertexLayout(const VertexLa
     return *this;
 }
 
-GraphicsPipelineBuilder &
-GraphicsPipelineBuilder::defineInputAssemblyState(VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo) {
-    inputAssemblyState_ = inputAssemblyStateCreateInfo;
-    return *this;
-}
-
-GraphicsPipelineBuilder &
-GraphicsPipelineBuilder::defineViewportState(VkPipelineViewportStateCreateInfo viewportStateCreateInfo) {
-    viewportState_ = viewportStateCreateInfo;
-    return *this;
-}
-
 GraphicsPipelineBuilder &GraphicsPipelineBuilder::defineViewportScissorState(ViewPortAndScissor viewPortAndScissor) {
     viewPortAndScissor_ = viewPortAndScissor;
     viewportState_ = {
@@ -233,21 +221,8 @@ GraphicsPipelineBuilder::defineRasterizationState(VkPipelineRasterizationStateCr
     return *this;
 }
 
-GraphicsPipelineBuilder &
-GraphicsPipelineBuilder::defineMultisampleState(VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo) {
-    multisampleState_ = multisampleStateCreateInfo;
-    return *this;
-}
-
 GraphicsPipelineBuilder::ColorBlendAttachmentStateBuilder &GraphicsPipelineBuilder::beginColorBlendAttachmentState() {
     return colorBlendAttachmentStateBuilder_;
-}
-
-GraphicsPipelineBuilder &
-GraphicsPipelineBuilder::defineColorBlendState(VkPipelineColorBlendStateCreateInfo colorBlendState) {
-    colorBlendState_ = colorBlendState;
-    blendsDefinedAttachments_ = false;
-    return *this;
 }
 
 GraphicsPipelineBuilder &

@@ -3,9 +3,8 @@
 
 // Everything the surface shading knows about the hit it shades: the ray that was traced, how far along it the hit
 // is, which triangle of which geometry was hit and where on it, the instance's transforms, and the triangle's
-// vertices. The shading reads these from g_hit and never from the hit-stage built-ins, so the same source can run in
-// a closest-hit shader (which fills g_hit from its built-ins, below) and, later, in the ray generation shader (which
-// will fill it from a recorded hit).
+// vertices. The shading reads these from g_hit, which the closest-hit shader fills from its built-ins (below), and
+// never from the built-ins themselves.
 // Needs util/vertex.glsl (vertex types, triangle loads, getGeometryBufferIndex) before it.
 
 struct HitContext {

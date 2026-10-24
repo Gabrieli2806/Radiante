@@ -15,9 +15,6 @@ class World;
 
 // Settings the game pushes down through the Options JNI calls.
 struct Options {
-    uint32_t maxFps = 1'000'000;
-    uint32_t inactivityFpsLimit = 1'000'000;
-    bool vsync = true;
     // Set when a setting needs the world pipeline rebuilt; the next frame (or recreatePending) rebuilds it.
     bool needRecreate = false;
 

@@ -39,17 +39,6 @@ JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_TextureProxy_
     });
 }
 
-JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_TextureProxy_setClamp(JNIEnv *,
-                                                                                         jclass,
-                                                                                         jint id,
-                                                                                         jint addressMode) {
-    jni::guard("[Radiante] setClamp", [=] {
-        auto textures = jni::textures();
-        if (textures == nullptr) return;
-        textures->setAddressMode(static_cast<uint32_t>(id), static_cast<VkSamplerAddressMode>(addressMode));
-    });
-}
-
 JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_TextureProxy_queueUpload(JNIEnv *,
                                                                                             jclass,
                                                                                             jlong srcPointer,

@@ -27,16 +27,12 @@ class Buffers : public SharedObject<Buffers> {
   public:
     explicit Buffers(std::shared_ptr<Framework> framework);
 
-    // A frame slot opened: the overlay ids, buffer sizes and post uniforms of the frame it held last are dropped.
-    void resetFrame();
     // Records every queued copy into the current frame's upload command buffer, with the barriers around them.
     void performQueuedUpload();
 
     // Queues the copy of a buffer's staging memory into the buffer. It stays queued until a frame records it: a frame
     // dropped before it got that far (a rebuild) must not lose it.
     void queueImportantWorldUpload(std::shared_ptr<gpu::DeviceLocalBuffer> buffer);
-    void queueImportantWorldUpload(std::shared_ptr<gpu::DeviceLocalBuffer> vertexBuffer,
-                                   std::shared_ptr<gpu::DeviceLocalBuffer> indexBuffer);
 
     // Completes the world uniform Java filled (everything before packParams) and writes it to the current frame's
     // buffer; the one written the time before goes to lastWorldUniformBuffer. ubo is left holding what was written.
@@ -59,25 +55,6 @@ class Buffers : public SharedObject<Buffers> {
     // tone mapping's exposure pass reads them (metering mode "incident"). Shared by both modules, made on first use.
     std::shared_ptr<gpu::DeviceLocalBuffer> lightMeterBuffer();
 
-    // Index and vertex buffers drawn by the overlay, by id. Ids count from 0 again every frame; the buffer behind an id
-    // is kept by its frame slot and grows when a later frame asks for more, so steady use allocates nothing.
-    uint32_t allocateBuffer();
-    void initializeBuffer(uint32_t id, uint32_t size, VkBufferUsageFlags usageFlags);
-    // Quad indices (draw mode 7) for vertexCount vertices, as 16-bit (type 0) or 32-bit (type 1) indices.
-    void buildIndexBuffer(uint32_t dstId, int type, int drawMode, int vertexCount, int expectedIndexCount);
-    // Copies as many bytes as initializeBuffer gave the id from srcPointer; recorded by performQueuedUpload.
-    void queueOverlayUpload(uint8_t *srcPointer, uint32_t dstId);
-    std::shared_ptr<gpu::DeviceLocalBuffer> getBuffer(uint32_t id);
-
-    // Uniforms of the overlay's post passes, appended through the frame a descriptor offset apart: the one appended
-    // last is getPostID(), found at overlayPostUniformOffset(id) once buildAndUploadOverlayUniformBuffer has run.
-    void appendOverlayPostUniform(const gpu::Data::OverlayPostUBO &ubo);
-    int getPostID();
-    uint32_t overlayPostUniformOffset(int postID);
-    uint32_t overlayPostUniformDescriptorRange();
-    std::shared_ptr<gpu::HostVisibleBuffer> overlayPostUniformBuffer();
-    void buildAndUploadOverlayUniformBuffer();
-
   private:
     struct FrameUniforms {
         std::shared_ptr<gpu::HostVisibleBuffer> world;
@@ -86,21 +63,8 @@ class Buffers : public SharedObject<Buffers> {
         std::shared_ptr<gpu::HostVisibleBuffer> textureMapping;
     };
 
-    struct OverlaySlot {
-        // One per id allocated this frame: the size initializeBuffer gave it, or -1 before that.
-        std::vector<int64_t> sizes;
-        // One per id this slot has ever seen.
-        std::vector<std::shared_ptr<gpu::DeviceLocalBuffer>> buffers;
-        // The post uniforms appended this frame, postStride_ apart, and their GPU copy.
-        std::vector<uint8_t> postUniforms;
-        uint32_t postCount = 0;
-        std::shared_ptr<gpu::HostVisibleBuffer> postBuffer;
-    };
-
     std::shared_ptr<Framework> framework() const;
     uint32_t currentFrame() const;
-    void stageOverlayUpload(uint32_t frame, uint32_t id, const uint8_t *src, size_t srcSize);
-    void ensurePostBuffer(OverlaySlot &slot, size_t size);
     std::shared_ptr<gpu::HostVisibleBuffer> uniform(std::shared_ptr<gpu::HostVisibleBuffer> FrameUniforms::*member);
 
     std::weak_ptr<Framework> framework_;
@@ -118,10 +82,5 @@ class Buffers : public SharedObject<Buffers> {
 
     std::vector<std::shared_ptr<gpu::DeviceLocalBuffer>> importantUploads_;
     // Reused by every performQueuedUpload.
-    std::vector<std::shared_ptr<gpu::DeviceLocalBuffer>> uploadBuffers_;
     std::vector<VkBufferMemoryBarrier2> uploadBarriers_;
-
-    std::vector<OverlaySlot> overlay_;
-    uint32_t overlayNextId_ = 0;
-    uint32_t postStride_ = 1;
 };

@@ -522,9 +522,6 @@ public class Pipeline {
     /** Glass blocks without the frame vanilla draws around each one, so neighbours join into one sheet. */
     public static final String SEAMLESS_GLASS_ATTRIBUTE =
         "render_pipeline.module.ray_tracing.attribute.seamless_glass";
-    /** Rain streaks that bend the view behind them like little lenses. */
-    public static final String RAIN_REFRACTION_ATTRIBUTE =
-        "render_pipeline.module.ray_tracing.attribute.rain_refraction";
     /** Volumetric fog made with a lit 3D grid instead of a march per pixel. */
     public static final String FROXEL_FOG_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.froxel_fog";
     /** Volumetric clouds shade the ground under them (only with Volumetric clouds). */

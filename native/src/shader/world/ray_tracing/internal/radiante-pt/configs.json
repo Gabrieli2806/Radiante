@@ -280,12 +280,6 @@
             }
         },
         {
-            "name": "render_pipeline.module.ray_tracing.attribute.rain_refraction",
-            "type": "bool",
-            "default_value": "render_pipeline.true",
-            "define": "VPT_RAIN_REFRACTION"
-        },
-        {
             "name": "render_pipeline.module.ray_tracing.attribute.froxel_fog",
             "type": "bool",
             "default_value": "render_pipeline.true",
@@ -767,15 +761,6 @@
             "address_mode": "clamp_to_edge"
         },
         {
-            "name": "post_scene_color",
-            "type": "intermediate",
-            "format": "R16G16B16A16_SFLOAT",
-            "scale": 1,
-            "sampled_binding": 43,
-            "filter": "nearest",
-            "address_mode": "clamp_to_edge"
-        },
-        {
             "name": "volumetric_cloud_basic_noise",
             "type": "file",
             "path": "textures/volumetric_cloud_basic_noise.raw",
@@ -1115,28 +1100,6 @@
             }
         ],
         "commands": [
-            {
-                "pass": "post_render_particle"
-            },
-            {
-                "if_else": {
-                    "condition": "VPT_RAIN_REFRACTION != 0",
-                    "then": [
-                        {
-                            "pass": "post_copy_ldr_to_scene_color"
-                        }
-                    ]
-                }
-            },
-            {
-                "pass": "post_render_weather"
-            },
-            {
-                "pass": "post_render_text"
-            },
-            {
-                "pass": "post_render_name_tag"
-            },
             {
                 "pass": "post_render_star"
             },
@@ -1503,71 +1466,6 @@
         {
             "type": "render",
             "stage": "post_render",
-            "name": "post_render_particle",
-            "content": "particle",
-            "vertex": "post_render/render_world_post.vert",
-            "fragment": "post_render/render_world_post.frag",
-            "outputs": {
-                "images": [
-                    "out:ldr"
-                ]
-            },
-            "depth_write": false
-        },
-        {
-            "type": "render",
-            "stage": "post_render",
-            "name": "post_render_weather",
-            "content": "weather",
-            "vertex": "post_render/render_world_post.vert",
-            "fragment": "post_render/weather_refraction.frag",
-            "inputs": {
-                "images": [
-                    "post_scene_color"
-                ]
-            },
-            "outputs": {
-                "images": [
-                    "out:ldr"
-                ]
-            },
-            "depth_write": false
-        },
-        {
-            "type": "render",
-            "stage": "post_render",
-            "name": "post_render_text",
-            "content": "text",
-            "vertex": "post_render/render_text.vert",
-            "fragment": "post_render/render_text.frag",
-            "outputs": {
-                "images": [
-                    "out:ldr",
-                    "out:first_hit_depth"
-                ]
-            },
-            "depth_write": true,
-            "depth_compare": "less"
-        },
-        {
-            "type": "render",
-            "stage": "post_render",
-            "name": "post_render_name_tag",
-            "content": "name_tag",
-            "vertex": "post_render/render_text.vert",
-            "fragment": "post_render/render_text.frag",
-            "outputs": {
-                "images": [
-                    "out:ldr",
-                    "out:first_hit_depth"
-                ]
-            },
-            "depth_write": true,
-            "depth_compare": "always"
-        },
-        {
-            "type": "render",
-            "stage": "post_render",
             "name": "post_render_star",
             "content": "star",
             "vertex": "post_render/render_star.vert",
@@ -1584,18 +1482,6 @@
             },
             "depth_write": true,
             "depth_compare": "less"
-        },
-        {
-            "type": "full_screen",
-            "stage": "post_render",
-            "name": "post_copy_ldr_to_scene_color",
-            "fragment": "post_render/post_copy.frag",
-            "inputs": {
-                "images": [
-                    "out:ldr"
-                ]
-            },
-            "target": "post_scene_color"
         },
         {
             "type": "full_screen",

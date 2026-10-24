@@ -25,20 +25,6 @@ shaderc_shader_kind shaderKindFromStage(VkShaderStageFlagBits stage);
 // change to any of them misses the cache. Past 1500 files, the ones used longest ago are removed.
 class ShaderSpirvCache {
   public:
-    // A hash of a source file and, in turn, of each file it includes with #include "..." (found next to the including
-    // file, else in the include directories). Empty when a file cannot be read or an include is not found: such a
-    // compile is not cached.
-    static std::optional<uint64_t> computeDependencyHash(const std::string &sourcePath,
-                                                         const std::vector<std::string> &includeDirectories);
-
-    // The name, without its .spv extension, of the cache file of one compile.
-    static std::string computeCompiledHash(const std::string &sourcePath,
-                                           VkShaderStageFlagBits stage,
-                                           const std::unordered_map<std::string, std::string> &definitions,
-                                           const std::vector<std::string> &includeDirectories,
-                                           const std::string &injectedSource,
-                                           uint64_t dependencyHash);
-
     // The SPIR-V of a cache file; empty when the file is missing or does not hold SPIR-V.
     static std::vector<uint32_t> readCachedSpirv(const std::filesystem::path &path);
 

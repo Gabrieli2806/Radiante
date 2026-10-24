@@ -96,10 +96,6 @@ struct Vertex {
     static uint32_t packMaterialFlags(const VertexFormat::PBRVertex &vertex);
     static VertexFormat::PositionVertex makePositionVertex(const VertexFormat::PBRVertex &vertex);
     static VertexFormat::PackedMaterialVertex makeMaterialVertex(const VertexFormat::PBRVertex &vertex);
-    static std::vector<VertexFormat::PositionVertex>
-    buildPositionVertices(const std::vector<VertexFormat::PBRVertex> &vertices);
-    static std::vector<VertexFormat::PackedMaterialVertex>
-    buildMaterialVertices(const std::vector<VertexFormat::PBRVertex> &vertices);
 
   private:
     static uint32_t packNormal(glm::vec3 normal);
@@ -132,38 +128,7 @@ void Vertex::buildVertexLayoutInfo(VertexLayoutInfo &vertexLayoutInfo, const std
     }
 }
 
-// The formats of common/shared.hpp that have a layout: the plain ones in gpu/vertex.cpp, Minecraft's in
-// render/vertex_formats.cpp.
-template <>
-VertexLayoutInfo &Vertex::vertexLayoutInfo<VertexFormat::Triangle>();
-template <>
-VertexLayoutInfo &Vertex::vertexLayoutInfo<VertexFormat::TexturedTriangle>();
-template <>
-VertexLayoutInfo &Vertex::vertexLayoutInfo<VertexFormat::ArrayTexturedTriangle>();
-template <>
-VertexLayoutInfo &Vertex::vertexLayoutInfo<VertexFormat::PositionOnly>();
-template <>
-VertexLayoutInfo &Vertex::vertexLayoutInfo<VertexFormat::PositionTexColor>();
-template <>
-VertexLayoutInfo &Vertex::vertexLayoutInfo<VertexFormat::PositionColor>();
-template <>
-VertexLayoutInfo &Vertex::vertexLayoutInfo<VertexFormat::PositionColorNormal>();
-template <>
-VertexLayoutInfo &Vertex::vertexLayoutInfo<VertexFormat::PositionTex>();
-template <>
-VertexLayoutInfo &Vertex::vertexLayoutInfo<VertexFormat::PositionColorTexLight>();
-template <>
-VertexLayoutInfo &Vertex::vertexLayoutInfo<VertexFormat::PositionColorLight>();
-template <>
-VertexLayoutInfo &Vertex::vertexLayoutInfo<VertexFormat::PositionTexColorLight>();
-template <>
-VertexLayoutInfo &Vertex::vertexLayoutInfo<VertexFormat::PositionTexColorNormal>();
-template <>
-VertexLayoutInfo &Vertex::vertexLayoutInfo<VertexFormat::PositionTexLightColor>();
-template <>
-VertexLayoutInfo &Vertex::vertexLayoutInfo<VertexFormat::PositionColorTexLightNormal>();
-template <>
-VertexLayoutInfo &Vertex::vertexLayoutInfo<VertexFormat::PositionColorTexOverlayLightNormal>();
+// The one format with a layout, in render/vertex_formats.cpp.
 template <>
 VertexLayoutInfo &Vertex::vertexLayoutInfo<VertexFormat::PBRVertex>();
 

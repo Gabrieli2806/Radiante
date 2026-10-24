@@ -114,11 +114,6 @@ void Reflex::setEnabled(bool enabled) {
     g_state.enabled = enabled;
 }
 
-bool Reflex::isActive() {
-    std::scoped_lock lock(g_state.mutex);
-    return g_state.pacing();
-}
-
 void Reflex::chainSwapchainCreate(void *createInfo) {
     std::scoped_lock lock(g_state.mutex);
     if (!g_state.usable() || createInfo == nullptr) return;

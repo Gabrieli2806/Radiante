@@ -373,8 +373,6 @@
   "options.radiante.transparent_checkerboard.tooltip": "水和玻璃每像素以棋盘格交替追踪反射或折射，与 Bedrock RTX 一致。每像素一条射线而非两条。",
   "options.radiante.seamless_glass": "无缝玻璃",
   "options.radiante.seamless_glass.tooltip": "隐藏每个玻璃方块的边框，使玻璃墙看起来像一整块。",
-  "options.radiante.rain_refraction": "雨滴折射",
-  "options.radiante.rain_refraction.tooltip": "雨滴像小透镜一样折射其后的画面。几乎没有性能开销。",
   "options.radiante.cloud_shadows": "云影",
   "options.radiante.cloud_shadows.tooltip": "体积云会在地面投下柔和的阴影。需要将云设为体积云。",
   "options.radiante.frame_generation_backend": "帧生成类型",

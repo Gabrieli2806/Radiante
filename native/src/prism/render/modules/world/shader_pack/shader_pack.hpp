@@ -382,30 +382,15 @@ struct FullScreenPass {
     std::shared_ptr<gpu::DeviceLocalBuffer> executionBuffer;
 };
 
+// A post render pass that draws the stars.
 struct RenderPass {
-    enum class Target {
-        Weather,
-        Particle,
-        Text,
-        NameTag,
-        Star,
-    };
-
-    struct ShaderVariant {
-        std::shared_ptr<gpu::Shader> vertexShader;
-        std::shared_ptr<gpu::Shader> fragmentShader;
-        std::shared_ptr<gpu::GraphicsPipeline> pipeline;
-    };
-
     ShaderPackLoader::RenderPassConfig config;
-    Target target = Target::Particle;
     bool writesFirstHitDepth = false;
     std::shared_ptr<gpu::RenderPass> renderPass;
     std::vector<std::shared_ptr<gpu::Framebuffer>> framebuffers;
     std::shared_ptr<gpu::Shader> vertexShader;
     std::shared_ptr<gpu::Shader> fragmentShader;
     std::shared_ptr<gpu::GraphicsPipeline> pipeline;
-    std::unordered_map<std::string, ShaderVariant> shaderVariants;
     std::shared_ptr<gpu::DeviceLocalBuffer> executionBuffer;
 };
 
@@ -456,7 +441,6 @@ class ShaderPack {
         std::shared_ptr<gpu::DeviceLocalImage> importedImage;
         std::vector<std::shared_ptr<gpu::DeviceLocalImage>> frameImages;
         uint32_t sampledViewIndex = 0;
-        uint32_t singleLayerViewBaseIndex = 0;
     };
 
     struct RuntimeBuffer {
@@ -534,12 +518,6 @@ class ShaderPack {
     bool hasRuntimeResources() const;
     void preClose();
 
-    std::shared_ptr<gpu::Shader> createShader(std::shared_ptr<gpu::Device> device,
-                                             const std::filesystem::path &path,
-                                             VkShaderStageFlagBits stage,
-                                             const std::unordered_map<std::string, std::string> &definitions,
-                                             ShaderPackLoader::Stage executionStage,
-                                             uint32_t executionSet) const;
     // Compiles the requests together, each distinct shader once, and returns one shader per request in their order.
 #ifdef DEBUG
     std::vector<std::shared_ptr<gpu::Shader>> createShaders(std::shared_ptr<gpu::Device> device,
@@ -567,7 +545,6 @@ class ShaderPack {
                   const CompileProgress &progress) const;
 
     const ShaderPackLoader::ShaderPack &shaderPack() const;
-    const std::unordered_map<std::string, std::string> &shaderAttributes() const;
     const StageRuntime &stageRuntime(ShaderPackLoader::Stage stage) const;
     const ShaderPackLoader::ExecutionConfig &execution(ShaderPackLoader::Stage stage) const;
     std::string executionSource(ShaderPackLoader::Stage stage, uint32_t executionSet) const;
@@ -628,8 +605,6 @@ class ShaderPack {
     std::shared_ptr<gpu::DeviceLocalImage> findRuntimeVKTexture(RuntimeTexture &runtimeTexture, uint32_t frameIndex);
     std::shared_ptr<gpu::DeviceLocalImage>
     findRuntimeVKTexture(const RuntimeTexture &runtimeTexture, uint32_t frameIndex) const;
-    // The view of one cube face or array layer (for rendering into it).
-    uint32_t runtimeTextureSingleLayerViewIndex(const RuntimeTexture &runtimeTexture, uint32_t layer) const;
     std::shared_ptr<gpu::DeviceLocalBuffer> findRuntimeVKBuffer(RuntimeBuffer &runtimeBuffer, uint32_t frameIndex);
     std::shared_ptr<gpu::DeviceLocalBuffer>
     findRuntimeVKBuffer(const RuntimeBuffer &runtimeBuffer, uint32_t frameIndex) const;

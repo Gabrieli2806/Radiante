@@ -64,7 +64,6 @@ public class RadianteOptionsScreen extends Screen {
     private Boolean pendingRestir;
     private Boolean pendingSer;
     private Boolean pendingFroxelFog;
-    private Boolean pendingRainRefraction;
     private Boolean pendingSeamlessGlass;
     // Plain on/off shader pack settings (light grid, cached deep bounces), by attribute; absent until read.
     private java.util.Map<String, Boolean> pendingPackToggles = new java.util.HashMap<>();
@@ -178,7 +177,6 @@ public class RadianteOptionsScreen extends Screen {
         this.pendingRestir = previous.pendingRestir;
         this.pendingSer = previous.pendingSer;
         this.pendingFroxelFog = previous.pendingFroxelFog;
-        this.pendingRainRefraction = previous.pendingRainRefraction;
         this.pendingSeamlessGlass = previous.pendingSeamlessGlass;
         this.pendingPackToggles = new java.util.HashMap<>(previous.pendingPackToggles);
         this.pendingFrameGenerationBackend = previous.pendingFrameGenerationBackend;
@@ -908,8 +906,6 @@ public class RadianteOptionsScreen extends Screen {
         this.pendingRestir = Boolean.TRUE;
         this.pendingSer = Boolean.FALSE;
         this.pendingFroxelFog = Pipeline.supportsShaderPackToggle(Pipeline.FROXEL_FOG_ATTRIBUTE) ? Boolean.TRUE : null;
-        this.pendingRainRefraction =
-            Pipeline.supportsShaderPackToggle(Pipeline.RAIN_REFRACTION_ATTRIBUTE) ? Boolean.TRUE : null;
         this.pendingSeamlessGlass =
             Pipeline.supportsShaderPackToggle(Pipeline.SEAMLESS_GLASS_ATTRIBUTE) ? Boolean.TRUE : null;
         this.pendingPackToggles.clear();
@@ -1234,15 +1230,6 @@ public class RadianteOptionsScreen extends Screen {
                 tooltip("options.radiante.cloud_shadows"), this.pendingCloudShadows,
                 value -> this.pendingCloudShadows = value);
         }
-        OptionInstance<Boolean> rainRefraction = null;
-        if (Pipeline.supportsShaderPackToggle(Pipeline.RAIN_REFRACTION_ATTRIBUTE)) {
-            if (this.pendingRainRefraction == null) {
-                this.pendingRainRefraction = Pipeline.isShaderPackToggleOn(Pipeline.RAIN_REFRACTION_ATTRIBUTE);
-            }
-            rainRefraction = OptionInstance.createBoolean("options.radiante.rain_refraction",
-                tooltip("options.radiante.rain_refraction"), this.pendingRainRefraction,
-                value -> this.pendingRainRefraction = value);
-        }
         OptionInstance<Boolean> seamlessGlass = null;
         if (Pipeline.supportsShaderPackToggle(Pipeline.SEAMLESS_GLASS_ATTRIBUTE)) {
             if (this.pendingSeamlessGlass == null) {
@@ -1282,7 +1269,7 @@ public class RadianteOptionsScreen extends Screen {
             OptionInstance.createBoolean("options.radiante.rain_wetness",
                 tooltip("options.radiante.rain_wetness"), staged("rainWetness", Options.rainWetness),
                 value -> stage("rainWetness", value)),
-            rainRefraction, seamlessGlass, seamlessScope,
+            seamlessGlass, seamlessScope,
             OptionInstance.createBoolean("options.radiante.biome_ambiance",
                 OptionInstance.cachedConstantTooltip(Component.translatable("options.radiante.biome_ambiance.tooltip")),
                 this.pendingBiomeAmbiance, value -> this.pendingBiomeAmbiance = value),
@@ -1988,9 +1975,6 @@ public class RadianteOptionsScreen extends Screen {
         }
         if (this.pendingFroxelFog != null) {
             changed |= Pipeline.setShaderPackToggle(Pipeline.FROXEL_FOG_ATTRIBUTE, this.pendingFroxelFog);
-        }
-        if (this.pendingRainRefraction != null) {
-            changed |= Pipeline.setShaderPackToggle(Pipeline.RAIN_REFRACTION_ATTRIBUTE, this.pendingRainRefraction);
         }
         for (java.util.Map.Entry<String, Boolean> toggle : this.pendingPackToggles.entrySet()) {
             changed |= Pipeline.setShaderPackToggle(toggle.getKey(), toggle.getValue());

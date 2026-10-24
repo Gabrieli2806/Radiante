@@ -403,31 +403,22 @@ public class Options {
         }
     }
 
-    public native static void nativeSetMaxFps(int maxFps, boolean write);
-
     public static void setMaxFps(int maxFps, boolean write) {
         Options.maxFps = maxFps;
-        nativeSetMaxFps(maxFps, write);
         if (write) {
             overwriteConfig();
         }
     }
-
-    public native static void nativeSetInactivityFpsLimit(int inactivityFpsLimit, boolean write);
 
     public static void setInactivityFpsLimit(int inactivityFpsLimit, boolean write) {
         Options.inactivityFpsLimit = inactivityFpsLimit;
-        nativeSetInactivityFpsLimit(inactivityFpsLimit, write);
         if (write) {
             overwriteConfig();
         }
     }
 
-    public native static void nativeSetVsync(boolean vsync, boolean write);
-
     public static void setVsync(boolean vsync, boolean write) {
         Options.vsync = vsync;
-        nativeSetVsync(vsync, write);
         if (write) {
             overwriteConfig();
         }

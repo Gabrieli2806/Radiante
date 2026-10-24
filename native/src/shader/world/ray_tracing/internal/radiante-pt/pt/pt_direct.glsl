@@ -216,12 +216,6 @@ float skyVisibilityAlong(vec3 position, vec3 direction) {
     return clamp(dot(shadowRay.radiance, vec3(0.2126, 0.7152, 0.0722)), 0.0, 1.0);
 }
 
-// How open to the sky the water is straight up from here: the light the water scatters comes from the sky and the
-// sun above it, so water under a roof or in a cave stays dark instead of glowing with the open sky's light.
-float waterSkyVisibility(vec3 position) {
-    return skyVisibilityAlong(position, vec3(0.0, 1.0, 0.0));
-}
-
 #if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
 // The sky's light off a face, for a surface that returns all of it: the sky out from the face, leaning up (a wall's
 // half of the sky is the half over the ground), and at a slant around that; none where a ray that way meets a roof.

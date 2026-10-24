@@ -66,18 +66,6 @@ RenderPassBuilder &RenderPassBuilder::SubpassDescriptionBuilder::endSubpassDescr
     return parent_;
 }
 
-RenderPassBuilder::SubpassDependencyBuilder::SubpassDependencyBuilder(RenderPassBuilder &parent) : parent_(parent) {}
-
-RenderPassBuilder::SubpassDependencyBuilder &
-RenderPassBuilder::SubpassDependencyBuilder::defineSubpassDependency(VkSubpassDependency subpassDependency) {
-    parent_.dependencies_.push_back(subpassDependency);
-    return *this;
-}
-
-RenderPassBuilder &RenderPassBuilder::SubpassDependencyBuilder::endSubpassDependency() {
-    return parent_;
-}
-
 // ---- RenderPassBuilder
 
 RenderPassBuilder::AttachmentDescriptionBuilder &RenderPassBuilder::beginAttachmentDescription() {
@@ -90,10 +78,6 @@ RenderPassBuilder::AttachmentReferenceBuilder &RenderPassBuilder::beginAttachmen
 
 RenderPassBuilder::SubpassDescriptionBuilder &RenderPassBuilder::beginSubpassDescription() {
     return subpassDescriptionBuilder_;
-}
-
-RenderPassBuilder::SubpassDependencyBuilder &RenderPassBuilder::beginSubpassDependency() {
-    return subpassDependencyBuilder_;
 }
 
 const VkAttachmentReference *RenderPassBuilder::references(uint32_t first, size_t count) const {
@@ -137,8 +121,6 @@ std::shared_ptr<RenderPass> RenderPassBuilder::build(std::shared_ptr<Device> dev
     info.pAttachments = attachments_.data();
     info.subpassCount = static_cast<uint32_t>(descriptions.size());
     info.pSubpasses = descriptions.data();
-    info.dependencyCount = static_cast<uint32_t>(dependencies_.size());
-    info.pDependencies = dependencies_.data();
 
     VkRenderPass renderPass = VK_NULL_HANDLE;
     const VkResult result = vkCreateRenderPass(device->vkDevice(), &info, nullptr, &renderPass);

@@ -11,10 +11,6 @@
 //  - bilinear: a smooth surface, marched in fixed steps and refined by bisection, with the normal taken from the
 //    height gradient.
 
-#ifndef VPT_PARALLAX_EDGE_WALLS
-#    define VPT_PARALLAX_EDGE_WALLS 0
-#endif
-
 // Turned on around a primary ray's height map trace, so the trace reports where it leaves the tile below the
 // surface and the hit shader decides what that edge is. All other traces (shadows, bounces) simply leave the height
 // map there.
@@ -99,7 +95,7 @@ bool isEdge(float edgeDepth,
     // bounce can light it. It showed up as a black band along every block edge at grazing angles and, as a shadow
     // blocker, darkened the strip next to it too. Unless asked for, the trace just leaves the height map there like
     // at any other exit.
-    if (VPT_PARALLAX_EDGE_WALLS == 0 && !gParallaxDetectEdges) { return false; }
+    if (!gParallaxDetectEdges) { return false; }
     float bandDepth = edgeDepthWithBand(edgeBaseDepth, minEdgeDepth);
     if (edgeDepth < -heightMapTraceBias) { return false; }
     if (edgeDepth > bandDepth + heightMapTraceBias) { return false; }
@@ -171,21 +167,6 @@ int heightMapRemainingSteps(int texelCoord, int minCoord, int maxCoord, float ra
 bool shouldFallbackNearestSecondaryToBilinear(vec3 worldDir, vec3 baseNormal) {
     float descent = dot(worldDir, -baseNormal);
     return descent < 0.0 && -descent <= heightMapNearestSecondaryBilinearFallbackDepthRate;
-}
-
-// The UV lies in the outer third of a texel on the tile's border, on the side facing out of the tile.
-bool isOuterThirdTexelUV(vec2 uv, ivec2 texel, ivec2 atlasTexelMin, ivec2 atlasTexelMax, ivec2 size) {
-    if (size.x <= 0 || size.y <= 0) { return false; }
-
-    vec2 texelUv = 1.0 / vec2(size);
-    vec2 cellLo = vec2(texel) * texelUv;
-    vec2 cellHi = cellLo + texelUv;
-    vec2 third = texelUv / 3.0;
-
-    return (texel.x == atlasTexelMin.x && uv.x <= cellLo.x + third.x) ||
-           (texel.x == atlasTexelMax.x && uv.x >= cellHi.x - third.x) ||
-           (texel.y == atlasTexelMin.y && uv.y <= cellLo.y + third.y) ||
-           (texel.y == atlasTexelMax.y && uv.y >= cellHi.y - third.y);
 }
 
 // Depth of a column's top. Texels outside the tile count as being at the face (depth 0).

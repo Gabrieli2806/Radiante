@@ -52,10 +52,6 @@ DescriptorTable::~DescriptorTable() {
     });
 }
 
-uint32_t DescriptorTable::setCount() {
-    return static_cast<uint32_t>(table_.size());
-}
-
 uint32_t DescriptorTable::dynamicDescriptorCount() const {
     uint32_t count = 0;
     for (const auto &types : tableTypes_) {
@@ -66,10 +62,6 @@ uint32_t DescriptorTable::dynamicDescriptorCount() const {
 
 std::vector<VkDescriptorSet> &DescriptorTable::descriptorSet() {
     return table_;
-}
-
-std::vector<VkDescriptorSetLayout> &DescriptorTable::descriptorSetLayout() {
-    return tableLayout_;
 }
 
 VkPipelineLayout &DescriptorTable::vkPipelineLayout() {
@@ -113,11 +105,6 @@ std::shared_ptr<DescriptorTable> DescriptorTable::bindSamplerImage(std::shared_p
     return shared_from_this();
 }
 
-std::shared_ptr<DescriptorTable>
-DescriptorTable::bindImageForShader(std::shared_ptr<Image> image, uint32_t set, uint32_t binding, uint32_t viewIndex) {
-    return bindImage(std::move(image), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, set, binding, viewIndex);
-}
-
 std::shared_ptr<DescriptorTable> DescriptorTable::bindSamplerImageForShader(std::shared_ptr<Sampler> sampler,
                                                                             std::shared_ptr<Image> image,
                                                                             uint32_t set,
@@ -153,17 +140,6 @@ std::shared_ptr<DescriptorTable> DescriptorTable::bindBufferRange(std::shared_pt
     VkDescriptorBufferInfo info{buffer->vkBuffer(), offset, range};
     VkWriteDescriptorSet w = write(set, binding, index, 1);
     w.pBufferInfo = &info;
-    vkUpdateDescriptorSets(device_->vkDevice(), 1, &w, 0, nullptr);
-    return shared_from_this();
-}
-
-std::shared_ptr<DescriptorTable>
-DescriptorTable::bindBuffers(std::vector<std::shared_ptr<Buffer>> buffers, uint32_t set, uint32_t binding) {
-    std::vector<VkDescriptorBufferInfo> infos;
-    infos.reserve(buffers.size());
-    for (const auto &buffer : buffers) infos.push_back({buffer->vkBuffer(), 0, buffer->size()});
-    VkWriteDescriptorSet w = write(set, binding, 0, static_cast<uint32_t>(infos.size()));
-    w.pBufferInfo = infos.data();
     vkUpdateDescriptorSets(device_->vkDevice(), 1, &w, 0, nullptr);
     return shared_from_this();
 }

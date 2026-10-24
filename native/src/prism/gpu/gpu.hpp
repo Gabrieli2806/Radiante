@@ -8,7 +8,6 @@
 #include "prism/gpu/instance.hpp"
 #include "prism/gpu/physical_device.hpp"
 #include "prism/gpu/pipeline.hpp"
-#include "prism/gpu/dynamic_pipeline.hpp"
 #include "prism/gpu/render_pass.hpp"
 #include "prism/gpu/swapchain.hpp"
 #include "prism/gpu/vertex.hpp"
