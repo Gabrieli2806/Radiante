@@ -674,7 +674,6 @@ public final class EmissionTiles {
         return END_PORTAL_EYE.equals(spriteId) && !com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow();
     }
 
-    /** LabPBR stores emission in the specular alpha: 0..254 scale linearly, 255 means none. */
     /**
      * A sprite whose glow Radiante sets itself (an eye of ender in its frame) keeps that strength under a pack's
      * own specular map: the pack's emission gives the shape, and its brightest texel is brought up to the level set

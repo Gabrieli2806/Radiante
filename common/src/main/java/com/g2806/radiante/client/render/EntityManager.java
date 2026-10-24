@@ -748,11 +748,6 @@ public final class EntityManager {
     private static final int EXTERNAL_ID_SALT = 0x65787467;
 
     /**
-     * Rain and snow: the same sheets vanilla draws, built from the columns Minecraft already extracted. They go in
-     * under the weather mask, which camera rays see and shadow rays skip, and use the stochastic alpha mode so a
-     * streak is a faint visible surface rather than clear glass.
-     */
-    /**
      * Blocks vanilla rain falls per tick: its texture scrolls (3 to 4) / 32 of a texture height per tick, and a
      * texture height covers four blocks. Each column picks its own speed in that range; the middle one is used.
      */
@@ -772,6 +767,11 @@ public final class EntityManager {
         return rainFallPerFrame;
     }
 
+    /**
+     * Rain and snow: the same sheets vanilla draws, built from the columns Minecraft already extracted. They go in
+     * under the weather mask, which camera rays see and shadow rays skip, and use the stochastic alpha mode so a
+     * streak is a faint visible surface rather than clear glass.
+     */
     private static void collectWeather(LevelRenderState levelRenderState, CameraRenderState cameraState) {
         net.minecraft.client.renderer.state.level.WeatherRenderState weather = levelRenderState.weatherRenderState;
         if (weather.intensity <= 0.0f || (weather.rainColumns.isEmpty() && weather.snowColumns.isEmpty())) {
@@ -907,10 +907,6 @@ public final class EntityManager {
             layers, PREBUILT_BLAS_KEYED));
     }
 
-
-
-
-    /** The held items and arms are submitted separately from the world and follow the camera. */
     /**
      * The player, in first person. Minecraft draws nothing of them then - no model is extracted for the camera
      * entity - so the world around the player had no shadow of them in it and they were missing from every
@@ -990,6 +986,7 @@ public final class EntityManager {
             && !com.g2806.radiante.client.compat.vivecraft.VivecraftCompat.isVrActive();
     }
 
+    /** The held items and arms are submitted separately from the world and follow the camera. */
     private static void collectHands(Minecraft minecraft, LevelRenderState levelRenderState,
         CameraRenderState cameraState) {
         PlayerRenderState playerState = levelRenderState.playerRenderState;
@@ -1025,12 +1022,6 @@ public final class EntityManager {
     }
 
     /**
-     * The id an entity's geometry is matched to the previous frame's by, for its motion vectors. Minecraft makes a
-     * new render state every frame, so keyed by the state object nothing ever matched: every moving mob and player
-     * was taken for a still one, and the upscaler, finding it elsewhere than the motion vectors said, threw its
-     * history away and showed it noisy.
-     */
-    /**
      * The id of whatever stands at a block. {@code BlockPos.hashCode} will not do: it gives two blocks 31 apart
      * along x and one apart in height the same number, and the renderer keeps what it has built by id - two signs
      * sharing one took each other's place every frame and were both built again every frame, by the hundred
@@ -1041,6 +1032,12 @@ public final class EntityManager {
         return (int) (mixed ^ mixed >>> 32);
     }
 
+    /**
+     * The id an entity's geometry is matched to the previous frame's by, for its motion vectors. Minecraft makes a
+     * new render state every frame, so keyed by the state object nothing ever matched: every moving mob and player
+     * was taken for a still one, and the upscaler, finding it elsewhere than the motion vectors said, threw its
+     * history away and showed it noisy.
+     */
     private static int historyId(EntityRenderState state) {
         int entityId = ((EntityIdHolder) state).radiante$entityId();
         return entityId == Integer.MIN_VALUE ? System.identityHashCode(state) : entityId * 0x9E3779B1 ^ 0x7F4A7C15;

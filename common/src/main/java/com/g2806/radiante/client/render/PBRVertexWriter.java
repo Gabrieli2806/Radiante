@@ -76,7 +76,6 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private int vertexCount;
     private long current = -1L;
     private boolean quadHasUnplaceableVertex;
-    private int droppedQuads;
 
     private int textureId;
     private int glintTextureId;
@@ -160,11 +159,6 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         return this;
     }
 
-    /**
-     * Whether the vertices from here on are the surface of water. Carried to the shaders in a bit above the alpha
-     * mode, which only uses the low four, so they can treat it as water: refraction, waves, caustics and the pack's
-     * water medium.
-     */
     /** Whether the vertices from here on are what the player holds, whose glow has a brightness of its own. */
     public PBRVertexWriter held(boolean held) {
         this.held = held;
@@ -177,6 +171,11 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         return this;
     }
 
+    /**
+     * Whether the vertices from here on are the surface of water. Carried to the shaders in a bit above the alpha
+     * mode, which only uses the low four, so they can treat it as water: refraction, waves, caustics and the pack's
+     * water medium.
+     */
     public PBRVertexWriter water(boolean water) {
         this.water = water;
         return this;
@@ -202,16 +201,16 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         return this;
     }
 
-    /**
-     * Marks what follows as a light block in a state that gives no light although it draws the sprites its lit
-     * states glow with (unlit redstone ore): it neither glows nor casts light (see EmissionTiles.isUnlit).
-     */
     /** Whether the vertices from here on are lava's surface (LAVA_SURFACE_BIT in the shaders). */
     public PBRVertexWriter lava(boolean lava) {
         this.lava = lava;
         return this;
     }
 
+    /**
+     * Marks what follows as a light block in a state that gives no light although it draws the sprites its lit
+     * states glow with (unlit redstone ore): it neither glows nor casts light (see EmissionTiles.isUnlit).
+     */
     public PBRVertexWriter unlit(boolean unlit) {
         this.unlit = unlit;
         return this;
@@ -309,18 +308,12 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         return this.address;
     }
 
-    /** Quads dropped since the last reset because a corner could not be placed. */
-    public int droppedQuads() {
-        return this.droppedQuads;
-    }
-
     public void reset() {
         this.layerOffset = 0.0f;
         this.vertexCount = 0;
         this.finishedUpTo = 0;
         this.current = -1L;
         this.quadHasUnplaceableVertex = false;
-        this.droppedQuads = 0;
     }
 
     private void ensureCapacity(long required) {
@@ -345,7 +338,6 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
             this.vertexCount -= 4;
             this.finishedUpTo = this.vertexCount;
             this.quadHasUnplaceableVertex = false;
-            this.droppedQuads++;
             return;
         }
         this.finishedUpTo = this.vertexCount;

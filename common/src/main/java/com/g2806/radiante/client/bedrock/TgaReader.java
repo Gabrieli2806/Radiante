@@ -98,7 +98,6 @@ final class TgaReader {
             return this.argb[Math.floorMod(y, this.height) * this.width + Math.floorMod(x, this.width)];
         }
 
-        /** Nearest-neighbour resample, for maps authored at another resolution than their colour texture. */
         /**
          * Scaled to the given size; shrinking averages every source texel that falls in a destination texel
          * (per channel), growing repeats texels as resized does.
@@ -132,6 +131,7 @@ final class TgaReader {
             return new Image(newWidth, newHeight, out);
         }
 
+        /** Nearest-neighbour resample, for maps authored at another resolution than their colour texture. */
         Image resized(int newWidth, int newHeight) {
             if (newWidth == this.width && newHeight == this.height) {
                 return this;
