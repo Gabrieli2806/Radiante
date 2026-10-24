@@ -102,9 +102,9 @@ public class Options {
     public static boolean textBackgrounds = true;
     /** Carved (parallax) resource pack faces are see-through at the outer edges of their block. */
     public static boolean parallaxTransparentEdges = false;
-    /** Brightness of sunlight and the daytime sky, in percent of the shader pack's own. */
     /** The Pipeline.SETTINGS_DEFAULTS_VERSION the stored pipeline settings were written under; 0 for none. */
     public static int settingsDefaultsVersion = 0;
+    /** Brightness of sunlight and the daytime sky, in percent of the shader pack's own. */
     public static int dayBrightness = 25;
     /** Brightness of moonlight and the night sky, in percent of the shader pack's own. */
     public static int nightBrightness = 35;
@@ -162,34 +162,6 @@ public class Options {
 
     /** The renderer profile last applied (com.g2806.radiante.client.profile.RendererProfile), by name. */
     public static String rendererProfile = "BEDROCK_RTX_ENHANCED";
-
-    /** The look and lighting settings back to a fresh install's; pipeline and restart-bound ones are the screen's. */
-    public static void resetVisualDefaults() {
-        blockLightSampling = true;
-        heldItemLight = true;
-        rainWetness = true;
-        blockOutline = false;
-        parallaxTransparentEdges = false;
-        dayBrightness = 25;
-        nightBrightness = 35;
-        emissionBrightness = 12;
-        heldLightBrightness = 12;
-        setEntityLightReach(64, true);
-        volumetricFogStrength = 100;
-        resetSkyPath();
-        vanillaCelestialOrientation = true;
-    }
-
-    /** The sun and moon back on vanilla's path, the moon following the sun, neither sprite turned. */
-    public static void resetSkyPath() {
-        sunPathTilt = 0;
-        sunPathAzimuth = 0;
-        sunSpriteRotation = 0;
-        moonFollowsSun = true;
-        moonPathTilt = 0;
-        moonPathAzimuth = 0;
-        moonSpriteRotation = 0;
-    }
 
     /** Ray tracing can be switched off with a key, which hands the world back to Minecraft's own renderer. */
     public static boolean rayTracingEnabled = true;

@@ -1,12 +1,10 @@
 package com.g2806.radiante.client.gui;
 
-import com.g2806.radiante.client.RadianteClient;
 import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.pipeline.Pipeline;
 import com.g2806.radiante.client.render.FrameGeneration;
 import com.g2806.radiante.client.render.RadianteRenderer;
 import com.g2806.radiante.mixin.debug.DebugScreenEntriesInvoker;
-import com.g2806.radiante.platform.RadiantePlatform;
 import java.util.List;
 import java.util.Locale;
 import net.minecraft.client.Minecraft;
