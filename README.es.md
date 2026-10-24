@@ -28,7 +28,7 @@ vanilla dibujan en el mismo frame.
 - Cielo, sol y dispersión atmosférica físicamente basados.
 - Un shader pack incluido, `radiante-pt`, con muestreo directo de luces de bloque (antorchas, lava, lámparas) y su
   reutilización con ReSTIR, niebla volumétrica por froxels o por ray marching, nubes volumétricas con sombras
-  opcionales, refracción de la lluvia y suelo mojado, y vidrio sin juntas.
+  opcionales, suelo mojado y vidrio sin juntas.
 - Ambiente de Bioma: cada bioma del Overworld, el Nether y el End tiene su propio aire, y cada tipo de agua su
   propio aspecto, de forma sutil y fundiéndose al cruzar fronteras. Los biomas de mods y data packs obtienen el
   suyo a partir de sus etiquetas, clima y colores, sin configurar nada.

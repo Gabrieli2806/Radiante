@@ -8,6 +8,10 @@ All notable changes to this project are documented in this file.
   settings and the pipeline's pointer to it move over by themselves on the first start; the old zip is removed.
 - ROADMAP.md is gone: where the project is heading is tracked in GitHub issues labelled roadmap, next to
   the bugs and ideas.
+- Rain Refraction is removed: its pass never drew anything (rain is traced in the world). Saved settings that still
+  hold it are ignored.
+- Clean-up of code that was never reached: about 2,600 lines of Java, native and shader code, among them the
+  post-rendered entity path, unused native setters (max fps, vsync) and unused lang keys. No change in the picture.
 
 ## [1.1.0] - 2026-10-24
 

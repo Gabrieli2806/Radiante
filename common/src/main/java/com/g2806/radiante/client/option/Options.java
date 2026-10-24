@@ -21,9 +21,6 @@ public class Options {
 
     public static final String OPTION_PROPERTIES = "options.properties";
 
-    public static int maxFps = 260;
-    public static int inactivityFpsLimit = 260;
-    public static boolean vsync = true;
     public static int chunkBuildingBatchSize = 12;
     public static int chunkBuildingTotalBatches = 12;
     public static int chunkBuildingThreads = getDefaultChunkBuildingThreads();
@@ -237,10 +234,7 @@ public class Options {
      * in it - and round-trips - or not saved at all; nothing can be written and never read back again.
      */
     private static final List<Entry> ENTRIES = List.of(
-        number("maxFps", () -> maxFps, v -> setMaxFps(v, false)),
         number("settingsDefaultsVersion", () -> settingsDefaultsVersion, v -> settingsDefaultsVersion = v),
-        number("inactivityFpsLimit", () -> inactivityFpsLimit, v -> setInactivityFpsLimit(v, false)),
-        bool("vsync", () -> vsync, v -> setVsync(v, false)),
         number("chunkBuildingBatchSize", () -> chunkBuildingBatchSize, v -> setChunkBuildingBatchSize(v, false)),
         number("chunkBuildingTotalBatches", () -> chunkBuildingTotalBatches,
             v -> setChunkBuildingTotalBatches(v, false)),
@@ -400,27 +394,6 @@ public class Options {
             props.store(out, "Options");
         } catch (IOException e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    public static void setMaxFps(int maxFps, boolean write) {
-        Options.maxFps = maxFps;
-        if (write) {
-            overwriteConfig();
-        }
-    }
-
-    public static void setInactivityFpsLimit(int inactivityFpsLimit, boolean write) {
-        Options.inactivityFpsLimit = inactivityFpsLimit;
-        if (write) {
-            overwriteConfig();
-        }
-    }
-
-    public static void setVsync(boolean vsync, boolean write) {
-        Options.vsync = vsync;
-        if (write) {
-            overwriteConfig();
         }
     }
 

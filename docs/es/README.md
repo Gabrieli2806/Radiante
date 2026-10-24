@@ -63,7 +63,7 @@ página con todos sus controles, valor por defecto y qué hace cada uno:
   con 4 rebotes de luz por defecto, una caché de radiancia (SHaRC) para los más profundos, y ReSTIR
   para las luces de bloque.
 - Cielo físico, niebla volumétrica (rejilla de froxels o por píxel), nubes
-  volumétricas con sombras, lluvia con refracción y suelo mojado, vidrio sin bordes.
+  volumétricas con sombras, suelo mojado, vidrio sin bordes.
 - Ambiente de Bioma: el aire y el agua propios de cada bioma, de forma sutil, para biomas vanilla,
   de mods y de packs de Bedrock por igual.
 - LabPBR (`_n`/`_s`) para bloques, entidades e ítems; resource packs `.mcpack` de Bedrock RTX,

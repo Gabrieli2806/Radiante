@@ -360,7 +360,8 @@ first-hit direct and indirect diffuse, specular, emission, refraction, and fog i
   curve, and a Bedrock-style curve (`bedrock_hist.comp`, `bedrock_curve.comp`). The exposure buffer is also read by
   HDR output (`render/hdr_output.*`).
 - **Post render** (`post_render/`): turns first-hit distances into depth, copies the tone-mapped image out and runs
-  the pack's `post_render` stage: stars, text, name tags, weather refraction, depth of field, motion blur.
+  the pack's `post_render` stage: stars, depth of field, motion blur. Text, name tags, particles and rain are traced
+  in the world, not drawn afterwards.
 
 Fog and clouds are mostly in the path tracer: volumetric fog per pixel (`pt_volumetric.glsl`) or as froxels
 (`froxel/integrate.comp`, `froxel/carry.comp`), and volumetric clouds resolved over time

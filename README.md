@@ -25,8 +25,8 @@ the device Minecraft already created, so the ray tracer and the vanilla GUI draw
   shadows and global illumination, on Windows and Linux.
 - Physically based sky, sun and atmospheric scattering.
 - One built-in shader pack, `radiante-pt`, with direct sampling of block lights (torches, lava, lamps) and ReSTIR
-  reuse of them, froxel or ray-marched volumetric fog, volumetric clouds with optional shadows, rain refraction and
-  wet ground, and seamless glass.
+  reuse of them, froxel or ray-marched volumetric fog, volumetric clouds with optional shadows, wet
+  ground and seamless glass.
 - Biome Ambiance: every biome of the overworld, the Nether and the End has an air of its own and every kind of
   water a look of its own, kept subtle and blended across borders. Biomes from mods and data packs get theirs
   worked out from their tags, climate and colours, with nothing to set up.
