@@ -567,5 +567,19 @@
   "screen.radiante.share.count": "%s 项设置",
   "screen.radiante.share.hint.in_use": "这就是游戏当前的画面风格。",
   "screen.radiante.share.hint.apply": "点击“应用”或再点一次即可切换。",
-  "screen.radiante.share.hint.pick": "选择一个预设，在这里查看。"
+  "screen.radiante.share.hint.pick": "选择一个预设，在这里查看。",
+  "options.radiante.affects": "还会决定：%s",
+  "options.radiante.blocked.bedrock_fog": "目前无效：Bedrock 的雾不使用它。可在 Radiante 配置下使用，或在“高级”中关闭 Bedrock 体积雾。",
+  "options.radiante.blocked.needs": "目前无效：请先开启 %s。",
+  "options.radiante.blocked.needs_value": "目前无效：需要将 %s 设为 %s。",
+  "options.radiante.blocked.overridden": "目前无效：由 %s 取代。",
+  "options.radiante.blocked.profile": "由 Bedrock RTX（增强）渲染器配置设定。修改后配置会变为“自定义”。",
+  "options.radiante.blocked.ray_tracing": "光线追踪关闭时无效。",
+  "options.radiante.debug_logging.tooltip": "向游戏日志写入更多渲染器细节，便于报告问题。不改变画面。",
+  "options.radiante.impact.none": "无",
+  "options.radiante.notice.custom_profile": "自定义：手动修改过设置的 Bedrock RTX（增强）配置。再次选择该配置可恢复其数值。",
+  "options.radiante.notice.profile": "由 %1$s 配置设定。修改后配置会变为“自定义”；再次选择 %1$s 可恢复。",
+  "options.radiante.preset.tooltip": "完成画面的降噪器和放大器：NVIDIA RTX 上用 DLSS 光线重建，其他显卡用 NRD 配合 FSR 或 XeSS。DLSS 和 XeSS 首次使用时下载。",
+  "options.radiante.renderer_profile.custom": "自定义",
+  "render_pipeline.module.ray_tracing.attribute.seamless_glass_scope.tooltip": "无缝玻璃连接哪些玻璃：方块和玻璃板、仅方块，或仅玻璃板。"
 }
