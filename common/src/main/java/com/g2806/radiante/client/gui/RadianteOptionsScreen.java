@@ -1953,7 +1953,7 @@ public class RadianteOptionsScreen extends Screen {
                 RadianteClient.LOGGER.info("[settings] preset: {} -> {}", Pipeline.INSTANCE.getActivePresetName(),
                     appliedPreset.key);
             }
-            Pipeline.switchToPresetMode(appliedPreset.key, false);
+            Pipeline.switchToPresetMode(appliedPreset.key);
             changed = true;
             structural = true;
         }

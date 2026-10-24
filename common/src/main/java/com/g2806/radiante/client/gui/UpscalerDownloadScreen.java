@@ -97,7 +97,7 @@ public class UpscalerDownloadScreen extends Screen {
                 this.font).setMaxWidth(320).setCentered(true));
             layout.addChild(Button.builder(text("screen.radiante.download.switch.yes"), button -> {
                 UpscalerDownloads.clearSwitchOffer(this.component);
-                com.g2806.radiante.client.pipeline.Pipeline.switchToPresetMode(presetOf(this.component).key, false);
+                com.g2806.radiante.client.pipeline.Pipeline.switchToPresetMode(presetOf(this.component).key);
                 com.g2806.radiante.client.pipeline.Pipeline.savePipeline();
                 BackgroundRebuild.open(this.minecraft, this.parent, true);
             }).width(WIDGET_WIDTH).build());

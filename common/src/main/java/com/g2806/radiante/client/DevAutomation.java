@@ -424,7 +424,7 @@ public final class DevAutomation {
                 case "fog" -> com.g2806.radiante.client.pipeline.Pipeline.setVolumetricFog(Boolean.parseBoolean(parts[1]));
                 // preset:<preset key>, e.g. the NRD + FSR pipeline.
                 case "preset" -> {
-                    com.g2806.radiante.client.pipeline.Pipeline.switchToPresetMode(parts[1], false);
+                    com.g2806.radiante.client.pipeline.Pipeline.switchToPresetMode(parts[1]);
                     yield true;
                 }
                 case "clouds" -> com.g2806.radiante.client.pipeline.Pipeline.setCloudMode(
