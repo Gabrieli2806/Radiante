@@ -7,6 +7,12 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#undef com_g2806_radiante_client_option_Options_SUN_PATH_TILTED_DEGREES
+#define com_g2806_radiante_client_option_Options_SUN_PATH_TILTED_DEGREES 10L
+#undef com_g2806_radiante_client_option_Options_MAX_PATH_TILT
+#define com_g2806_radiante_client_option_Options_MAX_PATH_TILT 45L
+#undef com_g2806_radiante_client_option_Options_MAX_ROTATION
+#define com_g2806_radiante_client_option_Options_MAX_ROTATION 180L
 /*
  * Class:     com_g2806_radiante_client_option_Options
  * Method:    nativeSetMaxFps

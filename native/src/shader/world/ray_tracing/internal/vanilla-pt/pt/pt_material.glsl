@@ -22,6 +22,30 @@ struct SampledSurface {
     bool authoredMer;
 };
 
+// How much of lava's colour its surface shows once the exposure is applied (the Bedrock profile; linear, before
+// the tone curve), and the share of its colour that is left to the light other things throw on it.
+#ifndef LAVA_DISPLAY
+#    define LAVA_DISPLAY 0.14
+#endif
+#ifndef LAVA_LIT_SHARE
+#    define LAVA_LIT_SHARE 0.1
+#endif
+
+// Lava as a self-lit sheet; see pt_shade_default.glsl. Only the Bedrock profile has the meter that tells the
+// exposure here, so the others keep lava's fixed glow.
+void ptShapeLava(inout SampledSurface surface) {
+#if VPT_BEDROCK_SPECULAR
+    float exposure = 1.0;
+    if (lightMeter.bedrockMeter.w == 1.0) {
+        exposure = exp2(clamp(lightMeter.bedrockMeter.x, -1.0, 6.0) + log2(clamp(lightMeter.daylight.y, 0.05, 1.0)));
+    }
+    surface.mat.albedo *= LAVA_LIT_SHARE;
+    surface.mat.f0 *= LAVA_LIT_SHARE;
+    surface.mat.emission = LAVA_DISPLAY / (max(exposure, 1e-3) * VPT_BEDROCK_SEEN_EMISSION *
+                                            max(worldUBO.emissionBrightness, 1e-3));
+#endif
+}
+
 vec3 applyNormalMapToBasis(vec3 matNormal,
                            vec3 tangent,
                            vec3 bitangent,

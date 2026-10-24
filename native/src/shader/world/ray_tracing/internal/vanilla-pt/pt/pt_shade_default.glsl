@@ -71,6 +71,16 @@ layout(set = 2, binding = 2) uniform SkyUniform {
     SkyUBO skyUBO;
 };
 
+// The incident light meter, as pt_bindings.glsl declares it for the ray generation shader: read here for the exposure.
+layout(set = 2, binding = 3) readonly buffer LightMeterBuffer {
+    vec4 samples[256];
+    vec4 daylight;
+    vec4 bedrockMeter;
+    vec4 sampleHistory[256];
+    vec4 sampleSurface[256];
+}
+lightMeter;
+
 #include "common/celestial.glsl"
 
 layout(set = 5, binding = 0) uniform sampler2D transLUT;
@@ -311,6 +321,12 @@ void ptShadeDefault(bool viewMark) {
                        isWaterMaterial, hasFftWaterSurface, surface);
     // A light block in a state that gives no light draws the sprite its lit state glows with (unlit redstone ore).
     if (isUnlitSurface(packedData)) { surface.mat.emission = 0.0; }
+    // Lava is a self-lit sheet: shown by its own colour at a steady brightness. Its glow was a fixed light, and the
+    // eye opens and closes with the place (the darker, the further): in a dark cavern or at night the same glow was
+    // far over white and lost its texture (a pale peach), by day in the open it was dull. The glow is now what the
+    // current exposure brings to LAVA_DISPLAY of its colour, and the light other things throw on it counts for
+    // little. (What lava casts on its surroundings is the light list's, unchanged.)
+    if (isLavaSurface(packedData) && bounce == 0u) { ptShapeLava(surface); }
 #if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     // Small plants (grass, flowers, ferns) are lit as if they faced half way up, as Bedrock RTX lights them: side by
     // side its short grass is three quarters as bright as the grass block under it, where lit by their own upright

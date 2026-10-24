@@ -200,17 +200,22 @@ vec3 bedrockToneMap(vec3 color) {
         mapped = mean + (1.0 + pc.filmicSaturation * max(response - 1.0, 0.0)) * (mapped - mean);
     }
 
-    // The Nether (exposure.comp flags it): a lava sea or a lit wall of red rock has its red channel far over white
-    // once the eye is open, and clipped channel by channel it went a flat pale peach with no texture left. The
-    // brightest channel is brought down to the white point instead, keeping the hue: bright orange, darker where
-    // the glow is stronger, and the pattern stays.
-    if (expData.padding0 > 0.5) {
+    // A strongly coloured highlight (lava, fire, a red wall under a lava sea's light) has one channel far over white
+    // once the eye is open. Clipped channel by channel it went pale: red pinned at 1 and the others lifted, the
+    // pattern lost. Its brightest channel is brought down with a soft shoulder instead, the ratio of the channels
+    // kept, so it stays orange and keeps its texture. Weighted by chroma: white and grey are left to the clamp, as
+    // Bedrock does. The Nether (exposure.comp flags it) starts the shoulder early, as its eye is open the furthest.
+    {
         float peak = max(mapped.r, max(mapped.g, mapped.b));
-        if (peak > NETHER_SHOULDER_KNEE) {
-            // A soft shoulder on the brightest channel: monotonic, so the shading and the texture survive over white.
-            float room = NETHER_HUE_HOLD - NETHER_SHOULDER_KNEE;
-            float shouldered = NETHER_SHOULDER_KNEE + room * tanh((peak - NETHER_SHOULDER_KNEE) / room);
-            mapped *= shouldered / peak;
+        float low = min(mapped.r, min(mapped.g, mapped.b));
+        float chroma = peak > 0.0 ? clamp((peak - low) / peak * 1.25 - 0.25, 0.0, 1.0) : 0.0;
+        bool nether = expData.padding0 > 0.5;
+        float knee = nether ? NETHER_SHOULDER_KNEE : 0.7;
+        float ceiling = nether ? NETHER_HUE_HOLD : 1.0;
+        if (peak > knee && chroma > 0.0) {
+            float room = ceiling - knee;
+            float shouldered = knee + room * tanh((peak - knee) / room);
+            mapped *= mix(1.0, shouldered / peak, chroma);
         }
     }
 
