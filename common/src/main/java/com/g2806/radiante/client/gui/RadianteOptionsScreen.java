@@ -1396,6 +1396,7 @@ public class RadianteOptionsScreen extends Screen {
         addRows(bounces, tunable(Tunable.MIRROR_BOUNCES, false), tunable(Tunable.MIRROR_SMOOTHNESS, false),
             tunable(Tunable.GLASS_REFLECTIONS, false),
             tunable(Tunable.WATER_TEXTURE, false),
+            tunable(Tunable.WATER_CLEAR_TEAL, false),
             tunable(Tunable.PORTAL_TRANSPARENCY, false),
             tunable(Tunable.RAIN_OPACITY, false),
             packToggle(Pipeline.CACHE_DEEP_BOUNCES_ATTRIBUTE, "options.radiante.cache_deep_bounces"),

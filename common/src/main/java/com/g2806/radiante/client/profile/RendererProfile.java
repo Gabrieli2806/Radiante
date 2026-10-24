@@ -110,6 +110,9 @@ public enum RendererProfile {
             "waves strong enough to break the mirror into ripples"),
         new Override(RT + "water_texture_layer", "0.4", "1.0",
             "the pack's water pattern only faintly, so the surface is not uniformly speckled"),
+        new Override(RT + "water_clear_teal", "0.7", "0.0",
+            "water that absorbs red first and stays clear in green and blue: a teal you see the bottom through, "
+                + "where the pack's water closes in as a deep blue murk"),
         // ---- tone: Bedrock's filmic curve with more contrast, calm colour, no glow, an eye that adapts like one
         new Override(TONE + "contrast", "1.08", "1.0",
             "more separation between light and dark about middle grey"),

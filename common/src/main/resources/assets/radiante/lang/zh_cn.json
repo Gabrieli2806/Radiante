@@ -313,6 +313,8 @@
   "options.radiante.tunable.portal_transparency.tooltip": "下界传送门保留资源包透明度的程度。100% 为资源包原样，0% 为不透明。",
   "options.radiante.tunable.rain_opacity": "雨滴不透明度",
   "options.radiante.tunable.rain_opacity.tooltip": "每条雨丝的显示程度。低值为细而近乎透明的水；100% 为材质包雨纹理的不透明片。",
+  "options.radiante.tunable.water_clear_teal": "清澈青绿水",
+  "options.radiante.tunable.water_clear_teal.tooltip": "每个生物群系的水向清澈青绿色水靠拢的程度：红光几格内就被吸收，绿光和蓝光能传到几十格外，因此能看见远处的水底和光柱。0% 为资源包自带的水。",
   "options.radiante.tunable.texture_contrast": "材质对比度",
   "options.radiante.tunable.texture_contrast.tooltip": "方块和实体颜色的深度与对比度。100% 与 Bedrock RTX 一致；越低越淡、越平。",
   "options.radiante.renderer_profile": "渲染配置",

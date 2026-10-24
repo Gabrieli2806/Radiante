@@ -313,6 +313,8 @@
   "options.radiante.tunable.portal_transparency.tooltip": "How much of the pack's see-through share a Nether portal keeps. 100% is as the resource pack draws it, 0% is an opaque portal.",
   "options.radiante.tunable.rain_opacity": "Rain Opacity",
   "options.radiante.tunable.rain_opacity.tooltip": "How much of each rain streak shows. Low is thin, nearly clear water; 100% is an opaque sheet of the pack's rain texture.",
+  "options.radiante.tunable.water_clear_teal": "Clear Teal Water",
+  "options.radiante.tunable.water_clear_teal.tooltip": "How far the water of every biome is moved towards clear teal water: red is absorbed within a few blocks while green and blue carry on for dozens, so you see the bottom and the light shafts far off. 0% is the pack's own water.",
   "options.radiante.tunable.texture_contrast": "Texture Contrast",
   "options.radiante.tunable.texture_contrast.tooltip": "How deep and contrasted block and entity colours look. 100% matches Bedrock RTX; lower is paler and flatter.",
   "options.radiante.renderer_profile": "Renderer Profile",

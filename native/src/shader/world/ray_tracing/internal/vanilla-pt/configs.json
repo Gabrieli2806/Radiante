@@ -457,6 +457,13 @@
             "define": "VPT_RAIN_OPACITY"
         },
         {
+            "name": "render_pipeline.module.ray_tracing.attribute.water_clear_teal",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.0",
+            "runtime": true,
+            "define": "VPT_WATER_CLEAR_TEAL"
+        },
+        {
             "name": "render_pipeline.module.ray_tracing.attribute.water_texture_layer",
             "type": "float_range:0.0-1.0",
             "default_value": "1.0",

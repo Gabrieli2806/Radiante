@@ -313,6 +313,8 @@
   "options.radiante.tunable.portal_transparency.tooltip": "Cuánto de la transparencia del resource pack conserva un portal del Nether. 100% es como lo dibuja el pack, 0% es un portal opaco.",
   "options.radiante.tunable.rain_opacity": "Opacidad de la Lluvia",
   "options.radiante.tunable.rain_opacity.tooltip": "Cuánto se ve cada línea de lluvia. Bajo es agua fina y casi transparente; 100% es una lámina opaca con la textura de lluvia del pack.",
+  "options.radiante.tunable.water_clear_teal": "Agua Turquesa Clara",
+  "options.radiante.tunable.water_clear_teal.tooltip": "Cuánto se acerca el agua de cada bioma a un agua turquesa y clara: el rojo se absorbe en pocos bloques mientras el verde y el azul llegan a decenas, así que se ve el fondo y los rayos de luz a lo lejos. 0% es el agua del propio pack.",
   "options.radiante.tunable.texture_contrast": "Contraste de Texturas",
   "options.radiante.tunable.texture_contrast.tooltip": "Cuán profundos y contrastados se ven los colores de bloques y entidades. 100% equivale a Bedrock RTX; menos es más pálido y plano.",
   "options.radiante.renderer_profile": "Perfil de Render",

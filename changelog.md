@@ -27,6 +27,13 @@ All notable changes to this project are documented in this file.
   shafts and sun glow halved, water waves 0.5 with the realistic surface and a 40 % water pattern, mirror roughness
   limit 0.02, slower eye adaptation. Enhanced is unchanged.
 
+### Water
+
+- New Clear Teal Water slider (Settings > Performance, default 0 %): moves the water of every biome towards clear teal
+  water, where red is absorbed within a few blocks and green and blue carry on for dozens. The bottom, the light shafts
+  and the circle of sky overhead show far off instead of closing into a deep blue murk, and a lake seen from above
+  turns teal. The Realistic profile sets 70 %; Bedrock RTX (Enhanced) is unchanged.
+
 ## [1.0.0] - 2026-10-20
 
 First stable release of Radiante with its own renderer, PrismRT. Radiante began as a fork of Radiance and MCVR (GPL-3.0)
