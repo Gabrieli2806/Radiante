@@ -119,14 +119,7 @@ void preparePrimary(int step, int isHand, out float len, out uint mask, out uint
     }
 }
 
-void prepareSecondaryMasked(int bounce, int isHand, out float len, out uint mask);
 void prepareSecondary(int bounce, int isHand, out float len, out uint mask) {
-    prepareSecondaryMasked(bounce, isHand, len, mask);
-    // The player's own body never shows up in first person; it only casts shadows (g_shadowPlayerMask).
-    if (worldUBO.isFirstPerson > 0) { mask &= ~PLAYER_MASK; }
-}
-
-void prepareSecondaryMasked(int bounce, int isHand, out float len, out uint mask) {
     if (bounce == 0) {
         len = worldTraceDistance();
         if (worldUBO.isFirstPerson > 0) {
@@ -185,9 +178,8 @@ void tracePrimary(vec3 eyePos,
         // Past a cloud's face, a pane or a raindrop it was looked for again, and whatever of it lay beyond showed:
         // rising into a cloud, with its underside between the eyes and the body, the body from within, black.
         // Only a view turned back by a mirror shows the player.
-        // Likewise a view turned back or bent by the water surface (seen from below, the surface mirrors the body
-        // lying beneath it as a flat black silhouette): the first person view never shows its own body.
-        if (isHand == 0 && step > 0 && worldUBO.isFirstPerson > 0) {
+        if (isHand == 0 && step > 0 && worldUBO.isFirstPerson > 0 &&
+            dot(rayState.direction, orgDirection) > 0.9999) {
             mask &= ~PLAYER_MASK;
         }
 
