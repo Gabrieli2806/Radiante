@@ -20,14 +20,6 @@ public class Module {
     // for GUI
     public double x, y;
 
-    @Override
-    public String toString() {
-        return "name: " + name
-            + ", inputImageConfigs: " + inputImageConfigs
-            + ", outputImageConfigs: " + outputImageConfigs
-            + ", attributeConfigs: " + attributeConfigs;
-    }
-
     public static List<AttributeConfig> copyAttributeConfigs(List<AttributeConfig> source) {
         List<AttributeConfig> copy = new ArrayList<>();
         if (source == null) {
