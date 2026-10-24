@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file.
 
 - The built-in shader pack is renamed from `vanilla-pt` to `radiante-pt` (shown as Radiante PT). Its stored
   settings and the pipeline's pointer to it move over by themselves on the first start; the old zip is removed.
+- ROADMAP.md is gone: where the project is heading is tracked in GitHub issues labelled roadmap, next to
+  the bugs and ideas.
 
 ## [1.1.0] - 2026-10-24
 
@@ -20,7 +22,7 @@ All notable changes to this project are documented in this file.
 - Holding Ctrl turns Reset to Defaults into Rebuild Shaders: it applies the changes and builds the shaders again, for
   when the picture looks wrong after changing settings.
 - The Install / Delete button of DLSS and XeSS shows only on the Quality section.
-- New Cloud Height slider (Sky, Fog & Water): raises or lowers the Vanilla clouds.
+- New Cloud Height slider (Sky & Water): raises or lowers the Vanilla clouds.
 - Glowing Item Light Distance is removed: Minecraft stops drawing dropped items long before it mattered.
 - Atmosphere shows Java (Bedrock not available), greyed with the reason, when no Bedrock install or files are found,
   instead of a Bedrock choice that did nothing. Bedrock Caustics is greyed the same way, and off by default.
@@ -116,6 +118,7 @@ and keeps their credits and licence; what the renderer shares with them is in th
   FSR 1's sharpness is fixed.
 - Daylight shadows read darker than Bedrock RTX's, and caustics are sharper.
 - On AMD the first compile of a new ray tracing pipeline takes about 48 s (the driver allows one thread); it is cached.
+
 ## [1.0.0-beta.1] - 2026-10-16
 
 First build of the standalone renderer, PrismRT. Not yet tested in game; report anything that looks or runs wrong.
