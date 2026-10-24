@@ -10,11 +10,20 @@ problem. Search it for `[native]` and `Radiante` first.
 
 ## The game is on OpenGL
 
-Radiante needs Vulkan. If the game starts on OpenGL, a message asks you to set the Graphics API to
-"Prefer Vulkan" or "Default" in the video settings and restart.
+Radiante needs Vulkan. If the game starts on OpenGL, the "Radiante: Vulkan needed" screen offers
+**Switch to Vulkan**; restart afterwards. You can also set the Graphics API to "Prefer Vulkan" or
+"Default" in the video settings yourself.
 
-If Minecraft switched to OpenGL on its own after a failed start, that is its own safeguard.
-Radiante does not keep that switch as your choice: it only lasts that session. Try again.
+If Minecraft switched to OpenGL on its own after a failed start (or because another Minecraft was
+opening at the same time), "Radiante: restart the game" says so. That is Minecraft's own safeguard,
+and Radiante does not keep it as your choice: it only lasts that session. Restart, one instance at
+a time.
+
+## "Radiante: could not start"
+
+The renderer did not start this time. This often happens when several Minecraft instances open at
+once, or when video memory runs short. Close the other instances and restart; if it repeats, the
+log says why.
 
 ## My GPU does not support ray tracing
 
@@ -25,8 +34,8 @@ driver: see [Linux](linux.md). You can keep playing without ray tracing on Minec
 
 ## Black world
 
-- **Linux with FSR, before 0.5.0**: FSR could not be created (`FSR3 CreateContext` in the log).
-  Fixed in 0.5.0.
+- **Linux, `FSR3 CreateContext` in the log**: a renderer built without the Linux fixes; see
+  [Linux](linux.md).
 - Search the log for `[native]`: the renderer says what failed, and an error repeated every frame
   shows once with its repeat count.
 
@@ -41,7 +50,8 @@ See [Upscalers](upscalers.md).
 
 ## I installed DLSS and I am still on FSR
 
-Expected: installing does not change your pipeline. Pick **RT-DLSS** in the Pipeline selector.
+The first menu after the restart asks whether to switch; if you chose **Keep the current
+pipeline**, pick **RT-DLSS** in the Pipeline selector.
 
 ## The install button asks me to leave the world
 
@@ -65,7 +75,7 @@ See [Frame Generation and Reflex](frame-generation-reflex.md).
 
 1. Did you restart the game? HDR Output needs it.
 2. Is HDR turned on in the system for that monitor, not just supported by it?
-3. If the "HDR Output" tooltip says "on, but not in use", the problem is step 2.
+3. If the "HDR Output" description says "On, but not running yet", the problem is step 2.
 
 See [HDR](hdr.md).
 
@@ -83,14 +93,20 @@ Minecraft's) and check whether it still happens.
 See the [performance guide](performance.md). First the Quality level, then the upscaler mode and
 Light Bounces.
 
+## The picture looks wrong after changing settings
+
+Hold **Ctrl** and press **Rebuild Shaders** (Reset to Defaults turns into it) at the bottom left of
+the settings: it applies the changes and builds the shaders again.
+
 ## I want the settings of a fresh install back
 
-**Reset to Defaults**, next to the Quality selector. It resets everything, including pipeline
-settings with no visible control. The pipeline goes back to RT-DLSS when DLSS is loaded, FSR
-otherwise. See [Settings](settings.md).
+**Reset to Defaults**, at the bottom left of the settings. It resets everything, including pipeline
+settings with no visible control, and picks the Bedrock RTX (Enhanced) profile again. The pipeline
+goes back to RT-DLSS when DLSS is loaded, FSR otherwise. See [Settings](settings.md).
 
 ## None of this worked
 
 Ask on [Discord](https://discord.gg/DhBbAzugZ9) or open an
-[issue](https://github.com/Gabrieli2806/Radiante/issues) with your `latest.log`, GPU,
-system and loader. Check the [ROADMAP](../../ROADMAP.md) first in case it is already known.
+[issue](https://github.com/Gabrieli2806/Radiante/issues/new/choose) with your `latest.log`, GPU,
+system and loader. Check the [open issues](https://github.com/Gabrieli2806/Radiante/issues) first
+in case it is already known.

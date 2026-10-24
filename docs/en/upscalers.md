@@ -3,9 +3,8 @@
 # Upscalers: FSR, DLSS and XeSS
 
 Radiante traces the world at a lower resolution than the screen and an upscaler brings it to the
-final resolution. Since 0.5.0 only FSR ships inside the jar; DLSS and XeSS are downloaded from the
-game when you want them. The jar is about 15 MB instead of 125 MB, and nobody downloads what their
-GPU cannot use.
+final resolution. Only FSR ships inside the jar; DLSS and XeSS are downloaded from the game when
+you want them, so the jar stays small and nobody downloads what their GPU cannot use.
 
 | | FSR | DLSS | XeSS |
 |---|---|---|---|
@@ -13,7 +12,7 @@ GPU cannot use.
 | GPU | Any | NVIDIA only | Windows; Intel Arc recommended, other GPUs depend on their driver |
 | System | Windows and Linux | Windows and Linux | Windows only |
 | Source | Built in | NVIDIA's repository (DLSS `v310.9.1`) | Intel's repository (XeSS `3.0.2`) |
-| Pipeline | RT-NRD-FSR | RT-DLSS (Ray Reconstruction) | RT-NRD-XeSS |
+| Pipeline | RT-FSR | RT-DLSS (with or without Ray Reconstruction) | RT-XeSS |
 | Frame generation | FSR, 2x | DLSS, up to 4x on RTX 50 | — |
 
 ## First start
@@ -34,7 +33,7 @@ window and the download goes on.
 
 ## From the settings
 
-In [Quality & Upscaling](settings/quality-and-upscaling.md), the **Pipeline** selector lists the
+In [Quality](settings/quality-and-upscaling.md), the **Pipeline** selector lists the
 upscalers your GPU can use even when they are not installed:
 
 - `RT-DLSS (Install)`: can be downloaded.
@@ -67,11 +66,15 @@ deleting always ends in a forced restart.
 
 ![No upscaler](../images/compare/upscalers-none.webp)
 
-## After installing DLSS
+## After installing DLSS or XeSS
 
-Installing DLSS makes it available but **does not change your pipeline**. If you were on FSR you
-are still on FSR after the restart: pick **RT-DLSS** in the Pipeline selector to use it. The one
-exception is a fresh install where DLSS was already downloaded: RT-DLSS is picked on its own.
+After the restart, the first menu asks whether to switch to the new pipeline: **Switch
+(recommended)** or **Keep the current pipeline**. If you keep it, pick **RT-DLSS** (or **RT-XeSS**)
+in the Pipeline selector whenever you want. A fresh install where DLSS was already downloaded starts
+on RT-DLSS on its own.
+
+When a Radiante update uses a newer DLSS or XeSS than the one installed, the same window offers it
+as an update (**Update** or **Skip this version**); the installed one keeps working meanwhile.
 
 **Reset to Defaults** picks RT-DLSS when DLSS is loaded and FSR otherwise.
 

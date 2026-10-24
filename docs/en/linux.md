@@ -2,7 +2,7 @@
 
 # Linux
 
-Radiante runs on Linux x86-64 since 0.5.0, with the same jar as Windows.
+Radiante runs on Linux x86-64 with the same jar as Windows.
 
 ## What you need
 
@@ -34,11 +34,11 @@ launcher on X11/XWayland to rule out the compositor.
 
 1. `latest.log` has `[native]` lines with the renderer's message: the first place to look.
 2. `GLIBC_2.xx not found` → the distribution is too old.
-3. `UnsatisfiedLinkError` → the renderer could not be unpacked or loaded. Delete `libcore.so` from
+3. `UnsatisfiedLinkError` → the renderer could not be unpacked or loaded. Delete `libprismrt.so` from
    the game's `radiante/` folder and start again: it is unpacked and checked again.
 4. The log says there is no ray tracing or names `llvmpipe` → the game is not using your GPU's
    driver (see Flatpak above).
-5. `FSR3 CreateContext` fails → a version before 0.5.0, which had that bug on Linux. Update.
+5. `FSR3 CreateContext` fails → a renderer built without the Linux fixes listed in the README; use a release build.
 6. Black world and nothing in the log → make sure no other game instance with another mod version
    is open.
 

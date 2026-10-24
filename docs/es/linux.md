@@ -2,7 +2,7 @@
 
 # Linux
 
-Radiante corre en Linux x86-64 desde la 0.5.0, con el mismo jar que Windows.
+Radiante corre en Linux x86-64 con el mismo jar que Windows.
 
 ## Qué hace falta
 
@@ -38,12 +38,12 @@ ventana), prueba a arrancar el launcher en X11/XWayland para descartar el compos
    mirar.
 2. `GLIBC_2.xx not found` → la distribución es demasiado vieja.
 3. `UnsatisfiedLinkError` → el renderizador no se pudo descomprimir o cargar. Borra
-   `libcore.so` de la carpeta `radiante/` del juego y vuelve a iniciar: se desempaqueta y comprueba
+   `libprismrt.so` de la carpeta `radiante/` del juego y vuelve a iniciar: se desempaqueta y comprueba
    de nuevo.
 4. El log dice que no hay trazado de rayos o nombra `llvmpipe` → el juego no está usando el driver
    de tu GPU (ver Flatpak arriba).
-5. `FSR3 CreateContext` falla → versión anterior a la 0.5.0, que tenía ese fallo en Linux.
-   Actualiza.
+5. `FSR3 CreateContext` falla → un renderizador compilado sin los arreglos de Linux que lista el README;
+   usa una versión publicada.
 6. Ves el mundo negro y el log no dice nada → comprueba que no hay otra instancia del juego
    abierta con otra versión del mod.
 

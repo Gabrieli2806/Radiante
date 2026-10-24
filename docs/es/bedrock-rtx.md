@@ -5,7 +5,7 @@
 Radiante puede leer resource packs `.mcpack` hechos para **Minecraft Bedrock RTX** y convertirlos en
 un pack LabPBR que su propio renderizador entiende, además de leer los archivos de cielo y cáusticas
 de una instalación de Bedrock en el mismo PC. Ninguna de las dos cosas es necesaria — Radiante trae
-sus propios mapas para 154 texturas vanilla — pero un pack de Bedrock suele dar más detalle y más
+sus propios mapas para 159 texturas vanilla — pero un pack de Bedrock suele dar más detalle y más
 variedad de materiales que lo incluido.
 
 ## Usar un pack `.mcpack`
@@ -39,59 +39,64 @@ Java) se conservan a su propio detalle cuando la textura de color puede escalars
 sin perder nitidez; si no, se promedian hacia abajo al tamaño de la textura de color. La niebla y el
 agua por bioma del pack de Bedrock también se convierten y alimentan el Ambiente de Bioma: se
 conservan los colores del pack y qué biomas son densos o claros, con la intensidad más sutil de
-Radiante (ver [Cielo, Niebla y Agua](opciones/cielo-niebla-agua.md)).
+Radiante (ver [Cielo y Agua](opciones/cielo-niebla-agua.md)).
 
 ### Los materiales del pack tal como se hicieron
 
 La copia convertida conserva también los mapas MER originales del pack. Con **Materiales de Packs
-Bedrock** activado (por defecto, en la categoría [Rendimiento](opciones/rendimiento.md)) el metal,
+Bedrock** activado (por defecto, en la sección [Rendimiento](opciones/rendimiento.md)) el metal,
 la rugosidad y qué texeles brillan se leen de esos mapas con todo su detalle, como hace Bedrock, en
 vez de la copia LabPBR: las vetas lisas de los minerales y los bordes de metal conservan sus
 reflejos, y un bloque que emite luz brilla donde el pack lo marca. Cuánta luz proyecta un bloque
 sigue dependiendo de su nivel de luz, así las luces del pack encajan con la escala de luz de
 Radiante. No afecta a packs Java.
 
-## El perfil de render Bedrock RTX
+## Los perfiles de render
 
-**Perfil de Render** (en la categoría [Imagen](opciones/imagen.md)) en **Bedrock RTX** acerca el
-resto del aspecto a Bedrock RTX: bloom, una curva de tonos estilo Bedrock construida con el
-histograma de la imagen, exposición medida sobre la luz que llega a las superficies a la vista,
-colores sRGB exactos, reflejos de vidrio y agua de Bedrock, luz solar filtrada por el vidrio, el
-volumen de niebla propio de Bedrock, agua más densa y las cáusticas de Bedrock. Funciona con o sin
-un `.mcpack`; los dos juntos son lo más cercano a Bedrock RTX. **Radiante** es el aspecto de
-siempre.
+**Perfil de Render** (en la sección [Imagen](opciones/imagen.md)) tiene dos perfiles; cambiar un
+ajuste que gestiona uno de ellos lo convierte en **Personalizado**.
 
-El perfil **Realista** parte del mismo aspecto y pone menos luz de relleno, más contraste, color más calmado y agua más fina para que nada parezca de plástico.
+- **Bedrock RTX (Mejorado)**, el predeterminado, lleva el resto del aspecto a Bedrock RTX: el cielo
+  y la luz solar de Bedrock, bloom, una curva de tonos estilo Bedrock construida con el histograma
+  de la imagen, exposición medida sobre la luz que llega a las superficies a la vista, colores sRGB
+  exactos, reflejos de vidrio y agua y superficie del agua de Bedrock, luz solar filtrada por el
+  vidrio, el volumen de niebla propio de Bedrock y agua más densa. Sobre Bedrock mantiene algunos
+  extras: los bloques de luz con poco brillo en el pack se ven iluminados por su propia luz y los
+  portales del End brillan. Funciona con o sin un `.mcpack`; los dos juntos son lo más cercano a
+  Bedrock RTX.
+- **Realista** parte del mismo aspecto y pone menos luz de relleno, más contraste, color más
+  calmado, olas más finas y agua turquesa más clara, para que nada parezca de plástico. Ver
+  [Imagen](opciones/imagen.md) para cada valor.
 
-## Cielo y cáusticas de una instalación de Bedrock
+## Archivos de una instalación de Bedrock
 
-Con el ajuste **Atmósfera** en "Bedrock" (categoría [Cielo, Niebla y Agua](opciones/cielo-niebla-agua.md)),
-Radiante busca los archivos de cielo, tablas de consulta y cáusticas de Bedrock RTX en, por orden:
+Algunas partes del aspecto de Bedrock necesitan archivos que vienen con Minecraft Bedrock, no con
+un resource pack. Radiante busca cada uno en, por orden:
 
-1. `radiante/bedrock/sky.png`, `look_up_tables.png` y `caustics.png` dentro de la carpeta del juego.
+1. `radiante/bedrock/` dentro de la carpeta del juego.
 2. `C:/XboxGames/Minecraft for Windows/Content/data/ray_tracing/` — la ruta por defecto donde
-   Minecraft Bedrock (versión de Xbox/Microsoft Store) instala esos mismos archivos, si tienes
-   Bedrock instalado en el mismo PC.
+   Minecraft Bedrock (versión de Xbox/Microsoft Store) los instala, si tienes Bedrock instalado en
+   el mismo PC.
 
-Si no encuentra los archivos en ninguna de las dos rutas — o si `sky.png` no mide 64×256 o
-`look_up_tables.png` no mide 128 de ancho, las dimensiones exactas que el shader espera — usa el
-cielo propio de Radiante (el mismo que con Atmósfera en "Java") aunque el ajuste esté puesto en
-Bedrock. Es un cambio silencioso, sin ningún aviso ni mensaje de error: el shader simplemente decide
-que la textura de reemplazo de 1x1 no es un cielo de Bedrock válido y sigue con el suyo. Las
-cáusticas funcionan igual y por separado: sin `caustics.png` disponible, se usan las cáusticas
-procedurales de Radiante en vez de fallar.
+| Archivo | Para qué | Sin él |
+|---|---|---|
+| `sky.png` (64×256) y `look_up_tables.png` (128 de ancho) | **Atmósfera: Bedrock** (en [Cielo y Agua](opciones/cielo-niebla-agua.md)): los colores de cielo y luz solar de Bedrock RTX | La opción sale en gris y muestra Java (Bedrock no disponible); se usa el cielo propio de Radiante. |
+| `water_n.tga` | La superficie del agua de Bedrock (tres capas en movimiento de sus normales de agua), que usa el perfil Bedrock RTX (Mejorado) | El agua mantiene la superficie propia de Radiante. |
+| `caustics.png` y `wibbly.png` | **Bedrock Caustics**, en Avanzado (desactivado por defecto) | La opción sale en gris; se usan las cáusticas procedurales de Radiante. |
 
 <!-- Captura pendiente: el cielo con Atmósfera en Java y en Bedrock, misma hora del día -->
 
 ### Copiar los archivos a mano
 
-Si no tienes Bedrock instalado en este PC pero sí tienes esos tres archivos de otra fuente,
-colócalos en `radiante/bedrock/` dentro de la carpeta del juego, con esos nombres exactos:
+Si no tienes Bedrock instalado en este PC pero sí tienes esos archivos de otra fuente, colócalos en
+`radiante/bedrock/` dentro de la carpeta del juego, con esos nombres exactos:
 
 ```
 <carpeta del juego>/radiante/bedrock/sky.png
 <carpeta del juego>/radiante/bedrock/look_up_tables.png
+<carpeta del juego>/radiante/bedrock/water_n.tga
 <carpeta del juego>/radiante/bedrock/caustics.png
+<carpeta del juego>/radiante/bedrock/wibbly.png
 ```
 
 ## Antes / después
@@ -104,5 +109,4 @@ colócalos en `radiante/bedrock/` dentro de la carpeta del juego, con esos nombr
   luz rebotada para parecerse más a Bedrock RTX; es un ajuste de color independiente de usar un pack
   o los archivos de cielo de Bedrock.
 - El estado de la paridad visual con Bedrock RTX (qué falta todavía, qué ya se igualó) se sigue en
-  [ROADMAP.md](../../ROADMAP.md#bedrock-rtx-parity--in-progress), incluida la comparación hecha con
-  Bedrock RTX lado a lado en los mismos mundos de prueba.
+  el [issue #19](https://github.com/Gabrieli2806/Radiante/issues/19).

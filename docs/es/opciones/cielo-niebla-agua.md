@@ -42,7 +42,7 @@ el perfil **Realista** pone otro, va entre paréntesis.
 | **Turbidez del Agua** | 0% – 500% | 500% | Qué tan rápido se desvanece la vista bajo el agua. Menos es más claro. Los perfiles ponen 1000%, la extinción completa de Bedrock, más allá del final del slider, que entonces muestra 500%. |
 | **Rayos de Luz Bajo el Agua** | 0% – 400% | 100% | Haces de sol que atraviesan la superficie cuando estás bajo el agua. |
 
-Con los perfiles Bedrock RTX (o con Bedrock Volumetric Fog activado en Avanzado) el aire lo nubla
+Con los perfiles Bedrock RTX (o con Niebla Volumétrica de Bedrock activada en Avanzado) el aire lo nubla
 el volumen propio de Bedrock, que no usa Intensidad de Niebla Volumétrica, Distancia de Niebla,
 Rayos de Luz ni Calidad de Niebla Volumétrica: esas filas salen en gris y lo dicen.
 

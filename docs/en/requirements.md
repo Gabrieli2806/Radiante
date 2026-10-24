@@ -10,10 +10,10 @@
 | Minimum version | Windows 10/11 | glibc 2.35 or newer: Ubuntu 22.04, Debian 12, Fedora 36 or later |
 | Graphics API | Vulkan | Vulkan, on the GPU's real driver (not `llvmpipe`) |
 | Java | 25 | 25 |
-| Minecraft | 26.3 | 26.3 |
+| Minecraft | 26.3 (also 26.2 and 26.4 snapshots, see [Loader](#loader)) | same |
 
-The same jar works on both systems: it carries the Windows renderer (`core.dll`) and the Linux one
-(`libcore.so`) and picks the right one at start. macOS is not supported.
+The same jar works on both systems: it carries the Windows renderer (`prismrt.dll`) and the Linux
+one (`libprismrt.so`) and picks the right one at start. macOS is not supported.
 
 Linux has a few details of its own (Flatpak launchers, Wayland, glibc): see [Linux](linux.md).
 
@@ -43,18 +43,25 @@ Minecraft 26.3 with **one** of:
 
 | Loader | Minimum version |
 |---|---|
-| Fabric | Fabric Loader `0.19.5+` and Fabric API `0.160.5+26.3` |
+| Fabric | Fabric Loader `0.19.5+` and Fabric API (built against `0.162.0+26.3`) |
 | NeoForge | `26.3.0.10-beta+` |
 | Forge | `26.3-66.0.3+` |
 
-All three jars come from the same code and look the same. Frame generation and Reflex no longer
-depend on Streamline or on any loader: they are the same code on all three. They are tested on
-Fabric (Windows); NeoForge and Forge share the code but are not tested yet.
+The other Minecraft versions have builds of their own:
+
+| Minecraft | Loaders |
+|---|---|
+| 26.2 | Fabric Loader `0.19.5+` with Fabric API, NeoForge `26.2.0.93+`, Forge `26.2-65.1.5+` |
+| 26.4 snapshots | Fabric only: Fabric Loader `0.20.1+` with Fabric API |
+
+All jars come from the same code and look the same. Frame generation and Reflex do not depend on
+the loader: they are the same code everywhere. They are tested on Fabric (Windows); NeoForge and
+Forge share the code but are not tested yet.
 
 ## Recommended, not required
 
 - A resource pack with LabPBR maps (`_n`/`_s`) or a Bedrock RTX `.mcpack`: see
-  [Bedrock RTX](bedrock-rtx.md). Without one, Radiante uses its own maps for 154 vanilla textures.
+  [Bedrock RTX](bedrock-rtx.md). Without one, Radiante uses its own maps for 159 vanilla textures.
 - [Distant Horizons](https://modrinth.com/mod/distanthorizons) to trace far terrain too: see
   [Distant Horizons](distant-horizons.md).
 - An HDR display for HDR output: see [HDR](hdr.md).

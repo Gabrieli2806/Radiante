@@ -9,7 +9,7 @@ colour and light look. Touching any control either one covers, by hand, switches
 
 ## Quality levels
 
-The **Quality** selector, at the top of [Quality & Upscaling](settings/quality-and-upscaling.md),
+The **Quality** selector, at the top of [Quality](settings/quality-and-upscaling.md),
 sets, all at once, the controls measured to cost the most frames per second:
 
 | Level | DLSS / Upscaling Mode | Volumetric Fog | Clouds | Block Light Sampling | Render Distance | Light Bounces | Carved Surfaces | Volumetric Fog Quality |
@@ -59,6 +59,12 @@ Sky Light (and the tone mapping method) all at once:
 - **Vivid** — more contrast (via the more filmic ACES tone mapping) and more colour than Natural,
   without Bedrock's extra bounced light.
 
+The renderer profiles set these values themselves (Bedrock RTX (Enhanced): saturation 100%, bounced
+light 150%, sky light 180%), which match no style, so with a profile the selector shows **Custom**.
+Picking a style turns the profile into Custom. The profiles also use Bedrock's own tone curve, which
+a style leaves in place: the Tone Mapping column only applies when one of the three curves above is
+in use.
+
 **Picture styles.** Natural, Bedrock and Vivid change saturation, tone mapping and how far bounced light carries.
 
 *Natural*
@@ -76,7 +82,7 @@ Sky Light (and the tone mapping method) all at once:
 ## How it relates to "Atmosphere"
 
 Picture Style does not change the **Atmosphere** setting (Java/Bedrock, in
-[Sky, Fog & Water](settings/sky-fog-water.md)) — they are independent. Atmosphere decides where the
+[Sky & Water](settings/sky-fog-water.md)) — they are independent. Atmosphere decides where the
 sky and sunlight colours come from; Picture Style decides how the final colour is processed on
 screen. They combine freely: for example, a Java sky with the Bedrock style, or a Bedrock sky with
 the Natural style.
