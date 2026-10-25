@@ -511,6 +511,49 @@ public final class EntityManager {
         return Glow.ofLevel(excess);
     }
 
+    /**
+     * Whether an entity vanilla culled (out of the view frustum, or in a section it would not draw) is kept anyway:
+     * one that gives off light, within the Entity Light Reach of the camera. Its light reaches what is on screen
+     * whichever way the camera points, as a torch's does, and turning away used to switch the room's light off.
+     * Only light sources are kept, the rest still go with the frustum. Display entities light nothing worth the cost
+     * (see {@link #selfLitEmission}).
+     */
+    public static boolean keepsLightOutOfView(net.minecraft.world.entity.Entity entity, double cameraX,
+        double cameraY, double cameraZ, float partialTick) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null || entity.isRemoved() || entity.isInvisible()) {
+            return false;
+        }
+        double reach = Options.entityLightReach;
+        if (entity.distanceToSqr(cameraX, cameraY, cameraZ) > reach * reach
+            || !entity.shouldRender(cameraX, cameraY, cameraZ)) {
+            return false;
+        }
+        if (entity instanceof net.minecraft.world.entity.decoration.GlowItemFrame
+            || entity instanceof net.minecraft.world.entity.boss.enderdragon.EndCrystal) {
+            return true;
+        }
+        if (entity instanceof net.minecraft.world.entity.Display
+            || entity instanceof net.minecraft.world.entity.boss.wither.WitherBoss
+            || entity instanceof net.minecraft.world.entity.projectile.hurtingprojectile.WitherSkull) {
+            return false;
+        }
+        // The same test as selfLitEmission, on the entity: its renderer reports more block light than is there.
+        int ownBlockLight = net.minecraft.util.LightCoordsUtil.block(
+            minecraft.getEntityRenderDispatcher().getPackedLightCoords(entity, partialTick));
+        if (ownBlockLight < SELF_LIT_MIN_EXCESS) {
+            return false;
+        }
+        Vec3 position = entity.getPosition(partialTick);
+        int worldBlockLight = 0;
+        for (double offset : SELF_LIT_SAMPLE_HEIGHTS) {
+            BlockPos pos = BlockPos.containing(position.x, position.y + entity.getBbHeight() * offset, position.z);
+            worldBlockLight = Math.max(worldBlockLight,
+                minecraft.level.getBrightness(net.minecraft.world.level.LightLayer.BLOCK, pos));
+        }
+        return ownBlockLight - worldBlockLight >= SELF_LIT_MIN_EXCESS;
+    }
+
     private static void collectBlockEntity(Minecraft minecraft, CameraRenderState cameraState,
         BlockEntityRenderState state) {
         COLLECTOR.reset();
