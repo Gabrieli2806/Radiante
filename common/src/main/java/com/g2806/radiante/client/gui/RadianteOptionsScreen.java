@@ -1169,6 +1169,9 @@ public class RadianteOptionsScreen extends Screen {
                     refreshQualityLater();
                 }),
             restirOption(), serOption(),
+            OptionInstance.createBoolean("options.radiante.glowing_pixel_light",
+                tooltip("options.radiante.glowing_pixel_light"),
+                staged("glowingPixelLight", Options.glowingPixelLight), value -> stage("glowingPixelLight", value)),
             OptionInstance.createBoolean("options.radiante.held_item_light",
                 tooltip("options.radiante.held_item_light"), staged("heldItemLight", Options.heldItemLight),
                 value -> stage("heldItemLight", value)),

@@ -202,6 +202,7 @@ void main() {
     if (!leaving) {
         mainRay.radiance += VPT_VANILLA_CLOUD_OPACITY * mix(lightRadiance, wetCloudRadiance, progress);
         mainRay.throughput *= 1.0 - VPT_VANILLA_CLOUD_OPACITY;
+        raySetCrossedCloud(mainRay, true);
     } else if (rayBounce(mainRay) == 0u) {
         // The view leaves a cloud it never entered: the camera is inside it. The cloud is a haze there, thicker the
         // further the view runs through it. With nothing of it in front of the eyes the cloud vanished once inside

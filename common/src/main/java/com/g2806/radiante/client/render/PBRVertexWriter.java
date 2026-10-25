@@ -33,6 +33,11 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private static final int POINT_LIGHT_FLAG = 0x4000;
     /** The surface of lava, a self-lit sheet the shaders show by its colour, not by the light on it; see lava(). */
     private static final int LAVA_FLAG = 0x8000;
+    /**
+     * A layer drawn over a face of the same model and lifted off it (see layerOffset), such as the grass block's side
+     * overlay: not carved by height maps, which along its edges let the view through to the face under it.
+     */
+    private static final int LAYER_FLAG = 0x10000;
 
     public static final int ALPHA_MODE_OPAQUE = 0;
     public static final int ALPHA_MODE_CUTOUT = 1;
@@ -454,7 +459,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         MemoryUtil.memPutInt(v + OFF_ALPHA_MODE,
             this.alphaMode | (this.water ? WATER_FLAG : 0) | (this.rain ? RAIN_FLAG : 0) | (this.held ? HELD_FLAG : 0) | (this.glass ? GLASS_FLAG : 0)
                 | (this.plant ? PLANT_FLAG : 0) | this.paneFlags | (this.blend ? BLEND_FLAG : 0)
-                | (this.unlit ? UNLIT_FLAG : 0) | (this.lava ? LAVA_FLAG : 0));
+                | (this.unlit ? UNLIT_FLAG : 0) | (this.lava ? LAVA_FLAG : 0) | (this.layerOffset != 0.0f ? LAYER_FLAG : 0));
         if (this.colorOverride != 0) {
             setColor(255, 255, 255, 255);
         }

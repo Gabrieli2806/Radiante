@@ -219,6 +219,8 @@
   "options.radiante.vanilla_celestial_orientation.tooltip": "Keeps the sun and moon squares lined up with their path like vanilla, instead of turning as they cross the sky.",
   "options.radiante.first_person_shadow": "First Person Shadow",
   "options.radiante.first_person_shadow.tooltip": "Draws the player in first person so you cast a shadow and show up in water and glass reflections.",
+  "options.radiante.glowing_pixel_light": "Light From Glowing Pixels",
+  "options.radiante.glowing_pixel_light.tooltip": "Light blocks cast their light from the glowing parts of their texture (a redstone lamp's filaments), as Bedrock RTX does, instead of from the whole block. The same amount of light, from more and smaller sources. Needs Block Emission.",
   "options.radiante.held_item_light": "Held Item Light",
   "options.radiante.held_item_light.tooltip": "A torch, lantern or other light source held in either hand lights up its surroundings.",
   "options.radiante.day_brightness": "Day Brightness",

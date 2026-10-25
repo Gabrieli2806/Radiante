@@ -5,6 +5,52 @@
 // along a direction, a blended face's own light under the Bedrock profile, and last frame's position of the hit
 // for motion vectors. Moved out of the default closest-hit shader unchanged; the hit is read through g_hit.
 
+// Vanilla's moon quad: half-width 20 at distance 100, as the miss shader draws it (evalMoonBillboard).
+const float MOON_SPRITE_TAN_HALF = 20.0 / 100.0;
+// Points tried on the moon's square before falling back to its centre; a thin crescent covers little of it.
+const int MOON_DISC_SAMPLE_TRIES = 6;
+
+// A direction towards a lit texel of the moon's face: uniform over the part of the disc its phase shows, in the
+// frame, turn and cut the miss shader draws it with (evalMoonBillboard, celestialBasis). The light came from a point
+// at the moon's centre before, and with a crescent it plainly did not come from the moon. found is false when no
+// lit texel was met, and the caller keeps its own sample.
+vec3 sampleMoonDiscDirection(inout uint seed, vec3 moonDir, out bool found) {
+    found = false;
+    vec3 right;
+    vec3 up;
+    if (skyUBO.celestialAxis.w > 0.5) {
+        right = normalize(skyUBO.moonAxis.xyz);
+        up = normalize(cross(right, -moonDir));
+    } else {
+        float sign = moonDir.z >= 0.0 ? 1.0 : -1.0;
+        float a = -1.0 / (sign + moonDir.z);
+        float k = moonDir.x * moonDir.y * a;
+        right = normalize(vec3(1.0 + sign * moonDir.x * moonDir.x * a, sign * k, -sign * moonDir.x));
+        up = normalize(vec3(k, sign + moonDir.y * moonDir.y * a, -moonDir.y));
+    }
+    vec4 rect = skyUBO.moonUvRect;
+    if (rect.z <= rect.x || rect.w <= rect.y) { return moonDir; }
+    ivec2 size = textureSize(textures[nonuniformEXT(skyUBO.moonTextureID)], 0);
+    if (size.x <= 0 || size.y <= 0) { return moonDir; }
+    vec2 rotation = skyUBO.spriteRotation.zw;
+    bool rotated = dot(rotation, rotation) >= 0.5;
+
+    for (int i = 0; i < MOON_DISC_SAMPLE_TRIES; i++) {
+        vec2 q = (vec2(rand(seed), rand(seed)) * 2.0 - 1.0) * MOON_SPRITE_TAN_HALF;
+        vec2 uv = vec2(1.0) - (q / MOON_SPRITE_TAN_HALF * 0.5 + 0.5);
+        vec2 atlasUv = mix(rect.xy, rect.zw, clamp(uv, 0.0, 0.9999));
+        vec4 moon = texelFetch(textures[nonuniformEXT(skyUBO.moonTextureID)],
+                               clamp(ivec2(atlasUv * vec2(size)), ivec2(0), size - 1), 0);
+        // The miss shader's cut: dimmer texels are the faint glow round the disc, not the moon.
+        if (max(moon.r, max(moon.g, moon.b)) < 0.25) { continue; }
+        // Back from the sprite's turned frame (celestialSpriteRotate) to the sky's.
+        vec2 p = rotated ? vec2(rotation.x * q.x + rotation.y * q.y, -rotation.y * q.x + rotation.x * q.y) : q;
+        found = true;
+        return normalize(moonDir + right * p.x + up * p.y);
+    }
+    return moonDir;
+}
+
 vec3 sampleSurfaceDirectLight(SampledSurface surface,
                               vec3 viewDir,
                               vec2 referenceUv,
@@ -27,6 +73,11 @@ vec3 sampleSurfaceDirectLight(SampledSurface surface,
     if (lightDir.y < 0.0 && !endFlash) { lightDir = celestialMoonDirection(); }
 
     vec3 sampledLightDir = SampleVMF(mainRay.seed, lightDir, 3000.0);
+    if (!endFlash && celestialSunDirection().y < 0.0) {
+        bool onDisc;
+        vec3 moonSample = sampleMoonDiscDirection(mainRay.seed, lightDir, onDisc);
+        if (onDisc) { sampledLightDir = moonSample; }
+    }
     float sampledLightNoL = dot(sampledLightDir, surface.geometricNormal);
     if (isOpaqueSurface && sampledLightNoL <= 0.0) { return vec3(0.0); }
 

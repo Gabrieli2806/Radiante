@@ -55,8 +55,16 @@ const uint rayGlassParentWaterBit = 1u << 26u;
 const uint rayCrossedGlassBit = 1u << 27u;
 // The path is filling the radiance cache (traceSharcUpdate). Survives bounces.
 const uint rayCacheUpdateBit = 1u << 28u;
+// Since it last scattered off a surface, the ray has gone into a vanilla cloud (world/clouds.rchit): the sun and moon
+// behind it are hidden, not shown through its haze. Cleared when the ray leaves a surface it did not just pass through.
+const uint rayCrossedCloudBit = 1u << 29u;
 
 // Every flag accessor below has one of two shapes: test the bit, or set / clear it.
+
+bool rayCrossedCloud(MainRay ray) { return (ray.stateBits & rayCrossedCloudBit) != 0u; }
+void raySetCrossedCloud(inout MainRay ray, bool enabled) {
+    ray.stateBits = enabled ? (ray.stateBits | rayCrossedCloudBit) : (ray.stateBits & ~rayCrossedCloudBit);
+}
 
 bool rayCacheUpdate(MainRay ray) { return (ray.stateBits & rayCacheUpdateBit) != 0u; }
 void raySetCacheUpdate(inout MainRay ray, bool enabled) {

@@ -47,6 +47,8 @@ void initMainRay(vec3 origin, vec3 direction, uint seed, float coneSpread, out M
 }
 
 void resetMainRay(inout MainRay ray, int bounce) {
+    // A ray that went on through a cloud is still on its way; one that scattered off a surface left the cloud behind.
+    if (!rayShouldContinue(ray)) { raySetCrossedCloud(ray, false); }
     raySetBounce(ray, uint(bounce));
     ray.hitT = 0.0;
     raySetStop(ray, false);

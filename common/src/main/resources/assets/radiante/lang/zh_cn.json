@@ -219,6 +219,8 @@
   "options.radiante.vanilla_celestial_orientation.tooltip": "让太阳和月亮的方块像原版一样与轨迹对齐，而不是在划过天空时旋转。",
   "options.radiante.first_person_shadow": "第一人称阴影",
   "options.radiante.first_person_shadow.tooltip": "在第一人称下绘制玩家，使你能投下阴影，并出现在水和玻璃的倒影中。",
+  "options.radiante.glowing_pixel_light": "像素发光光源",
+  "options.radiante.glowing_pixel_light.tooltip": "光源方块从其纹理中发光的部分（如红石灯的灯丝）发出光线，与基岩版 RTX 一致，而不是从整个方块发光。光照总量不变，但光源更多更小。需要方块发光。",
   "options.radiante.held_item_light": "手持物品光照",
   "options.radiante.held_item_light.tooltip": "任一只手持有火把、灯笼等光源时照亮周围环境。",
   "options.radiante.day_brightness": "白天亮度",

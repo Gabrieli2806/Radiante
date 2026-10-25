@@ -34,6 +34,11 @@ public final class EmissionTiles {
 
     /** Cells per sprite side; small enough for 16px textures to keep flames separate from their stick. */
     private static final int CELLS_PER_SIDE = 4;
+    /**
+     * Cells per sprite side with Light From Glowing Pixels on, each one shrunk to the texels in it that glow: a lit
+     * redstone lamp casts its light from its bright filaments, not from the whole face, as Bedrock RTX does.
+     */
+    private static final int FINE_CELLS_PER_SIDE = 8;
     /** Texels whose brightest channel is below this do not emit. */
     private static final float MIN_BRIGHTNESS = 0.55f;
     /** Floor for textures that never reach MIN_BRIGHTNESS anywhere. */
@@ -99,6 +104,8 @@ public final class EmissionTiles {
     private static Object registeredFor;
     /** Whether the last registration took emitters from Bedrock MER maps; toggling it registers again. */
     private static boolean registeredWithMer;
+    /** Whether the last registration made its cells from the glowing texels alone; toggling it registers again. */
+    private static boolean registeredFine;
     /** Light level of each emissive sprite of the last registration, for {@link #uploadFromMer}. */
     private static Map<TextureAtlasSprite, Integer> lightLevels = Map.of();
     /**
@@ -126,7 +133,8 @@ public final class EmissionTiles {
         TextureAtlas atlas = minecraft.getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS);
         Object key = TextureTracker.gpuTextureOrNull(atlas);
         boolean withMer = com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow();
-        if (key == null || (key == registeredFor && withMer == registeredWithMer)) {
+        boolean fine = com.g2806.radiante.client.option.Options.glowingPixelLight;
+        if (key == null || (key == registeredFor && withMer == registeredWithMer && fine == registeredFine)) {
             return;
         }
 
@@ -136,6 +144,7 @@ public final class EmissionTiles {
         }
         registeredFor = key;
         registeredWithMer = withMer;
+        registeredFine = fine;
 
         Map<TextureAtlasSprite, Integer> emitters = collectEmissiveSprites(minecraft, atlas);
         lightLevels = emitters;
@@ -328,8 +337,10 @@ public final class EmissionTiles {
             threshold = 0.0f;
             coloured = false;
         }
-        int cellWidth = Math.max(1, width / CELLS_PER_SIDE);
-        int cellHeight = Math.max(1, height / CELLS_PER_SIDE);
+        boolean fine = com.g2806.radiante.client.option.Options.glowingPixelLight;
+        int cellsPerSide = fine ? FINE_CELLS_PER_SIDE : CELLS_PER_SIDE;
+        int cellWidth = Math.max(1, width / cellsPerSide);
+        int cellHeight = Math.max(1, height / cellsPerSide);
 
         List<float[]> cells = new ArrayList<>();
         float spriteEmission = 0.0f;
@@ -340,6 +351,11 @@ public final class EmissionTiles {
                 float green = 0.0f;
                 float blue = 0.0f;
                 int texels = 0;
+                // The glowing texels' bounds within the cell, for Light From Glowing Pixels.
+                int minX = Integer.MAX_VALUE;
+                int minY = Integer.MAX_VALUE;
+                int maxX = -1;
+                int maxY = -1;
                 for (int y = cellY; y < Math.min(height, cellY + cellHeight); y++) {
                     for (int x = cellX; x < Math.min(width, cellX + cellWidth); x++) {
                         int index = (y * rowPixels + x) * 4;
@@ -365,6 +381,10 @@ public final class EmissionTiles {
                                     : lava ? strength * LAVA_SURFACE_GLOW * g : strength * brightness);
                         }
                         emission += weight;
+                        minX = Math.min(minX, x);
+                        minY = Math.min(minY, y);
+                        maxX = Math.max(maxX, x);
+                        maxY = Math.max(maxY, y);
                         red += r * weight;
                         green += g * weight;
                         blue += b * weight;
@@ -376,10 +396,23 @@ public final class EmissionTiles {
                 }
                 spriteEmission += emission;
 
-                float u0 = (sprite.getU0() * atlasWidth + cellX) / atlasWidth;
-                float v0 = (sprite.getV0() * atlasHeight + cellY) / atlasHeight;
-                float u1 = (sprite.getU0() * atlasWidth + Math.min(width, cellX + cellWidth)) / atlasWidth;
-                float v1 = (sprite.getV0() * atlasHeight + Math.min(height, cellY + cellHeight)) / atlasHeight;
+                int x0 = cellX;
+                int y0 = cellY;
+                int x1 = Math.min(width, cellX + cellWidth);
+                int y1 = Math.min(height, cellY + cellHeight);
+                if (fine) {
+                    // The light comes from the glowing texels alone, and is as strong over that smaller patch as the
+                    // whole cell's was over the cell: the light the block casts stays the same.
+                    x0 = minX;
+                    y0 = minY;
+                    x1 = maxX + 1;
+                    y1 = maxY + 1;
+                    texels = (x1 - x0) * (y1 - y0);
+                }
+                float u0 = (sprite.getU0() * atlasWidth + x0) / atlasWidth;
+                float v0 = (sprite.getV0() * atlasHeight + y0) / atlasHeight;
+                float u1 = (sprite.getU0() * atlasWidth + x1) / atlasWidth;
+                float v1 = (sprite.getV0() * atlasHeight + y1) / atlasHeight;
                 // Lava's bright texels are near white, and the light they cast burnt what it fell on to a pale cream:
                 // lava lights its surroundings red-orange, the more so the yellower the texel.
                 float greenShare = lava ? LAVA_LIGHT_GREEN : 1.0f;

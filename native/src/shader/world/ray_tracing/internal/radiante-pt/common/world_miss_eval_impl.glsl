@@ -150,6 +150,10 @@ float celestialHaloFade(vec3 bodyDir, vec3 rayDir) {
 // faint, tight halo, as Bedrock RTX draws it. A tenth of the moonlight spread a radian wide lit half the night sky
 // round the moon.
 const float MOON_DISC_SEEN = 0.3;
+// How much of the sun, the moon, their halos and the stars shows through a vanilla cloud, on top of the haze the
+// cloud lets through (its throughput). Through the haze alone the discs, many times brighter than the cloud, stayed
+// almost fully visible behind it; vanilla draws the cloud over them, so they barely show.
+const float CLOUD_DISC_SEEN = 0.05;
 const float MOON_HALO_WIDTH = 0.05;
 const float MOON_HALO_STRENGTH = 0.03;
 
@@ -283,6 +287,8 @@ void main() {
     vec3 rayDir = normalize(gl_WorldRayDirectionEXT);
     vec3 sunDir = celestialSunDirection();
     float progress = skyUBO.rainGradient;
+    float celestialSeen = rayCrossedCloud(mainRay) ? CLOUD_DISC_SEEN : 1.0;
+    mainRay.directLightRadiance.x *= celestialSeen;
     vec3 rainyRadiance = mix(vec3(0.0), vec3(0.1), smoothstep(-0.3, 0.3, sunDir.y));
     vec3 backgroundRadiance = mix(texture(skyFull, rayDir).rgb, rainyRadiance, progress);
 
@@ -302,7 +308,7 @@ void main() {
             if (!blocked) {
                 vec3 sunRadiance = sunSample.rgb * (VPT_SUN_RADIANCE * worldUBO.sunBrightness) * transmittance *
                                    sunSample.a * celestialHorizonCut(rayDir);
-                backgroundRadiance += mix(sunRadiance, vec3(0.0), progress);
+                backgroundRadiance += mix(sunRadiance, vec3(0.0), progress) * celestialSeen;
             }
         }
 
@@ -319,7 +325,7 @@ void main() {
                 // and all, no brighter than the clouds it lights.
                 vec3 moonRadiance = moonSample.rgb * (VPT_MOON_RADIANCE * worldUBO.moonBrightness) * MOON_DISC_SEEN *
                                     mix(vec3(1.0), transmittance, 0.5) * celestialHorizonCut(rayDir);
-                backgroundRadiance += mix(moonRadiance, vec3(0.0), progress);
+                backgroundRadiance += mix(moonRadiance, vec3(0.0), progress) * celestialSeen;
             }
         }
     }
@@ -337,10 +343,10 @@ void main() {
         vec3 moonHaloTint = mix(vec3(1.0), sampleCloudAtmosphereTransmittance(rHalo, clamp(moonDirHalo.y, -1.0, 1.0)), 0.5);
         backgroundRadiance += celestialHalo(rayDir, sunDirHalo, VPT_SUN_GLOW_WIDTH, VPT_SUN_GLOW) *
                               (VPT_SUN_RADIANCE * worldUBO.sunBrightness) * sunHaloTint *
-                              celestialHaloFade(sunDirHalo, rayDir) * (1.0 - progress);
+                              celestialHaloFade(sunDirHalo, rayDir) * (1.0 - progress) * celestialSeen;
         backgroundRadiance += celestialHalo(rayDir, moonDirHalo, MOON_HALO_WIDTH, MOON_HALO_STRENGTH) *
                               (VPT_MOON_RADIANCE * worldUBO.moonBrightness) * moonHaloTint *
-                              celestialHaloFade(moonDirHalo, rayDir) * (1.0 - progress);
+                              celestialHaloFade(moonDirHalo, rayDir) * (1.0 - progress) * celestialSeen;
     }
 
     // Sky seen off water, glass or any bounce sits behind the same biome fog as the sky the camera sees; without it
