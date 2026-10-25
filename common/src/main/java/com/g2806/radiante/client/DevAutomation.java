@@ -12,6 +12,8 @@ import net.minecraft.client.Screenshot;
  * {@code cmd=/command} (run a chat command), {@code break=x,y,z,stage} (show block cracks), {@code packs=a,b} or {@code packs=none} (set the
  * resource packs and reload), {@code reload} (reload resource packs), {@code fps} (log
  * the frame rate), {@code warmup} (start the title screen's shader warm-up now, whatever the stored fingerprint says) or {@code quit}.
+ * For controller support: {@code key=up} (a key pressed on the open screen), {@code nav=down} (a focus move, the way
+ * Controlify moves) and {@code pad=...} (a virtual gamepad through Controlify's SDL, see {@link DevGamepad}).
  */
 public final class DevAutomation {
 
@@ -174,6 +176,7 @@ public final class DevAutomation {
             startStallWatcher(Thread.currentThread());
         }
         clientTicks++;
+        DevGamepad.tick();
         while (nextPre < PRE_STEPS.size() && PRE_STEPS.get(nextPre).tick() <= clientTicks) {
             run(minecraft, PRE_STEPS.get(nextPre++).action());
         }
@@ -386,6 +389,49 @@ public final class DevAutomation {
             // Leaves the open screen the way Esc does, so the settings screen applies what was changed on it.
             if (minecraft.gui.screen() != null) {
                 minecraft.gui.screen().onClose();
+            }
+        } else if (action.startsWith("pad=")) {
+            DevGamepad.run(action.substring(4));
+        } else if (action.startsWith("key=")) {
+            // key=up / down / left / right / enter / space / tab / esc, optionally ",shift": the key pressed and let
+            // go on the open screen, as a keyboard (or a controller mod that presses keys) does.
+            String[] parts = action.substring(4).split(",");
+            int[] codes = switch (parts[0]) {
+                case "up" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_UP, 0x40000052};
+                case "down" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_DOWN, 0x40000051};
+                case "left" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_LEFT, 0x40000050};
+                case "right" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_RIGHT, 0x4000004F};
+                case "enter" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_RETURN, 13};
+                case "space" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_SPACE, 32};
+                case "tab" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_TAB, 9};
+                case "esc" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE, 27};
+                default -> null;
+            };
+            var screen = minecraft.gui.screen();
+            if (codes != null && screen != null) {
+                // Shift's modifier bit, as the event carries it.
+                int modifiers = parts.length > 1 && parts[1].equals("shift") ? 1 : 0;
+                var event = new net.minecraft.client.input.KeyEvent(codes[0], codes[1], modifiers);
+                boolean used = screen.keyPressed(event);
+                screen.keyReleased(event);
+                RadianteClient.LOGGER.info("[dev] key {} on {}: {}", action.substring(4),
+                    screen.getClass().getSimpleName(), used ? "used" : "not used");
+            }
+        } else if (action.startsWith("nav=")) {
+            // nav=up / down / left / right: a focus move asked of the open screen and carried out, the way
+            // Controlify (and controller mods like it) move through a screen, with no key pressed.
+            var screen = minecraft.gui.screen();
+            if (screen != null) {
+                var direction = net.minecraft.client.gui.navigation.ScreenDirection.valueOf(
+                    action.substring(4).toUpperCase(java.util.Locale.ROOT));
+                var path = screen.nextFocusPath(
+                    new net.minecraft.client.gui.navigation.FocusNavigationEvent.ArrowNavigation(direction));
+                if (path != null) {
+                    screen.clearFocus();
+                    path.applyFocus(true);
+                }
+                RadianteClient.LOGGER.info("[dev] nav {} on {}: focus {}", direction, screen.getClass().getSimpleName(),
+                    screen.getFocused() == null ? "none" : screen.getFocused().getClass().getSimpleName());
             }
         } else if (action.startsWith("press=")) {
             // Presses the first button on the open screen whose label contains the text.
