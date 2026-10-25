@@ -219,6 +219,8 @@
   "options.radiante.vanilla_celestial_orientation.tooltip": "Mantiene los cuadrados del sol y la luna alineados con su trayectoria como en vanilla, en vez de girar al cruzar el cielo.",
   "options.radiante.first_person_shadow": "Sombra en Primera Persona",
   "options.radiante.first_person_shadow.tooltip": "Dibuja al jugador en primera persona para que proyectes sombra y aparezcas en reflejos de agua y cristal.",
+  "options.radiante.glowing_pixel_light": "Luz desde Píxeles Brillantes",
+  "options.radiante.glowing_pixel_light.tooltip": "Los bloques de luz emiten desde las partes brillantes de su textura (los filamentos de una lámpara de redstone), como Bedrock RTX, en vez de desde todo el bloque. La misma cantidad de luz, desde fuentes más pequeñas y numerosas. Requiere Emisión de Bloques.",
   "options.radiante.held_item_light": "Luz del Objeto en Mano",
   "options.radiante.held_item_light.tooltip": "Una antorcha, linterna u otra fuente de luz sostenida en cualquier mano ilumina su entorno.",
   "options.radiante.day_brightness": "Brillo del Día",

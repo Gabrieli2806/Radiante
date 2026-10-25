@@ -25,6 +25,12 @@ public class Options {
     public static int chunkBuildingTotalBatches = 12;
     public static int chunkBuildingThreads = getDefaultChunkBuildingThreads();
     public static boolean collectChunkEmission = true;
+    /**
+     * Light From Glowing Pixels: a light block casts its light from the parts of its texture that glow, in finer
+     * cells shrunk to those texels (EmissionTiles), instead of from 4 x 4 cells of the whole block. Off by default:
+     * more, smaller lights.
+     */
+    public static boolean glowingPixelLight = false;
     /** How far from the camera glowing dropped items and item frames still cast light, in blocks. */
     public static int entityLightReach = 64;
     /**
@@ -241,6 +247,7 @@ public class Options {
         number("chunkBuildingThreads", () -> chunkBuildingThreads, v -> setChunkBuildingThreads(v, false)),
         bool("chunkBuildingAuto", () -> chunkBuildingAuto, v -> chunkBuildingAuto = v),
         bool("collectChunkEmission", () -> collectChunkEmission, v -> setCollectChunkEmission(v, false)),
+        bool("glowingPixelLight", () -> glowingPixelLight, v -> glowingPixelLight = v),
         number("entityLightReach", () -> entityLightReach, v -> setEntityLightReach(v, false)),
         bool("debugLogging", () -> debugLogging, v -> setDebugLogging(v, false)),
         bool("advancedSettings", () -> advancedSettings, v -> advancedSettings = v),

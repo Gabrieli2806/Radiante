@@ -54,6 +54,7 @@ enum OptionImpact {
         Map.entry("options.radiante.fog_style", MEDIUM),
         Map.entry("options.radiante.cloud_shadows", LOW),
         Map.entry("options.radiante.held_item_light", LOW),
+        Map.entry("options.radiante.glowing_pixel_light", LOW),
         Map.entry("options.radiante.first_person_shadow", LOW),
         Map.entry("options.radiante.ser", VARIES),
         Map.entry("options.radiante.cache_deep_bounces", HIGH),
