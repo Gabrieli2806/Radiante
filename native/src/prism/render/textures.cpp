@@ -1,6 +1,7 @@
 #include "prism/render/textures.hpp"
 
 #include "prism/render/emission.hpp"
+#include "prism/render/opacity_micromaps.hpp"
 #include "prism/render/pipeline.hpp"
 #include "prism/render/render_framework.hpp"
 #include "prism/render/renderer.hpp"
@@ -127,6 +128,9 @@ void Textures::initializeTexture(uint32_t id, uint32_t mipLevels, uint32_t width
     const bool rebind = !reuse || entry.sampler != sampler;
     entry.sampler = std::move(sampler);
 
+    // Micromaps baked from the coverage of the image this id had no longer apply.
+    omm::coverage::forget(id);
+
     // Minecraft closes and creates textures all the time: a font page or a GUI sprite dropped and a smaller one taking
     // its id in the same frame. Replayed into the new image, the copies queued for the old one would write outside it,
     // and the device would be lost a moment later.
@@ -213,6 +217,11 @@ void Textures::queueUpload(uint8_t *srcPointer,
     const size_t skippedBytes = static_cast<size_t>(srcOffsetY) * rowBytes;
     const size_t readBytes = (static_cast<size_t>(srcOffsetX) + (height - 1) * rowPixels + width) * texelBytes;
     if (skippedBytes + readBytes > srcSizeInBytes) return dropUnreadable();
+    // The block atlas's coverage, which cut-out micromaps are baked from, is taken from its uploads as they pass.
+    if (texelBytes == 4) {
+        omm::coverage::upload(dstId, level, srcPointer + skippedBytes + static_cast<size_t>(srcOffsetX) * texelBytes,
+                              rowPixels, dstOffsetX, dstOffsetY, width, height);
+    }
     // Buffer offsets of a copy are whole texels; staging allocations keep to 4 bytes as well.
     const auto [block, offset] = stage(srcPointer + skippedBytes, readBytes, std::lcm<size_t>(4, texelBytes));
 

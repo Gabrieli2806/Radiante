@@ -3,6 +3,7 @@
 #include "prism/gpu/buffer.hpp"
 #include "prism/gpu/command.hpp"
 #include "prism/gpu/device.hpp"
+#include "prism/gpu/micromap.hpp"
 #include "prism/gpu/physical_device.hpp"
 #include "prism/gpu/retire.hpp"
 #include "prism/gpu/vma.hpp"
@@ -85,7 +86,8 @@ BlasBuild &BlasBuild::triangles(VkDeviceAddress vertices,
                                 VkDeviceAddress indices,
                                 VkIndexType indexType,
                                 uint32_t indexCount,
-                                bool opaque) {
+                                bool opaque,
+                                const OpacityMicromapAttachment *micromap) {
     if (vertexCount == 0 || indexCount < 3) return empty();
 
     VkAccelerationStructureGeometryKHR &geometry =
@@ -100,6 +102,24 @@ BlasBuild &BlasBuild::triangles(VkDeviceAddress vertices,
     data.maxVertex = vertexCount - 1;
     data.indexType = indexType;
     data.indexData.deviceAddress = indices;
+
+    if (micromap != nullptr && !opaque && micromap->build != nullptr) {
+        const std::vector<VkMicromapUsageEXT> &usage = micromapUsage_.emplace_back(micromap->usage);
+        VkAccelerationStructureTrianglesOpacityMicromapEXT &link = micromapLinks_.emplace_back(
+            VkAccelerationStructureTrianglesOpacityMicromapEXT{
+                VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_TRIANGLES_OPACITY_MICROMAP_EXT});
+        link.indexType = VK_INDEX_TYPE_UINT32;
+        link.indexBuffer.deviceAddress = micromap->indices;
+        link.indexStride = sizeof(uint32_t);
+        link.baseTriangle = 0;
+        link.usageCountsCount = static_cast<uint32_t>(usage.size());
+        link.pUsageCounts = usage.data();
+        link.micromap = micromap->build->micromap()->handle();
+        data.pNext = &link;
+        if (std::find(micromapBuilds_.begin(), micromapBuilds_.end(), micromap->build) == micromapBuilds_.end()) {
+            micromapBuilds_.push_back(micromap->build);
+        }
+    }
 
     ranges_.push_back({indexCount / 3, 0, 0, 0});
     sized_ = false;
@@ -175,8 +195,21 @@ std::shared_ptr<DeviceLocalBuffer> recordBlasBuilds(const std::shared_ptr<Comman
     }
     if (builds.empty()) return nullptr;
 
-    auto scratch = allocateScratch(physicalDevice, device, vma, total);
-    const VkDeviceAddress scratchAddress = scratch->bufferAddress();
+    // The micromaps these structures reference are built first, in the same command buffer, from the front of the
+    // same scratch buffer: whoever holds the scratch until the builds have run holds theirs too.
+    std::vector<MicromapBuild *> micromaps;
+    for (const auto &build : builds) {
+        for (const auto &micromap : build->micromapBuilds_) {
+            if (!micromap->recorded() && std::find(micromaps.begin(), micromaps.end(), micromap.get()) == micromaps.end()) {
+                micromaps.push_back(micromap.get());
+            }
+        }
+    }
+    const VkDeviceSize micromapScratch = alignUp(micromapScratchSize(micromaps, alignment), alignment);
+
+    auto scratch = allocateScratch(physicalDevice, device, vma, micromapScratch + total);
+    recordMicromapBuilds(commandBuffer, micromaps, scratch->bufferAddress(), alignment);
+    const VkDeviceAddress scratchAddress = scratch->bufferAddress() + micromapScratch;
 
     std::vector<VkAccelerationStructureBuildGeometryInfoKHR> infos;
     std::vector<const VkAccelerationStructureBuildRangeInfoKHR *> ranges;

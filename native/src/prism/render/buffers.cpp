@@ -145,10 +145,12 @@ void Buffers::performQueuedUpload() {
     for (const auto &buffer : importantUploads_) buffer->uploadToBuffer(commandBuffer);
 
     // World geometry feeds acceleration structure builds and ray tracing, and the stages that read it as plain data.
-    constexpr VkPipelineStageFlags2 worldReaders =
+    // Section buffers also hold the inputs of their opacity micromaps, where the device has them.
+    const VkPipelineStageFlags2 worldReaders =
         VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT |
         VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT | VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR |
-        VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+        VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR |
+        (gpu::opacityMicromapsEnabled() ? VK_PIPELINE_STAGE_2_MICROMAP_BUILD_BIT_EXT : VK_PIPELINE_STAGE_2_NONE);
     constexpr VkAccessFlags2 readWrite = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
     uploadBarriers_.clear();
     for (const auto &buffer : importantUploads_) {

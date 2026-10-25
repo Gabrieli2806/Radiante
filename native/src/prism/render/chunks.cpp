@@ -2,6 +2,7 @@
 
 #include "prism/render/buffers.hpp"
 #include "prism/render/gpu_profiler.hpp"
+#include "prism/render/opacity_micromaps.hpp"
 #include "prism/render/render_framework.hpp"
 #include "prism/render/renderer.hpp"
 #include "prism/render/textures.hpp"
@@ -50,7 +51,7 @@ void retireDrawn(Chunk1 &slot) {
     retireWithFrames(std::move(slot.blas), std::move(slot.geometryGroupNames), std::move(slot.indexBufferAddresses),
                      std::move(slot.positionBufferAddresses), std::move(slot.materialBufferAddresses),
                      std::move(slot.geometryBuffer), std::move(slot.lightBuffer), std::move(slot.windBuild),
-                     std::move(slot.windRegions));
+                     std::move(slot.windRegions), std::move(slot.micromap), std::move(slot.micromapInputs));
 }
 
 // How urgently a queued section is built: the nearer the camera the sooner, but a slot that just took a build waits a
@@ -278,6 +279,11 @@ struct ChunkBuildData {
     std::shared_ptr<gpu::BLAS> blas;
     // The geometries with foliage that sways, filled by packGeometry; empty for a section where nothing sways.
     std::vector<WindRegion> windRegions;
+    // The micromap inputs of its cut-out geometries, written after the geometry by packGeometry (null without any),
+    // and the micromap the last defineTriangles placed for them.
+    std::unique_ptr<omm::SectionMicromaps> micromaps;
+    std::shared_ptr<gpu::MicromapBuild> micromapBuild;
+    std::shared_ptr<void> micromapInputs;
 
     uint32_t geometryCount() const {
         return static_cast<uint32_t>(vertices.size());
@@ -304,7 +310,10 @@ struct ChunkBuildData {
                      const std::shared_ptr<gpu::VMA> &vma,
                      const std::shared_ptr<gpu::Device> &device);
     void packGeometry(const std::shared_ptr<gpu::VMA> &vma, const std::shared_ptr<gpu::Device> &device);
-    void defineTriangles(gpu::BlasBuild &build) const;
+    // Describes the geometry to a structure build, placing a micromap for its cut-out geometries where it has one.
+    void defineTriangles(gpu::BlasBuild &build,
+                         const std::shared_ptr<gpu::Device> &device,
+                         const std::shared_ptr<gpu::VMA> &vma);
     void releaseStaging();
 };
 
@@ -386,6 +395,20 @@ void ChunkBuildData::buildLights(const Emission *emission,
 void ChunkBuildData::packGeometry(const std::shared_ptr<gpu::VMA> &vma, const std::shared_ptr<gpu::Device> &device) {
     if (vertices.empty()) return;
 
+    // The micromaps of the cut-out geometries come first: quads one cannot describe move to a geometry of their own,
+    // with the same type and hit group, which is then packed like the others (opacity_micromaps.hpp).
+    micromaps = nullptr;
+    if (gpu::opacityMicromapsEnabled()) {
+        std::vector<bool> cutout(vertices.size());
+        for (size_t g = 0; g < vertices.size(); g++) cutout[g] = geometryTypes[g] != World::WORLD_SOLID;
+        micromaps = omm::bakeSection(vertices, cutout, device->opacityMicromapMaxSubdivisionLevel(),
+                                     [this](size_t source, std::vector<PBRVertex> &&quads) {
+                                         geometryTypes.push_back(geometryTypes[source]);
+                                         geometryGroupNames.push_back(geometryGroupNames[source]);
+                                         vertices.push_back(std::move(quads));
+                                     });
+    }
+
     // The material records are made once: the layout needs to know which geometries share one, the writer the records.
     size_t vertexTotal = 0;
     for (const auto &geometry : vertices) vertexTotal += geometry.size();
@@ -426,6 +449,10 @@ void ChunkBuildData::packGeometry(const std::shared_ptr<gpu::VMA> &vma, const st
         region.restOffset = size = alignTo16(size);
         size += size_t{region.vertexCount} * 16;
     }
+    // The micromap inputs of the cut-out geometries follow (opacity_micromaps.hpp): states, triangle array and the
+    // per-triangle indices, read by the micromap and structure builds only.
+    const size_t packedSize = size;
+    if (micromaps != nullptr) size = micromaps->layout(size);
     size = std::max<size_t>(size, 16);
 
     // One buffer per section holds all of its geometry. Sections used to share buffers with the rest of their build
@@ -434,16 +461,44 @@ void ChunkBuildData::packGeometry(const std::shared_ptr<gpu::VMA> &vma, const st
     constexpr VkBufferUsageFlags kGeometryUsage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
                                                   VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR |
                                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    geometryBuffer = gpu::DeviceLocalBuffer::create(vma, device, persistStaging(), size, kGeometryUsage);
+    if (micromaps != nullptr) {
+        // The micromap build reads from 256-byte aligned addresses, laid out from the buffer's start.
+        geometryBuffer = gpu::DeviceLocalBuffer::create(
+            vma, device, persistStaging(), size,
+            kGeometryUsage | VK_BUFFER_USAGE_MICROMAP_BUILD_INPUT_READ_ONLY_BIT_EXT, 0,
+            VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, 256);
+    } else {
+        geometryBuffer = gpu::DeviceLocalBuffer::create(vma, device, persistStaging(), size, kGeometryUsage);
+    }
+    const size_t geometryEnd = micromaps != nullptr ? packedSize : size;
     if (persistStaging()) {
-        putPackedGeometry(vertices, regions, materials, size, static_cast<uint8_t *>(geometryBuffer->mappedPtr()));
+        auto *out = static_cast<uint8_t *>(geometryBuffer->mappedPtr());
+        putPackedGeometry(vertices, regions, materials, geometryEnd, out);
+        if (micromaps != nullptr) micromaps->write(out);
         geometryBuffer->flushStagingBuffer();
     } else {
         std::vector<uint8_t> bytes(size);
-        putPackedGeometry(vertices, regions, materials, size, bytes.data());
+        putPackedGeometry(vertices, regions, materials, geometryEnd, bytes.data());
+        if (micromaps != nullptr) micromaps->write(bytes.data());
         geometryBuffer->uploadToStagingBuffer(bytes.data(), size, 0);
     }
     Chunks::devBytes[0] += size;
+    micromapInputs = nullptr;
+    if (micromaps != nullptr) {
+        // The micromap inputs' share of the buffer, counted while a slot holds it.
+        struct Footprint {
+            explicit Footprint(uint64_t counted) : bytes(counted) {
+                omm::stats().inputBytesLive.fetch_add(bytes, std::memory_order_relaxed);
+            }
+            Footprint(const Footprint &) = delete;
+            Footprint &operator=(const Footprint &) = delete;
+            ~Footprint() {
+                omm::stats().inputBytesLive.fetch_sub(bytes, std::memory_order_relaxed);
+            }
+            uint64_t bytes;
+        };
+        micromapInputs = std::make_shared<Footprint>(size - packedSize);
+    }
 
     const VkDeviceAddress base = geometryBuffer->bufferAddress();
     indexAddresses.clear();
@@ -460,15 +515,32 @@ void ChunkBuildData::packGeometry(const std::shared_ptr<gpu::VMA> &vma, const st
     }
 }
 
-void ChunkBuildData::defineTriangles(gpu::BlasBuild &build) const {
+void ChunkBuildData::defineTriangles(gpu::BlasBuild &build,
+                                     const std::shared_ptr<gpu::Device> &device,
+                                     const std::shared_ptr<gpu::VMA> &vma) {
     const VkDeviceAddress base = geometryBuffer->bufferAddress();
+    // A micromap of its own for each structure build: one placed for a build that never ran (a batch that failed to
+    // submit and is built again) would be referenced unbuilt.
+    micromapBuild = nullptr;
+    if (micromaps != nullptr) {
+        micromapBuild = gpu::MicromapBuild::create(device, vma, base + micromaps->statesOffset,
+                                                   base + micromaps->trianglesOffset, micromaps->usage);
+    }
     for (size_t g = 0; g < regions.size(); g++) {
         const PackedRegions &region = regions[g];
+        gpu::OpacityMicromapAttachment attachment;
+        const gpu::OpacityMicromapAttachment *micromap = nullptr;
+        if (micromapBuild != nullptr && micromaps->geometries[g].used) {
+            attachment.build = micromapBuild;
+            attachment.indices = base + micromaps->geometries[g].indexOffset;
+            attachment.usage = micromaps->geometries[g].usage;
+            micromap = &attachment;
+        }
         build.triangles(base + region.positionOffset,
                         region.windy ? VK_FORMAT_R32G32B32_SFLOAT : VK_FORMAT_R16G16B16A16_SFLOAT,
                         region.windy ? 16 : 8, region.vertexCount,
                         base + region.indexOffset, region.shortIndices ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32,
-                        region.indexCount, geometryTypes[g] == World::WORLD_SOLID);
+                        region.indexCount, geometryTypes[g] == World::WORLD_SOLID, micromap);
     }
 }
 
@@ -523,7 +595,7 @@ void ChunkBuildScheduler::Batch::placeStructures(const std::shared_ptr<gpu::Devi
         if (section->geometryCount() == 0) continue;
         if (section->sways()) {
             section->blasBuild = gpu::BlasBuild::create(section->structureFlags(0));
-            section->defineTriangles(*section->blasBuild);
+            section->defineTriangles(*section->blasBuild, device, vma);
             section->blas = section->blasBuild->place(device, vma);
             Chunks::devBytes[3] += section->blas->size();
             swaying.push_back(section->blasBuild);
@@ -531,7 +603,7 @@ void ChunkBuildScheduler::Batch::placeStructures(const std::shared_ptr<gpu::Devi
         }
         section->blasBuild = structures->add(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR |
                                              VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR);
-        section->defineTriangles(*section->blasBuild);
+        section->defineTriangles(*section->blasBuild, device, vma);
         built.push_back(section.get());
     }
     if (built.empty()) {
@@ -718,7 +790,9 @@ bool ChunkBuildScheduler::submit(Batch &batch, const Submission &submission) {
         commandBuffer->memoryBarrier(VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_MEMORY_WRITE_BIT,
                                      VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR |
                                          VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR |
-                                         VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                                         VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
+                                         (gpu::opacityMicromapsEnabled() ? VK_PIPELINE_STAGE_2_MICROMAP_BUILD_BIT_EXT
+                                                                         : VK_PIPELINE_STAGE_2_NONE),
                                      VK_ACCESS_2_MEMORY_READ_BIT);
     }
     gpu::diagnostics::checkpoint(vkCommandBuffer, "chunks:batch-uploaded");
@@ -988,7 +1062,7 @@ void Chunks::queueChunkBuild(ChunkBuildTask task) {
     if (data->geometryCount() > 0) {
         data->blasBuild =
             gpu::BlasBuild::create(data->structureFlags(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR));
-        data->defineTriangles(*data->blasBuild);
+        data->defineTriangles(*data->blasBuild, device, vma);
         data->blas = data->blasBuild->place(device, vma);
     }
     std::unique_lock<std::recursive_mutex> lock(mutex_);
@@ -1394,6 +1468,8 @@ bool Chunks::swapIn(ChunkBuildData &data) {
     slot.materialBufferAddresses = std::make_shared<std::vector<VkDeviceAddress>>(std::move(data.materialAddresses));
     slot.geometryBuffer = data.geometryBuffer;
     slot.lightBuffer = data.lightBuffer;
+    slot.micromap = data.blas != nullptr && data.micromapBuild != nullptr ? data.micromapBuild->micromap() : nullptr;
+    slot.micromapInputs = slot.micromap != nullptr ? data.micromapInputs : nullptr;
     if (data.sways() && data.blas != nullptr && data.blasBuild != nullptr) {
         slot.windBuild = data.blasBuild;
         slot.windRegions = std::make_shared<std::vector<WindRegion>>(std::move(data.windRegions));

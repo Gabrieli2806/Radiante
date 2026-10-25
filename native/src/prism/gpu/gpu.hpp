@@ -15,6 +15,7 @@
 #include "prism/gpu/framebuffer.hpp"
 #include "prism/gpu/shader.hpp"
 #include "prism/gpu/as.hpp"
+#include "prism/gpu/micromap.hpp"
 #include "prism/gpu/sbt.hpp"
 #include "prism/gpu/sync.hpp"
 #include "prism/gpu/retire.hpp"

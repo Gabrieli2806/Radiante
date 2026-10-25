@@ -14,7 +14,17 @@ layout(set = 5, binding = 7, rgba16f) uniform image2DArray rayMaterialStateImage
 #endif
 
 // Shadow rays stop at the first blocker, and the shadow hit group has nothing to do in a closest-hit shader.
-#define VPT_SHADOW_RAY_FLAGS (gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT)
+// Where the device has opacity micromaps (VPT_OMM_SUPPORTED), they also read those of cut-out terrain in two states:
+// shadow.rahit tests cut-out alpha at the texture's full resolution, and each micro-triangle the micromap leaves
+// unknown (for camera rays, whose any-hit test reads mip levels) is marked opaque or transparent by exactly that test
+// (render/opacity_micromaps.hpp), so these rays need no any-hit shader there. The flag is gl_RayFlagsForceOpacity-
+// Micromap2StateEXT given by its value: the renderer declares its capability in the compiled module itself
+// (gpu/shader.cpp, declareOpacityMicromaps), as enabling GL_EXT_opacity_micromap here crippled the SPIR-V optimizer.
+#if defined(VPT_OMM_SUPPORTED) && VPT_OMM_SUPPORTED != 0
+#    define VPT_SHADOW_RAY_FLAGS (gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT | 0x400u)
+#else
+#    define VPT_SHADOW_RAY_FLAGS (gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT)
+#endif
 
 // ---- stateBits layout ----------------------------------------------------------------------------------------
 // bits 0-7    bounce count
