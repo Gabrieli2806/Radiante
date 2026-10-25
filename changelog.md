@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Faster in forests, fields and villages where the GPU driver offers opacity micromaps (`VK_EXT_opacity_micromap`):
+  the leaves, grass, flowers and other cut-out blocks of each section are baked into micromaps, so sun and block
+  light shadow rays no longer run the any-hit shader on them, and camera rays skip it wherever the texture's mip
+  levels agree. The path tracing pass took 3-15% less GPU time in the test views than with the extension off, for
+  about 3 MB of micromaps and 10 MB of their inputs at 12 chunks. The picture is unchanged: animated sprites (fire,
+  kelp...), glass and odd faces are still decided by the shader, and GPUs without the extension keep the shader path.
+- Less noise for the same rays: the path's BSDF and sun-disc samples are Owen-scrambled Sobol points across frames
+  (Burley 2020) instead of independent random numbers, so the frames the denoiser averages cover each pixel more
+  evenly. The noise left in the denoised picture at a still view dropped 7-24% in the test views, for 1-5% more
+  path tracing time.
 - The settings screen works with a controller (#31). Controller mods that move through menus with Minecraft's own
   focus navigation (Controlify and the like) or press keys for the buttons now step through the options: D-pad or
   stick to move and change values, A to flip or press, B to leave. With Controlify the bumpers change section, X
