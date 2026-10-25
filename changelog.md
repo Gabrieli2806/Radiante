@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- The settings screen works with a controller (#31). Controller mods that move through menus with Minecraft's own
+  focus navigation (Controlify and the like) or press keys for the buttons now step through the options: D-pad or
+  stick to move and change values, A to flip or press, B to leave. With Controlify the bumpers change section, X
+  applies, Y undoes, the right stick scrolls (or moves a slider ten steps), and its button pictures show beside the
+  buttons. The keys reach the buttons along the bottom and the advanced groups' headings too, the description
+  follows the focused row (under it when there is no side panel), and the focus stays put when a change lays the
+  screen out again.
+- The settings screen's arrow keys, Enter, Space and Tab work again on 26.3, where Minecraft's key codes changed;
+  a left click on a list steps it forward again, a right click back.
 - The built-in shader pack is renamed from `vanilla-pt` to `radiante-pt` (shown as Radiante PT). Its stored
   settings and the pipeline's pointer to it move over by themselves on the first start; the old zip is removed.
 - ROADMAP.md is gone: where the project is heading is tracked in GitHub issues labelled roadmap, next to

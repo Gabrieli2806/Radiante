@@ -21,9 +21,28 @@ has among the advanced settings.
 
 ## Keyboard
 
-Up and Down move through the options, Left and Right move a slider by one step (ten with Shift) or
-step a list, Enter or Space flips a switch, and Tab moves to the next section (Shift+Tab: the
-previous one).
+Up and Down move through the options and the headings of the advanced groups, and on past the last
+one to the buttons along the bottom; Up from the first option goes to the search box. Left and Right
+move a slider by one step (ten with Shift), step a list, fold a group shut or open, or move between
+the buttons. Enter or Space flips a switch, steps a list, folds a group or presses the button. Tab
+moves to the next section (Shift+Tab: the previous one).
+
+## Controller
+
+The screen works with controller mods: those that move through menus the way Minecraft's arrow keys
+do (Controlify and the like) and those that press keys for the controller's buttons. The D-pad or
+left stick moves as the arrow keys above, A acts as Enter and B leaves the screen like **Done**. With
+Controlify, also:
+
+| Button | Does |
+|---|---|
+| LB / RB | Previous / next section |
+| X | Apply |
+| Y | Undo |
+| Right stick | Up and down scroll the list (the focus stays on a row in view); left and right move a slider ten steps |
+
+Controlify shows its button pictures beside Done, Apply and Undo and under the sections. Its virtual
+mouse stays off on this screen unless you turn it on there.
 
 ## What the panel says
 

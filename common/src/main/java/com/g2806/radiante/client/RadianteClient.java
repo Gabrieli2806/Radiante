@@ -58,6 +58,7 @@ public final class RadianteClient {
         com.g2806.radiante.client.compat.journeymap.JourneyMapCompat.init();
         com.g2806.radiante.client.compat.litematica.LitematicaCompat.init();
         com.g2806.radiante.client.compat.distanthorizons.DistantHorizonsCompat.init();
+        com.g2806.radiante.client.compat.controlify.ControlifyCompat.init();
         DevAutomation.register();
         com.g2806.radiante.client.gui.RadianteDebugEntries.register();
         LOGGER.info("Radiante {} running on {} (Bedrock pack converter {})", RadiantePlatform.INSTANCE.modVersion(),

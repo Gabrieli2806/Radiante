@@ -714,5 +714,6 @@
   "options.radiante.cloud_height": "Altura de las Nubes",
   "options.radiante.cloud_height.tooltip": "Sube o baja las nubes Vanilla, en bloques sobre su altura normal.",
   "options.radiante.rebuild_shaders": "Recompilar Shaders",
-  "options.radiante.rebuild_shaders.tooltip": "Aplica los cambios y vuelve a compilar los shaders. Úsalo si la imagen se ve mal después de cambiar ajustes."
+  "options.radiante.rebuild_shaders.tooltip": "Aplica los cambios y vuelve a compilar los shaders. Úsalo si la imagen se ve mal después de cambiar ajustes.",
+  "options.radiante.controller.sections": "Sección"
 }

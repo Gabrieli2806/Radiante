@@ -39,6 +39,9 @@ subprojects {
 			compileOnly("maven.modrinth:distanthorizons:${rootProject.distant_horizons_version}") {
 				transitive = false
 			}
+			compileOnly("maven.modrinth:controlify:${rootProject.controlify_version}") {
+				transitive = false
+			}
 		}
 	}
 }

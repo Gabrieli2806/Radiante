@@ -22,9 +22,28 @@ coincidencias más tiene entre los ajustes avanzados.
 
 ## Teclado
 
-Arriba y Abajo recorren las opciones, Izquierda y Derecha mueven un slider un paso (diez con Shift)
-o cambian una lista, Enter o Espacio activan un interruptor, y Tab pasa a la sección siguiente
-(Shift+Tab: a la anterior).
+Arriba y Abajo recorren las opciones y los títulos de los grupos avanzados, y pasada la última llegan
+a los botones de abajo; Arriba desde la primera opción va al cuadro de búsqueda. Izquierda y Derecha
+mueven un slider un paso (diez con Shift), cambian una lista, pliegan o despliegan un grupo, o pasan
+de un botón a otro. Enter o Espacio activan un interruptor, cambian una lista, pliegan un grupo o
+pulsan el botón. Tab pasa a la sección siguiente (Shift+Tab: a la anterior).
+
+## Mando
+
+La pantalla funciona con los mods de mando: los que recorren los menús como las flechas de Minecraft
+(Controlify y parecidos) y los que pulsan teclas por los botones del mando. La cruceta o el stick
+izquierdo se mueven como las flechas de arriba, A hace de Enter y B sale de la pantalla como
+**Listo**. Con Controlify, además:
+
+| Botón | Hace |
+|---|---|
+| LB / RB | Sección anterior / siguiente |
+| X | Aplicar |
+| Y | Deshacer |
+| Stick derecho | Arriba y abajo desplazan la lista (el foco sigue en una fila a la vista); izquierda y derecha mueven un slider diez pasos |
+
+Controlify muestra los dibujos de sus botones junto a Listo, Aplicar y Deshacer y bajo las secciones.
+Su ratón virtual queda apagado en esta pantalla salvo que lo actives en ella.
 
 ## Qué dice el panel
 

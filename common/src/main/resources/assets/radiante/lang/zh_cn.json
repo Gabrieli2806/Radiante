@@ -714,5 +714,6 @@
   "options.radiante.cloud_height": "云层高度",
   "options.radiante.cloud_height.tooltip": "升高或降低原版云层，单位为高于默认高度的方块数。",
   "options.radiante.rebuild_shaders": "重新编译着色器",
-  "options.radiante.rebuild_shaders.tooltip": "应用更改并重新编译着色器。若更改设置后画面异常，可使用此项。"
+  "options.radiante.rebuild_shaders.tooltip": "应用更改并重新编译着色器。若更改设置后画面异常，可使用此项。",
+  "options.radiante.controller.sections": "分区"
 }

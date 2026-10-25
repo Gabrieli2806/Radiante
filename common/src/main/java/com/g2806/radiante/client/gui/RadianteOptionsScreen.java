@@ -1601,7 +1601,15 @@ public class RadianteOptionsScreen extends Screen {
                 return names;
             }
         });
-        addRenderableWidget(this.layout.init(this.scroll, this.search));
+        net.minecraft.client.gui.components.EditBox searchField = this.layout.init(this.scroll, this.search);
+        // The list goes in ahead of the search field: a controller mod's first focus lands on the options.
+        addWidget(this.layout.focusTarget());
+        addRenderableWidget(searchField);
+    }
+
+    /** For a controller integration (SettingsControls). */
+    SettingsLayout controllerLayout() {
+        return this.layout;
     }
 
     private static final String O = "options.radiante.";
@@ -1838,6 +1846,8 @@ public class RadianteOptionsScreen extends Screen {
 
     @Override
     public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
+        this.mouseHeld = true;
+        this.refreshKey = -1;
         if (super.mouseClicked(event, doubleClick)) {
             return true;
         }
@@ -1854,6 +1864,7 @@ public class RadianteOptionsScreen extends Screen {
 
     @Override
     public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent event) {
+        this.mouseHeld = false;
         if (this.layout != null) {
             this.layout.mouseReleased();
         }
@@ -2064,12 +2075,34 @@ public class RadianteOptionsScreen extends Screen {
 
     @Override
     public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
-        if (this.layout != null && !this.layout.searchFocused() && this.minecraft != null
-            && this.layout.keyPressed(event.key(), this.minecraft.hasShiftDown())) {
+        if (this.layout != null && !this.layout.searchFocused() && this.layout.keyPressed(event)) {
+            // The list holds the screen's focus while the keys work in it, so the screen's own navigation (and a
+            // controller mod's) goes on from there.
+            if (getFocused() != this.layout.focusTarget()) {
+                setFocused(this.layout.focusTarget());
+            }
+            this.refreshKey = event.key();
             return true;
         }
         return super.keyPressed(event);
     }
+
+    /** The key whose change waits for it to be let go before the screen is laid out again; -1 for none. */
+    private int refreshKey = -1;
+
+    @Override
+    public void tick() {
+        super.tick();
+        // A change from a controller has no key to let go of: controller mods press keys without releasing them, or
+        // move the focus without a key at all. Laid out again once no key or mouse button holds it.
+        if (this.refreshPending && !this.mouseHeld
+            && (this.refreshKey < 0 || !com.mojang.blaze3d.platform.InputConstants.isKeyDown(this.refreshKey))) {
+            this.refreshPending = false;
+            reopenWithSameChoices();
+        }
+    }
+
+    private boolean mouseHeld;
 
     @Override
     public boolean keyReleased(net.minecraft.client.input.KeyEvent event) {
