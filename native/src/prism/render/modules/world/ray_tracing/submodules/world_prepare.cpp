@@ -84,9 +84,10 @@ glm::mat4 toMatrix(const VkTransformMatrixKHR &transform) {
 }
 
 // Records the bottom-level work the frame's top-level build depends on: compaction of freshly built chunks, the
-// chunk builds that must not wait, and the entities' structures.
+// chunk builds that must not wait, the foliage the wind moves, and the entities' structures.
 void recordStructureBuilds(Chunks &chunks,
                            Entities &entities,
+                           const glm::dvec3 &cameraPos,
                            const std::shared_ptr<gpu::CommandBuffer> &commandBuffer,
                            const std::shared_ptr<gpu::PhysicalDevice> &physicalDevice,
                            const std::shared_ptr<gpu::Device> &device,
@@ -104,6 +105,15 @@ void recordStructureBuilds(Chunks &chunks,
         (void)gpu::recordBlasBuilds(commandBuffer, importantBuilds, physicalDevice, device, vma);
         importantBuilds.clear();
     }
+
+    // After the builds above: a section built this frame is refit from the structure they make (recordWind's own
+    // barrier orders the two). Nothing is recorded while no section sways.
+    if (auto buffers = Renderer::instance().buffers(); buffers != nullptr) {
+        const gpu::Data::WorldUBO ubo = buffers->lastWrittenWorldUniform();
+        chunks.recordWind(commandBuffer, cameraPos,
+                          {.time = ubo.windTime, .strength = ubo.windStrength, .weather = ubo.windWeather});
+    }
+    gpu::diagnostics::checkpoint(commandBuffer->vkCommandBuffer(), "prepare:wind");
 
     if (auto batch = entities.blasBatch(); batch != nullptr) batch->record(commandBuffer, physicalDevice, device, vma);
     for (auto &batch : entities.staticBlasBatches()) batch->record(commandBuffer, physicalDevice, device, vma);
@@ -359,7 +369,7 @@ void WorldPrepareContext::render() {
         }
     }
 
-    recordStructureBuilds(*chunks, *entities, commandBuffer, physicalDevice, device, vma);
+    recordStructureBuilds(*chunks, *entities, cameraPos, commandBuffer, physicalDevice, device, vma);
 
     const WorldPrepare::ChunkCache &cache = prepare->refreshChunkCache(*chunks);
     const WorldPrepare::LodWindow lod = prepare->refreshLodCoverage(*chunks, commandBuffer);

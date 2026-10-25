@@ -1,6 +1,7 @@
 #include "prism/render/chunks.hpp"
 
 #include "prism/render/buffers.hpp"
+#include "prism/render/gpu_profiler.hpp"
 #include "prism/render/render_framework.hpp"
 #include "prism/render/renderer.hpp"
 #include "prism/render/textures.hpp"
@@ -48,7 +49,8 @@ void retireWithFrames(Held &&...held) {
 void retireDrawn(Chunk1 &slot) {
     retireWithFrames(std::move(slot.blas), std::move(slot.geometryGroupNames), std::move(slot.indexBufferAddresses),
                      std::move(slot.positionBufferAddresses), std::move(slot.materialBufferAddresses),
-                     std::move(slot.geometryBuffer), std::move(slot.lightBuffer));
+                     std::move(slot.geometryBuffer), std::move(slot.lightBuffer), std::move(slot.windBuild),
+                     std::move(slot.windRegions));
 }
 
 // How urgently a queued section is built: the nearer the camera the sooner, but a slot that just took a build waits a
@@ -80,13 +82,32 @@ float buildPriority(const Chunk1 &slot, Clock::time_point now, glm::vec3 cameraP
 //   materials  when every vertex shares its texture, flags, emission, overlay and glint (terrain always does): a
 //              5-word header with those, then 5 words per vertex - normal, colour, u, v, light (tagged). Otherwise
 //              40-byte PackedMaterialVertex records.
-// One buffer holds every geometry's indices, then every geometry's positions, then every geometry's materials.
+// A geometry with foliage that sways (a vertex with a wind code, util/wind.glsl) keeps its positions as four floats
+// instead, untagged: x, y, z and the wind code, read as PositionVertex. The wind pass moves them every frame by a
+// small, smoothly changing amount, which halves would round into visible steps. The same positions at rest follow
+// the materials, for the pass to move them from.
+// One buffer holds every geometry's indices, then every geometry's positions, then every geometry's materials, then
+// the rest positions of the geometries that sway.
 
 constexpr VkDeviceAddress kCompactTag = 1;
 constexpr uint32_t kMaxShortIndexedVertices = 65535;
+// How far from the camera the wind moves foliage (WIND_FADE_END in util/wind.glsl), and the period its field repeats
+// over (WIND_PERIOD).
+constexpr double kWindReach = 48.0;
+constexpr int32_t kWindPeriod = 4096;
 
 size_t alignTo8(size_t value) {
     return (value + 7) & ~size_t{7};
+}
+
+size_t alignTo16(size_t value) {
+    return (value + 15) & ~size_t{15};
+}
+
+// The wind code Java gives a vertex (PBRVertex::postBase.x): 0 for one that stays put.
+float windCodeOf(const PBRVertex &vertex) {
+    const float code = vertex.postBase.x;
+    return std::isfinite(code) && code > 0.0f ? code : 0.0f;
 }
 
 // Where one geometry's regions lie in the packed buffer.
@@ -94,11 +115,15 @@ struct PackedRegions {
     size_t indexOffset = 0;
     size_t positionOffset = 0;
     size_t materialOffset = 0;
+    // Only for a geometry that sways: its positions at rest.
+    size_t restOffset = 0;
     uint32_t vertexCount = 0;
     uint32_t indexCount = 0;
     bool shortIndices = false;
     bool compactMaterial = false;
+    bool windy = false;
 };
+
 
 // Whether every vertex shares the fields the compact material header holds once for all of them.
 bool sharesMaterial(std::span<const MaterialVertex> materials) {
@@ -140,6 +165,14 @@ class PackedWriter {
     size_t at_ = 0;
 };
 
+// One vertex of a swaying geometry: its position and its wind code.
+void putWindyPosition(PackedWriter &writer, const PBRVertex &vertex) {
+    writer.put(vertex.pos.x);
+    writer.put(vertex.pos.y);
+    writer.put(vertex.pos.z);
+    writer.put(windCodeOf(vertex));
+}
+
 // Two triangles per quad of four vertices.
 template <typename Index>
 void putQuadIndices(PackedWriter &writer, uint32_t vertexCount) {
@@ -164,8 +197,13 @@ void putPackedGeometry(const std::vector<std::vector<PBRVertex>> &vertices,
         writer.align();
     }
     for (size_t g = 0; g < regions.size(); g++) {
+        if (regions[g].windy) writer.padTo(regions[g].positionOffset);
         assert(writer.at() == regions[g].positionOffset);
         for (const PBRVertex &vertex : vertices[g]) {
+            if (regions[g].windy) {
+                putWindyPosition(writer, vertex);
+                continue;
+            }
             writer.put(glm::packHalf2x16(glm::vec2(vertex.pos.x, vertex.pos.y)));
             writer.put(glm::packHalf2x16(glm::vec2(vertex.pos.z, 0.0f)));
         }
@@ -194,8 +232,14 @@ void putPackedGeometry(const std::vector<std::vector<PBRVertex>> &vertices,
         material += region.vertexCount;
         writer.align();
     }
+    for (size_t g = 0; g < regions.size(); g++) {
+        if (!regions[g].windy) continue;
+        writer.padTo(regions[g].restOffset);
+        for (const PBRVertex &vertex : vertices[g]) putWindyPosition(writer, vertex);
+    }
     writer.padTo(size);
 }
+
 
 } // namespace
 
@@ -232,9 +276,21 @@ struct ChunkBuildData {
 
     std::shared_ptr<gpu::BlasBuild> blasBuild;
     std::shared_ptr<gpu::BLAS> blas;
+    // The geometries with foliage that sways, filled by packGeometry; empty for a section where nothing sways.
+    std::vector<WindRegion> windRegions;
 
     uint32_t geometryCount() const {
         return static_cast<uint32_t>(vertices.size());
+    }
+    // Foliage in it sways with the wind: its structure is built to be refit every frame (ALLOW_UPDATE) and is not
+    // compacted.
+    bool sways() const {
+        return !windRegions.empty();
+    }
+    VkBuildAccelerationStructureFlagsKHR structureFlags(VkBuildAccelerationStructureFlagsKHR still) const {
+        return sways() ? VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR |
+                             VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR
+                       : still;
     }
     // A batch's buffers keep their staging copy until the batch has run on its own queue (releaseStaging); an
     // important build's goes with the frame that records its upload.
@@ -349,9 +405,13 @@ void ChunkBuildData::packGeometry(const std::shared_ptr<gpu::VMA> &vma, const st
         region.indexOffset = size;
         size = alignTo8(size + size_t{region.indexCount} * (region.shortIndices ? 2 : 4));
     }
-    for (PackedRegions &region : regions) {
+    for (size_t g = 0; g < regions.size(); g++) {
+        PackedRegions &region = regions[g];
+        region.windy = std::any_of(vertices[g].begin(), vertices[g].end(),
+                                   [](const PBRVertex &vertex) { return windCodeOf(vertex) > 0.0f; });
+        if (region.windy) size = alignTo16(size);
         region.positionOffset = size;
-        size = alignTo8(size + size_t{region.vertexCount} * 8);
+        size = alignTo8(size + size_t{region.vertexCount} * (region.windy ? 16 : 8));
     }
     size_t first = 0;
     for (PackedRegions &region : regions) {
@@ -360,6 +420,11 @@ void ChunkBuildData::packGeometry(const std::shared_ptr<gpu::VMA> &vma, const st
         size = alignTo8(size + (region.compactMaterial ? (5 + size_t{region.vertexCount} * 5) * sizeof(uint32_t) :
                                                          size_t{region.vertexCount} * sizeof(MaterialVertex)));
         first += region.vertexCount;
+    }
+    for (PackedRegions &region : regions) {
+        if (!region.windy) continue;
+        region.restOffset = size = alignTo16(size);
+        size += size_t{region.vertexCount} * 16;
     }
     size = std::max<size_t>(size, 16);
 
@@ -384,10 +449,14 @@ void ChunkBuildData::packGeometry(const std::shared_ptr<gpu::VMA> &vma, const st
     indexAddresses.clear();
     positionAddresses.clear();
     materialAddresses.clear();
+    windRegions.clear();
     for (const PackedRegions &region : regions) {
         indexAddresses.push_back((base + region.indexOffset) | (region.shortIndices ? kCompactTag : 0));
-        positionAddresses.push_back((base + region.positionOffset) | kCompactTag);
+        positionAddresses.push_back((base + region.positionOffset) | (region.windy ? 0 : kCompactTag));
         materialAddresses.push_back((base + region.materialOffset) | (region.compactMaterial ? kCompactTag : 0));
+        if (region.windy) {
+            windRegions.push_back({base + region.positionOffset, base + region.restOffset, region.vertexCount});
+        }
     }
 }
 
@@ -395,7 +464,9 @@ void ChunkBuildData::defineTriangles(gpu::BlasBuild &build) const {
     const VkDeviceAddress base = geometryBuffer->bufferAddress();
     for (size_t g = 0; g < regions.size(); g++) {
         const PackedRegions &region = regions[g];
-        build.triangles(base + region.positionOffset, VK_FORMAT_R16G16B16A16_SFLOAT, 8, region.vertexCount,
+        build.triangles(base + region.positionOffset,
+                        region.windy ? VK_FORMAT_R32G32B32_SFLOAT : VK_FORMAT_R16G16B16A16_SFLOAT,
+                        region.windy ? 16 : 8, region.vertexCount,
                         base + region.indexOffset, region.shortIndices ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32,
                         region.indexCount, geometryTypes[g] == World::WORLD_SOLID);
     }
@@ -427,15 +498,20 @@ struct ChunkBuildScheduler::Batch {
     void placeStructures(const std::shared_ptr<gpu::Device> &device, const std::shared_ptr<gpu::VMA> &vma);
 
     bool needsGpu() const {
-        return structures != nullptr || std::any_of(sections.begin(), sections.end(), [](const auto &section) {
-                   return section->lightBuffer != nullptr;
-               });
+        return structures != nullptr || !swaying.empty() ||
+               std::any_of(sections.begin(), sections.end(),
+                           [](const auto &section) { return section->lightBuffer != nullptr; });
     }
 
     std::vector<std::shared_ptr<ChunkBuildData>> sections;
     std::shared_ptr<gpu::BlasBatch> structures;
-    // The sections that have a structure, in the order the structures were placed, built and queried.
+    // The sections whose structures are in `structures`, in the order they were placed, built and queried.
     std::vector<ChunkBuildData *> built;
+    // The structures of sections whose foliage sways, each in storage of its own: they are refit every frame and never
+    // compacted, and one in the batch's shared buffer would keep all of that buffer alive after the others had moved
+    // into their compacted copies. The scratch memory of their builds is held until the batch has run.
+    std::vector<std::shared_ptr<gpu::BlasBuild>> swaying;
+    std::shared_ptr<gpu::DeviceLocalBuffer> swayingScratch;
     std::shared_ptr<gpu::Device> queryDevice;
     VkQueryPool compactedSizes = VK_NULL_HANDLE;
 };
@@ -445,6 +521,14 @@ void ChunkBuildScheduler::Batch::placeStructures(const std::shared_ptr<gpu::Devi
     structures = gpu::BlasBatch::create();
     for (const auto &section : sections) {
         if (section->geometryCount() == 0) continue;
+        if (section->sways()) {
+            section->blasBuild = gpu::BlasBuild::create(section->structureFlags(0));
+            section->defineTriangles(*section->blasBuild);
+            section->blas = section->blasBuild->place(device, vma);
+            Chunks::devBytes[3] += section->blas->size();
+            swaying.push_back(section->blasBuild);
+            continue;
+        }
         section->blasBuild = structures->add(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR |
                                              VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR);
         section->defineTriangles(*section->blasBuild);
@@ -642,6 +726,10 @@ bool ChunkBuildScheduler::submit(Batch &batch, const Submission &submission) {
     if (batch.structures != nullptr) {
         batch.structures->record(commandBuffer, framework->physicalDevice(), device, framework->vma());
     }
+    if (!batch.swaying.empty()) {
+        batch.swayingScratch =
+            gpu::recordBlasBuilds(commandBuffer, batch.swaying, framework->physicalDevice(), device, framework->vma());
+    }
     if (batch.compactedSizes != VK_NULL_HANDLE) {
         queriedStructures_.clear();
         for (ChunkBuildData *section : batch.built) queriedStructures_.push_back(section->blas->handle());
@@ -777,6 +865,8 @@ void Chunks::reset(uint32_t numChunks, uint32_t sizeX, uint32_t sizeY, uint32_t 
     }
     chunkBuildDatas_.assign(numChunks, nullptr);
     pending_.reset(numChunks);
+    windSlots_.reset(numChunks);
+    windMoved_.clear();
     chunkPackedData_.assign(numChunks, ChunkPackedData{});
     chunkPackedDataRevision_++;
     chunkPackedDataUploaded_.clear();
@@ -833,6 +923,7 @@ void Chunks::invalidateChunk(int id) {
     std::unique_lock<std::recursive_mutex> lock(mutex_);
     if (!validSlot(id)) return;
     dropQueuedBuild(id);
+    windSlots_.erase(id);
     Chunk1 &slot = *chunks_[id];
     clearSlot(slot);
     storePackedData(id, {.x = slot.x, .y = slot.y, .z = slot.z, .geometryCount = 0});
@@ -842,6 +933,7 @@ void Chunks::relocateChunk(int id, int x, int y, int z) {
     std::unique_lock<std::recursive_mutex> lock(mutex_);
     if (!validSlot(id)) return;
     dropQueuedBuild(id);
+    windSlots_.erase(id);
     Chunk1 &slot = *chunks_[id];
     slot.x = x;
     slot.y = y;
@@ -894,7 +986,8 @@ void Chunks::queueChunkBuild(ChunkBuildTask task) {
     }
 
     if (data->geometryCount() > 0) {
-        data->blasBuild = gpu::BlasBuild::create(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR);
+        data->blasBuild =
+            gpu::BlasBuild::create(data->structureFlags(VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR));
         data->defineTriangles(*data->blasBuild);
         data->blas = data->blasBuild->place(device, vma);
     }
@@ -923,6 +1016,8 @@ void Chunks::close() {
     }
 
     pending_.reset(0);
+    windSlots_.reset(0);
+    windMoved_.clear();
     chunkBuildDatas_.clear();
     importantBlasBuilds_.clear();
     pendingCompactions_.clear();
@@ -985,6 +1080,179 @@ void Chunks::compactFinishedBlases(std::shared_ptr<gpu::CommandBuffer> commandBu
     if (!compactedAny) return;
     bumpContentVersion();
     devBytes[3] += compactedBytes;
+}
+
+namespace {
+
+// One section geometry the wind pass moves (world/wind/wind_displace.comp reads it as WindJob).
+struct WindJob {
+    VkDeviceAddress positions;
+    VkDeviceAddress rest;
+    uint32_t vertexCount;
+    // 1 to move it by the wind, 0 to put it back to rest.
+    float scale;
+    // The section's origin, x and z wrapped into the wind's period; and relative to the camera.
+    float wrappedX;
+    float wrappedY;
+    float wrappedZ;
+    float relativeX;
+    float relativeY;
+    float relativeZ;
+};
+static_assert(sizeof(WindJob) == 48);
+
+// The push constants of wind_displace.comp.
+struct WindConstants {
+    VkDeviceAddress jobs;
+    uint32_t jobCount;
+    float time;
+    float strength;
+    float weather;
+};
+static_assert(sizeof(WindConstants) == 24);
+
+constexpr uint32_t kWindGroupSize = 64;
+
+int32_t floorModInt(int32_t value, int32_t divisor);
+
+} // namespace
+
+void Chunks::recordWind(const std::shared_ptr<gpu::CommandBuffer> &commandBuffer,
+                        const glm::dvec3 &cameraPos,
+                        const WindParams &wind) {
+    std::unique_lock<std::recursive_mutex> lock(mutex_);
+    const bool blowing = wind.strength > 0.0f;
+    // With the wind off Java sends no wind codes, and once every section is rebuilt without them nothing here sways.
+    if (windMoved_.empty() && (!blowing || windSlots_.empty())) return;
+
+    auto framework = Renderer::instance().framework();
+    auto device = framework->device();
+    const uint32_t frame = framework->safeAcquireCurrentContext()->frameIndex;
+    const uint64_t pass = ++windPassCount_;
+
+    std::vector<WindJob> jobs;
+    std::vector<std::shared_ptr<gpu::BlasBuild>> refits;
+    std::vector<int64_t> moved;
+    uint32_t maxVertices = 0;
+    const auto addJobs = [&](const Chunk1 &slot, float scale) {
+        const glm::dvec3 relative = glm::dvec3(slot.x, slot.y, slot.z) - cameraPos;
+        for (const WindRegion &region : *slot.windRegions) {
+            jobs.push_back({
+                .positions = region.positions,
+                .rest = region.rest,
+                .vertexCount = region.vertexCount,
+                .scale = scale,
+                .wrappedX = static_cast<float>(floorModInt(slot.x, kWindPeriod)),
+                .wrappedY = static_cast<float>(slot.y),
+                .wrappedZ = static_cast<float>(floorModInt(slot.z, kWindPeriod)),
+                .relativeX = static_cast<float>(relative.x),
+                .relativeY = static_cast<float>(relative.y),
+                .relativeZ = static_cast<float>(relative.z),
+            });
+            maxVertices = std::max(maxVertices, region.vertexCount);
+        }
+        refits.push_back(slot.windBuild);
+    };
+
+    // The sections within the wind's reach of the camera move. The reach is measured to the nearest point of the
+    // section, as the fade in util/wind.glsl is measured to each vertex.
+    if (blowing) {
+        for (int64_t id : windSlots_.slots()) {
+            Chunk1 &slot = *chunks_[id];
+            if (slot.windBuild == nullptr || slot.windRegions == nullptr || slot.blas != slot.windBuild->target()) {
+                continue;
+            }
+            const glm::dvec3 low(slot.x, slot.y, slot.z);
+            const glm::dvec3 nearest = glm::clamp(cameraPos, low, low + 16.0);
+            if (glm::distance(nearest, cameraPos) >= kWindReach) continue;
+            slot.windPass = pass;
+            addJobs(slot, 1.0f);
+            moved.push_back(id);
+        }
+    }
+    // Those the last pass moved that have left the reach (or the wind stopped) go back to rest once, so nothing is
+    // left frozen half way through a sway.
+    for (int64_t id : windMoved_) {
+        if (!validSlot(id)) continue;
+        Chunk1 &slot = *chunks_[id];
+        if (slot.windPass == pass || slot.windBuild == nullptr || slot.windRegions == nullptr ||
+            slot.blas != slot.windBuild->target()) {
+            continue;
+        }
+        addJobs(slot, 0.0f);
+    }
+    windMoved_ = std::move(moved);
+    if (jobs.empty()) return;
+
+    if (windPipeline_ == nullptr) {
+        // The pass reads everything through device addresses; the one set only gives the layout something to hold.
+        windTable_ = gpu::DescriptorTableBuilder{}
+                         .beginDescriptorLayoutSet()
+                         .beginDescriptorLayoutSetBinding()
+                         .defineDescriptorLayoutSetBinding({
+                             .binding = 0,
+                             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                             .descriptorCount = 1,
+                             .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+                         })
+                         .endDescriptorLayoutSetBinding()
+                         .endDescriptorLayoutSet()
+                         .definePushConstant({
+                             .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+                             .offset = 0,
+                             .size = sizeof(WindConstants),
+                         })
+                         .build(device);
+        auto shader = gpu::Shader::create(
+            device, (Renderer::folderPath / "shaders/world/wind/wind_displace_comp.spv").string());
+        windPipeline_ = gpu::ComputePipelineBuilder{}.defineShader(shader).definePipelineLayout(windTable_).build(device);
+    }
+
+    // The job list, one buffer per frame slot: the frames before may still be reading theirs.
+    if (windJobBuffers_.size() <= frame) windJobBuffers_.resize(frame + 1);
+    auto &jobBuffer = windJobBuffers_[frame];
+    const size_t jobBytes = jobs.size() * sizeof(WindJob);
+    if (jobBuffer == nullptr || jobBuffer->size() < jobBytes) {
+        jobBuffer = gpu::HostVisibleBuffer::create(framework->vma(), device, jobBytes + jobBytes / 2 + 16 * sizeof(WindJob),
+                                                   VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                                                       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                                   16);
+    }
+    jobBuffer->uploadToBuffer(jobs.data(), jobBytes, 0);
+
+    const VkCommandBuffer commands = commandBuffer->vkCommandBuffer();
+    GpuProfiler::mark(commands, "rt:prepare");
+    // The frames before this one traced these positions and structures, and the last pass refit them with the same
+    // scratch memory: all of that is done before they are written again.
+    commandBuffer->memoryBarrier(
+        VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR |
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR |
+            VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR,
+        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+        VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR |
+            VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_KHR);
+
+    const WindConstants constants{
+        .jobs = jobBuffer->bufferAddress(),
+        .jobCount = static_cast<uint32_t>(jobs.size()),
+        .time = wind.time,
+        .strength = wind.strength,
+        .weather = wind.weather,
+    };
+    commandBuffer->bindComputePipeline(windPipeline_);
+    vkCmdPushConstants(commands, windTable_->vkPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(constants),
+                       &constants);
+    vkCmdDispatch(commands, (maxVertices + kWindGroupSize - 1) / kWindGroupSize, constants.jobCount, 1);
+
+    // The moved positions are what the refits read, and what the hit shaders rebuild their hits from.
+    commandBuffer->memoryBarrier(VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+                                 VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR |
+                                     VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR,
+                                 VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_KHR);
+    gpu::recordBlasUpdates(commandBuffer, refits, windScratch_, framework->physicalDevice(), device,
+                           framework->vma());
+    GpuProfiler::mark(commands, "rt:wind");
 }
 
 std::shared_ptr<ChunkBuildScheduler> Chunks::chunkBuildScheduler() {
@@ -1126,6 +1394,13 @@ bool Chunks::swapIn(ChunkBuildData &data) {
     slot.materialBufferAddresses = std::make_shared<std::vector<VkDeviceAddress>>(std::move(data.materialAddresses));
     slot.geometryBuffer = data.geometryBuffer;
     slot.lightBuffer = data.lightBuffer;
+    if (data.sways() && data.blas != nullptr && data.blasBuild != nullptr) {
+        slot.windBuild = data.blasBuild;
+        slot.windRegions = std::make_shared<std::vector<WindRegion>>(std::move(data.windRegions));
+        windSlots_.insert(data.id);
+    } else {
+        windSlots_.erase(data.id);
+    }
     if (slot.occupiedFlag != nullptr) *slot.occupiedFlag = slot.blas != nullptr ? 1 : 0;
     bumpContentVersion();
 

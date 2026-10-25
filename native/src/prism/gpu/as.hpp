@@ -105,6 +105,12 @@ class BlasBuild : public SharedObject<BlasBuild> {
                                                                const std::shared_ptr<PhysicalDevice> &,
                                                                const std::shared_ptr<Device> &,
                                                                const std::shared_ptr<VMA> &);
+    friend void recordBlasUpdates(const std::shared_ptr<CommandBuffer> &,
+                                  std::span<const std::shared_ptr<BlasBuild>>,
+                                  std::shared_ptr<DeviceLocalBuffer> &,
+                                  const std::shared_ptr<PhysicalDevice> &,
+                                  const std::shared_ptr<Device> &,
+                                  const std::shared_ptr<VMA> &);
 
     VkAccelerationStructureBuildGeometryInfoKHR geometryInfo() const;
 
@@ -123,6 +129,17 @@ class BlasBuild : public SharedObject<BlasBuild> {
                                                                   const std::shared_ptr<PhysicalDevice> &physicalDevice,
                                                                   const std::shared_ptr<Device> &device,
                                                                   const std::shared_ptr<VMA> &vma);
+
+// Records an in-place update (a refit) of every structure, each built before with ALLOW_UPDATE from the same
+// geometry description, whose vertices have since moved. `scratch` is kept between calls and only replaced (the old
+// one retired with the frame) when it is too small; callers sharing it across frames order their updates with a
+// barrier, as frames on one queue already are.
+void recordBlasUpdates(const std::shared_ptr<CommandBuffer> &commandBuffer,
+                       std::span<const std::shared_ptr<BlasBuild>> builds,
+                       std::shared_ptr<DeviceLocalBuffer> &scratch,
+                       const std::shared_ptr<PhysicalDevice> &physicalDevice,
+                       const std::shared_ptr<Device> &device,
+                       const std::shared_ptr<VMA> &vma);
 
 // Bottom-level builds placed together in one buffer and recorded together. The batch holds the scratch memory of
 // its last recording until it is destroyed.

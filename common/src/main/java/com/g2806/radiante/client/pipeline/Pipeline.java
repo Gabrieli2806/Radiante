@@ -527,6 +527,26 @@ public class Pipeline {
     /** Volumetric clouds shade the ground under them (only with Volumetric clouds). */
     public static final String CLOUD_SHADOWS_ATTRIBUTE =
         "render_pipeline.module.ray_tracing.attribute.volumetric_cloud_cast_shadow";
+    /**
+     * Leaves, grass, flowers, vines and water plants sway in the wind (util/wind.glsl). Switching it remeshes the
+     * world: sections carry their wind codes only while it is on, so with it off nothing is moved and nothing is refit.
+     */
+    public static final String WIND_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.wind";
+    /** How far the wind moves foliage, 1 as designed; live, without remeshing. */
+    public static final String WIND_STRENGTH_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.wind_strength";
+
+    /** The wind's strength for this frame (WorldUBO.windStrength): the slider, or 0 with wind off or not offered. */
+    public static float windStrength() {
+        if (!isShaderPackToggleOn(WIND_ATTRIBUTE)) {
+            return 0.0f;
+        }
+        String value = getShaderPackValue(WIND_STRENGTH_ATTRIBUTE);
+        try {
+            return value == null ? 1.0f : Math.max(0.0f, Float.parseFloat(value.trim()));
+        } catch (NumberFormatException notANumber) {
+            return 1.0f;
+        }
+    }
 
     /**
      * Switches one of the shader pack's on/off attributes, such as motion blur or depth of field. Returns true when

@@ -467,7 +467,9 @@ public final class RadianteRenderer {
             heldLightColor(minecraft, net.minecraft.world.InteractionHand.OFF_HAND),
             Options.parallaxTransparentEdges, Options.dayBrightness / 100.0f, Options.nightBrightness / 100.0f,
             Options.emissionBrightness / 100.0f, false,
-            EntityManager.rainFallPerFrame(levelRenderState), farReach, Options.heldLightBrightness / 100.0f));
+            EntityManager.rainFallPerFrame(levelRenderState), farReach, Options.heldLightBrightness / 100.0f,
+            windTime(levelRenderState), com.g2806.radiante.client.pipeline.Pipeline.windStrength(),
+            windWeather(minecraft, levelRenderState.worldPartialTicks)));
 
         SkyRenderState sky = levelRenderState.skyRenderState;
         Vector4f mobEffect = fogControls(minecraft,
@@ -674,6 +676,27 @@ public final class RadianteRenderer {
      */
     private static float dayFraction(LevelRenderState levelRenderState) {
         return ((float) (levelRenderState.gameTime % 24000L) + levelRenderState.worldPartialTicks) / 24000.0f;
+    }
+
+    /** Game ticks after which the wind's clock starts over: six hours of play, so its one jump is seldom seen. */
+    private static final long WIND_TIME_WRAP_TICKS = 20L * 60L * 60L * 6L;
+
+    /**
+     * The wind's clock in seconds (WorldUBO.windTime): game time, so foliage stops with the game and a test sees the
+     * same sway at the same tick. Wrapped, since a float of raw seconds loses the precision a smooth sway needs.
+     */
+    private static float windTime(LevelRenderState levelRenderState) {
+        return ((float) (levelRenderState.gameTime % WIND_TIME_WRAP_TICKS) + levelRenderState.worldPartialTicks)
+            / 20.0f;
+    }
+
+    /** How much harder the wind blows in this weather (WorldUBO.windWeather): 1 when clear, up to 2 in a storm. */
+    private static float windWeather(Minecraft minecraft, float partialTicks) {
+        if (minecraft.level == null) {
+            return 1.0f;
+        }
+        return 1.0f + 0.5f * minecraft.level.getRainLevel(partialTicks)
+            + 0.5f * minecraft.level.getThunderLevel(partialTicks);
     }
 
     /** Mirrors vanilla's armor glint texture animation, which the shaders sample the glint layer with. */

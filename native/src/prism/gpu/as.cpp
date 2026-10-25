@@ -194,6 +194,48 @@ std::shared_ptr<DeviceLocalBuffer> recordBlasBuilds(const std::shared_ptr<Comman
     return scratch;
 }
 
+void recordBlasUpdates(const std::shared_ptr<CommandBuffer> &commandBuffer,
+                       std::span<const std::shared_ptr<BlasBuild>> builds,
+                       std::shared_ptr<DeviceLocalBuffer> &scratch,
+                       const std::shared_ptr<PhysicalDevice> &physicalDevice,
+                       const std::shared_ptr<Device> &device,
+                       const std::shared_ptr<VMA> &vma) {
+    if (builds.empty()) return;
+    const VkDeviceSize alignment = scratchAlignment(physicalDevice);
+    std::vector<VkDeviceSize> offsets;
+    offsets.reserve(builds.size());
+    VkDeviceSize total = 0;
+    for (const auto &build : builds) {
+        if (build == nullptr || build->target_ == nullptr ||
+            (build->flags_ & VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR) == 0) {
+            throw std::logic_error("bottom-level update of a structure that was not built to be updated");
+        }
+        offsets.push_back(total);
+        total = alignUp(total + std::max<VkDeviceSize>(build->sizes(device).updateScratchSize, 1), alignment);
+    }
+    // Half again as much room, so a few more sections coming into reach do not reallocate every frame.
+    if (scratch == nullptr || scratch->size() < total) {
+        scratch = allocateScratch(physicalDevice, device, vma, total + total / 2);
+    }
+    const VkDeviceAddress scratchAddress = scratch->bufferAddress();
+
+    std::vector<VkAccelerationStructureBuildGeometryInfoKHR> infos;
+    std::vector<const VkAccelerationStructureBuildRangeInfoKHR *> ranges;
+    infos.reserve(builds.size());
+    ranges.reserve(builds.size());
+    for (size_t i = 0; i < builds.size(); i++) {
+        VkAccelerationStructureBuildGeometryInfoKHR info = builds[i]->geometryInfo();
+        info.mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR;
+        info.srcAccelerationStructure = builds[i]->target_->handle();
+        info.dstAccelerationStructure = builds[i]->target_->handle();
+        info.scratchData.deviceAddress = scratchAddress + offsets[i];
+        infos.push_back(info);
+        ranges.push_back(builds[i]->ranges_.data());
+    }
+    vkCmdBuildAccelerationStructuresKHR(commandBuffer->vkCommandBuffer(), static_cast<uint32_t>(infos.size()),
+                                        infos.data(), ranges.data());
+}
+
 // ---- BlasBatch
 
 std::shared_ptr<BlasBuild> BlasBatch::add(VkBuildAccelerationStructureFlagsKHR flags) {

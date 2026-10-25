@@ -451,6 +451,20 @@
             "define": "VPT_RAIN_OPACITY"
         },
         {
+            "name": "render_pipeline.module.ray_tracing.attribute.wind",
+            "type": "bool",
+            "default_value": "render_pipeline.false",
+            "runtime": true,
+            "define": "VPT_WIND"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.wind_strength",
+            "type": "float_range:0.0-2.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "VPT_WIND_STRENGTH"
+        },
+        {
             "name": "render_pipeline.module.ray_tracing.attribute.water_clear_teal",
             "type": "float_range:0.0-1.0",
             "default_value": "0.0",

@@ -199,10 +199,23 @@ structures through a `gpu::BlasBatch` with `PREFER_FAST_TRACE`. Entities with a 
 records a build with `PREFER_FAST_TRACE`. Its instance, storage and scratch buffers only grow, so a normal frame
 allocates nothing; the returned structure is the same object until it has to grow.
 
-**Update vs rebuild:** the TLAS is rebuilt every frame (no refit). BLAS are never refit either: a changed section
-or entity gets a new structure. What is cached is the work around the TLAS: `WorldPrepare` keeps the section
+**Update vs rebuild:** the TLAS is rebuilt every frame (no refit). A changed section or entity gets a new BLAS; the
+one exception is wind (below). What is cached is the work around the TLAS: `WorldPrepare` keeps the section
 instance list (`chunkCache_`) and only rebuilds it when the grid's content version changes, and the hit SBT is
 refreshed only when that list does.
+
+### Wind: refit foliage
+
+With the pack's Wind setting on, Java gives every vertex of leaves, grass, flowers, vines and water plants a wind
+code (`ChunkManager.setWind`, `PBRVertexWriter.wind`, carried in `PBRVertex::postBase.x`): its kind and how far it is
+from where the plant is held. A geometry with such vertices is packed with float positions (the code in their fourth
+component, read by the shaders as `PositionVertex::pad0`) and a copy of them at rest, and its section's BLAS is built
+with `ALLOW_UPDATE` and left uncompacted. Every frame `Chunks::recordWind`, ahead of the TLAS build, takes the
+sections within 48 blocks of the camera, moves their foliage from rest with `world/wind/wind_displace.comp` and refits
+their structures in place (`gpu::recordBlasUpdates`); sections that leave that reach go back to rest once. The field
+itself is `shader/util/wind.glsl`, which the path tracer also evaluates, at this frame's and the last frame's wind
+time (`WorldUBO.windTime`, `windStrength`, `windWeather`), for the motion vectors of what it moved. With Wind off no
+section carries a code, and nothing is moved or refit. F3 shows the pass as `wind`.
 
 ## Ray tracing pipelines
 

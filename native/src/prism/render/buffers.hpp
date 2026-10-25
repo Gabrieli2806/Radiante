@@ -37,6 +37,9 @@ class Buffers : public SharedObject<Buffers> {
     // Completes the world uniform Java filled (everything before packParams) and writes it to the current frame's
     // buffer; the one written the time before goes to lastWorldUniformBuffer. ubo is left holding what was written.
     void setAndUploadWorldUniformBuffer(gpu::Data::WorldUBO &ubo);
+    // The world uniform written last: the current frame's once Java has handed it over. The pass that moves foliage
+    // reads its wind (Chunks::recordWind).
+    gpu::Data::WorldUBO lastWrittenWorldUniform();
     // The shader pack's live settings (WorldUBO.packParams), copied into every frame's world uniform. They live here
     // because the shader pack is recreated by every rebuild and Buffers is not.
     void setPackParams(const std::array<glm::vec4, PRISM_PACK_PARAM_COUNT> &params);

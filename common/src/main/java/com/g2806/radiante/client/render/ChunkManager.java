@@ -84,6 +84,79 @@ public final class ChunkManager {
         return state.getBlock() instanceof net.minecraft.world.level.block.VegetationBlock;
     }
 
+    /** Blocks of a column a stalk of sugar cane or kelp counts below itself for how far its top may sway. */
+    private static final int WIND_COLUMN_LIMIT = 6;
+
+    /**
+     * How a block sways in the wind (PBRVertexWriter.WIND_*), or WIND_NONE. Leaves and what hangs (vines, roots, moss)
+     * rustle in place; grass, flowers, crops, saplings and sugar cane sway about their foot; seagrass and kelp sway
+     * slowly with the current. Mushrooms stay still: they are stiff caps, not stalks.
+     */
+    private static int windKindOf(BlockState state) {
+        net.minecraft.world.level.block.Block block = state.getBlock();
+        if (state.is(BlockTags.LEAVES) || block instanceof net.minecraft.world.level.block.VineBlock
+            || block == Blocks.CAVE_VINES || block == Blocks.CAVE_VINES_PLANT || block == Blocks.WEEPING_VINES
+            || block == Blocks.WEEPING_VINES_PLANT || block == Blocks.HANGING_ROOTS
+            || block == Blocks.PALE_HANGING_MOSS || block == Blocks.LILY_PAD) {
+            return PBRVertexWriter.WIND_LEAVES;
+        }
+        if (block == Blocks.SEAGRASS || block == Blocks.TALL_SEAGRASS || block == Blocks.KELP
+            || block == Blocks.KELP_PLANT) {
+            return PBRVertexWriter.WIND_WATER;
+        }
+        if (block == Blocks.SUGAR_CANE || block instanceof net.minecraft.world.level.block.VegetationBlock
+            && !(block instanceof net.minecraft.world.level.block.MushroomBlock)) {
+            return PBRVertexWriter.WIND_GROUND;
+        }
+        return PBRVertexWriter.WIND_NONE;
+    }
+
+    /**
+     * Sets the scratch's wind for one block: its kind, and the rise and scale that turn a vertex's height in the block
+     * into its weight (PBRVertexWriter.wind). The top half of a tall plant starts where the bottom half ends; a stalk
+     * of sugar cane or kelp counts the blocks of it below, so its blocks bend as one and never come apart.
+     */
+    private static void setWind(SectionCompileScratch scratch, RenderSectionRegion region, BlockPos pos,
+        BlockState state, int sy) {
+        int kind = windKindOf(state);
+        scratch.windKind = kind;
+        scratch.windBaseY = sy;
+        scratch.windRise = 0.0f;
+        scratch.windScale = 1.0f;
+        if (kind == PBRVertexWriter.WIND_NONE) {
+            return;
+        }
+        net.minecraft.world.level.block.Block block = state.getBlock();
+        if (kind == PBRVertexWriter.WIND_LEAVES) {
+            // Leaves move most; what hangs a little less, a lily pad least, as it floats.
+            scratch.windScale = state.is(BlockTags.LEAVES) ? 1.0f : block == Blocks.LILY_PAD ? 0.4f : 0.7f;
+            return;
+        }
+        if (state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF)
+            && state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF)
+                == net.minecraft.world.level.block.state.properties.DoubleBlockHalf.UPPER) {
+            scratch.windRise = 1.0f;
+        }
+        boolean column = block == Blocks.SUGAR_CANE || block == Blocks.KELP || block == Blocks.KELP_PLANT;
+        if (column) {
+            int below = 0;
+            BlockPos.MutableBlockPos cursor = pos.mutable();
+            while (below < WIND_COLUMN_LIMIT) {
+                net.minecraft.world.level.block.Block under =
+                    region.getBlockState(cursor.move(Direction.DOWN)).getBlock();
+                boolean same = block == Blocks.SUGAR_CANE ? under == Blocks.SUGAR_CANE
+                    : under == Blocks.KELP || under == Blocks.KELP_PLANT;
+                if (!same) {
+                    break;
+                }
+                below++;
+            }
+            // Stiffer than grass: a stalk of three sways at its top as far as a tall flower.
+            scratch.windScale = 0.5f;
+            scratch.windRise = below * 0.5f;
+        }
+    }
+
     private static final int VERTEX_FORMAT_PBR = 12;
     public static final int GEOMETRY_TYPE_WORLD_SOLID = 1;
     public static final int GEOMETRY_TYPE_WORLD_TRANSPARENT = 2;
@@ -123,6 +196,11 @@ public final class ChunkManager {
     private static boolean forceAllDirty;
     /** Whether block faces keep vanilla's face shading in their colour (Pipeline.FACE_SHADING_ATTRIBUTE). */
     private static volatile boolean faceShading = true;
+    /**
+     * Whether foliage is meshed with wind codes (Pipeline.WIND_ATTRIBUTE). Without them nothing sways, and the
+     * renderer neither moves nor refits anything: the wind costs nothing while it is off.
+     */
+    private static volatile boolean wind;
     /**
      * Newest build handed out for each section. A synchronous rebuild can overtake an older one still running in
      * the background, and the older one must not land on top of it afterwards.
@@ -354,6 +432,12 @@ public final class ChunkManager {
             faceShading = shading;
             forceAllDirty = true;
         }
+        boolean windOn = com.g2806.radiante.client.pipeline.Pipeline.isShaderPackToggleOn(
+            com.g2806.radiante.client.pipeline.Pipeline.WIND_ATTRIBUTE);
+        if (windOn != wind) {
+            wind = windOn;
+            forceAllDirty = true;
+        }
         boolean rebuildAll = forceAllDirty;
         forceAllDirty = false;
         // Relocating a slot takes the grid's write lock, so a builder thread cannot check the slot's owner, lose it
@@ -540,6 +624,7 @@ public final class ChunkManager {
         // Vanilla's fixed face shading (its cardinal lighting) comes multiplied into the colour of every face, and is
         // divided back out unless it is wanted (FACE_SHADING_ATTRIBUTE): the colour left is the block's tint alone.
         boolean unshade = !faceShading;
+        boolean windOn = wind;
         // The lights Bedrock RTX adds at torches, lanterns and end rods, where blocks cast their glow as it does.
         boolean pointLights = com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow();
         net.minecraft.world.level.CardinalLighting cardinal = region.cardinalLighting();
@@ -593,6 +678,11 @@ public final class ChunkManager {
             scratch.blockIsUnlit = EmissionTiles.isUnlit(blockState);
             scratch.blockIsPlant = isPlant(blockState);
             scratch.blockIsPane = scratch.blockIsGlass && isGlassPane(blockState);
+            scratch.windKind = PBRVertexWriter.WIND_NONE;
+            if (windOn) {
+                setWind(scratch, region, pos, blockState, SectionPos.sectionRelative(pos.getY()));
+            }
+            int blockWind = scratch.windKind;
             if (scratch.blockIsPane) {
                 scratch.paneCapUp = !isGlass(region.getBlockState(pos.above()));
                 scratch.paneCapDown = !isGlass(region.getBlockState(pos.below()));
@@ -606,6 +696,8 @@ public final class ChunkManager {
                 scratch.blockIsUnlit = false;
                 scratch.blockIsPlant = false;
                 scratch.blockIsPane = false;
+                // The water round seagrass and kelp stays where it is.
+                scratch.windKind = PBRVertexWriter.WIND_NONE;
                 scratch.fluidIsWater = fluidState.is(net.minecraft.tags.FluidTags.WATER);
                 scratch.fluidIsLava = fluidState.is(net.minecraft.tags.FluidTags.LAVA);
                 fluidRenderer.tesselate(region, pos, fluidOutput, blockState, fluidState);
@@ -614,6 +706,7 @@ public final class ChunkManager {
                 scratch.blockIsUnlit = EmissionTiles.isUnlit(blockState);
                 scratch.blockIsPlant = isPlant(blockState);
                 scratch.blockIsPane = scratch.blockIsGlass && isGlassPane(blockState);
+                scratch.windKind = blockWind;
                 // Water with water or solid blocks on every side draws no face, and never asks for a writer: when
                 // that is the first fluid of the section there is none yet, and the whole section failed to build.
                 if (scratch.currentWriter() != null) {
@@ -912,6 +1005,11 @@ public final class ChunkManager {
         /** The block being written is a light block in a state that gives no light; see PBRVertexWriter.unlit. */
         private boolean blockIsUnlit;
         private boolean blockIsPlant;
+        /** How the block being written sways in the wind; see setWind and PBRVertexWriter.wind. */
+        private int windKind = PBRVertexWriter.WIND_NONE;
+        private float windBaseY;
+        private float windRise;
+        private float windScale;
         private boolean blockIsPane;
         private boolean paneCapUp;
         private boolean paneCapDown;
@@ -964,7 +1062,7 @@ public final class ChunkManager {
             }
             writer.textureId(atlasId).alphaMode(alphaModeOf(layer)).coordinate(0).water(false).lava(false).glass(this.blockIsGlass).plant(this.blockIsPlant)
                 .glassPane(this.blockIsPane, this.paneCapUp, this.paneCapDown).blend(this.blockIsBlend)
-                .unlit(this.blockIsUnlit);
+                .unlit(this.blockIsUnlit).wind(this.windKind, this.windBaseY, this.windRise, this.windScale);
             this.current = writer;
             return writer;
         }

@@ -111,3 +111,5 @@ render_pipeline.module.ray_tracing.attribute.bedrock_materials=基岩版材质�
 render_pipeline.module.ray_tracing.attribute.bedrock_original=Bedrock RTX (Experimental)
 render_pipeline.module.ray_tracing.attribute.bedrock_enhanced=Bedrock RTX (Enhanced)
 render_pipeline.module.ray_tracing.attribute.face_shading=原版方块面明暗
+render_pipeline.module.ray_tracing.attribute.wind=风
+render_pipeline.module.ray_tracing.attribute.wind_strength=风力

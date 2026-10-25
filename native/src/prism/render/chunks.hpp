@@ -64,6 +64,21 @@ struct ChunkCompaction {
     VkDeviceSize compactedSize;
 };
 
+// One geometry of a section that sways with the wind: where its positions lie, where the copy of them at rest lies
+// (both four floats per vertex, the fourth the wind code), and how many there are.
+struct WindRegion {
+    VkDeviceAddress positions = 0;
+    VkDeviceAddress rest = 0;
+    uint32_t vertexCount = 0;
+};
+
+// The wind of this frame, as WorldUBO carries it (util/wind.glsl).
+struct WindParams {
+    float time = 0.0f;
+    float strength = 0.0f;
+    float weather = 1.0f;
+};
+
 // One slot of the section grid and what it draws.
 struct Chunk1 : public SharedObject<Chunk1> {
     int x = 0;
@@ -89,6 +104,12 @@ struct Chunk1 : public SharedObject<Chunk1> {
     std::shared_ptr<gpu::DeviceLocalBuffer> lightBuffer;
     // This slot's entry in Chunks::occupied(), kept equal to (blas != nullptr).
     uint8_t *occupiedFlag = nullptr;
+    // A section with foliage that sways (Java sends wind codes only while Wind is on): the description its structure
+    // was built from, with ALLOW_UPDATE, to refit it from, and its moving geometries. Null otherwise.
+    std::shared_ptr<gpu::BlasBuild> windBuild;
+    std::shared_ptr<std::vector<WindRegion>> windRegions;
+    // The wind pass (Chunks::recordWind) that last moved this section.
+    uint64_t windPass = 0;
 };
 
 // Builds the queued sections in batches alongside the frames. A batch's uploads, structure builds and compacted-size
@@ -172,6 +193,12 @@ class Chunks : public SharedObject<Chunks> {
     // Replaces freshly built section structures with compacted copies, recorded into `commandBuffer` ahead of the
     // TLAS build. Call under mutex(), after the scheduler has collected finished batches.
     void compactFinishedBlases(std::shared_ptr<gpu::CommandBuffer> commandBuffer);
+    // Moves the swaying foliage of the sections near the camera to where the wind puts it this frame and refits their
+    // structures, recorded into `commandBuffer` ahead of the TLAS build; sections that left the camera's reach go
+    // back to rest once. Records nothing while no section sways. Call under mutex(), after this frame's builds.
+    void recordWind(const std::shared_ptr<gpu::CommandBuffer> &commandBuffer,
+                    const glm::dvec3 &cameraPos,
+                    const WindParams &wind);
 
     // Bumped whenever any slot's geometry is replaced or dropped, so per-frame work can cache what depends on it.
     static uint64_t contentVersion();
@@ -247,6 +274,16 @@ class Chunks : public SharedObject<Chunks> {
     std::vector<std::pair<float, int64_t>> rankedScratch_;
     std::shared_ptr<ChunkBuildScheduler> chunkBuildScheduler_;
     std::vector<std::shared_ptr<gpu::BlasBuild>> importantBlasBuilds_;
+
+    // The wind pass: the slots with foliage that sways, those the last pass moved, its pipeline, per frame slot the
+    // list of what it moves, and the scratch memory of its refits.
+    PendingSlots windSlots_;
+    std::vector<int64_t> windMoved_;
+    uint64_t windPassCount_ = 0;
+    std::shared_ptr<gpu::DescriptorTable> windTable_;
+    std::shared_ptr<gpu::ComputePipeline> windPipeline_;
+    std::vector<std::shared_ptr<gpu::HostVisibleBuffer>> windJobBuffers_;
+    std::shared_ptr<gpu::DeviceLocalBuffer> windScratch_;
 
     // The light list table, a copy per frame slot, and the revision of the table each copy holds.
     std::vector<ChunkPackedData> chunkPackedData_;

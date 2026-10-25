@@ -117,6 +117,7 @@ vec3 sampleSurfaceDirectLight(SampledSurface surface,
 }
 
 #include "common/block_light.glsl"
+#include "util/wind.glsl"
 
 /** Traces the ray left for later in one slot and returns the light it lets through; nothing when none is waiting. */
 vec3 ptTraceDeferredShadowRay(uint slot) {
@@ -178,6 +179,29 @@ bool loadPreviousScenePos(uint geometryBufferIndex, uint primitiveID, vec3 baryC
     mat4 lastModelMat = lastObjToWorldMats.mat[g_hit.instanceId];
     prevScenePos = mat3(lastModelMat) * prevLocalPos + lastModelMat[3].xyz;
     return true;
+}
+
+/**
+ * How far a point of foliage the wind moves (util/wind.glsl) went since the frame before, for its motion vector:
+ * the same field the pass that moved it evaluated, now and with last frame's time, strength and camera. hitPos is the
+ * point relative to this frame's camera, windCode the code interpolated over its triangle.
+ */
+vec3 ptWindMotion(vec3 hitPos, float windCode) {
+    dvec3 world = worldUBO.cameraPos.xyz + dvec3(hitPos);
+    world.xz -= floor(world.xz / double(WIND_PERIOD)) * double(WIND_PERIOD);
+    vec3 p = vec3(world);
+    vec3 now = windOffset(p, windCode, worldUBO.windTime, worldUBO.windStrength, worldUBO.windWeather) *
+               windFade(length(hitPos));
+    // The field is read where the point stands at rest, as the pass read it, not where it has been blown to.
+    p -= now;
+    vec3 restPos = hitPos - now;
+    now = windOffset(p, windCode, worldUBO.windTime, worldUBO.windStrength, worldUBO.windWeather) *
+          windFade(length(restPos));
+    vec3 restFromLastCamera = restPos + vec3(worldUBO.cameraPos.xyz - vptLastWorldUBO.cameraPos.xyz);
+    vec3 before = windOffset(p, windCode, vptLastWorldUBO.windTime, vptLastWorldUBO.windStrength,
+                             vptLastWorldUBO.windWeather) *
+                  windFade(length(restFromLastCamera));
+    return now - before;
 }
 
 /**

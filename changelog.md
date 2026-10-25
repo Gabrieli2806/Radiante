@@ -18,6 +18,10 @@ All notable changes to this project are documented in this file.
 - The PrismRT GPU line on the F3 screen wraps onto more lines instead of running into the right-hand column (#13).
 - The shader cache (`radiante/cache/shaders`) is trimmed at startup to 100 MB, least recently used first, and the
   pipeline cache is deleted past 256 MB and rebuilt by the warm-up on the next start (#23).
+- Wind (Sky & Water, off by default): leaves, grass, flowers, crops, vines, sugar cane and lily pads sway near the
+  player, harder in rain and thunder, and seagrass and kelp sway with the current. The geometry itself moves (the
+  sections nearby are refit every frame), so shadows and reflections follow, and the motion vectors carry the sway so
+  DLSS and the denoisers do not smear it. Wind Strength (0-200%) applies live. Off, it costs nothing (#32).
 
 ## [1.1.0] - 2026-10-24
 

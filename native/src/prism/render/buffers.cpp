@@ -13,6 +13,7 @@
 
 // The C++ layout must be the std140 one the shaders see: a size check alone missed offHandLightPos sitting 4 bytes
 // early. BufferProxy.WORLD_UBO_SIZE on the Java side fills everything before packParams; the two must move together.
+static_assert(offsetof(gpu::Data::WorldUBO, windTime) == 692); // BufferProxy.WIND_OFFSET
 static_assert(offsetof(gpu::Data::WorldUBO, offHandLightPos) == 704);
 static_assert(offsetof(gpu::Data::WorldUBO, packParams) == 736);
 static_assert(sizeof(gpu::Data::WorldUBO) == 1760);
@@ -223,6 +224,11 @@ void Buffers::setAndUploadWorldUniformBuffer(gpu::Data::WorldUBO &ubo) {
     write(*ensureUniform(uniforms.world, *framework, sizeof(ubo), usage), &ubo, sizeof(ubo));
     write(*ensureUniform(uniforms.lastWorld, *framework, sizeof(ubo), usage), &lastWorld_, sizeof(lastWorld_));
     lastWorld_ = ubo;
+}
+
+gpu::Data::WorldUBO Buffers::lastWrittenWorldUniform() {
+    std::scoped_lock lock(mutex_);
+    return lastWorld_;
 }
 
 void Buffers::setPackParams(const std::array<glm::vec4, PRISM_PACK_PARAM_COUNT> &params) {

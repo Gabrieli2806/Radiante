@@ -304,6 +304,17 @@ void ptShadeDefault(bool viewMark) {
             if (isRainSurface(packedData)) { prevScenePos.y += worldUBO.rainFallPerFrame; }
             mainRay.prevScenePos = prevScenePos;
             mainRay.hasPrevScenePos = 1u;
+        } else if (worldUBO.windStrength > 0.0 || vptLastWorldUBO.windStrength > 0.0) {
+            // Foliage the wind moves was somewhere else last frame: without its own motion the upscaler's history
+            // smeared swaying leaves into ghosts. Only sections carry a wind code, in the w of their positions.
+            float windCode = baryCoords.x * uintBitsToFloat(g_hit.p0.pad0) +
+                             baryCoords.y * uintBitsToFloat(g_hit.p1.pad0) +
+                             baryCoords.z * uintBitsToFloat(g_hit.p2.pad0);
+            if (windCode > 0.0) {
+                vec3 cameraDelta = vec3(worldUBO.cameraPos.xyz - vptLastWorldUBO.cameraPos.xyz);
+                mainRay.prevScenePos = hitWorldPos + cameraDelta - ptWindMotion(hitWorldPos, windCode);
+                mainRay.hasPrevScenePos = 1u;
+            }
         }
     }
 

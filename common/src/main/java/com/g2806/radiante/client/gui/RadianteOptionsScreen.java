@@ -914,6 +914,9 @@ public class RadianteOptionsScreen extends Screen {
                 this.pendingPackToggles.put(attribute, Boolean.TRUE);
             }
         }
+        if (Pipeline.supportsShaderPackToggle(Pipeline.WIND_ATTRIBUTE)) {
+            this.pendingPackToggles.put(Pipeline.WIND_ATTRIBUTE, Boolean.FALSE);
+        }
         this.pendingDepthOfField = Boolean.FALSE;
         this.pendingReflex = false;
         // The shader pack's own defaults.
@@ -1269,6 +1272,7 @@ public class RadianteOptionsScreen extends Screen {
             OptionInstance.createBoolean("options.radiante.rain_wetness",
                 tooltip("options.radiante.rain_wetness"), staged("rainWetness", Options.rainWetness),
                 value -> stage("rainWetness", value)),
+            packToggle(Pipeline.WIND_ATTRIBUTE, "options.radiante.wind"), tunable(Tunable.WIND_STRENGTH, false),
             seamlessGlass, seamlessScope,
             OptionInstance.createBoolean("options.radiante.biome_ambiance",
                 OptionInstance.cachedConstantTooltip(Component.translatable("options.radiante.biome_ambiance.tooltip")),

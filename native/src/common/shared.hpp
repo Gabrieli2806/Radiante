@@ -136,6 +136,8 @@ struct PBRVertex {
     T_UINT coordinate;
     T_FLOAT albedoEmission;
 
+    // Section geometry carries its wind code in x (util/wind.glsl): 0 for a vertex that stays put. y and z are unused
+    // there; the star pass reads all three.
     T_VEC3 postBase;
     T_UINT alphaMode;
 };
@@ -283,10 +285,13 @@ struct WorldUBO {
     T_UINT lodCoverageAddressHi;
     T_UINT lodCoveragePad0;
     T_UINT lodCoveragePad1;
-    T_UINT heldLightPad0;
-    T_UINT heldLightPad1;
-    // std140 starts the next vec4 at 704; C++ would put it at 700 without this.
-    T_UINT heldLightPad2;
+    // Foliage wind (util/wind.glsl), written by Java: the wind time in seconds of game time, the player's strength (0
+    // with wind off) and the weather's (1 in clear weather, more in rain and thunder). The native pass that moves
+    // foliage reads them too.
+    T_FLOAT windTime;
+    T_FLOAT windStrength;
+    // std140 starts the next vec4 at 704; C++ would put it at 700 without this one.
+    T_FLOAT windWeather;
 
     // ---- Off hand (704..735)
     // The off hand's light, laid out like heldLightPos / heldLightColor, so a torch in each hand lights both sides.

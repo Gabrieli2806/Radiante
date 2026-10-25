@@ -61,7 +61,18 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private static final int OFF_LIGHT_UV = 96;
     private static final int OFF_COORDINATE = 104;
     private static final int OFF_ALBEDO_EMISSION = 108;
+    /** postBase.x, which carries the wind code of section geometry; see wind(). */
+    private static final int OFF_WIND = 112;
     private static final int OFF_ALPHA_MODE = 124;
+
+    /** The kinds of foliage the wind moves, as util/wind.glsl numbers them; see wind(). */
+    public static final int WIND_GROUND = 0;
+    public static final int WIND_LEAVES = 1;
+    public static final int WIND_WATER = 2;
+    /** No wind: the vertices stay put. */
+    public static final int WIND_NONE = -1;
+    private static final float WIND_KIND_STRIDE = 8.0f;
+    private static final float WIND_MAX_WEIGHT = 4.0f;
 
     /**
      * Furthest a vertex may sit from the origin of its coordinate space. Minecraft occasionally poses something at
@@ -96,6 +107,10 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private boolean unlit;
     private boolean lava;
     private boolean plant;
+    private int windKind = WIND_NONE;
+    private float windBaseY;
+    private float windRise;
+    private float windScale;
     private int paneFlags;
     private boolean computeQuadNormals;
     /** Divides vanilla's face shading back out of the colour of quads whose normal is computed (fluids). */
@@ -230,6 +245,33 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     public PBRVertexWriter plant(boolean plant) {
         this.plant = plant;
         return this;
+    }
+
+    /**
+     * How the vertices from here on sway in the wind (util/wind.glsl), carried to the renderer as a wind code in
+     * postBase.x. Each gets a weight, how far it is from where the plant is held: {@code (y - baseY) * scale + rise}
+     * for grass and water plants, so a stalk's foot stays where it grows and its tip moves most; {@code scale} alone
+     * for leaves, which move the same at every corner so that neighbouring blocks never part. WIND_NONE (the default)
+     * keeps them still.
+     */
+    public PBRVertexWriter wind(int kind, float baseY, float rise, float scale) {
+        this.windKind = kind;
+        this.windBaseY = baseY;
+        this.windRise = rise;
+        this.windScale = scale;
+        return this;
+    }
+
+    private float windCode(float y) {
+        if (this.windKind == WIND_NONE) {
+            return 0.0f;
+        }
+        float weight = this.windKind == WIND_LEAVES ? this.windScale
+            : (y - this.windBaseY) * this.windScale + this.windRise;
+        weight = Math.max(0.0f, Math.min(WIND_MAX_WEIGHT, weight));
+        // A leaf or water plant vertex keeps its kind even without weight: a code interpolated across a triangle must
+        // never read as another kind (util/wind.glsl). Grass, the first kind, is 0 at its foot, the same as still.
+        return this.windKind * WIND_KIND_STRIDE + weight;
     }
 
     public PBRVertexWriter layerOffset(float layerOffset) {
@@ -408,6 +450,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         MemoryUtil.memPutInt(v + OFF_GLINT_TEXTURE, this.glintTextureId);
         MemoryUtil.memPutInt(v + OFF_COORDINATE, this.coordinate);
         MemoryUtil.memPutFloat(v + OFF_ALBEDO_EMISSION, this.albedoEmission);
+        MemoryUtil.memPutFloat(v + OFF_WIND, windCode(y));
         MemoryUtil.memPutInt(v + OFF_ALPHA_MODE,
             this.alphaMode | (this.water ? WATER_FLAG : 0) | (this.rain ? RAIN_FLAG : 0) | (this.held ? HELD_FLAG : 0) | (this.glass ? GLASS_FLAG : 0)
                 | (this.plant ? PLANT_FLAG : 0) | this.paneFlags | (this.blend ? BLEND_FLAG : 0)
