@@ -75,6 +75,10 @@ struct Vertex {
     // The surface of lava: shown by its colour at a steady brightness, not by the light on it.
     static constexpr uint32_t alphaModeLavaFlag = 0x8000u;
     static constexpr uint32_t lavaSurfaceBit = 1u << 28u;
+    // A layer drawn over a face of the same model and lifted off it (the grass block's side overlay): not carved by
+    // height maps.
+    static constexpr uint32_t alphaModeLayerFlag = 0x10000u;
+    static constexpr uint32_t layerSurfaceBit = 1u << 29u;
 
     // The layout of vertex format T: one per format, made on first use and kept for the process, so pipelines may
     // point into it. Only the formats specialized below have one; asking for any other does not compile.
@@ -133,13 +137,13 @@ template <>
 VertexLayoutInfo &Vertex::vertexLayoutInfo<VertexFormat::PBRVertex>();
 
 inline uint32_t Vertex::packMaterialFlags(const VertexFormat::PBRVertex &vertex) {
-    // The surface flags fill alphaMode bits 4 to 13 and keep their order thirteen bits higher in the packed word, so
+    // The surface flags fill alphaMode bits 4 to 16 and keep their order thirteen bits higher in the packed word, so
     // they move together.
-    constexpr uint32_t surfaceFlags = 0xBFF0u;
+    constexpr uint32_t surfaceFlags = 0x1BFF0u;
     constexpr uint32_t surfaceShift = 13u;
     static_assert((alphaModeWaterFlag | alphaModeRainFlag | alphaModeHeldFlag | alphaModeGlassFlag |
                    alphaModePlantFlag | alphaModePaneFlag | alphaModeCapUpFlag | alphaModeCapDownFlag |
-                   alphaModeBlendFlag | alphaModeUnlitFlag | alphaModeLavaFlag) == surfaceFlags);
+                   alphaModeBlendFlag | alphaModeUnlitFlag | alphaModeLavaFlag | alphaModeLayerFlag) == surfaceFlags);
     static_assert((alphaModeWaterFlag << surfaceShift) == waterSurfaceBit &&
                   (alphaModeRainFlag << surfaceShift) == rainSurfaceBit &&
                   (alphaModeHeldFlag << surfaceShift) == heldSurfaceBit &&
@@ -150,7 +154,8 @@ inline uint32_t Vertex::packMaterialFlags(const VertexFormat::PBRVertex &vertex)
                   (alphaModeCapDownFlag << surfaceShift) == paneCapDownBit &&
                   (alphaModeBlendFlag << surfaceShift) == blendSurfaceBit &&
                   (alphaModeUnlitFlag << surfaceShift) == unlitSurfaceBit &&
-                  (alphaModeLavaFlag << surfaceShift) == lavaSurfaceBit);
+                  (alphaModeLavaFlag << surfaceShift) == lavaSurfaceBit &&
+                  (alphaModeLayerFlag << surfaceShift) == layerSurfaceBit);
     static_assert((alphaModePointLightFlag & surfaceFlags) == 0);
 
     uint32_t packed = 0;

@@ -183,6 +183,7 @@ void ptShadeDefault(bool viewMark) {
     vec3 dposdu = vec3(1.0, 0.0, 0.0);
     vec3 dposdv = vec3(0.0, 1.0, 0.0);
     bool hasHeightMapSurface = false;
+    bool hitIsLayer = false;
     float maxDepthWorld = 0.0;
     mat3 objectToWorld = g_hit.objectToWorld;
     mat3 normalMatrix = g_hit.normalMatrix;
@@ -240,6 +241,7 @@ void ptShadeDefault(bool viewMark) {
 
         isWaterMaterial = isWaterSurface(packedData);
         g_hitIsGlass = isGlassSurface(packedData);
+        hitIsLayer = isLayerSurface(packedData);
         if (textureMap.flag >= 0) {
             ivec4 flags = ivec4(round(sampleTexture(textures[nonuniformEXT(textureMap.flag)], textureUV, ceil(lod), false) * 255.0));
             isWaterMaterial = isWaterMaterial || (flags.r & 0x1) > 0;
@@ -273,6 +275,9 @@ void ptShadeDefault(bool viewMark) {
     if (dot(baseGeoNormal, baseViewDir) < 0.0) { baseGeoNormal = -baseGeoNormal; }
     // Glass is flat: carving its frame by a height map put dark side walls along the joins between glass blocks.
     if (g_hitIsGlass) { hasHeightMapSurface = false; }
+    // Nor is a layer lifted over a face of its block (the grass block's side overlay): where its carving let the view
+    // past an edge, the face under it showed through, and that side of the block lost its overlay.
+    if (hitIsLayer) { hasHeightMapSurface = false; }
     vec3 cameraOrigin = vec3(worldUBO.cameraEffectedViewMatInv * vec4(0.0, 0.0, 0.0, 1.0));
     bool traceLocalHeight =
         hasHeightMapSurface && (lod == 0.0 || distance(planeHitWorldPos, cameraOrigin) <= VPT_PARALLAX_CLOSE_DISTANCE) &&
