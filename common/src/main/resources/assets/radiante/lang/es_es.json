@@ -424,6 +424,7 @@
   "options.radiante.download.needed": "(Instalar)",
   "options.radiante.download.restart_needed": "(Requiere reinicio)",
   "options.radiante.download.button.install": "Instalar %s (%s MB)",
+  "options.radiante.download.button.update": "Actualizar %s (%s MB)",
   "options.radiante.download.button.restart": "Reiniciar para usar %s",
   "options.radiante.download.button.delete": "Borrar %s",
   "options.radiante.download.button.downloading": "Descargando %s... %s%%",

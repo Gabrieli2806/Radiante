@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- When a newer DLSS or XeSS is available, the settings button for it reads "Update DLSS" instead of "Delete DLSS" and
+  opens the update offer, so skipping the start-up prompt for a version no longer leaves no way to update.
 - The settings screen works with a controller (#31). Controller mods that move through menus with Minecraft's own
   focus navigation (Controlify and the like) or press keys for the buttons now step through the options: D-pad or
   stick to move and change values, A to flip or press, B to leave. With Controlify the bumpers change section, X

@@ -40,7 +40,8 @@ escaladores que tu GPU puede usar aunque no estén instalados:
 - `RT-DLSS (Requiere reinicio)`: descargado, se carga al reiniciar.
 
 Al elegir uno así, la barra de abajo cambia a **Instalar DLSS (115 MB)**, **Reiniciar para usar
-DLSS** o **Borrar DLSS**, según el caso. Instalar y borrar se hacen **fuera de un mundo**: dentro
+DLSS**, **Actualizar DLSS (115 MB)** (cuando esta versión trae una más nueva; "Omitir esta versión" en el aviso del inicio
+solo oculta ese aviso, el botón sigue) o **Borrar DLSS**, según el caso. Instalar y borrar se hacen **fuera de un mundo**: dentro
 de una partida el botón pide salir primero. Los escaladores se cargan al iniciar el juego, así que
 instalar o borrar siempre termina en un reinicio forzado.
 

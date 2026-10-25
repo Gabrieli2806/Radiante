@@ -39,8 +39,9 @@ upscalers your GPU can use even when they are not installed:
 - `RT-DLSS (Install)`: can be downloaded.
 - `RT-DLSS (Restart required)`: downloaded, loads after a restart.
 
-Picking one of those turns the bottom bar into **Install DLSS (115 MB)**, **Restart to use DLSS**
-or **Delete DLSS**, as fits. Installing and deleting are done **outside a world**: in a world the
+Picking one of those turns the bottom bar into **Install DLSS (115 MB)**, **Restart to use DLSS**,
+**Update DLSS (115 MB)** (when this build has a newer version; "Skip this version" on the start-up offer only hides that
+prompt, the button stays) or **Delete DLSS**, as fits. Installing and deleting are done **outside a world**: in a world the
 button asks you to leave first. Upscalers are loaded when the game starts, so installing or
 deleting always ends in a forced restart.
 

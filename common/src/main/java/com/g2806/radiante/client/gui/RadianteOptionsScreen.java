@@ -361,7 +361,8 @@ public class RadianteOptionsScreen extends Screen {
 
     /**
      * The bottom-bar button for the upscaler of the pipeline in the selector: Install when it is not downloaded,
-     * Restart when it is downloaded but not loaded yet, Delete when it is in use. None for FSR and the others. Always
+     * Restart when it is downloaded but not loaded yet, Update when it is in use and this build has a newer version,
+     * Delete when it is in use. None for FSR and the others. Always
      * shown: picking a pipeline reopens the screen, which drops the focus a row-anchored button would wait for.
      */
     private SettingsLayout.Extra upscalerFooterButton() {
@@ -393,6 +394,12 @@ public class RadianteOptionsScreen extends Screen {
                         List.of(Component.literal(name))));
                 }, true, null);
         }
+        if (UpscalerDownloads.isOutdated(component)) {
+            // Skipping the start-up offer only hides that prompt: the way to update stays here.
+            return new SettingsLayout.Extra(Component.translatable("options.radiante.download.button.update", name,
+                Math.round(component.downloadBytes / 1_000_000.0)),
+                manageTooltip, () -> openUpscalerScreen(component), !inWorld, null);
+        }
         return new SettingsLayout.Extra(Component.translatable("options.radiante.download.button.delete", name),
             manageTooltip, () -> openUpscalerScreen(component), !inWorld, null);
     }
@@ -404,8 +411,10 @@ public class RadianteOptionsScreen extends Screen {
         }
         this.applied = true;
         Screen back = new RadianteOptionsScreen(this);
-        UpscalerDownloadScreen.Mode mode = UpscalerDownloads.isInstalled(component)
-            ? UpscalerDownloadScreen.Mode.DELETE : UpscalerDownloadScreen.Mode.CONFIRM;
+        UpscalerDownloadScreen.Mode mode = !UpscalerDownloads.isInstalled(component)
+            ? UpscalerDownloadScreen.Mode.CONFIRM
+            : UpscalerDownloads.isOutdated(component) ? UpscalerDownloadScreen.Mode.UPDATE
+            : UpscalerDownloadScreen.Mode.DELETE;
         this.minecraft.gui.setScreen(new UpscalerDownloadScreen(back, component, mode));
     }
 
