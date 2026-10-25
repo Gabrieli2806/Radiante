@@ -18,6 +18,18 @@ All notable changes to this project are documented in this file.
 - The PrismRT GPU line on the F3 screen wraps onto more lines instead of running into the right-hand column (#13).
 - The shader cache (`radiante/cache/shaders`) is trimmed at startup to 100 MB, least recently used first, and the
   pipeline cache is deleted past 256 MB and rebuilt by the warm-up on the next start (#23).
+- A texture Minecraft makes again at the same size, format and mip count keeps its image, and its descriptor is not
+  rewritten under the frames in flight: the hazard left from the resource reload crash (#25).
+- New Light From Glowing Pixels option (Lighting, off by default): light blocks cast their light from the glowing
+  parts of their texture, a lit redstone lamp from its filaments, as Bedrock RTX does, instead of from the whole
+  block. The same amount of light, from more and smaller sources (#18).
+- The grass block's side overlay (and any layer lifted over a face of its block) is no longer carved by Carved
+  Surfaces, which along its edges could let the view through to the side under it, so that face showed no overlay
+  (#10).
+- The sun and the moon are hidden behind vanilla clouds: through a cloud's haze they stayed almost fully visible.
+  Their halos and the stars go with them (#12).
+- Moonlight comes from the lit part of the moon's disc, not from a point at its centre: with a crescent moon the
+  light visibly came from beside it (#11).
 
 ## [1.1.0] - 2026-10-24
 
