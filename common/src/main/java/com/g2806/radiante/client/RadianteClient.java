@@ -159,6 +159,8 @@ public final class RadianteClient {
             throw new RuntimeException(e);
         }
 
+        CacheTrim.run(radianceDir);
+
         long unpackStart = System.nanoTime();
         loadInstalledNatives();
         removeStaleNatives();
