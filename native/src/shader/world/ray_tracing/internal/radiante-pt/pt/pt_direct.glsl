@@ -72,7 +72,7 @@ vec3 sampleSurfaceDirectLight(SampledSurface surface,
     vec3 lightDir = celestialSunDirection();
     if (lightDir.y < 0.0 && !endFlash) { lightDir = celestialMoonDirection(); }
 
-    vec3 sampledLightDir = SampleVMF(mainRay.seed, lightDir, 3000.0);
+    vec3 sampledLightDir = SampleVMFXi(ptCelestialSample(mainRay), lightDir, 3000.0);
     if (!endFlash && celestialSunDirection().y < 0.0) {
         bool onDisc;
         vec3 moonSample = sampleMoonDiscDirection(mainRay.seed, lightDir, onDisc);

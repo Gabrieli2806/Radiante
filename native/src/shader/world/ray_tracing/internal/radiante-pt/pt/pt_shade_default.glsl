@@ -112,6 +112,7 @@ layout(location = 0) rayPayloadInEXT MainRay mainRay;
 layout(location = 1) rayPayloadEXT ShadowRay shadowRay;
 
 #include "pt/pt_hit_context.glsl"
+#include "pt/pt_sampling.glsl"
 #include "pt/pt_side_channels.glsl"
 #include "pt/pt_material.glsl"
 #include "pt/pt_parallax.glsl"
@@ -605,8 +606,8 @@ void ptShadeDefault(bool viewMark) {
                 bsdf = surfaceTint * (1.0 - fresnel);
             }
         } else {
-            bsdf = DisneySample(currentSurface.mat, currentViewDir, currentSurface.shadingNormal, sampleDir, pdf,
-                                mainRay.seed, lobeType);
+            bsdf = DisneySampleXi(currentSurface.mat, currentViewDir, currentSurface.shadingNormal, sampleDir, pdf,
+                                  ptBsdfSample(mainRay), lobeType);
         }
 
         // Leaving the water's surface, through it or off it. Off the top, down goes into the water and up out of it;

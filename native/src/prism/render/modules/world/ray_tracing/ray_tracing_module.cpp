@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <exception>
 #include <filesystem>
 #include <future>
@@ -867,7 +868,10 @@ void RayTracingModule::collectShaders(Pass &,
                                       std::vector<ShaderPack::ShaderCreateInfo> &requests) {
     const auto &config = pass.config;
     const uint32_t executionSet = shaderPack_->executionSet(kRuntimeResourceSet);
+    // RADIANTE_NO_SOBOL draws the path's sampling decisions from plain random numbers again (pt/pt_sampling.glsl),
+    // to compare the two.
     auto shaderDefinitions = config.definitions;
+    if (std::getenv("RADIANTE_NO_SOBOL") != nullptr) shaderDefinitions["VPT_LOW_DISCREPANCY"] = "0";
     // Shadow rays read the opacity micromaps of cut-out terrain in two states where the device has them (util/ray.glsl).
     {
         auto owner = framework_.lock();
