@@ -12,6 +12,12 @@ All notable changes to this project are documented in this file.
   hold it are ignored.
 - Clean-up of code that was never reached: about 2,600 lines of Java, native and shader code, among them the
   post-rendered entity path, unused native setters (max fps, vsync) and unused lang keys. No change in the picture.
+- Entities that give off light (glow item frames, end crystals, glow squids, blazes...) keep lighting the scene when
+  the camera turns away from them, as far as the Entity Light Reach; they used to be dropped with the view frustum
+  and the room's light changed with the camera (#40).
+- The PrismRT GPU line on the F3 screen wraps onto more lines instead of running into the right-hand column (#13).
+- The shader cache (`radiante/cache/shaders`) is trimmed at startup to 100 MB, least recently used first, and the
+  pipeline cache is deleted past 256 MB and rebuilt by the warm-up on the next start (#23).
 
 ## [1.1.0] - 2026-10-24
 
