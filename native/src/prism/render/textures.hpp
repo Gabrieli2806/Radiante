@@ -27,7 +27,8 @@ class Textures : public SharedObject<Textures> {
 
     uint32_t allocateTexture();
     // Gives an allocated id a new image, cleared to transparent black unless the next flush copies into it. Copies
-    // still queued for the image it replaces are dropped: they were sized for that one.
+    // still queued for the image it replaces are dropped: they were sized for that one. An image of the same size,
+    // format and mip count is kept (cleared the same way), so its descriptor is not rewritten under frames in flight.
     void initializeTexture(uint32_t id, uint32_t mipLevels, uint32_t width, uint32_t height, VkFormat format);
     void setSamplingMode(uint32_t id, VkFilter samplingMode, VkSamplerMipmapMode mipmapMode);
     // Queues the copy of a width x height block of texels, read at (srcOffsetX, srcOffsetY) from rows of srcRowPixels
@@ -69,6 +70,7 @@ class Textures : public SharedObject<Textures> {
         std::vector<uint32_t> copyBlocks;
         bool queued = false; // listed in queued_
         bool fresh = false;  // listed in fresh_
+        bool clear = false;  // kept by initializeTexture: the next flush clears it unless it copies into it
     };
 
     struct StagingBlock {
