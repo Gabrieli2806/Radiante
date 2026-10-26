@@ -15,9 +15,8 @@ import org.spongepowered.asm.mixin.injection.At;
 public class ScreenEffectRendererMixin {
 
     @WrapWithCondition(method = "submit", at = @At(value = "INVOKE",
-        target = "Lnet/minecraft/client/renderer/ScreenEffectRenderer;submitWater(Lnet/minecraft/client/renderer/state/level/PlayerRenderState$WaterOverlay;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;)V"))
-    private boolean radiante$noWaterOverlayWhenTracing(
-        net.minecraft.client.renderer.state.level.PlayerRenderState.WaterOverlay overlay,
+        target = "Lnet/minecraft/client/renderer/ScreenEffectRenderer;submitWater(Lnet/minecraft/client/Minecraft;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;)V"))
+    private boolean radiante$noWaterOverlayWhenTracing(net.minecraft.client.Minecraft minecraft,
         com.mojang.blaze3d.vertex.PoseStack poseStack, net.minecraft.client.renderer.SubmitNodeCollector collector) {
         return !RadianteRenderer.isRayTracingEnabled();
     }

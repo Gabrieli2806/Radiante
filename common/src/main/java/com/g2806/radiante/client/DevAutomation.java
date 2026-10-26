@@ -396,22 +396,24 @@ public final class DevAutomation {
             // key=up / down / left / right / enter / space / tab / esc, optionally ",shift": the key pressed and let
             // go on the open screen, as a keyboard (or a controller mod that presses keys) does.
             String[] parts = action.substring(4).split(",");
-            int[] codes = switch (parts[0]) {
-                case "up" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_UP, 0x40000052};
-                case "down" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_DOWN, 0x40000051};
-                case "left" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_LEFT, 0x40000050};
-                case "right" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_RIGHT, 0x4000004F};
-                case "enter" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_RETURN, 13};
-                case "space" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_SPACE, 32};
-                case "tab" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_TAB, 9};
-                case "esc" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE, 27};
-                default -> null;
+            int key = switch (parts[0]) {
+                case "up" -> com.mojang.blaze3d.platform.InputConstants.KEY_UP;
+                case "down" -> com.mojang.blaze3d.platform.InputConstants.KEY_DOWN;
+                case "left" -> com.mojang.blaze3d.platform.InputConstants.KEY_LEFT;
+                case "right" -> com.mojang.blaze3d.platform.InputConstants.KEY_RIGHT;
+                case "enter" -> com.mojang.blaze3d.platform.InputConstants.KEY_RETURN;
+                case "space" -> com.mojang.blaze3d.platform.InputConstants.KEY_SPACE;
+                case "tab" -> com.mojang.blaze3d.platform.InputConstants.KEY_TAB;
+                case "esc" -> com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE;
+                default -> -1;
             };
             var screen = minecraft.gui.screen();
-            if (codes != null && screen != null) {
+            if (key >= 0 && screen != null) {
                 // Shift's modifier bit, as the event carries it.
                 int modifiers = parts.length > 1 && parts[1].equals("shift") ? 1 : 0;
-                var event = new net.minecraft.client.input.KeyEvent(codes[0], codes[1], modifiers);
+                // 26.2 reads keys through GLFW: the scancode is the platform's own, asked of GLFW.
+                var event = new net.minecraft.client.input.KeyEvent(key,
+                    org.lwjgl.glfw.GLFW.glfwGetKeyScancode(key), modifiers);
                 boolean used = screen.keyPressed(event);
                 screen.keyReleased(event);
                 RadianteClient.LOGGER.info("[dev] key {} on {}: {}", action.substring(4),

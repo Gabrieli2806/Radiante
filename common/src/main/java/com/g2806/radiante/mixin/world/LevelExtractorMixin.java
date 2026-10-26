@@ -40,11 +40,17 @@ public class LevelExtractorMixin implements LevelExtractorAccess {
     }
 
     /** Light-giving entities near the camera stay in the frame when vanilla culls them (EntityManager). */
+    // 26.2 port: isEntityVisible is not handed the partial tick; it is the one the entity is extracted with.
     @Inject(method = "isEntityVisible", at = @At("RETURN"), cancellable = true)
     private void radiante$keepLightOutOfView(Entity entity, Frustum frustum, double cameraX, double cameraY,
-        double cameraZ, float partialTick, long frame, CallbackInfoReturnable<Boolean> cir) {
-        if (!cir.getReturnValueZ() && RadianteRenderer.isRayTracingEnabled()
-            && EntityManager.keepsLightOutOfView(entity, cameraX, cameraY, cameraZ, partialTick)) {
+        double cameraZ, CallbackInfoReturnable<Boolean> cir) {
+        if (cir.getReturnValueZ() || !RadianteRenderer.isRayTracingEnabled()) {
+            return;
+        }
+        net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
+        boolean frozen = minecraft.level != null && minecraft.level.tickRateManager().isEntityFrozen(entity);
+        float partialTick = minecraft.getDeltaTracker().getGameTimeDeltaPartialTick(!frozen);
+        if (EntityManager.keepsLightOutOfView(entity, cameraX, cameraY, cameraZ, partialTick)) {
             cir.setReturnValue(true);
         }
     }

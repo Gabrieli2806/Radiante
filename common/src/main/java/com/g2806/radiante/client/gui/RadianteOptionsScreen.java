@@ -2105,7 +2105,8 @@ public class RadianteOptionsScreen extends Screen {
         // A change from a controller has no key to let go of: controller mods press keys without releasing them, or
         // move the focus without a key at all. Laid out again once no key or mouse button holds it.
         if (this.refreshPending && !this.mouseHeld
-            && (this.refreshKey < 0 || !com.mojang.blaze3d.platform.InputConstants.isKeyDown(this.refreshKey))) {
+            && (this.refreshKey < 0 || !com.mojang.blaze3d.platform.InputConstants.isKeyDown(
+                net.minecraft.client.Minecraft.getInstance().getWindow(), this.refreshKey))) {
             this.refreshPending = false;
             reopenWithSameChoices();
         }

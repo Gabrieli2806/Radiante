@@ -475,7 +475,7 @@ public final class RadianteRenderer {
             Options.emissionBrightness / 100.0f, false,
             EntityManager.rainFallPerFrame(levelRenderState), farReach, Options.heldLightBrightness / 100.0f,
             windTime(levelRenderState), com.g2806.radiante.client.pipeline.Pipeline.windStrength(),
-            windWeather(minecraft, levelRenderState.worldPartialTicks)));
+            windWeather(minecraft, PlayerFrame.worldPartialTicks())));
 
         SkyRenderState sky = levelRenderState.skyRenderState;
         Vector4f mobEffect = fogControls(minecraft,
@@ -690,7 +690,7 @@ public final class RadianteRenderer {
      * same sway at the same tick. Wrapped, since a float of raw seconds loses the precision a smooth sway needs.
      */
     private static float windTime(LevelRenderState levelRenderState) {
-        return ((float) (levelRenderState.gameTime % WIND_TIME_WRAP_TICKS) + levelRenderState.worldPartialTicks)
+        return ((float) (levelRenderState.gameTime % WIND_TIME_WRAP_TICKS) + PlayerFrame.worldPartialTicks())
             / 20.0f;
     }
 
