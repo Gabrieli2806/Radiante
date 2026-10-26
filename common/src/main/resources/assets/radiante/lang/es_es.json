@@ -276,6 +276,8 @@
   "options.radiante.category.sky_and_water": "Cielo y Agua",
   "options.radiante.category.performance": "Rendimiento",
   "options.radiante.category.other": "Otros",
+  "options.radiante.category.addons": "Complementos",
+  "options.radiante.addons.no_settings": "Este complemento no tiene opciones.",
   "options.radiante.advanced": "Avanzado...",
   "options.radiante.advanced.tooltip": "Muestra todos los ajustes del pipeline y los shaders bajo los habituales. Desactivarlo solo los oculta; sus valores siguen aplicándose.",
   "options.radiante.picture_style": "Estilo de Imagen",

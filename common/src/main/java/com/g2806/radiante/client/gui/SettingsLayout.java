@@ -37,8 +37,20 @@ import net.minecraft.util.FormattedCharSequence;
  */
 final class SettingsLayout {
 
-    /** A section and its options, in order. */
-    record Section(RadianteOptionsScreen.Category category, List<OptionInstance<?>> options, List<Group> groups) {
+    /** A section and its options, in order; then its blocks, each under a heading of its own (the addons). */
+    record Section(RadianteOptionsScreen.Category category, List<OptionInstance<?>> options, List<Group> groups,
+                   List<Block> blocks) {
+        Section(RadianteOptionsScreen.Category category, List<OptionInstance<?>> options, List<Group> groups) {
+            this(category, options, groups, List.of());
+        }
+    }
+
+    /**
+     * Options under a heading that does not fold, as each addon's are in the Addons section. {@code empty} is shown
+     * under the heading when there are no options; a search that finds the heading shows all of them. {@code icon}
+     * (the addon's, null for none) is drawn left of the heading.
+     */
+    record Block(Component heading, AddonIcons.Icon icon, List<OptionInstance<?>> options, Component empty) {
     }
 
     /** Advanced options about one thing, under a heading that folds them away. */
@@ -99,6 +111,8 @@ final class SettingsLayout {
     private static final int HEADER = 22;
     private static final int GAP = 6;
     private static final int PAD = 8;
+    /** The side of the square an addon's icon is drawn in, beside its heading. */
+    private static final int ICON = 16;
 
     private final Font font;
     private final int width;
@@ -121,11 +135,16 @@ final class SettingsLayout {
     private int contentHeight;
 
     /**
-     * One line of the list: an option (advanced when it comes from a group), a group's heading, a note, or with none
-     * of these a section's heading.
+     * One line of the list: an option (advanced when it comes from a group), a group's heading, a note (a block's
+     * heading when {@code heading} is set), or with none of these a section's heading.
      */
     private record Line(Section section, OptionInstance<?> option, Group group, Component note, boolean advanced,
-                        int y, int height) {
+                        int y, int height, boolean heading, AddonIcons.Icon icon) {
+        Line(Section section, OptionInstance<?> option, Group group, Component note, boolean advanced, int y,
+             int height) {
+            this(section, option, group, note, advanced, y, height, false, null);
+        }
+
         boolean sectionHeading() {
             return this.option == null && this.group == null && this.note == null;
         }
@@ -240,6 +259,9 @@ final class SettingsLayout {
 
     /** Lays the screen out; the search field is handed back to be added to the screen. */
     EditBox init(double initialScroll, String initialSearch) {
+        if (this.sections.stream().noneMatch(section -> section.category() == selected) && !this.sections.isEmpty()) {
+            selected = this.sections.get(0).category();
+        }
         int margin = Math.max(8, this.width / 24);
         this.top = 40;
         this.bottom = this.height - 30;
@@ -375,7 +397,16 @@ final class SettingsLayout {
                     hidden += matches.size();
                 }
             }
-            if (shown.isEmpty() && groups.isEmpty() && hidden == 0) {
+            List<Block> blocks = new ArrayList<>();
+            for (Block block : section.blocks()) {
+                boolean named = !filter.isEmpty()
+                    && block.heading().getString().toLowerCase(Locale.ROOT).contains(filter);
+                List<OptionInstance<?>> matches = named ? block.options() : matching(block.options(), filter);
+                if (filter.isEmpty() || named || !matches.isEmpty()) {
+                    blocks.add(new Block(block.heading(), block.icon(), matches, block.empty()));
+                }
+            }
+            if (shown.isEmpty() && groups.isEmpty() && hidden == 0 && blocks.isEmpty()) {
                 continue;
             }
             int start = y;
@@ -384,6 +415,18 @@ final class SettingsLayout {
             for (OptionInstance<?> option : shown) {
                 this.lines.add(new Line(section, option, null, null, false, y, ROW));
                 y += ROW;
+            }
+            for (Block block : blocks) {
+                this.lines.add(new Line(section, null, null, block.heading(), false, y, ROW, true, block.icon()));
+                y += ROW;
+                for (OptionInstance<?> option : block.options()) {
+                    this.lines.add(new Line(section, option, null, null, false, y, ROW));
+                    y += ROW;
+                }
+                if (block.options().isEmpty() && block.empty() != null) {
+                    this.lines.add(new Line(section, null, null, block.empty(), false, y, ROW));
+                    y += ROW;
+                }
             }
             for (Group group : groups) {
                 this.lines.add(new Line(section, null, group, null, false, y, ROW));
@@ -510,6 +553,24 @@ final class SettingsLayout {
             }
             boolean hover = inside(mouseX, mouseY, this.listX + 4, y, this.listW - 8, ROW)
                 && mouseY >= this.top && mouseY < this.bottom;
+            if (line.heading()) {
+                // A block's heading (an addon's name): brighter than a note, with a rule under it, and the addon's
+                // icon fitted into a square left of the name, the name moved over to make room.
+                int textX = this.listX + PAD + 4;
+                AddonIcons.Icon addonIcon = line.icon();
+                if (addonIcon != null) {
+                    int iw = addonIcon.width();
+                    int ih = addonIcon.height();
+                    int w = iw >= ih ? ICON : Math.max(1, ICON * iw / ih);
+                    int h = ih >= iw ? ICON : Math.max(1, ICON * ih / iw);
+                    g.blit(RenderPipelines.GUI_TEXTURED, addonIcon.texture(), textX + (ICON - w) / 2,
+                        y + 1 + (ICON - h) / 2, 0.0f, 0.0f, w, h, iw, ih, iw, ih);
+                    textX += ICON + 4;
+                }
+                g.text(this.font, line.note(), textX, y + 6, TEXT);
+                g.fill(this.listX + PAD + 4, y + ROW - 2, this.listX + this.listW - PAD - 4, y + ROW - 1, 0x60FFFFFF);
+                continue;
+            }
             if (line.note() != null) {
                 g.text(this.font, line.note(), this.listX + PAD + 4, y + 6, TEXT_DIM);
                 continue;
@@ -875,8 +936,14 @@ final class SettingsLayout {
 
     /** The next section (or with -1 the previous one), as Tab does. */
     void section(int direction) {
-        RadianteOptionsScreen.Category[] all = RadianteOptionsScreen.Category.values();
-        selected = all[Math.floorMod(selected.ordinal() + direction, all.length)];
+        // Through the sections shown: Addons only is one when an addon is installed.
+        int at = 0;
+        for (int i = 0; i < this.sections.size(); i++) {
+            if (this.sections.get(i).category() == selected) {
+                at = i;
+            }
+        }
+        selected = this.sections.get(Math.floorMod(at + direction, this.sections.size())).category();
         this.scroll = 0.0;
         this.onScroll.accept(this.scroll);
         if (this.search != null) {
