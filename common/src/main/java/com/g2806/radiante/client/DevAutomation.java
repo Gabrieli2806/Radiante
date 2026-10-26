@@ -59,6 +59,15 @@ public final class DevAutomation {
         Minecraft minecraft = Minecraft.getInstance();
         if (active) {
             DevCamera.frame(minecraft);
+            frameCount++;
+            while (!FRAME_STEPS.isEmpty() && FRAME_STEPS.get(0).tick() <= frameCount) {
+                String action = FRAME_STEPS.remove(0).action();
+                try {
+                    run(minecraft, action);
+                } catch (RuntimeException e) {
+                    RadianteClient.LOGGER.warn("[dev] frame step {} failed", action, e);
+                }
+            }
         }
         if (!active || minecraft.player == null || glideFrames == 0) {
             return;
@@ -264,6 +273,8 @@ public final class DevAutomation {
      * steps separated by {@code ;}, the delay in client ticks from when the line is read. World steps only run in a
      * test world, as a script's do.
      */
+    private static final List<Step> FRAME_STEPS = new ArrayList<>();
+    private static int frameCount;
     private static java.nio.file.Path inbox;
     private static String windowTitle;
     private static long inboxRead;
@@ -292,6 +303,15 @@ public final class DevAutomation {
                         for (String line : text.split("\n")) {
                             for (String part : line.strip().split(";")) {
                                 int colon = part.indexOf(':');
+                                String when = colon > 0 ? part.substring(0, colon).strip() : "";
+                                if (when.length() > 1 && when.startsWith("f") && when.substring(1).matches("\\d+")) {
+                                    // fN:action counts drawn frames instead of ticks, so a recorded screen plays
+                                    // at the pace it would have at 60 frames a second however slowly it is drawn.
+                                    FRAME_STEPS.add(new Step(frameCount + Integer.parseInt(when.substring(1)),
+                                        part.substring(colon + 1).strip()));
+                                    FRAME_STEPS.sort((x, y) -> Integer.compare(x.tick(), y.tick()));
+                                    continue;
+                                }
                                 if (colon > 0 && part.substring(0, colon).strip().matches("\\d+")) {
                                     INBOX_STEPS.add(new Step(clientTicks
                                         + Integer.parseInt(part.substring(0, colon).strip()), part.substring(colon + 1).strip()));
@@ -306,6 +326,16 @@ public final class DevAutomation {
             }
         }
         while (!INBOX_STEPS.isEmpty() && INBOX_STEPS.get(0).tick() <= clientTicks) {
+            if (INBOX_STEPS.get(0).action().equals("waitcam")) {
+                // waitcam: the steps after it wait until the camera path and its recording are done, so a slow
+                // take (a 4K one draws a few frames a second) never runs into the next shot's steps.
+                if (DevCamera.isPlaying() || DevRecorder.isBusy()) {
+                    INBOX_STEPS.replaceAll(step -> new Step(step.tick() + 1, step.action()));
+                    break;
+                }
+                INBOX_STEPS.remove(0);
+                continue;
+            }
             String action = INBOX_STEPS.remove(0).action();
             boolean worldStep = !(action.startsWith("testworld=") || action.startsWith("rejoin=") || action.equals("quit")
                 || action.startsWith("winsize=") || action.startsWith("maxfps=") || action.startsWith("vsync=")
@@ -343,8 +373,11 @@ public final class DevAutomation {
             return;
         }
         if (action.startsWith("rec=")) {
-            // rec=name: records every frame, GUI included, until recstop (for screens rather than camera paths).
-            DevRecorder.start(minecraft, action.substring(4), 60);
+            // rec=name[,fps]: records every frame, GUI included, until recstop (for screens rather than camera paths).
+            // The video plays at fps frames a second (default 60); capped to the same rate with maxfps=, it plays
+            // at the speed it was recorded.
+            String[] parts = action.substring(4).split(",");
+            DevRecorder.start(minecraft, parts[0], parts.length > 1 ? Integer.parseInt(parts[1]) : 60);
             return;
         }
         if (action.equals("recstop")) {
@@ -382,6 +415,20 @@ public final class DevAutomation {
             // title=text: the window's title, kept while the script runs, so a capture window says what it is.
             windowTitle = action.substring(6);
             minecraft.getWindow().setTitle(windowTitle);
+            return;
+        }
+        if (action.startsWith("gui=")) {
+            // gui=N: the GUI scale, e.g. 6 for a 4K capture to look like 3 at 1080p.
+            minecraft.options.guiScale().set(Integer.parseInt(action.substring(4)));
+            minecraft.resizeGui();
+            RadianteClient.LOGGER.info("[dev] gui scale {}", action.substring(4));
+            return;
+        }
+        if (action.startsWith("borderless=")) {
+            // borderless=true: no title bar or frame, so a window can be as large as the screen (Windows shrinks a
+            // framed one to fit, which a 3840x2160 capture on a 3840x2160 screen needs).
+            org.lwjgl.sdl.SDLVideo.SDL_SetWindowBordered(minecraft.getWindow().handle(),
+                !Boolean.parseBoolean(action.substring(11)));
             return;
         }
         if (action.startsWith("winpos=")) {

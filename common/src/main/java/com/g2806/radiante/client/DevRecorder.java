@@ -54,6 +54,11 @@ public final class DevRecorder {
     private DevRecorder() {
     }
 
+    /** Recording, or still writing out the last frames of a recording. */
+    static boolean isBusy() {
+        return recording || stopping;
+    }
+
     static boolean isRecording() {
         return recording;
     }
@@ -149,7 +154,7 @@ public final class DevRecorder {
         GpuBuffer buffer = FREE_BUFFERS.poll();
         if (buffer == null) {
             buffer = RenderSystem.getDevice().createBuffer(() -> "Radiante dev recorder",
-                GpuBuffer.USAGE_MAP_READ | GpuBuffer.USAGE_COPY_DST, size);
+                GpuBuffer.USAGE_MAP_READ | GpuBuffer.USAGE_COPY_DST | GpuBuffer.USAGE_HINT_CLIENT_STORAGE, size);
         }
         GpuBuffer copy = buffer;
         BlockingQueue<byte[]> frameQueue = queue;
