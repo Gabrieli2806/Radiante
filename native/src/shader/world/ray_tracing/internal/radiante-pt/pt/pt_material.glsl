@@ -191,6 +191,11 @@ bool bedrockHeightMapNormal(int map,
 #    define VPT_RAIN_OPACITY 0.0
 #endif
 
+// Cut-out surfaces judged at the texture's full resolution at any distance (1), or by their mip levels (0).
+#ifndef VPT_DETAILED_FOLIAGE
+#    define VPT_DETAILED_FOLIAGE 0.0
+#endif
+
 void sampleSurfaceState(bool useTexture,
                         uint textureID,
                         TextureMapEntry textureMap,
@@ -222,6 +227,10 @@ void sampleSurfaceState(bool useTexture,
 
     if (useTexture) {
         albedoValue = sampleTexture(textures[nonuniformEXT(textureID)], uv, lod, false);
+        // With Detailed distant foliage, cut-out coverage at full resolution, as the any-hit shader decided the hit.
+        if (alphaMode == ALPHA_MODE_CUTOUT && lod > 0.0 && VPT_DETAILED_FOLIAGE > 0.5) {
+            albedoValue.a = sampleTexture(textures[nonuniformEXT(textureID)], uv, 0.0, false).a;
+        }
         albedoValue.a = resolveSurfaceAlpha(albedoValue.a * colorLayerValue.a, alphaMode);
         specularValue = textureMap.specular >= 0 ?
                             sampleTexture(textures[nonuniformEXT(textureMap.specular)], uv, lod, false) :

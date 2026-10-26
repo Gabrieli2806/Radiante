@@ -534,6 +534,13 @@ public class Pipeline {
     public static final String WIND_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.wind";
     /** How far the wind moves foliage, 1 as designed; live, without remeshing. */
     public static final String WIND_STRENGTH_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.wind_strength";
+    /**
+     * Distant Foliage: Detailed (on) judges leaves, grass and other cut-out surfaces texel by texel at any distance;
+     * Smooth (off) by their mip levels, as Minecraft draws them. Live in the shaders; switching it remeshes the world,
+     * since the opacity micromaps of cut-out terrain are baked for one or the other.
+     */
+    public static final String DETAILED_FOLIAGE_ATTRIBUTE =
+        "render_pipeline.module.ray_tracing.attribute.detailed_foliage";
 
     /** The wind's strength for this frame (WorldUBO.windStrength): the slider, or 0 with wind off or not offered. */
     public static float windStrength() {

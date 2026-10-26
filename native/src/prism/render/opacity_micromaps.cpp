@@ -141,6 +141,8 @@ std::optional<Pending> g_pending;
 std::shared_ptr<CoverageAtlas> g_current;
 // The id begin() was last called for, so uploads into every other texture return at once.
 std::atomic<uint32_t> g_watched{~0u};
+// Detailed Distant Foliage, as the shader pack's attribute last said (on by default, as in the pack).
+std::atomic<bool> g_detailed{true};
 
 } // namespace
 
@@ -250,7 +252,7 @@ CoverageAtlas::Coverage CoverageAtlas::cover(const glm::dvec2 corners[3], uint32
     return coverage;
 }
 
-BakedTriangle CoverageAtlas::bakeUncached(const glm::vec2 uv[3], uint32_t maxLevel) const {
+BakedTriangle CoverageAtlas::bakeUncached(const glm::vec2 uv[3], uint32_t maxLevel, bool detailed) const {
     BakedTriangle baked;
     const Level &full = levels_[0];
     const glm::dvec2 size(static_cast<double>(full.width), static_cast<double>(full.height));
@@ -292,9 +294,10 @@ BakedTriangle CoverageAtlas::bakeUncached(const glm::vec2 uv[3], uint32_t maxLev
             return baked;
         }
         const bool opaque = fullSize.opaque;
-        // Known only where every mip level camera rays may read gives the same answer.
+        // Camera rays read the full size too with Detailed distant foliage; otherwise the answer is known only where
+        // every mip level they may read gives the same one.
         bool consistent = true;
-        for (uint32_t mip = 1; mip < levels_.size() && consistent; mip++) {
+        for (uint32_t mip = 1; !detailed && mip < levels_.size() && consistent; mip++) {
             const Coverage atMip = cover(corners, mip);
             consistent = opaque ? !atMip.transparent : !atMip.opaque;
         }
@@ -339,12 +342,13 @@ BakedTriangle CoverageAtlas::bakeUncached(const glm::vec2 uv[3], uint32_t maxLev
 std::shared_ptr<const BakedTriangle> CoverageAtlas::bake(const glm::vec2 uv[3], uint32_t maxLevel) {
     Key key{};
     std::memcpy(key.bits, uv, sizeof(key.bits));
-    key.maxLevel = maxLevel;
+    const bool detailedNow = coverage::detailed();
+    key.maxLevel = maxLevel | (detailedNow ? 0x80000000u : 0u);
     {
         std::lock_guard<std::mutex> lock(cacheMutex_);
         if (auto found = cache_.find(key); found != cache_.end()) return found->second;
     }
-    auto baked = std::make_shared<const BakedTriangle>(bakeUncached(uv, maxLevel));
+    auto baked = std::make_shared<const BakedTriangle>(bakeUncached(uv, maxLevel, detailedNow));
     std::lock_guard<std::mutex> lock(cacheMutex_);
     if (cache_.size() >= kMaxCachedTriangles) cache_.clear();
     return cache_.emplace(key, std::move(baked)).first->second;
@@ -467,6 +471,14 @@ void forget(uint32_t textureId) {
 std::shared_ptr<CoverageAtlas> current() {
     std::lock_guard<std::mutex> lock(g_mutex);
     return g_current;
+}
+
+void setDetailed(bool detailed) {
+    g_detailed.store(detailed, std::memory_order_relaxed);
+}
+
+bool detailed() {
+    return g_detailed.load(std::memory_order_relaxed);
 }
 
 } // namespace coverage
