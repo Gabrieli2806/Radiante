@@ -4,6 +4,9 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Leaves are marked for the shader pack (`LEAVES_SURFACE_BIT`, `isLeavesSurface` in `util/vertex.glsl`), as small
+  plants already are, so a pack can treat the leaves of trees apart: let light through them, say. Nothing changes in
+  the built-in pack.
 - Addon settings API (`com.g2806.radiante.api.RadianteAddons`): a mod built on Radiante can add toggles, value lists
   and sliders to Radiante's settings screen, under an Addons section with a heading per addon (the mod's icon from its
   metadata, its name and version); Radiante stores their values in `radiante/addons/<id>.properties`. The section
