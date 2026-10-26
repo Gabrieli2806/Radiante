@@ -41,6 +41,22 @@ JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_TextureProxy_
 
 /*
  * Class:     com_g2806_radiante_client_proxy_vulkan_TextureProxy
+ * Method:    beginCutoutCoverage
+ * Signature: (III)V
+ */
+JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_TextureProxy_beginCutoutCoverage
+  (JNIEnv *, jclass, jint, jint, jint);
+
+/*
+ * Class:     com_g2806_radiante_client_proxy_vulkan_TextureProxy
+ * Method:    finishCutoutCoverage
+ * Signature: (I[I)V
+ */
+JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_TextureProxy_finishCutoutCoverage
+  (JNIEnv *, jclass, jint, jintArray);
+
+/*
+ * Class:     com_g2806_radiante_client_proxy_vulkan_TextureProxy
  * Method:    uploadEmissionTileNative
  * Signature: (IJJI)V
  */

@@ -1,5 +1,6 @@
 #include "prism/render/modules/world/shader_pack/shader_pack_internal.hpp"
 
+#include "prism/render/opacity_micromaps.hpp"
 #include "prism/render/renderer.hpp"
 #include "prism/util/logging.hpp"
 
@@ -8,6 +9,22 @@
 #include <utility>
 
 ShaderPack::ShaderPack(std::shared_ptr<Framework> framework) : framework_(framework) {}
+
+// The opacity micromaps of cut-out terrain are baked for the way camera rays test it (render/opacity_micromaps.hpp):
+// the bakes follow this attribute, set by a build or live, and Java builds every section again when it changes. A pack
+// without it tests at the mip levels, as Smooth does.
+void ShaderPack::followDetailedFoliage() {
+    bool detailed = false;
+    if (auto set = staticAttributeValues_.find(std::string(kDetailedFoliageAttribute));
+        set != staticAttributeValues_.end()) {
+        detailed = set->second == "render_pipeline.true";
+    } else {
+        for (const auto &attribute : shaderPack_.attributes) {
+            if (attribute.name == kDetailedFoliageAttribute) detailed = attribute.defaultValue == "render_pipeline.true";
+        }
+    }
+    omm::coverage::setDetailed(detailed);
+}
 
 std::filesystem::path ShaderPack::builtInShaderPackPath() {
     return Renderer::folderPath / "shaders/world/ray_tracing/radiante-pt.zip";
@@ -41,6 +58,7 @@ bool ShaderPack::initialize(const BuildConfig &config, std::string &error) {
 
     shaderPack_ = std::move(loaded.shaderPack);
     staticAttributeValues_ = config.staticAttributes;
+    followDetailedFoliage();
     shaderAttributes_ = ShaderPackLoader::buildAttributeDefinitions(shaderPack_.attributes, staticAttributeValues_);
 
     // What the runtime attributes start at in WorldUBO.packParams: the values this build was asked for.
@@ -121,6 +139,7 @@ bool ShaderPack::setRuntimeAttribute(const std::string &name,
     staticAttributeValues_[name] = value;
     rebuildAttributeNumbers();
     runtimeValues_[attribute->runtimeSlot] = *parsed;
+    if (name == kDetailedFoliageAttribute) followDetailedFoliage();
     slot = attribute->runtimeSlot;
     packed = *parsed;
     return true;

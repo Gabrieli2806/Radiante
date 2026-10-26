@@ -926,6 +926,9 @@ public class RadianteOptionsScreen extends Screen {
         if (Pipeline.supportsShaderPackToggle(Pipeline.WIND_ATTRIBUTE)) {
             this.pendingPackToggles.put(Pipeline.WIND_ATTRIBUTE, Boolean.FALSE);
         }
+        if (Pipeline.supportsShaderPackToggle(Pipeline.DETAILED_FOLIAGE_ATTRIBUTE)) {
+            this.pendingPackToggles.put(Pipeline.DETAILED_FOLIAGE_ATTRIBUTE, Boolean.TRUE);
+        }
         this.pendingDepthOfField = Boolean.FALSE;
         this.pendingReflex = false;
         // The shader pack's own defaults.
@@ -1285,6 +1288,7 @@ public class RadianteOptionsScreen extends Screen {
                 tooltip("options.radiante.rain_wetness"), staged("rainWetness", Options.rainWetness),
                 value -> stage("rainWetness", value)),
             packToggle(Pipeline.WIND_ATTRIBUTE, "options.radiante.wind"), tunable(Tunable.WIND_STRENGTH, false),
+            distantFoliageOption(),
             seamlessGlass, seamlessScope,
             OptionInstance.createBoolean("options.radiante.biome_ambiance",
                 OptionInstance.cachedConstantTooltip(Component.translatable("options.radiante.biome_ambiance.tooltip")),
@@ -1390,6 +1394,26 @@ public class RadianteOptionsScreen extends Screen {
     }
 
     /** An on/off shader pack setting applied with the rest; null where the pack lacks it. */
+    private static final String DISTANT_FOLIAGE = "options.radiante.distant_foliage";
+
+    /** Distant Foliage: Detailed or Smooth, an on/off attribute of the pack shown as its two looks. */
+    private OptionInstance<String> distantFoliageOption() {
+        String attribute = Pipeline.DETAILED_FOLIAGE_ATTRIBUTE;
+        if (!Pipeline.supportsShaderPackToggle(attribute)) {
+            return null;
+        }
+        boolean detailed = this.pendingPackToggles.computeIfAbsent(attribute, Pipeline::isShaderPackToggleOn);
+        return new OptionInstance<>(DISTANT_FOLIAGE, tooltip(DISTANT_FOLIAGE),
+            (caption, value) -> Component.translatable("options.generic_value", caption, Component.translatable(value)),
+            new OptionInstance.Enum<>(List.of(DISTANT_FOLIAGE + ".detailed", DISTANT_FOLIAGE + ".smooth"),
+                com.mojang.serialization.Codec.STRING),
+            detailed ? DISTANT_FOLIAGE + ".detailed" : DISTANT_FOLIAGE + ".smooth", value -> {
+                boolean on = value.endsWith(".detailed");
+                this.pendingPackToggles.put(attribute, on);
+                profileSwitchChanged(attribute, on);
+            });
+    }
+
     private OptionInstance<Boolean> packToggle(String attribute, String key) {
         if (!Pipeline.supportsShaderPackToggle(attribute)) {
             return null;

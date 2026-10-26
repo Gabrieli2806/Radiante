@@ -465,6 +465,13 @@
             "define": "VPT_WIND_STRENGTH"
         },
         {
+            "name": "render_pipeline.module.ray_tracing.attribute.detailed_foliage",
+            "type": "bool",
+            "default_value": "render_pipeline.true",
+            "runtime": true,
+            "define": "VPT_DETAILED_FOLIAGE"
+        },
+        {
             "name": "render_pipeline.module.ray_tracing.attribute.water_clear_teal",
             "type": "float_range:0.0-1.0",
             "default_value": "0.0",

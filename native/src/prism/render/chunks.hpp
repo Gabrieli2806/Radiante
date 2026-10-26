@@ -110,6 +110,11 @@ struct Chunk1 : public SharedObject<Chunk1> {
     std::shared_ptr<std::vector<WindRegion>> windRegions;
     // The wind pass (Chunks::recordWind) that last moved this section.
     uint64_t windPass = 0;
+    // The opacity micromap its cut-out geometries were built with, which its structure refers to, and the share of
+    // the geometry buffer the micromap's inputs take (counted for the memory report while the slot holds it). Null
+    // for a section without one.
+    std::shared_ptr<gpu::Micromap> micromap;
+    std::shared_ptr<void> micromapInputs;
 };
 
 // Builds the queued sections in batches alongside the frames. A batch's uploads, structure builds and compacted-size

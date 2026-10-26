@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <exception>
 #include <filesystem>
 #include <future>
@@ -867,27 +868,37 @@ void RayTracingModule::collectShaders(Pass &,
                                       std::vector<ShaderPack::ShaderCreateInfo> &requests) {
     const auto &config = pass.config;
     const uint32_t executionSet = shaderPack_->executionSet(kRuntimeResourceSet);
+    // RADIANTE_NO_SOBOL draws the path's sampling decisions from plain random numbers again (pt/pt_sampling.glsl),
+    // to compare the two.
+    auto shaderDefinitions = config.definitions;
+    if (std::getenv("RADIANTE_NO_SOBOL") != nullptr) shaderDefinitions["VPT_LOW_DISCREPANCY"] = "0";
+    // Shadow rays read the opacity micromaps of cut-out terrain in two states where the device has them (util/ray.glsl).
+    {
+        auto owner = framework_.lock();
+        shaderDefinitions["VPT_OMM_SUPPORTED"] =
+            owner != nullptr && owner->device()->isOpacityMicromapEnabled() ? "1" : "0";
+    }
 
     // The miss shaders, then each hit group's closest-hit, any-hit and intersection shaders, as it has them. The
     // hit groups are named here already: the scene resolves its geometries' group names against them.
     for (const auto &miss : config.missShaders) {
         requests.push_back(
-            shaderRequest(miss.shaderPath, VK_SHADER_STAGE_MISS_BIT_KHR, config.definitions, executionSet));
+            shaderRequest(miss.shaderPath, VK_SHADER_STAGE_MISS_BIT_KHR, shaderDefinitions, executionSet));
     }
     pass.hitShaderGroups.resize(config.hitGroups.size());
     for (size_t index = 0; index < config.hitGroups.size(); index++) {
         const auto &groupConfig = config.hitGroups[index];
         if (groupConfig.closestHit.has_value()) {
             requests.push_back(shaderRequest(*groupConfig.closestHit, VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR,
-                                             config.definitions, executionSet));
+                                             shaderDefinitions, executionSet));
         }
         if (groupConfig.anyHit.has_value()) {
             requests.push_back(
-                shaderRequest(*groupConfig.anyHit, VK_SHADER_STAGE_ANY_HIT_BIT_KHR, config.definitions, executionSet));
+                shaderRequest(*groupConfig.anyHit, VK_SHADER_STAGE_ANY_HIT_BIT_KHR, shaderDefinitions, executionSet));
         }
         if (groupConfig.intersection.has_value()) {
             requests.push_back(shaderRequest(*groupConfig.intersection, VK_SHADER_STAGE_INTERSECTION_BIT_KHR,
-                                             config.definitions, executionSet));
+                                             shaderDefinitions, executionSet));
         }
 
         HitShaderGroup &group = pass.hitShaderGroups[index];
@@ -905,7 +916,7 @@ void RayTracingModule::collectShaders(Pass &,
     // time to update SHaRC, with the compute shader that resolves the cache after the update. Shader Execution
     // Reordering is only compiled in where the device was created with it.
     auto framework = framework_.lock();
-    auto definitions = config.definitions;
+    auto definitions = shaderDefinitions;
     definitions["VPT_SER_SUPPORTED"] =
         framework != nullptr && framework->device()->isShaderExecutionReorderingEnabled() ? "1" : "0";
     auto queryDefinitions = definitions;

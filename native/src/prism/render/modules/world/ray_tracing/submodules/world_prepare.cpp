@@ -3,6 +3,7 @@
 #include "prism/render/buffers.hpp"
 #include "prism/render/chunks.hpp"
 #include "prism/render/entities.hpp"
+#include "prism/render/opacity_micromaps.hpp"
 #include "prism/render/render_framework.hpp"
 #include "prism/render/renderer.hpp"
 #include "prism/render/world.hpp"
@@ -441,6 +442,24 @@ void WorldPrepareContext::render() {
                       << " MB pos/mat/idx/blas=" << Chunks::devBytes[0] / 1048576 << "/"
                       << Chunks::devBytes[1] / 1048576 << "/" << Chunks::devBytes[2] / 1048576 << "/"
                       << Chunks::devBytes[3] / 1048576 << " tris=" << Chunks::devBytes[4] << std::endl;
+            if (gpu::opacityMicromapsEnabled()) {
+                // Cut-out triangles baked so far, by what their micromap made of them (moved: left to the shaders in a
+                // geometry of their own; known: the share of micro-triangles camera rays need no shader for), and the
+                // memory the micromaps of the sections drawn now take.
+                const omm::Stats &omm = omm::stats();
+                const uint64_t known = omm.knownMicroTriangles.load(), unknown = omm.unknownMicroTriangles.load();
+                std::cout << "[micromap profile] micromaps=" << gpu::Micromap::liveBytes() / 1024
+                          << "KiB inputs=" << omm.inputBytesLive.load() / 1024 << "KiB triangles=" << omm.triangles.load()
+                          << " opaque=" << omm.fullyOpaque.load() << " transparent=" << omm.fullyTransparent.load()
+                          << " states=" << omm.withStates.load() << " unknown=" << omm.fullyUnknown.load()
+                          << " left=" << omm.moved.load() << " (not cut-out "
+                          << omm.left[omm::Stats::kNotCutout].load() << ", no area "
+                          << omm.left[omm::Stats::kNoArea].load() << ", animated "
+                          << omm.left[omm::Stats::kAnimated].load() << ", straddling "
+                          << omm.left[omm::Stats::kStraddles].load() << ")"
+                          << " micro-triangles known=" << (known + unknown > 0 ? 100.0 * known / (known + unknown) : 0.0)
+                          << "%" << std::endl;
+            }
             g_profile = PrepareProfile{};
         }
     }

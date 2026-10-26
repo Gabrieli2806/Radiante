@@ -85,17 +85,17 @@ float SmithGAniso(float NDotV, float VDotX, float VDotY, float ax, float ay) {
 }
 
 // A direction from the von Mises-Fisher distribution around mu with concentration kappa (used to jitter towards the
-// sun disc). Draws exactly two numbers from seed: first the cosine to mu (inverted CDF), then the angle around it.
-vec3 SampleVMF(inout uint seed, vec3 mu, float kappa) {
+// sun disc), from two uniform numbers: xi.x picks the cosine to mu (inverted CDF), xi.y the angle around it.
+vec3 SampleVMFXi(vec2 xi, vec3 mu, float kappa) {
     kappa = max(kappa, 0.1);
 
-    float xiCos = rand(seed);
+    float xiCos = xi.x;
     float tail = exp(-2.0 * kappa);
     float cosToMu = 1.0 + (1.0 / kappa) * log(xiCos + (1.0 - xiCos) * tail);
 
     cosToMu = clamp(cosToMu, -1.0, 1.0);
 
-    float xiAngle = rand(seed);
+    float xiAngle = xi.y;
     float around = 2.0 * PI * xiAngle;
     float alongA = cos(around);
     float alongB = sin(around);
@@ -106,6 +106,13 @@ vec3 SampleVMF(inout uint seed, vec3 mu, float kappa) {
 
     float sinToMu = sqrt(max(0.0, 1.0 - cosToMu * cosToMu));
     return normalize(cosToMu * mu + sinToMu * (alongA * perpA + alongB * perpB));
+}
+
+// The same, drawing exactly two numbers from seed: first the cosine to mu, then the angle around it.
+vec3 SampleVMF(inout uint seed, vec3 mu, float kappa) {
+    float xiCos = rand(seed);
+    float xiAngle = rand(seed);
+    return SampleVMFXi(vec2(xiCos, xiAngle), mu, kappa);
 }
 
 // Bedrock RTX's specular response, used by the experimental Bedrock profile.
@@ -338,18 +345,18 @@ vec3 DisneyEval(LabPBRMat mat, vec3 V, vec3 N, vec3 L, out float pdf) {
     return result * abs(wi.z); // include the cosine term
 }
 
-// Picks a lobe and a direction L for view V, then evaluates the full BSDF there (value and pdf from DisneyEval).
-// Always draws three numbers from seed, in this order: two for the direction, one for the lobe. lobeType reports
-// 0 diffuse, 1 reflection, 2 transmission.
-vec3 DisneySample(LabPBRMat mat, vec3 V, vec3 N, out vec3 L, out float pdf, inout uint seed, out uint lobeType) {
+// Picks a lobe and a direction L for view V, then evaluates the full BSDF there (value and pdf from DisneyEval), from
+// three uniform numbers: xi.x and xi.y for the direction, xi.z for the lobe. lobeType reports 0 diffuse, 1 reflection,
+// 2 transmission.
+vec3 DisneySampleXi(LabPBRMat mat, vec3 V, vec3 N, out vec3 L, out float pdf, vec3 xi, out uint lobeType) {
     pdf = 0.0;
     vec3 tangent, bitangent;
     Onb(N, tangent, bitangent);
 
     vec3 wo = ToLocal(tangent, bitangent, N, V);
-    float xiA = rand(seed);
-    float xiB = rand(seed);
-    float xiLobe = rand(seed);
+    float xiA = xi.x;
+    float xiB = xi.y;
+    float xiLobe = xi.z;
 
     // The same lobe probabilities as DisneyEval.
     float dielectricShare = (1.0 - mat.metallic) * (1.0 - mat.transmission);
@@ -412,6 +419,14 @@ vec3 DisneySample(LabPBRMat mat, vec3 V, vec3 N, out vec3 L, out float pdf, inou
     V = ToWorld(tangent, bitangent, N, wo);
 
     return DisneyEval(mat, V, N, L, pdf);
+}
+
+// The same, always drawing three numbers from seed, in this order: two for the direction, one for the lobe.
+vec3 DisneySample(LabPBRMat mat, vec3 V, vec3 N, out vec3 L, out float pdf, inout uint seed, out uint lobeType) {
+    float xiA = rand(seed);
+    float xiB = rand(seed);
+    float xiLobe = rand(seed);
+    return DisneySampleXi(mat, V, N, L, pdf, vec3(xiA, xiB, xiLobe), lobeType);
 }
 
 #endif

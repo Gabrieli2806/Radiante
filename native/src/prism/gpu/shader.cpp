@@ -8,6 +8,7 @@
 #include <cctype>
 #include <charconv>
 #include <chrono>
+#include <cstring>
 #include <fstream>
 #include <iterator>
 #include <mutex>
@@ -507,6 +508,40 @@ void decorateNonUniformResources(std::vector<uint32_t> &spirv) {
     }
 }
 
+// Declares the RayTracingOpacityMicromapEXT capability (and SPV_EXT_opacity_micromap) in a module whose shadow rays
+// trace with the ForceOpacityMicromap2StateEXT flag (util/ray.glsl, VPT_OMM_SUPPORTED).
+//
+// The shaders give the flag by its value instead of enabling GL_EXT_opacity_micromap: with that extension in the module,
+// the SPIR-V optimizer skips the passes that only run on modules whose extensions it knows (it does not know this one
+// yet), and the rest of its passes then took minutes and gigabytes on the closest-hit shader, which came out more than
+// twice its size. The capability is added after optimization instead, where it changes nothing else.
+void declareOpacityMicromaps(std::vector<uint32_t> &spirv) {
+    constexpr uint32_t kHeaderWords = 5;
+    constexpr uint32_t OpExtension = 10;
+    constexpr uint32_t OpCapability = 17;
+    constexpr uint32_t CapabilityRayTracingOpacityMicromapEXT = 5381;
+    if (spirv.size() <= kHeaderWords || spirv[0] != kSpirvMagic) return;
+
+    // Capabilities open the module, extensions follow them: both go in right after the last capability.
+    size_t afterCapabilities = kHeaderWords;
+    for (size_t at = kHeaderWords; at < spirv.size();) {
+        const uint32_t words = spirv[at] >> 16;
+        const uint32_t opcode = spirv[at] & 0xFFFFu;
+        if (words == 0 || opcode != OpCapability) break;
+        if (spirv[at + 1] == CapabilityRayTracingOpacityMicromapEXT) return;
+        at += words;
+        afterCapabilities = at;
+    }
+    constexpr char kName[] = "SPV_EXT_opacity_micromap";
+    std::vector<uint32_t> added = {(2u << 16) | OpCapability, CapabilityRayTracingOpacityMicromapEXT};
+    const size_t nameWords = (sizeof(kName) + 3) / 4; // the terminating zero included, padded to whole words
+    std::vector<uint32_t> name(nameWords, 0);
+    std::memcpy(name.data(), kName, sizeof(kName));
+    added.push_back((static_cast<uint32_t>(1 + nameWords) << 16) | OpExtension);
+    added.insert(added.end(), name.begin(), name.end());
+    spirv.insert(spirv.begin() + static_cast<ptrdiff_t>(afterCapabilities), added.begin(), added.end());
+}
+
 std::vector<uint32_t> compileSource(const std::string &sourcePath,
                                     VkShaderStageFlagBits stage,
                                     const std::unordered_map<std::string, std::string> &definitions,
@@ -541,6 +576,12 @@ std::vector<uint32_t> compileSource(const std::string &sourcePath,
     }
     std::vector<uint32_t> spirv(result.cbegin(), result.cend());
     decorateNonUniformResources(spirv);
+    if (const auto micromaps = definitions.find("VPT_OMM_SUPPORTED");
+        micromaps != definitions.end() && micromaps->second == "1" &&
+        (stage & (VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR |
+                  VK_SHADER_STAGE_MISS_BIT_KHR)) != 0) {
+        declareOpacityMicromaps(spirv);
+    }
     return spirv;
 }
 

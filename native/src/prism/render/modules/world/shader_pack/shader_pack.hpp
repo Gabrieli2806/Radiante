@@ -623,6 +623,10 @@ class ShaderPack {
     // The attribute defines as numbers only change with an attribute's value, so they are worked out then rather than
     // for every expression of every frame.
     void rebuildAttributeNumbers();
+    // Tells the cut-out micromap baker how camera rays test cut-out coverage (Detailed Distant Foliage).
+    static constexpr std::string_view kDetailedFoliageAttribute =
+        "render_pipeline.module.ray_tracing.attribute.detailed_foliage";
+    void followDetailedFoliage();
     // A texture or buffer size expression: RENDER_WIDTH and the like, then the attribute defines.
     double evaluateResourceExpression(const std::string &expression) const;
     VkExtent3D runtimeTextureExtent(const ShaderPackLoader::TextureConfig &config) const;
