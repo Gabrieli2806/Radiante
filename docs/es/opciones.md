@@ -85,6 +85,7 @@ marca **(reinicio)** y, al salir de la pantalla, un aviso lista los cambios pend
 | [Cielo y Agua](opciones/cielo-niebla-agua.md) | Atmósfera, nubes, estrellas, sol, trayectoria del sol, lluvia, vidrio, ambiente de bioma, niebla volumétrica, agua. |
 | [Rendimiento](opciones/rendimiento.md) | Rebotes de luz, espejos, vidrio, textura del agua, portal, lluvia, caché, tablero, parallax, materiales de packs Bedrock, calidad de niebla, construcción de chunks. |
 | [Otros](opciones/otros.md) | Contorno de bloque, overlays de otros mods, fondo de textos, bordes de parallax, registro de depuración. |
+| [Complementos](complementos.md) | Solo con un complemento instalado: sus propias opciones, bajo su nombre. |
 
 Un ajuste solo aparece si el pipeline, la GPU o el shader pack lo admiten: Modo DLSS solo con
 RT-DLSS, Modo de Escalado solo con RT-FSR o RT-XeSS, Reflex solo en NVIDIA, la generación de

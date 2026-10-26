@@ -40,6 +40,7 @@ Documentation version: **1.1.0**.
 ## For developers
 
 - **[Building and releasing](building.md)** — Windows, Linux, GitHub Actions and how a release goes out.
+- **[Addon settings](addons.md)** — how a mod puts its options in Radiante's settings.
 - **[How PrismRT works](../prismrt.md)** — the native renderer's architecture, for contributors (English).
 
 ## Settings reference by section

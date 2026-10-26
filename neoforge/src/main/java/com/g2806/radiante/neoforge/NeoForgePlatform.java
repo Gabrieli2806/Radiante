@@ -22,6 +22,16 @@ public final class NeoForgePlatform implements RadiantePlatform {
     }
 
     @Override
+    public String modVersion(String modId) {
+        try {
+            return net.neoforged.fml.ModList.get().getModContainerById(modId)
+                .map(mod -> mod.getModInfo().getVersion().toString()).orElse(null);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    @Override
     public Path gameDir() {
         return FMLPaths.GAMEDIR.get();
     }

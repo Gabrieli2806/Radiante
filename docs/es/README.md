@@ -41,6 +41,7 @@ Versión de esta documentación: **1.1.0**.
 ## Para desarrolladores
 
 - **[Compilar y publicar](compilar.md)** — Windows, Linux, GitHub Actions y cómo sale una versión.
+- **[Opciones de complementos](complementos.md)** — cómo un mod pone sus opciones en los ajustes de Radiante.
 - **[Cómo funciona PrismRT](../prismrt.md)** — la arquitectura del renderizador nativo, para quien contribuye (en inglés).
 
 ## Referencia de ajustes por sección

@@ -30,6 +30,17 @@ public final class ForgePlatform implements RadiantePlatform {
     }
 
     @Override
+    public String modVersion(String modId) {
+        // A LinkageError too: Forge's mod list API changes between versions, and a missing version only drops a label.
+        try {
+            return net.minecraftforge.fml.ModList.getModContainerById(modId)
+                .map(mod -> mod.getModInfo().getVersion().toString()).orElse(null);
+        } catch (RuntimeException | LinkageError e) {
+            return null;
+        }
+    }
+
+    @Override
     public Path gameDir() {
         return FMLPaths.GAMEDIR.get();
     }

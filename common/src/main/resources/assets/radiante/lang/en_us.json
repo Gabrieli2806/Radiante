@@ -276,6 +276,8 @@
   "options.radiante.category.sky_and_water": "Sky & Water",
   "options.radiante.category.performance": "Performance",
   "options.radiante.category.other": "Other",
+  "options.radiante.category.addons": "Addons",
+  "options.radiante.addons.no_settings": "This addon has no settings.",
   "options.radiante.advanced": "Advanced...",
   "options.radiante.advanced.tooltip": "Shows every pipeline and shader setting below the usual ones. Turning it off only hides them; their values stay in effect.",
   "options.radiante.picture_style": "Picture Style",

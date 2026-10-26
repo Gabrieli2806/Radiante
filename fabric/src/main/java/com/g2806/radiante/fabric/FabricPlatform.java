@@ -19,6 +19,12 @@ public final class FabricPlatform implements RadiantePlatform {
     }
 
     @Override
+    public String modVersion(String modId) {
+        return FabricLoader.getInstance().getModContainer(modId)
+            .map(mod -> mod.getMetadata().getVersion().getFriendlyString()).orElse(null);
+    }
+
+    @Override
     public Path gameDir() {
         return FabricLoader.getInstance().getGameDir();
     }

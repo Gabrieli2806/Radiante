@@ -18,6 +18,11 @@ public interface RadiantePlatform {
     /** Radiante's own version, as the loader read it from the mod's metadata; "unknown" when it cannot tell. */
     String modVersion();
 
+    /** Another mod's version, for the heading of an addon in the settings; null when it cannot tell. */
+    default String modVersion(String modId) {
+        return null;
+    }
+
     /** The game directory; Radiante keeps its native files and settings in a "radiante" folder inside it. */
     Path gameDir();
 

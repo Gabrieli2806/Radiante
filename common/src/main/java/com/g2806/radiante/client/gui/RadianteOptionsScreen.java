@@ -1,5 +1,7 @@
 package com.g2806.radiante.client.gui;
 
+import com.g2806.radiante.client.addon.AddonImpl;
+import com.g2806.radiante.client.addon.AddonRegistry;
 import com.g2806.radiante.client.download.UpscalerDownloads;
 import com.g2806.radiante.client.render.RadianteRenderer;
 import com.g2806.radiante.client.RadianteClient;
@@ -83,7 +85,9 @@ public class RadianteOptionsScreen extends Screen {
 
     /** The part of the settings shown; kept while the game runs, so the screen reopens where it was left. */
     enum Category {
-        QUALITY, IMAGE, LIGHTING, SKY_AND_WATER, PERFORMANCE, OTHER;
+        QUALITY, IMAGE, LIGHTING, SKY_AND_WATER, PERFORMANCE, OTHER,
+        /** Other mods' options (RadianteAddons); only there when one registered. */
+        ADDONS;
 
         String key() {
             return "options.radiante.category." + name().toLowerCase(java.util.Locale.ROOT);
@@ -101,6 +105,11 @@ public class RadianteOptionsScreen extends Screen {
      * choice here. Written straight to Options they took effect while the screen was still open.
      */
     private final java.util.Map<String, Object> staged = new java.util.HashMap<>();
+
+    /** Addon options changed on this screen, held until Apply or Done like the rest. */
+    private final java.util.Map<AddonImpl.SettingImpl<?>, Object> pendingAddons = new java.util.LinkedHashMap<>();
+    /** The caption keys of the addon options on this screen: nothing of Radiante's own greys them out. */
+    private final java.util.Set<String> addonCaptionKeys = new java.util.HashSet<>();
 
     @SuppressWarnings("unchecked")
     private <T> T staged(String field, T current) {
@@ -152,6 +161,7 @@ public class RadianteOptionsScreen extends Screen {
         this(previous.lastScreen, previous.options);
         this.pendingPreset = previous.pendingPreset;
         this.staged.putAll(previous.staged);
+        this.pendingAddons.putAll(previous.pendingAddons);
         this.shownPreset = previous.shownPreset;
         this.pendingDlssMode = previous.pendingDlssMode;
         this.pendingRayReconstruction = previous.pendingRayReconstruction;
@@ -937,6 +947,11 @@ public class RadianteOptionsScreen extends Screen {
         this.pendingCustomScale = false;
         this.pendingRenderScale = null;
         this.pendingAdvanced.clear();
+        for (AddonImpl addon : AddonRegistry.addons()) {
+            for (AddonImpl.SettingImpl<?> setting : addon.settings()) {
+                this.pendingAddons.put(setting, setting.defaultValue());
+            }
+        }
         this.pendingProfile = RendererProfile.BEDROCK_RTX_ENHANCED;
         if (this.pendingTunables != null) {
             this.pendingTunables.replaceAll((tunable, value) -> tunable.defaultSteps);
@@ -1051,8 +1066,16 @@ public class RadianteOptionsScreen extends Screen {
                 }
             });
         this.sections.clear();
+        this.addonCaptionKeys.clear();
         for (Category section : Category.values()) {
             this.page.clear();
+            if (section == Category.ADDONS) {
+                List<SettingsLayout.Block> blocks = addonBlocks();
+                if (!blocks.isEmpty()) {
+                    this.sections.add(new SettingsLayout.Section(section, List.of(), List.of(), blocks));
+                }
+                continue;
+            }
             switch (section) {
                 case QUALITY -> {
                     addRows(rayTracingToggle());
@@ -1064,6 +1087,8 @@ public class RadianteOptionsScreen extends Screen {
                 case SKY_AND_WATER -> addSkyAndWaterOptions(clouds);
                 case PERFORMANCE -> addPerformanceOptions();
                 case OTHER -> addOtherOptions();
+                case ADDONS -> {
+                }
             }
             List<SettingsLayout.Group> groups = new ArrayList<>(AdvancedOptions.groups(section, this.pendingAdvanced));
             if (section == Category.SKY_AND_WATER) {
@@ -1071,6 +1096,69 @@ public class RadianteOptionsScreen extends Screen {
             }
             this.sections.add(new SettingsLayout.Section(section, List.copyOf(this.page), groups));
         }
+    }
+
+    /** A heading and the options under it per addon registered (RadianteAddons); none when there are none. */
+    private List<SettingsLayout.Block> addonBlocks() {
+        List<SettingsLayout.Block> blocks = new ArrayList<>();
+        for (AddonImpl addon : AddonRegistry.addons()) {
+            // An addon whose options cannot be laid out loses its rows, not the screen.
+            try {
+                List<OptionInstance<?>> rows = new ArrayList<>();
+                for (AddonImpl.SettingImpl<?> setting : addon.settings()) {
+                    rows.add(addonOption(setting));
+                    if (setting.title().getContents()
+                        instanceof net.minecraft.network.chat.contents.TranslatableContents translatable) {
+                        this.addonCaptionKeys.add(translatable.getKey());
+                    }
+                }
+                net.minecraft.network.chat.MutableComponent heading = addon.title().copy();
+                if (addon.version() != null) {
+                    heading.append(Component.literal("  " + addon.version()).withColor(0xFF808888));
+                }
+                blocks.add(new SettingsLayout.Block(heading, List.copyOf(rows),
+                    Component.translatable("options.radiante.addons.no_settings")));
+            } catch (RuntimeException | LinkageError e) {
+                RadianteClient.LOGGER.warn("Addon '{}': its settings could not be shown", addon.id(), e);
+            }
+        }
+        return blocks;
+    }
+
+    /** One addon option as a row, staged until Apply like Radiante's own. */
+    @SuppressWarnings("unchecked")
+    private OptionInstance<?> addonOption(AddonImpl.SettingImpl<?> setting) {
+        // Made with a placeholder key, then named with the addon's own component (which may have no key at all).
+        String placeholder = "radiante.addon." + setting.addon().id() + "." + setting.key();
+        Object current = this.pendingAddons.containsKey(setting) ? this.pendingAddons.get(setting) : setting.get();
+        OptionInstance<?> row = switch (setting.kind()) {
+            case TOGGLE -> new OptionInstance<Boolean>(placeholder, addonTooltip(setting),
+                (caption, value) -> Component.translatable(value ? "options.on" : "options.off"),
+                OptionInstance.BOOLEAN_VALUES, (Boolean) current, value -> this.pendingAddons.put(setting, value));
+            case CYCLE -> {
+                AddonImpl.SettingImpl<String> cycle = (AddonImpl.SettingImpl<String>) setting;
+                yield new OptionInstance<String>(placeholder, addonTooltip(setting),
+                    (caption, value) -> cycle.label(value), new OptionInstance.Enum<>(cycle.values(), Codec.STRING),
+                    (String) current, value -> this.pendingAddons.put(setting, value));
+            }
+            case SLIDER -> {
+                // The slider runs over the steps; the value shown and kept is the setting's own.
+                int min = setting.min();
+                int step = setting.step();
+                yield new OptionInstance<Integer>(placeholder, addonTooltip(setting),
+                    (caption, index) -> Component.literal(String.valueOf(min + index * step)),
+                    new OptionInstance.IntRange(0, setting.stepCount(), false),
+                    Math.max(0, Math.min(setting.stepCount(), ((Integer) current - min) / step)),
+                    index -> this.pendingAddons.put(setting, min + index * step));
+            }
+        };
+        ((com.g2806.radiante.mixin.gui.OptionInstanceAccessor) (Object) row).radiante$setCaption(setting.title());
+        return row;
+    }
+
+    private static <T> OptionInstance.TooltipSupplier<T> addonTooltip(AddonImpl.SettingImpl<?> setting) {
+        return setting.tooltip() == null ? OptionInstance.noTooltip()
+            : OptionInstance.cachedConstantTooltip(setting.tooltip());
     }
 
     private void addQualityOptions(OptionInstance<Presets> preset, OptionInstance<String> dlssMode,
@@ -1777,7 +1865,7 @@ public class RadianteOptionsScreen extends Screen {
      * switched.
      */
     private Component blockedReason(String key) {
-        if (key == null) {
+        if (key == null || this.addonCaptionKeys.contains(key)) {
             return null;
         }
         if (RadianteRenderer.isActive() && !Options.rayTracingEnabled && !key.equals(O + "ray_tracing")) {
@@ -1908,6 +1996,14 @@ public class RadianteOptionsScreen extends Screen {
         }
         this.applied = true;
         applyStaged();
+        if (!this.pendingAddons.isEmpty()) {
+            try {
+                AddonRegistry.apply(this.pendingAddons);
+            } catch (RuntimeException e) {
+                RadianteClient.LOGGER.warn("Could not apply the addons' settings", e);
+            }
+            this.pendingAddons.clear();
+        }
         Options.chunkBuildingAuto = this.pendingChunkAuto;
         syncChunkAuto();
 
