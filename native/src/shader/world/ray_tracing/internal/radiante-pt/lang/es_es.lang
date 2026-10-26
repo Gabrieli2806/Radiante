@@ -4,6 +4,5 @@ render_pipeline.module.ray_tracing.attribute.bedrock_enhanced=Bedrock RTX (Mejor
 render_pipeline.module.ray_tracing.attribute.face_shading=Sombreado de caras de vanilla
 render_pipeline.module.ray_tracing.attribute.wind=Viento
 render_pipeline.module.ray_tracing.attribute.wind_strength=Fuerza del viento
-render_pipeline.module.ray_tracing.attribute.detailed_foliage=Follaje lejano detallado
 render_pipeline.module.ray_tracing.attribute.bedrock_materials=Materiales Bedrock RTX
 render_pipeline.module.ray_tracing.attribute.nrd_signals=Señales de NRD

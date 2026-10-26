@@ -31,11 +31,6 @@ layout(set = 1, binding = 7) readonly buffer TextureMappingBuffer {
 layout(set = 2, binding = 0) uniform Uniform {
     WorldUBO ubo;
 };
-// Runtime pack attributes read the world uniform under the name the other shaders give it.
-#define worldUBO ubo
-#ifndef VPT_DETAILED_FOLIAGE
-#    define VPT_DETAILED_FOLIAGE 0.0
-#endif
 
 layout(std430, buffer_reference, buffer_reference_align = 8) readonly buffer IndexBuffer {
     uint indices[];
@@ -114,11 +109,9 @@ void main() {
         lod = lodWithCone(textures[nonuniformEXT(textureID)], uv, coneRadiusWorld, dposdu, dposdv);
 
         // Glass at its full-resolution alpha: mip levels blend a pane's frame into its clear middle. Cut-out surfaces
-        // too with Detailed distant foliage: each texel of a leaf or a blade of grass stays a hole or not at any
-        // distance, as the shadow rays and the opacity micromaps of terrain see it, instead of the mip levels' coarser
-        // (and on average equally covered) shapes.
-        bool fullResolution =
-            isGlassSurface(packedData) || (alphaMode == ALPHA_MODE_CUTOUT && VPT_DETAILED_FOLIAGE > 0.5);
+        // too: each texel of a leaf or a blade of grass stays a hole or not at any distance, as the shadow rays and the
+        // opacity micromaps of terrain see it, so far trees keep their gaps instead of the mip levels' flatter shapes.
+        bool fullResolution = isGlassSurface(packedData) || alphaMode == ALPHA_MODE_CUTOUT;
         vec4 texel = sampleTexture(textures[nonuniformEXT(textureID)], uv, fullResolution ? 0.0 : lod, false);
         alpha *= texel.a;
         if (alphaMode == ALPHA_MODE_ADDITIVE) {

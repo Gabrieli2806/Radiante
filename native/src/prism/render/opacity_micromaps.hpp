@@ -21,12 +21,8 @@
 // only on those marked unknown.
 //
 // The micromaps must answer exactly as the shaders do, and the shaders do not all ask the same question:
-// - Camera and bounce rays (default.rahit) test the full-size texel with Detailed distant foliage (the default), and
-//   read it like shadow rays: every micro-triangle the full-size texture decides is known. With Smooth distant foliage
-//   they test the texel at the mip level their ray cone reaches; Minecraft's cut-out mip levels keep the coverage of
-//   the full-size texture on average but not texel for texel, so a micro-triangle is then marked opaque (transparent)
-//   only where every texel it covers is opaque (transparent) at every mip level, and the rest are unknown and go to
-//   the shader.
+// - Camera and bounce rays (default.rahit) test cut-out surfaces at the full-size texel at any distance, as shadow
+//   rays do, so every micro-triangle the full-size texture decides is known for them too.
 // - Shadow rays (shadow.rahit) test the full-size texture only. They trace with
 //   gl_RayFlagsForceOpacityMicromap2StateEXT, which reads "unknown opaque" as opaque and "unknown transparent" as
 //   transparent, and each unknown micro-triangle is given the full-size answer that way: these rays never need the
@@ -115,7 +111,7 @@ class CoverageAtlas : public SharedObject<CoverageAtlas> {
     };
 
     Coverage cover(const glm::dvec2 corners[3], uint32_t mipLevel) const;
-    BakedTriangle bakeUncached(const glm::vec2 uv[3], uint32_t maxLevel, bool detailed) const;
+    BakedTriangle bakeUncached(const glm::vec2 uv[3], uint32_t maxLevel) const;
     bool opaqueAt(uint32_t mipLevel, int64_t x, int64_t y) const;
     bool animatedAt(int64_t x, int64_t y) const;
 
@@ -148,10 +144,6 @@ void finish(uint32_t textureId, std::span<const int32_t> animatedRects);
 void forget(uint32_t textureId);
 // The published atlas, or null.
 std::shared_ptr<CoverageAtlas> current();
-// Whether camera rays test cut-out coverage at full resolution (the Detailed Distant Foliage attribute): sections
-// baked from now on follow it, and Java builds every section again when it changes.
-void setDetailed(bool detailed);
-bool detailed();
 } // namespace coverage
 
 // The micromap inputs of one chunk section: the states and triangle array of one micromap shared by its cut-out

@@ -45,9 +45,6 @@ layout(set = 1, binding = 7) readonly buffer TextureMappingBuffer {
 layout(set = 2, binding = 0) uniform WorldUniform {
     WorldUBO worldUBO;
 };
-#ifndef VPT_DETAILED_FOLIAGE
-#    define VPT_DETAILED_FOLIAGE 0.0
-#endif
 
 layout(set = 2, binding = 1) uniform LastWorldUniform {
     WorldUBO lastWorldUbo;
@@ -134,8 +131,8 @@ void main() {
         float lod = lodWithCone(textures[nonuniformEXT(textureID)], textureUV, coneRadiusWorld, dposdu, dposdv);
 
         albedoValue = sampleTexture(textures[nonuniformEXT(textureID)], textureUV, lod, false);
-        // With Detailed distant foliage, cut-out coverage at full resolution, as the any-hit shader decided the hit.
-        if (alphaMode == ALPHA_MODE_CUTOUT && lod > 0.0 && VPT_DETAILED_FOLIAGE > 0.5) {
+        // Cut-out coverage at full resolution, as the any-hit shader decided the hit.
+        if (alphaMode == ALPHA_MODE_CUTOUT && lod > 0.0) {
             albedoValue.a = sampleTexture(textures[nonuniformEXT(textureID)], textureUV, 0.0, false).a;
         }
         albedoValue.a = resolveSurfaceAlpha(albedoValue.a * colorLayerValue.a, alphaMode);

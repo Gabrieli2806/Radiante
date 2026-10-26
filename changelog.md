@@ -8,14 +8,12 @@ All notable changes to this project are documented in this file.
   opens the update offer, so skipping the start-up prompt for a version no longer leaves no way to update.
 - Faster in forests, fields and villages where the GPU driver offers opacity micromaps (`VK_EXT_opacity_micromap`):
   the leaves, grass, flowers and other cut-out blocks of each section are baked into micromaps, so sun and block
-  light shadow rays no longer run the any-hit shader on them, and camera rays skip it wherever the texture's mip
-  levels agree. The path tracing pass took 3-15% less GPU time in the test views than with the extension off, for
-  about 3 MB of micromaps and 10 MB of their inputs at 12 chunks. The picture is unchanged: animated sprites (fire,
-  kelp...), glass and odd faces are still decided by the shader, and GPUs without the extension keep the shader path.
-- Distant Foliage (Sky & Water, Detailed by default): leaves, grass, flowers and other cut-out blocks are now cut out
-  texel by texel at any distance, so far trees keep their gaps and look less flat, and with opacity micromaps every
-  hit on them is answered without the any-hit shader. Smooth brings back the mip-level look (softer, fuller far
-  foliage), as before. Switching it reloads the world's geometry.
+  light shadow rays and camera rays no longer run the any-hit shader on them. The path tracing pass took 5-23% less
+  GPU time than before in most test views, for about 3 MB of micromaps and 10 MB of their inputs at 12 chunks.
+  Animated sprites (fire, kelp...), glass and odd faces are still decided by the shader, and GPUs without the
+  extension keep the shader path.
+- Far leaves, grass and flowers are cut out texel by texel at any distance, as shadows already were, instead of by
+  the texture's mip levels: distant trees keep their gaps and look less flat.
 - Less noise for the same rays: the path's BSDF and sun-disc samples are Owen-scrambled Sobol points across frames
   (Burley 2020) instead of independent random numbers, so the frames the denoiser averages cover each pixel more
   evenly. The noise left in the denoised picture at a still view dropped 7-24% in the test views, for 1-5% more

@@ -196,8 +196,6 @@ public final class ChunkManager {
     private static boolean forceAllDirty;
     /** Whether block faces keep vanilla's face shading in their colour (Pipeline.FACE_SHADING_ATTRIBUTE). */
     private static volatile boolean faceShading = true;
-    /** Distant Foliage was Detailed when the sections were last built (Pipeline.DETAILED_FOLIAGE_ATTRIBUTE). */
-    private static volatile boolean detailedFoliage = true;
     /**
      * Whether foliage is meshed with wind codes (Pipeline.WIND_ATTRIBUTE). Without them nothing sways, and the
      * renderer neither moves nor refits anything: the wind costs nothing while it is off.
@@ -438,14 +436,6 @@ public final class ChunkManager {
             com.g2806.radiante.client.pipeline.Pipeline.WIND_ATTRIBUTE);
         if (windOn != wind) {
             wind = windOn;
-            forceAllDirty = true;
-        }
-        // The cut-out micromaps are baked for how the shaders judge distant foliage; the renderer took the new value
-        // when it was set, so the sections built from here on match it.
-        boolean detailed = com.g2806.radiante.client.pipeline.Pipeline.isShaderPackToggleOn(
-            com.g2806.radiante.client.pipeline.Pipeline.DETAILED_FOLIAGE_ATTRIBUTE);
-        if (detailed != detailedFoliage) {
-            detailedFoliage = detailed;
             forceAllDirty = true;
         }
         boolean rebuildAll = forceAllDirty;
