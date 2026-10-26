@@ -28,7 +28,7 @@ public final class AtlasMirror {
         // The block atlas's cut-out coverage is taken from the uploads below, for the opacity micromaps of leaves,
         // grass and the like. Animated sprites change from frame to frame and are left to the shaders.
         int coverageId = atlas.location().equals(TextureAtlas.LOCATION_BLOCKS)
-            ? TextureTracker.idOf(atlas.getTexture()) : 0;
+            ? TextureTracker.idOf(atlas.getTexture().texture()) : 0;
         IntArrayList animated = new IntArrayList();
         if (coverageId != 0) {
             TextureProxy.beginCutoutCoverage(coverageId, atlasWidth, atlasHeight);
