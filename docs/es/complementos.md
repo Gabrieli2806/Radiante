@@ -6,7 +6,9 @@ Un mod hecho sobre Radiante (un *complemento*) puede poner sus opciones en la pa
 Radiante, en vez de escribir su propia pantalla y su propio archivo de configuración. Cuando al menos
 un complemento se registra, los ajustes ganan una sección **Complementos** al final de la barra
 lateral, con un título por complemento (su icono, nombre y versión) y sus opciones debajo. Sin complementos
-no cambia nada.
+no cambia nada. Al pulsar un título (o Intro, Espacio o la A del mando sobre él) se pliegan o despliegan
+las opciones de ese complemento: con uno solo empiezan desplegadas, con dos o más plegadas, y Radiante
+recuerda lo que elegiste para cada uno.
 
 Las opciones de un complemento se comportan como las de Radiante: esperan a **Aplicar** o **Listo**,
 **Deshacer** las descarta, **Restablecer valores** les devuelve los valores por defecto del
