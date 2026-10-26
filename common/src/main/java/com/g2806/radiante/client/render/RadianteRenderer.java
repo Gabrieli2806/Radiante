@@ -254,7 +254,6 @@ public final class RadianteRenderer {
         }
     }
 
-    /** Replaces {@code GameRenderer.renderLevel} while the renderer is active. */
     /** Frames of the world this renderer has drawn since the level was opened. See {@link #levelFrames()}. */
     private static final java.util.concurrent.atomic.AtomicInteger LEVEL_FRAMES =
         new java.util.concurrent.atomic.AtomicInteger();
@@ -474,7 +473,9 @@ public final class RadianteRenderer {
             heldLightColor(minecraft, net.minecraft.world.InteractionHand.OFF_HAND),
             Options.parallaxTransparentEdges, Options.dayBrightness / 100.0f, Options.nightBrightness / 100.0f,
             Options.emissionBrightness / 100.0f, false,
-            EntityManager.rainFallPerFrame(levelRenderState), farReach, Options.heldLightBrightness / 100.0f));
+            EntityManager.rainFallPerFrame(levelRenderState), farReach, Options.heldLightBrightness / 100.0f,
+            windTime(levelRenderState), com.g2806.radiante.client.pipeline.Pipeline.windStrength(),
+            windWeather(minecraft, levelRenderState.worldPartialTicks)));
 
         SkyRenderState sky = levelRenderState.skyRenderState;
         Vector4f mobEffect = fogControls(minecraft,
@@ -573,10 +574,6 @@ public final class RadianteRenderer {
     }
 
     /**
-     * The shaders reconstruct view rays looking down the opposite Z axis to the render pearl camera, so the traced
-     * view faced backwards. Turning the view half a revolution around its up axis faces it forward again.
-     */
-    /**
      * How much wider or narrower the hand's field of view is than the world's. Minecraft draws the first person
      * hand in a pass of its own with a fixed 70 degrees ({@code Camera.calculateHudFov}), so changing the FOV
      * setting opens up the world without touching the hand; a path tracer that shoots one ray per pixel has to
@@ -591,15 +588,14 @@ public final class RadianteRenderer {
         return (float) Math.tan(Math.toRadians(cameraState.hudFov) * 0.5) * worldTanTerm;
     }
 
+    /**
+     * The shaders reconstruct view rays looking down the opposite Z axis to the render pearl camera, so the traced
+     * view faced backwards. Turning the view half a revolution around its up axis faces it forward again.
+     */
     private static Matrix4f toRendererView(Matrix4f viewRotation) {
         return new Matrix4f().scaling(-1.0f, 1.0f, -1.0f).mul(viewRotation);
     }
 
-    /**
-     * The tilt when the player takes a hit and the sway while walking, exactly as vanilla computes them. Vanilla
-     * multiplies this onto the camera transform; folding it into the projection instead skews the frustum and the
-     * shake comes out far stronger than it should.
-     */
     /**
      * Nausea and the nether portal's wobble, as GameRenderer bends the level projection for them: a squash along
      * a diagonal axis that turns with spinningEffectAngle. The camera state holds the projection from before it.
@@ -621,6 +617,11 @@ public final class RadianteRenderer {
         projection.rotate(angle, axis).scale(1.0f / squash, 1.0f, 1.0f).rotate(-angle, axis);
     }
 
+    /**
+     * The tilt when the player takes a hit and the sway while walking, exactly as vanilla computes them. Vanilla
+     * multiplies this onto the camera transform; folding it into the projection instead skews the frustum and the
+     * shake comes out far stronger than it should.
+     */
     private static Matrix4f cameraShake(Minecraft minecraft, CameraRenderState cameraState) {
         CameraEntityRenderState entity = cameraState.entityRenderState;
         OptionsRenderState options = minecraft.gameRenderer.gameRenderState().optionsRenderState;
@@ -679,6 +680,27 @@ public final class RadianteRenderer {
      */
     private static float dayFraction(LevelRenderState levelRenderState) {
         return ((float) (levelRenderState.gameTime % 24000L) + PlayerFrame.worldPartialTicks()) / 24000.0f;
+    }
+
+    /** Game ticks after which the wind's clock starts over: six hours of play, so its one jump is seldom seen. */
+    private static final long WIND_TIME_WRAP_TICKS = 20L * 60L * 60L * 6L;
+
+    /**
+     * The wind's clock in seconds (WorldUBO.windTime): game time, so foliage stops with the game and a test sees the
+     * same sway at the same tick. Wrapped, since a float of raw seconds loses the precision a smooth sway needs.
+     */
+    private static float windTime(LevelRenderState levelRenderState) {
+        return ((float) (levelRenderState.gameTime % WIND_TIME_WRAP_TICKS) + levelRenderState.worldPartialTicks)
+            / 20.0f;
+    }
+
+    /** How much harder the wind blows in this weather (WorldUBO.windWeather): 1 when clear, up to 2 in a storm. */
+    private static float windWeather(Minecraft minecraft, float partialTicks) {
+        if (minecraft.level == null) {
+            return 1.0f;
+        }
+        return 1.0f + 0.5f * minecraft.level.getRainLevel(partialTicks)
+            + 0.5f * minecraft.level.getThunderLevel(partialTicks);
     }
 
     /** Mirrors vanilla's armor glint texture animation, which the shaders sample the glint layer with. */

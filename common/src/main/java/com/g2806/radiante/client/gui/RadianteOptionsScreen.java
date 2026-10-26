@@ -64,7 +64,6 @@ public class RadianteOptionsScreen extends Screen {
     private Boolean pendingRestir;
     private Boolean pendingSer;
     private Boolean pendingFroxelFog;
-    private Boolean pendingRainRefraction;
     private Boolean pendingSeamlessGlass;
     // Plain on/off shader pack settings (light grid, cached deep bounces), by attribute; absent until read.
     private java.util.Map<String, Boolean> pendingPackToggles = new java.util.HashMap<>();
@@ -178,7 +177,6 @@ public class RadianteOptionsScreen extends Screen {
         this.pendingRestir = previous.pendingRestir;
         this.pendingSer = previous.pendingSer;
         this.pendingFroxelFog = previous.pendingFroxelFog;
-        this.pendingRainRefraction = previous.pendingRainRefraction;
         this.pendingSeamlessGlass = previous.pendingSeamlessGlass;
         this.pendingPackToggles = new java.util.HashMap<>(previous.pendingPackToggles);
         this.pendingFrameGenerationBackend = previous.pendingFrameGenerationBackend;
@@ -363,7 +361,8 @@ public class RadianteOptionsScreen extends Screen {
 
     /**
      * The bottom-bar button for the upscaler of the pipeline in the selector: Install when it is not downloaded,
-     * Restart when it is downloaded but not loaded yet, Delete when it is in use. None for FSR and the others. Always
+     * Restart when it is downloaded but not loaded yet, Update when it is in use and this build has a newer version,
+     * Delete when it is in use. None for FSR and the others. Always
      * shown: picking a pipeline reopens the screen, which drops the focus a row-anchored button would wait for.
      */
     private SettingsLayout.Extra upscalerFooterButton() {
@@ -395,6 +394,12 @@ public class RadianteOptionsScreen extends Screen {
                         List.of(Component.literal(name))));
                 }, true, null);
         }
+        if (UpscalerDownloads.isOutdated(component)) {
+            // Skipping the start-up offer only hides that prompt: the way to update stays here.
+            return new SettingsLayout.Extra(Component.translatable("options.radiante.download.button.update", name,
+                Math.round(component.downloadBytes / 1_000_000.0)),
+                manageTooltip, () -> openUpscalerScreen(component), !inWorld, null);
+        }
         return new SettingsLayout.Extra(Component.translatable("options.radiante.download.button.delete", name),
             manageTooltip, () -> openUpscalerScreen(component), !inWorld, null);
     }
@@ -406,8 +411,10 @@ public class RadianteOptionsScreen extends Screen {
         }
         this.applied = true;
         Screen back = new RadianteOptionsScreen(this);
-        UpscalerDownloadScreen.Mode mode = UpscalerDownloads.isInstalled(component)
-            ? UpscalerDownloadScreen.Mode.DELETE : UpscalerDownloadScreen.Mode.CONFIRM;
+        UpscalerDownloadScreen.Mode mode = !UpscalerDownloads.isInstalled(component)
+            ? UpscalerDownloadScreen.Mode.CONFIRM
+            : UpscalerDownloads.isOutdated(component) ? UpscalerDownloadScreen.Mode.UPDATE
+            : UpscalerDownloadScreen.Mode.DELETE;
         this.minecraft.gui.setScreen(new UpscalerDownloadScreen(back, component, mode));
     }
 
@@ -605,9 +612,8 @@ public class RadianteOptionsScreen extends Screen {
             });
     }
 
-    // The options that only take effect after a restart; kept to mark them on the list.
+    // The one option that only takes effect after a restart; kept to mark it on the list.
     private OptionInstance<?> hdrToggle;
-    private OptionInstance<?> reflexToggle;
 
     /** HDR output chosen differently from what the window was created with. */
     private boolean hdrPending() {
@@ -909,8 +915,6 @@ public class RadianteOptionsScreen extends Screen {
         this.pendingRestir = Boolean.TRUE;
         this.pendingSer = Boolean.FALSE;
         this.pendingFroxelFog = Pipeline.supportsShaderPackToggle(Pipeline.FROXEL_FOG_ATTRIBUTE) ? Boolean.TRUE : null;
-        this.pendingRainRefraction =
-            Pipeline.supportsShaderPackToggle(Pipeline.RAIN_REFRACTION_ATTRIBUTE) ? Boolean.TRUE : null;
         this.pendingSeamlessGlass =
             Pipeline.supportsShaderPackToggle(Pipeline.SEAMLESS_GLASS_ATTRIBUTE) ? Boolean.TRUE : null;
         this.pendingPackToggles.clear();
@@ -918,6 +922,9 @@ public class RadianteOptionsScreen extends Screen {
             if (Pipeline.supportsShaderPackToggle(attribute)) {
                 this.pendingPackToggles.put(attribute, Boolean.TRUE);
             }
+        }
+        if (Pipeline.supportsShaderPackToggle(Pipeline.WIND_ATTRIBUTE)) {
+            this.pendingPackToggles.put(Pipeline.WIND_ATTRIBUTE, Boolean.FALSE);
         }
         this.pendingDepthOfField = Boolean.FALSE;
         this.pendingReflex = false;
@@ -1078,7 +1085,6 @@ public class RadianteOptionsScreen extends Screen {
                     refreshQualityLater();
                 });
         }
-        this.reflexToggle = reflex;
         addRows(preset, dlssMode, rayReconstructionOption(), upscalerModeOption(), renderScaleOption(),
             outputResolutionOption(), outputScaleOption(), frameGenerationBackendOption(), frameGeneration, reflex);
     }
@@ -1172,6 +1178,9 @@ public class RadianteOptionsScreen extends Screen {
                     refreshQualityLater();
                 }),
             restirOption(), serOption(),
+            OptionInstance.createBoolean("options.radiante.glowing_pixel_light",
+                tooltip("options.radiante.glowing_pixel_light"),
+                staged("glowingPixelLight", Options.glowingPixelLight), value -> stage("glowingPixelLight", value)),
             OptionInstance.createBoolean("options.radiante.held_item_light",
                 tooltip("options.radiante.held_item_light"), staged("heldItemLight", Options.heldItemLight),
                 value -> stage("heldItemLight", value)),
@@ -1236,15 +1245,6 @@ public class RadianteOptionsScreen extends Screen {
                 tooltip("options.radiante.cloud_shadows"), this.pendingCloudShadows,
                 value -> this.pendingCloudShadows = value);
         }
-        OptionInstance<Boolean> rainRefraction = null;
-        if (Pipeline.supportsShaderPackToggle(Pipeline.RAIN_REFRACTION_ATTRIBUTE)) {
-            if (this.pendingRainRefraction == null) {
-                this.pendingRainRefraction = Pipeline.isShaderPackToggleOn(Pipeline.RAIN_REFRACTION_ATTRIBUTE);
-            }
-            rainRefraction = OptionInstance.createBoolean("options.radiante.rain_refraction",
-                tooltip("options.radiante.rain_refraction"), this.pendingRainRefraction,
-                value -> this.pendingRainRefraction = value);
-        }
         OptionInstance<Boolean> seamlessGlass = null;
         if (Pipeline.supportsShaderPackToggle(Pipeline.SEAMLESS_GLASS_ATTRIBUTE)) {
             if (this.pendingSeamlessGlass == null) {
@@ -1284,7 +1284,8 @@ public class RadianteOptionsScreen extends Screen {
             OptionInstance.createBoolean("options.radiante.rain_wetness",
                 tooltip("options.radiante.rain_wetness"), staged("rainWetness", Options.rainWetness),
                 value -> stage("rainWetness", value)),
-            rainRefraction, seamlessGlass, seamlessScope,
+            packToggle(Pipeline.WIND_ATTRIBUTE, "options.radiante.wind"), tunable(Tunable.WIND_STRENGTH, false),
+            seamlessGlass, seamlessScope,
             OptionInstance.createBoolean("options.radiante.biome_ambiance",
                 OptionInstance.cachedConstantTooltip(Component.translatable("options.radiante.biome_ambiance.tooltip")),
                 this.pendingBiomeAmbiance, value -> this.pendingBiomeAmbiance = value),
@@ -1609,7 +1610,15 @@ public class RadianteOptionsScreen extends Screen {
                 return names;
             }
         });
-        addRenderableWidget(this.layout.init(this.scroll, this.search));
+        net.minecraft.client.gui.components.EditBox searchField = this.layout.init(this.scroll, this.search);
+        // The list goes in ahead of the search field: a controller mod's first focus lands on the options.
+        addWidget(this.layout.focusTarget());
+        addRenderableWidget(searchField);
+    }
+
+    /** For a controller integration (SettingsControls). */
+    SettingsLayout controllerLayout() {
+        return this.layout;
     }
 
     private static final String O = "options.radiante.";
@@ -1846,6 +1855,8 @@ public class RadianteOptionsScreen extends Screen {
 
     @Override
     public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
+        this.mouseHeld = true;
+        this.refreshKey = -1;
         if (super.mouseClicked(event, doubleClick)) {
             return true;
         }
@@ -1862,6 +1873,7 @@ public class RadianteOptionsScreen extends Screen {
 
     @Override
     public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent event) {
+        this.mouseHeld = false;
         if (this.layout != null) {
             this.layout.mouseReleased();
         }
@@ -1953,7 +1965,7 @@ public class RadianteOptionsScreen extends Screen {
                 RadianteClient.LOGGER.info("[settings] preset: {} -> {}", Pipeline.INSTANCE.getActivePresetName(),
                     appliedPreset.key);
             }
-            Pipeline.switchToPresetMode(appliedPreset.key, false);
+            Pipeline.switchToPresetMode(appliedPreset.key);
             changed = true;
             structural = true;
         }
@@ -1990,9 +2002,6 @@ public class RadianteOptionsScreen extends Screen {
         }
         if (this.pendingFroxelFog != null) {
             changed |= Pipeline.setShaderPackToggle(Pipeline.FROXEL_FOG_ATTRIBUTE, this.pendingFroxelFog);
-        }
-        if (this.pendingRainRefraction != null) {
-            changed |= Pipeline.setShaderPackToggle(Pipeline.RAIN_REFRACTION_ATTRIBUTE, this.pendingRainRefraction);
         }
         for (java.util.Map.Entry<String, Boolean> toggle : this.pendingPackToggles.entrySet()) {
             changed |= Pipeline.setShaderPackToggle(toggle.getKey(), toggle.getValue());
@@ -2075,12 +2084,34 @@ public class RadianteOptionsScreen extends Screen {
 
     @Override
     public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
-        if (this.layout != null && !this.layout.searchFocused() && this.minecraft != null
-            && this.layout.keyPressed(event.key(), this.minecraft.hasShiftDown())) {
+        if (this.layout != null && !this.layout.searchFocused() && this.layout.keyPressed(event)) {
+            // The list holds the screen's focus while the keys work in it, so the screen's own navigation (and a
+            // controller mod's) goes on from there.
+            if (getFocused() != this.layout.focusTarget()) {
+                setFocused(this.layout.focusTarget());
+            }
+            this.refreshKey = event.key();
             return true;
         }
         return super.keyPressed(event);
     }
+
+    /** The key whose change waits for it to be let go before the screen is laid out again; -1 for none. */
+    private int refreshKey = -1;
+
+    @Override
+    public void tick() {
+        super.tick();
+        // A change from a controller has no key to let go of: controller mods press keys without releasing them, or
+        // move the focus without a key at all. Laid out again once no key or mouse button holds it.
+        if (this.refreshPending && !this.mouseHeld
+            && (this.refreshKey < 0 || !com.mojang.blaze3d.platform.InputConstants.isKeyDown(this.refreshKey))) {
+            this.refreshPending = false;
+            reopenWithSameChoices();
+        }
+    }
+
+    private boolean mouseHeld;
 
     @Override
     public boolean keyReleased(net.minecraft.client.input.KeyEvent event) {

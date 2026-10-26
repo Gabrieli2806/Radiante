@@ -510,6 +510,49 @@ public final class EntityManager {
         return Glow.ofLevel(excess);
     }
 
+    /**
+     * Whether an entity vanilla culled (out of the view frustum, or in a section it would not draw) is kept anyway:
+     * one that gives off light, within the Entity Light Reach of the camera. Its light reaches what is on screen
+     * whichever way the camera points, as a torch's does, and turning away used to switch the room's light off.
+     * Only light sources are kept, the rest still go with the frustum. Display entities light nothing worth the cost
+     * (see {@link #selfLitEmission}).
+     */
+    public static boolean keepsLightOutOfView(net.minecraft.world.entity.Entity entity, double cameraX,
+        double cameraY, double cameraZ, float partialTick) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null || entity.isRemoved() || entity.isInvisible()) {
+            return false;
+        }
+        double reach = Options.entityLightReach;
+        if (entity.distanceToSqr(cameraX, cameraY, cameraZ) > reach * reach
+            || !entity.shouldRender(cameraX, cameraY, cameraZ)) {
+            return false;
+        }
+        if (entity instanceof net.minecraft.world.entity.decoration.GlowItemFrame
+            || entity instanceof net.minecraft.world.entity.boss.enderdragon.EndCrystal) {
+            return true;
+        }
+        if (entity instanceof net.minecraft.world.entity.Display
+            || entity instanceof net.minecraft.world.entity.boss.wither.WitherBoss
+            || entity instanceof net.minecraft.world.entity.projectile.hurtingprojectile.WitherSkull) {
+            return false;
+        }
+        // The same test as selfLitEmission, on the entity: its renderer reports more block light than is there.
+        int ownBlockLight = net.minecraft.util.LightCoordsUtil.block(
+            minecraft.getEntityRenderDispatcher().getPackedLightCoords(entity, partialTick));
+        if (ownBlockLight < SELF_LIT_MIN_EXCESS) {
+            return false;
+        }
+        Vec3 position = entity.getPosition(partialTick);
+        int worldBlockLight = 0;
+        for (double offset : SELF_LIT_SAMPLE_HEIGHTS) {
+            BlockPos pos = BlockPos.containing(position.x, position.y + entity.getBbHeight() * offset, position.z);
+            worldBlockLight = Math.max(worldBlockLight,
+                minecraft.level.getBrightness(net.minecraft.world.level.LightLayer.BLOCK, pos));
+        }
+        return ownBlockLight - worldBlockLight >= SELF_LIT_MIN_EXCESS;
+    }
+
     private static void collectBlockEntity(Minecraft minecraft, CameraRenderState cameraState,
         BlockEntityRenderState state) {
         COLLECTOR.reset();
@@ -747,11 +790,6 @@ public final class EntityManager {
     private static final int EXTERNAL_ID_SALT = 0x65787467;
 
     /**
-     * Rain and snow: the same sheets vanilla draws, built from the columns Minecraft already extracted. They go in
-     * under the weather mask, which camera rays see and shadow rays skip, and use the stochastic alpha mode so a
-     * streak is a faint visible surface rather than clear glass.
-     */
-    /**
      * Blocks vanilla rain falls per tick: its texture scrolls (3 to 4) / 32 of a texture height per tick, and a
      * texture height covers four blocks. Each column picks its own speed in that range; the middle one is used.
      */
@@ -771,6 +809,11 @@ public final class EntityManager {
         return rainFallPerFrame;
     }
 
+    /**
+     * Rain and snow: the same sheets vanilla draws, built from the columns Minecraft already extracted. They go in
+     * under the weather mask, which camera rays see and shadow rays skip, and use the stochastic alpha mode so a
+     * streak is a faint visible surface rather than clear glass.
+     */
     private static void collectWeather(LevelRenderState levelRenderState, CameraRenderState cameraState) {
         net.minecraft.client.renderer.state.level.WeatherRenderState weather = levelRenderState.weatherRenderState;
         if (weather.intensity <= 0.0f || (weather.rainColumns.isEmpty() && weather.snowColumns.isEmpty())) {
@@ -906,10 +949,6 @@ public final class EntityManager {
             layers, PREBUILT_BLAS_KEYED));
     }
 
-
-
-
-    /** The held items and arms are submitted separately from the world and follow the camera. */
     /**
      * The player, in first person. Minecraft draws nothing of them then - no model is extracted for the camera
      * entity - so the world around the player had no shadow of them in it and they were missing from every
@@ -990,6 +1029,7 @@ public final class EntityManager {
             && !com.g2806.radiante.client.compat.vivecraft.VivecraftCompat.isVrActive();
     }
 
+    /** The held items and arms are submitted separately from the world and follow the camera. */
     private static void collectHands(Minecraft minecraft, LevelRenderState levelRenderState,
         CameraRenderState cameraState) {
         if (!handsDrawn(minecraft, levelRenderState)) {
@@ -1022,12 +1062,6 @@ public final class EntityManager {
     }
 
     /**
-     * The id an entity's geometry is matched to the previous frame's by, for its motion vectors. Minecraft makes a
-     * new render state every frame, so keyed by the state object nothing ever matched: every moving mob and player
-     * was taken for a still one, and the upscaler, finding it elsewhere than the motion vectors said, threw its
-     * history away and showed it noisy.
-     */
-    /**
      * The id of whatever stands at a block. {@code BlockPos.hashCode} will not do: it gives two blocks 31 apart
      * along x and one apart in height the same number, and the renderer keeps what it has built by id - two signs
      * sharing one took each other's place every frame and were both built again every frame, by the hundred
@@ -1038,6 +1072,12 @@ public final class EntityManager {
         return (int) (mixed ^ mixed >>> 32);
     }
 
+    /**
+     * The id an entity's geometry is matched to the previous frame's by, for its motion vectors. Minecraft makes a
+     * new render state every frame, so keyed by the state object nothing ever matched: every moving mob and player
+     * was taken for a still one, and the upscaler, finding it elsewhere than the motion vectors said, threw its
+     * history away and showed it noisy.
+     */
     private static int historyId(EntityRenderState state) {
         int entityId = ((EntityIdHolder) state).radiante$entityId();
         return entityId == Integer.MIN_VALUE ? System.identityHashCode(state) : entityId * 0x9E3779B1 ^ 0x7F4A7C15;
@@ -1197,7 +1237,7 @@ public final class EntityManager {
      */
     private static final class Scratch {
 
-        private static final int SLOTS = 17;
+        private static final int SLOTS = 15;
 
         private final long[] addresses = new long[SLOTS];
         private final long[] sizes = new long[SLOTS];
@@ -1214,14 +1254,7 @@ public final class EntityManager {
             return reserve(slot, (long) count * Double.BYTES);
         }
 
-        /** For the arrays the upload never writes: they have to read as zero, as a fresh allocation did. */
-        long zeroedInts(int slot, int count) {
-            long size = (long) count * Integer.BYTES;
-            long address = reserve(slot, size);
-            MemoryUtil.memSet(address, 0, size);
-            return address;
-        }
-
+        /** For an array the upload may leave unwritten: it has to read as zero, as a fresh allocation did. */
         long zeroedLongs(int slot, int count) {
             long size = (long) count * Long.BYTES;
             long address = reserve(slot, size);
@@ -1255,25 +1288,23 @@ public final class EntityManager {
             layerCount += entity.layers().size();
         }
 
-        // These seventeen arrays are the same shape every frame and only ever grow, so they are kept between
+        // These fifteen arrays are the same shape every frame and only ever grow, so they are kept between
         // frames. Allocating and freeing them per frame was pure overhead on the render thread.
         long hashCodes = SCRATCH.ints(0, entityCount);
         long posXs = SCRATCH.doubles(1, entityCount);
         long posYs = SCRATCH.doubles(2, entityCount);
         long posZs = SCRATCH.doubles(3, entityCount);
         long rayTracingFlags = SCRATCH.ints(4, entityCount);
-        long postRenderFlags = SCRATCH.zeroedInts(5, entityCount);
-        long prebuiltBlas = SCRATCH.ints(6, entityCount);
-        long posts = SCRATCH.zeroedInts(7, entityCount);
-        long layerCounts = SCRATCH.ints(8, entityCount);
-        long geometryTypes = SCRATCH.ints(9, layerCount);
-        long geometryGroupNames = SCRATCH.longs(10, layerCount);
-        long geometryContentNames = SCRATCH.zeroedLongs(11, layerCount);
-        long geometryTextures = SCRATCH.ints(12, layerCount);
-        long vertexFormats = SCRATCH.ints(13, layerCount);
-        long indexFormats = SCRATCH.ints(14, layerCount);
-        long vertexCounts = SCRATCH.ints(15, layerCount);
-        long vertices = SCRATCH.longs(16, layerCount);
+        long prebuiltBlas = SCRATCH.ints(5, entityCount);
+        long layerCounts = SCRATCH.ints(6, entityCount);
+        long geometryTypes = SCRATCH.ints(7, layerCount);
+        long geometryGroupNames = SCRATCH.longs(8, layerCount);
+        long geometryContentNames = SCRATCH.zeroedLongs(9, layerCount);
+        long geometryTextures = SCRATCH.ints(10, layerCount);
+        long vertexFormats = SCRATCH.ints(11, layerCount);
+        long indexFormats = SCRATCH.ints(12, layerCount);
+        long vertexCounts = SCRATCH.ints(13, layerCount);
+        long vertices = SCRATCH.longs(14, layerCount);
 
         try {
             int layerIndex = 0;
@@ -1307,7 +1338,7 @@ public final class EntityManager {
             }
 
             EntityProxy.queue(0.0125f, coordinate, false, entityCount, hashCodes, posXs,
-                posYs, posZs, rayTracingFlags, postRenderFlags, prebuiltBlas, posts, layerCounts, geometryTypes,
+                posYs, posZs, rayTracingFlags, prebuiltBlas, layerCounts, geometryTypes,
                 geometryGroupNames, geometryContentNames, geometryTextures, vertexFormats, indexFormats,
                 vertexCounts, vertices);
         } finally {

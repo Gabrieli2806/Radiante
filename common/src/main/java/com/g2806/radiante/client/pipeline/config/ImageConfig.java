@@ -9,10 +9,4 @@ public class ImageConfig {
     public boolean finalOutput = false;
 
     public Module owner;
-
-    @Override
-    public String toString() {
-        return "ImageConfig{" + "name='" + name + '\'' + ", format='" + format + '\''
-            + ", finalOutput=" + finalOutput;
-    }
 }

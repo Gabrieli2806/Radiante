@@ -11,7 +11,6 @@ namespace gpu::diagnostics {
 
 bool checkpointsRequested();
 void setCheckpointsEnabled(bool enabled);
-bool checkpointsEnabled();
 
 void checkpoint(VkCommandBuffer commandBuffer, std::string_view name);
 // Prints the checkpoints of a lost device's queue.

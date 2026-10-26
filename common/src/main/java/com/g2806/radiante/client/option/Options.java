@@ -21,13 +21,16 @@ public class Options {
 
     public static final String OPTION_PROPERTIES = "options.properties";
 
-    public static int maxFps = 260;
-    public static int inactivityFpsLimit = 260;
-    public static boolean vsync = true;
     public static int chunkBuildingBatchSize = 12;
     public static int chunkBuildingTotalBatches = 12;
     public static int chunkBuildingThreads = getDefaultChunkBuildingThreads();
     public static boolean collectChunkEmission = true;
+    /**
+     * Light From Glowing Pixels: a light block casts its light from the parts of its texture that glow, in finer
+     * cells shrunk to those texels (EmissionTiles), instead of from 4 x 4 cells of the whole block. Off by default:
+     * more, smaller lights.
+     */
+    public static boolean glowingPixelLight = false;
     /** How far from the camera glowing dropped items and item frames still cast light, in blocks. */
     public static int entityLightReach = 64;
     /**
@@ -102,9 +105,9 @@ public class Options {
     public static boolean textBackgrounds = true;
     /** Carved (parallax) resource pack faces are see-through at the outer edges of their block. */
     public static boolean parallaxTransparentEdges = false;
-    /** Brightness of sunlight and the daytime sky, in percent of the shader pack's own. */
     /** The Pipeline.SETTINGS_DEFAULTS_VERSION the stored pipeline settings were written under; 0 for none. */
     public static int settingsDefaultsVersion = 0;
+    /** Brightness of sunlight and the daytime sky, in percent of the shader pack's own. */
     public static int dayBrightness = 25;
     /** Brightness of moonlight and the night sky, in percent of the shader pack's own. */
     public static int nightBrightness = 35;
@@ -137,7 +140,7 @@ public class Options {
     public static int hdrPaperWhiteNits = 200;
     /** HDR: tints blue what is shown as SDR (menus, text), to check the world is in HDR. Not saved. */
     public static boolean hdrDebugView = false;
-    /** Loading Streamline replaces Minecraft's Vulkan loader, so it only happens when the player asks for it. */
+    /** Frame generation (FrameGeneration), off until the player turns it on; generatedFrames says how many. */
     public static boolean frameGeneration = false;
     /** Frames DLSS generates per rendered frame: 0 is off, 1 is 2x, up to 5 for 6x. */
     public static int generatedFrames = 1;
@@ -162,34 +165,6 @@ public class Options {
 
     /** The renderer profile last applied (com.g2806.radiante.client.profile.RendererProfile), by name. */
     public static String rendererProfile = "BEDROCK_RTX_ENHANCED";
-
-    /** The look and lighting settings back to a fresh install's; pipeline and restart-bound ones are the screen's. */
-    public static void resetVisualDefaults() {
-        blockLightSampling = true;
-        heldItemLight = true;
-        rainWetness = true;
-        blockOutline = false;
-        parallaxTransparentEdges = false;
-        dayBrightness = 25;
-        nightBrightness = 35;
-        emissionBrightness = 12;
-        heldLightBrightness = 12;
-        setEntityLightReach(64, true);
-        volumetricFogStrength = 100;
-        resetSkyPath();
-        vanillaCelestialOrientation = true;
-    }
-
-    /** The sun and moon back on vanilla's path, the moon following the sun, neither sprite turned. */
-    public static void resetSkyPath() {
-        sunPathTilt = 0;
-        sunPathAzimuth = 0;
-        sunSpriteRotation = 0;
-        moonFollowsSun = true;
-        moonPathTilt = 0;
-        moonPathAzimuth = 0;
-        moonSpriteRotation = 0;
-    }
 
     /** Ray tracing can be switched off with a key, which hands the world back to Minecraft's own renderer. */
     public static boolean rayTracingEnabled = true;
@@ -265,16 +240,14 @@ public class Options {
      * in it - and round-trips - or not saved at all; nothing can be written and never read back again.
      */
     private static final List<Entry> ENTRIES = List.of(
-        number("maxFps", () -> maxFps, v -> setMaxFps(v, false)),
         number("settingsDefaultsVersion", () -> settingsDefaultsVersion, v -> settingsDefaultsVersion = v),
-        number("inactivityFpsLimit", () -> inactivityFpsLimit, v -> setInactivityFpsLimit(v, false)),
-        bool("vsync", () -> vsync, v -> setVsync(v, false)),
         number("chunkBuildingBatchSize", () -> chunkBuildingBatchSize, v -> setChunkBuildingBatchSize(v, false)),
         number("chunkBuildingTotalBatches", () -> chunkBuildingTotalBatches,
             v -> setChunkBuildingTotalBatches(v, false)),
         number("chunkBuildingThreads", () -> chunkBuildingThreads, v -> setChunkBuildingThreads(v, false)),
         bool("chunkBuildingAuto", () -> chunkBuildingAuto, v -> chunkBuildingAuto = v),
         bool("collectChunkEmission", () -> collectChunkEmission, v -> setCollectChunkEmission(v, false)),
+        bool("glowingPixelLight", () -> glowingPixelLight, v -> glowingPixelLight = v),
         number("entityLightReach", () -> entityLightReach, v -> setEntityLightReach(v, false)),
         bool("debugLogging", () -> debugLogging, v -> setDebugLogging(v, false)),
         bool("advancedSettings", () -> advancedSettings, v -> advancedSettings = v),
@@ -428,36 +401,6 @@ public class Options {
             props.store(out, "Options");
         } catch (IOException e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    public native static void nativeSetMaxFps(int maxFps, boolean write);
-
-    public static void setMaxFps(int maxFps, boolean write) {
-        Options.maxFps = maxFps;
-        nativeSetMaxFps(maxFps, write);
-        if (write) {
-            overwriteConfig();
-        }
-    }
-
-    public native static void nativeSetInactivityFpsLimit(int inactivityFpsLimit, boolean write);
-
-    public static void setInactivityFpsLimit(int inactivityFpsLimit, boolean write) {
-        Options.inactivityFpsLimit = inactivityFpsLimit;
-        nativeSetInactivityFpsLimit(inactivityFpsLimit, write);
-        if (write) {
-            overwriteConfig();
-        }
-    }
-
-    public native static void nativeSetVsync(boolean vsync, boolean write);
-
-    public static void setVsync(boolean vsync, boolean write) {
-        Options.vsync = vsync;
-        nativeSetVsync(vsync, write);
-        if (write) {
-            overwriteConfig();
         }
     }
 

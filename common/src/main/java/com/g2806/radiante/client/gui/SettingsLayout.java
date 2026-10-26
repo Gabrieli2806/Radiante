@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.mixin.gui.OptionInstanceAccessor;
+import com.mojang.blaze3d.platform.InputConstants;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -12,6 +13,9 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.gui.navigation.ScreenDirection;
+import net.minecraft.client.gui.navigation.ScreenRectangle;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
@@ -53,14 +57,31 @@ final class SettingsLayout {
     record Extra(Component label, Component tooltip, Runnable action, boolean enabled, String anchorKey) {
     }
 
-    /** The caption key of the option clicked last; kept while the screen is rebuilt, which a click often causes. */
+    /**
+     * The caption key of the option clicked last (or {@link #GROUP_FOCUS} and a group's key for a group's heading
+     * reached with the keys); kept while the screen is rebuilt, which a click often causes.
+     */
     private static String focusedKey;
+    /**
+     * The bottom button the keys are on (see {@link #footer()}), or -1 while they are on the list. The option in
+     * {@link #focusedKey} stays as it was meanwhile, so a button that belongs to it (the upscaler's) stays too.
+     */
+    private static int focusedButton = -1;
     /** Advanced groups folded open, by key; kept while the game runs. */
     private static final java.util.Set<String> openGroups = new java.util.HashSet<>();
+    private static final String GROUP_FOCUS = "#group:";
 
-    /** A newly opened settings screen starts with no option in focus. */
+    /**
+     * A newly opened settings screen starts with no option in focus. One made by the settings screen itself (laid out
+     * again after a change, Apply, Undo, Advanced) keeps it: with the keys or a controller the focus would otherwise
+     * jump back to the top after every change that rebuilds the screen.
+     */
     static void clearFocus() {
+        if (Minecraft.getInstance().gui.screen() instanceof RadianteOptionsScreen) {
+            return;
+        }
         focusedKey = null;
+        focusedButton = -1;
     }
 
     private static final int ACCENT = 0xFF8FE3C8;
@@ -263,16 +284,6 @@ final class SettingsLayout {
         }
         int margin = this.margin;
         int y = this.height - 24;
-        int x = this.width - margin;
-        for (FlatButton button : List.of(
-            flat("gui.done", null, this.actions.done(), true),
-            flat("options.radiante.apply", "options.radiante.apply.tooltip", this.actions.apply(), true),
-            flat("options.radiante.undo", "options.radiante.undo.tooltip", this.actions.undo(), true))) {
-            int w = this.font.width(button.label()) + 16;
-            x -= w;
-            this.buttons.add(new FlatButton(button.label(), button.action(), true, button.tooltip(), x, y, w));
-            x -= 4;
-        }
         int left = this.sidebarX;
         List<FlatButton> leftButtons = new ArrayList<>();
         FlatButton reset = flat("options.radiante.reset_defaults", "options.radiante.reset_defaults.tooltip",
@@ -298,10 +309,42 @@ final class SettingsLayout {
                 w, button.ctrlLabel(), button.ctrlAction(), button.ctrlTooltip()));
             left += w + 4;
         }
+        // With a controller in use, the buttons it has a button of its own for show that button's picture; left
+        // out where they would run into the buttons on the left.
+        List<FlatButton> right = rightButtons(y, true);
+        if (!right.isEmpty() && right.get(right.size() - 1).x() < left) {
+            right = rightButtons(y, false);
+        }
+        this.buttons.addAll(right);
+    }
+
+    /** Done, Apply and Undo from the right edge leftwards, with or without the controller's pictures. */
+    private List<FlatButton> rightButtons(int y, boolean glyphs) {
+        List<FlatButton> right = new ArrayList<>();
+        int x = this.width - this.margin;
+        for (FlatButton button : List.of(
+            flat("gui.done", null, this.actions.done(), true, glyphs ? SettingsControls.Hint.BACK : null),
+            flat("options.radiante.apply", "options.radiante.apply.tooltip", this.actions.apply(), true,
+                glyphs ? SettingsControls.Hint.APPLY : null),
+            flat("options.radiante.undo", "options.radiante.undo.tooltip", this.actions.undo(), true,
+                glyphs ? SettingsControls.Hint.UNDO : null))) {
+            int w = this.font.width(button.label()) + 16;
+            x -= w;
+            right.add(new FlatButton(button.label(), button.action(), true, button.tooltip(), x, y, w));
+            x -= 4;
+        }
+        return right;
     }
 
     private static FlatButton flat(String key, String tooltip, Runnable action, boolean enabled) {
         return new FlatButton(Component.translatable(key), action, enabled,
+            tooltip == null ? null : Component.translatable(tooltip), 0, 0, 0);
+    }
+
+    private static FlatButton flat(String key, String tooltip, Runnable action, boolean enabled,
+        SettingsControls.Hint hint) {
+        Component label = Component.translatable(key);
+        return new FlatButton(hint == null ? label : SettingsControls.withGlyph(hint, label), action, enabled,
             tooltip == null ? null : Component.translatable(tooltip), 0, 0, 0);
     }
 
@@ -380,6 +423,14 @@ final class SettingsLayout {
     // ---- drawing ----
 
     void extract(GuiGraphicsExtractor g, int mouseX, int mouseY) {
+        // The mouse moving hands the description back to the row under it.
+        if (mouseX != this.lastMouseX || mouseY != this.lastMouseY) {
+            if (this.lastMouseX != Integer.MIN_VALUE) {
+                keysLead = false;
+            }
+            this.lastMouseX = mouseX;
+            this.lastMouseY = mouseY;
+        }
         // Sidebar: the mod, then the sections.
         g.fill(this.sidebarX, this.top, this.sidebarX + this.sidebarW, this.bottom, PANEL);
         int headerY = this.top + 6;
@@ -411,6 +462,16 @@ final class SettingsLayout {
             g.text(this.font, Component.translatable(section.category().key()), textX, entryY + 5,
                 selected ? TEXT : ACCENT);
             entryY += 20;
+        }
+        // With a controller in use: the bumpers that move between the sections, under them.
+        Component previous = SettingsControls.glyph(SettingsControls.Hint.PREVIOUS_SECTION);
+        Component next = SettingsControls.glyph(SettingsControls.Hint.NEXT_SECTION);
+        if (previous != null && next != null) {
+            Component pair = Component.empty().append(previous).append(" ").append(next);
+            Component hint = Component.empty().append(pair).append(" ")
+                .append(Component.translatable("options.radiante.controller.sections"));
+            g.text(this.font, this.font.width(hint) <= this.sidebarW - PAD * 2 ? hint : pair, this.sidebarX + PAD,
+                entryY + 6, TEXT_DIM);
         }
 
         // The list.
@@ -460,6 +521,9 @@ final class SettingsLayout {
                 if (hover) {
                     g.fill(this.listX + 4, y, this.listX + this.listW - 4, y + ROW, ROW_HOVER);
                 }
+                if (keyboardFocus && focusedButton < 0 && navKey(line).equals(focusedKey)) {
+                    g.outline(this.listX + 4, y, this.listW - 8, ROW, ACCENT);
+                }
                 g.text(this.font, Component.literal(open ? "▾ " : "▸ ").append(Component.translatable(
                     line.group().key())), this.listX + PAD + 4, y + 6, hover ? TEXT : ACCENT);
                 Component count = Component.literal(String.valueOf(line.group().options().size()));
@@ -479,15 +543,25 @@ final class SettingsLayout {
             int barY = this.top + (int) ((view - bar) * this.scroll / (this.contentHeight - view));
             g.fill(this.listX + this.listW - 2, barY, this.listX + this.listW, barY + bar, ACCENT);
         }
-        if (hovered != null) {
+        if (hovered != null && !keysLead) {
             this.described = hovered;
         }
 
         drawDescription(g, mouseX, mouseY, hovered);
 
+        FlatButton keyed = focusedFooterButton();
         for (FlatButton button : this.buttons) {
-            boolean hover = button.enabled() && inside(mouseX, mouseY, button.x(), button.y(), button.w(), 16);
+            boolean hover = button.enabled() && (inside(mouseX, mouseY, button.x(), button.y(), button.w(), 16)
+                || button == keyed);
             g.fill(button.x(), button.y(), button.x() + button.w(), button.y() + 16, hover ? PANEL_DARK : PANEL);
+            if (button == keyed) {
+                g.outline(button.x(), button.y(), button.w(), 16, ACCENT);
+                if (keysLead && button.shownTooltip() != null) {
+                    // Above the button, clear of it (vanilla's tooltip starts 12 above the point it is given).
+                    List<FormattedCharSequence> tip = this.font.split(button.shownTooltip(), 200);
+                    g.setTooltipForNextFrame(tip, button.x(), Math.max(12, button.y() - tip.size() * 10 - 6));
+                }
+            }
             if (hover) {
                 g.fill(button.x(), button.y() + 15, button.x() + button.w(), button.y() + 16, ACCENT);
             }
@@ -501,7 +575,7 @@ final class SettingsLayout {
 
     private void drawRow(GuiGraphicsExtractor g, OptionInstance<?> option, int y, boolean hover, boolean advanced) {
         int right = this.listX + this.listW - PAD - 4;
-        if (keyboardFocus && focusedKey != null && focusedKey.equals(keyOf(caption(option)))) {
+        if (keyboardFocus && focusedButton < 0 && focusedKey != null && focusedKey.equals(focusKey(option))) {
             // The row the arrow keys work on.
             g.outline(this.listX + 4, y, this.listW - 8, ROW, ACCENT);
         }
@@ -547,6 +621,26 @@ final class SettingsLayout {
 
     private void drawDescription(GuiGraphicsExtractor g, int mouseX, int mouseY, OptionInstance<?> hovered) {
         OptionInstance<?> option = this.panelW > 0 ? this.described : hovered;
+        int tipX = mouseX;
+        int tipY = mouseY;
+        int keyedRowY = -1;
+        if (this.panelW <= 0 && keysLead && focusedButton < 0) {
+            // No panel beside the list (a narrow window or a large GUI scale): the description of the row the keys
+            // or a controller are on goes under that row, since there may be no mouse pointer to follow.
+            option = null;
+            List<Line> rows = navRows();
+            int index = focusedRow(rows);
+            if (index >= 0 && rows.get(index).option() != null) {
+                Line line = rows.get(index);
+                int y = this.top - (int) this.scroll + line.y();
+                if (y >= this.top && y + ROW <= this.bottom) {
+                    option = line.option();
+                    tipX = this.listX + this.listW / 3;
+                    tipY = y + ROW + 14;
+                    keyedRowY = y;
+                }
+            }
+        }
         if (option == null) {
             return;
         }
@@ -585,7 +679,13 @@ final class SettingsLayout {
                 all.addAll(this.font.split(impactLine(impact), wrap));
             }
             if (!all.isEmpty()) {
-                g.setTooltipForNextFrame(all, mouseX, mouseY);
+                // Under the focused row, or above it when it does not fit below (vanilla's tooltip starts 12 above
+                // the point it is given and is pushed up off the bottom edge, over the row).
+                int tall = all.size() * 10 + 8;
+                if (keyedRowY >= 0 && keyedRowY + ROW + 2 + tall > this.height) {
+                    tipY = Math.max(12, keyedRowY - tall + 10);
+                }
+                g.setTooltipForNextFrame(all, tipX, tipY);
             }
             return;
         }
@@ -625,6 +725,8 @@ final class SettingsLayout {
 
     boolean mouseClicked(double mouseX, double mouseY, int button) {
         keyboardFocus = false;
+        keysLead = false;
+        focusedButton = -1;
         for (FlatButton flat : this.buttons) {
             if (flat.enabled() && inside(mouseX, mouseY, flat.x(), flat.y(), flat.w(), 16)) {
                 clickSound();
@@ -675,7 +777,7 @@ final class SettingsLayout {
                     clickSound();
                 }
                 // Laid out before the click takes effect: it may replace this screen with a new one.
-                focusedKey = keyOf(caption(line.option()));
+                focusedKey = focusKey(line.option());
                 layoutButtons();
                 // Not while it does nothing: the row is grey and its description says what to change first.
                 if (!blocked(line.option())) {
@@ -701,7 +803,7 @@ final class SettingsLayout {
         } else if (option.values() instanceof OptionInstance.Enum<?> values) {
             List<Object> list = (List<Object>) values.valueListSupplier().getDefaultList();
             int index = list.indexOf(value);
-            int next = Math.floorMod(index + (button == 1 ? -1 : 1), list.size());
+            int next = Math.floorMod(index + (button == InputConstants.MOUSE_BUTTON_RIGHT ? -1 : 1), list.size());
             ((OptionInstance<Object>) option).set(list.get(next));
         }
     }
@@ -727,114 +829,382 @@ final class SettingsLayout {
         }
     }
 
-    /** Set while the keyboard moves through the list: the row in focus is outlined. */
+    /** Set while the keys (or a controller) move through the list: the row in focus is outlined. */
     private static boolean keyboardFocus;
+    /** The keys were used after the mouse last moved: the description follows the focused row, not the mouse. */
+    private static boolean keysLead;
+    private int lastMouseX = Integer.MIN_VALUE;
+    private int lastMouseY;
 
-    private static final int KEY_RIGHT = 262;
-    private static final int KEY_LEFT = 263;
-    private static final int KEY_DOWN = 264;
-    private static final int KEY_UP = 265;
-    private static final int KEY_ENTER = 257;
-    private static final int KEY_KP_ENTER = 335;
-    private static final int KEY_SPACE = 32;
-    private static final int KEY_TAB = 258;
+    private static void keysInUse() {
+        keyboardFocus = true;
+        keysLead = true;
+    }
 
     /**
-     * Keyboard: Up and Down move through the options, Left and Right step a slider by one (ten with Shift) or a list
-     * of values to its neighbour, Enter or Space flips a switch or steps a list, Tab moves to the next section (Shift:
-     * the previous). Without a row picked yet, the keys work on the one under the mouse. True when used.
+     * Keyboard: Up and Down move through the options and the folded groups' headings, on past the last one to the
+     * buttons along the bottom; Left and Right step a slider by one (ten with Shift) or a list of values to its
+     * neighbour, fold a group shut or open, or move between the buttons; Enter or Space flips a switch, steps a list,
+     * folds a group or presses a button; Tab moves to the next section (Shift: the previous). Without a row picked
+     * yet, the keys work on the one under the mouse. True when used; Up on the first row is not, so the screen's own
+     * navigation moves on to the search field.
+     *
+     * <p>Minecraft's input codes changed with the move to SDL, so the keys are read through the event's own tests
+     * (isUp, isSelection...) rather than by number. Controller mods that press keys for the buttons reach this too.
      */
-    @SuppressWarnings("unchecked")
-    boolean keyPressed(int key, boolean shift) {
-        if (key == KEY_TAB) {
-            RadianteOptionsScreen.Category[] all = RadianteOptionsScreen.Category.values();
-            selected = all[Math.floorMod(selected.ordinal() + (shift ? -1 : 1), all.length)];
-            this.scroll = 0.0;
-            this.onScroll.accept(this.scroll);
-            if (this.search != null) {
-                this.search.setValue("");
-            }
-            layoutLines();
-            layoutButtons();
-            clickSound();
+    boolean keyPressed(KeyEvent event) {
+        if (event.isCycleFocus()) {
+            section(event.hasShiftDown() ? -1 : 1);
             return true;
         }
+        if (event.isUp()) {
+            return navigate(ScreenDirection.UP, 1);
+        }
+        if (event.isDown()) {
+            return navigate(ScreenDirection.DOWN, 1);
+        }
+        if (event.isLeft() || event.isRight()) {
+            return navigate(event.isLeft() ? ScreenDirection.LEFT : ScreenDirection.RIGHT,
+                event.hasShiftDown() ? 10 : 1);
+        }
+        if (event.isSelection()) {
+            return activateFocused();
+        }
+        return false;
+    }
+
+    /** The next section (or with -1 the previous one), as Tab does. */
+    void section(int direction) {
+        RadianteOptionsScreen.Category[] all = RadianteOptionsScreen.Category.values();
+        selected = all[Math.floorMod(selected.ordinal() + direction, all.length)];
+        this.scroll = 0.0;
+        this.onScroll.accept(this.scroll);
+        if (this.search != null) {
+            this.search.setValue("");
+        }
+        layoutLines();
+        focusedButton = -1;
+        // With the keys or a controller in use, the outline goes to the new section's first row.
+        List<Line> rows = navRows();
+        if (keyboardFocus && !rows.isEmpty()) {
+            focusRow(rows.get(0));
+        }
+        layoutButtons();
+        clickSound();
+    }
+
+    /** The rows the keys stop on: options, and the headings of the advanced groups. */
+    private List<Line> navRows() {
         List<Line> rows = new ArrayList<>();
         for (Line line : this.lines) {
-            if (line.option() != null) {
+            if (line.option() != null || line.group() != null) {
                 rows.add(line);
             }
         }
-        if (rows.isEmpty()) {
-            return false;
-        }
-        int index = -1;
+        return rows;
+    }
+
+    private static String navKey(Line line) {
+        return line.option() != null ? focusKey(line.option()) : GROUP_FOCUS + line.group().key();
+    }
+
+    /** The row in focus, or else the one under the mouse; -1 for none. */
+    private int focusedRow(List<Line> rows) {
         for (int i = 0; i < rows.size(); i++) {
-            if (focusedKey != null && focusedKey.equals(keyOf(caption(rows.get(i).option())))) {
-                index = i;
-                break;
+            if (focusedKey != null && focusedKey.equals(navKey(rows.get(i)))) {
+                return i;
             }
         }
-        if (index < 0 && this.described != null) {
+        if (this.described != null) {
             for (int i = 0; i < rows.size(); i++) {
                 if (rows.get(i).option() == this.described) {
-                    index = i;
-                    break;
+                    return i;
                 }
             }
         }
-        if (key == KEY_UP || key == KEY_DOWN) {
-            index = index < 0 ? 0 : Math.max(0, Math.min(rows.size() - 1, index + (key == KEY_DOWN ? 1 : -1)));
-            Line line = rows.get(index);
-            focusedKey = keyOf(caption(line.option()));
-            this.described = line.option();
-            keyboardFocus = true;
-            // Into view.
-            int view = this.bottom - this.top;
-            if (line.y() < this.scroll) {
-                this.scroll = clampScroll(line.y() - HEADER);
-            } else if (line.y() + ROW > this.scroll + view) {
-                this.scroll = clampScroll(line.y() + ROW - view);
+        return -1;
+    }
+
+    /**
+     * The buttons in the order Left and Right go through them: the bottom ones from left to right, then Share up by
+     * the search field.
+     */
+    private List<FlatButton> footer() {
+        List<FlatButton> bottom = new ArrayList<>(this.buttons.subList(this.topButtons, this.buttons.size()));
+        bottom.sort(java.util.Comparator.comparingInt(FlatButton::x));
+        List<FlatButton> footer = new ArrayList<>();
+        for (FlatButton button : bottom) {
+            if (button.enabled()) {
+                footer.add(button);
             }
-            this.onScroll.accept(this.scroll);
-            layoutButtons();
+        }
+        footer.addAll(this.buttons.subList(0, this.topButtons));
+        return footer;
+    }
+
+    private FlatButton focusedFooterButton() {
+        if (!keyboardFocus || focusedButton < 0) {
+            return null;
+        }
+        List<FlatButton> footer = footer();
+        return footer.isEmpty() ? null : footer.get(Math.min(focusedButton, footer.size() - 1));
+    }
+
+    private void focusRow(Line line) {
+        focusedKey = navKey(line);
+        focusedButton = -1;
+        if (line.option() != null) {
+            this.described = line.option();
+        }
+        keysInUse();
+        // Into view.
+        int view = this.bottom - this.top;
+        if (line.y() < this.scroll + HEADER) {
+            this.scroll = clampScroll(line.y() - HEADER);
+        } else if (line.y() + ROW > this.scroll + view) {
+            this.scroll = clampScroll(line.y() + ROW - view);
+        }
+        this.onScroll.accept(this.scroll);
+        layoutButtons();
+    }
+
+    /**
+     * One step in a direction, as the arrow keys and a controller's D-pad or stick make it: Up and Down move the
+     * focus, Left and Right change the focused value by {@code amount} steps (or move along the buttons). True when
+     * something happened; false at the top of the list, where the focus may leave it.
+     */
+    @SuppressWarnings("unchecked")
+    boolean navigate(ScreenDirection direction, int amount) {
+        List<Line> rows = navRows();
+        if (focusedButton >= 0 && keyboardFocus) {
+            List<FlatButton> footer = footer();
+            switch (direction) {
+                case UP -> {
+                    if (rows.isEmpty()) {
+                        return false;
+                    }
+                    int index = focusedRow(rows);
+                    focusRow(rows.get(index < 0 ? rows.size() - 1 : index));
+                }
+                case LEFT, RIGHT -> {
+                    int next = Math.max(0, Math.min(footer.size() - 1,
+                        focusedButton + (direction == ScreenDirection.LEFT ? -1 : 1)));
+                    focusedButton = next;
+                }
+                default -> {
+                }
+            }
             return true;
         }
-        if (key != KEY_LEFT && key != KEY_RIGHT && key != KEY_ENTER && key != KEY_KP_ENTER && key != KEY_SPACE) {
-            return false;
+        int index = focusedRow(rows);
+        if (direction == ScreenDirection.UP || direction == ScreenDirection.DOWN) {
+            if (rows.isEmpty()) {
+                if (direction == ScreenDirection.DOWN && !footer().isEmpty()) {
+                    focusedButton = 0;
+                    keysInUse();
+                    return true;
+                }
+                return false;
+            }
+            if (index < 0 || !keyboardFocus) {
+                // The first step only shows where the keys are.
+                focusRow(rows.get(Math.max(0, index)));
+                return true;
+            }
+            if (direction == ScreenDirection.UP) {
+                if (index == 0) {
+                    return false;
+                }
+                focusRow(rows.get(index - 1));
+                return true;
+            }
+            if (index == rows.size() - 1) {
+                // On past the last row to the buttons along the bottom.
+                if (!footer().isEmpty()) {
+                    focusedButton = 0;
+                }
+                return true;
+            }
+            focusRow(rows.get(index + 1));
+            return true;
         }
         if (index < 0) {
             return false;
         }
-        OptionInstance<?> option = rows.get(index).option();
-        focusedKey = keyOf(caption(option));
+        Line line = rows.get(index);
+        focusedKey = navKey(line);
+        keysInUse();
+        int sign = direction == ScreenDirection.LEFT ? -1 : 1;
+        if (line.option() == null) {
+            // A group's heading: Right opens it, Left folds it.
+            boolean open = openGroups.contains(line.group().key());
+            if (open != (sign > 0)) {
+                toggleGroup(line.group());
+            }
+            return true;
+        }
+        OptionInstance<?> option = line.option();
         this.described = option;
-        keyboardFocus = true;
         if (blocked(option)) {
             return true;
         }
-        int direction = key == KEY_LEFT ? -1 : 1;
         Object value = option.get();
         if (value instanceof Boolean on) {
             ((OptionInstance<Boolean>) option).set(!on);
             clickSound();
         } else if (option.values() instanceof OptionInstance.IntRange range) {
-            if (key != KEY_LEFT && key != KEY_RIGHT) {
-                return true;
-            }
-            int step = shift ? 10 : 1;
-            int next = Math.max(range.minInclusive(), Math.min(range.maxInclusive(), (Integer) value + direction * step));
+            int next = Math.max(range.minInclusive(), Math.min(range.maxInclusive(), (Integer) value + sign * amount));
             if (next != (Integer) value) {
                 ((OptionInstance<Integer>) option).set(next);
             }
         } else if (option.values() instanceof OptionInstance.Enum<?> values) {
             List<Object> list = (List<Object>) values.valueListSupplier().getDefaultList();
             int at = list.indexOf(value);
-            ((OptionInstance<Object>) option).set(list.get(Math.floorMod(at + direction, list.size())));
+            ((OptionInstance<Object>) option).set(list.get(Math.floorMod(at + sign, list.size())));
             clickSound();
         }
         layoutButtons();
         return true;
+    }
+
+    /** Enter, Space or a controller's A: flips the focused switch, steps its list, folds its group or presses it. */
+    @SuppressWarnings("unchecked")
+    boolean activateFocused() {
+        FlatButton button = focusedFooterButton();
+        if (button != null) {
+            clickSound();
+            button.shownAction().run();
+            return true;
+        }
+        List<Line> rows = navRows();
+        int index = focusedRow(rows);
+        if (index < 0) {
+            return false;
+        }
+        Line line = rows.get(index);
+        focusedKey = navKey(line);
+        keysInUse();
+        if (line.option() == null) {
+            toggleGroup(line.group());
+            return true;
+        }
+        OptionInstance<?> option = line.option();
+        this.described = option;
+        if (blocked(option) || option.values() instanceof OptionInstance.IntRange) {
+            return true;
+        }
+        Object value = option.get();
+        if (value instanceof Boolean on) {
+            ((OptionInstance<Boolean>) option).set(!on);
+        } else if (option.values() instanceof OptionInstance.Enum<?> values) {
+            List<Object> list = (List<Object>) values.valueListSupplier().getDefaultList();
+            ((OptionInstance<Object>) option).set(list.get(Math.floorMod(list.indexOf(value) + 1, list.size())));
+        }
+        clickSound();
+        layoutButtons();
+        return true;
+    }
+
+    private void toggleGroup(Group group) {
+        clickSound();
+        if (!openGroups.remove(group.key())) {
+            openGroups.add(group.key());
+        }
+        layoutLines();
+        this.scroll = clampScroll(this.scroll);
+        this.onScroll.accept(this.scroll);
+    }
+
+    /**
+     * Scrolls the list by so many pixels (a controller's right stick), taking the focus along to a row still in
+     * view so it never sits off screen.
+     */
+    void scrollKeepingFocus(double pixels) {
+        double before = this.scroll;
+        this.scroll = clampScroll(this.scroll + pixels);
+        this.onScroll.accept(this.scroll);
+        if (this.scroll == before || !keyboardFocus || focusedButton >= 0) {
+            return;
+        }
+        keysLead = true;
+        List<Line> rows = navRows();
+        int index = focusedRow(rows);
+        if (index < 0) {
+            return;
+        }
+        int view = this.bottom - this.top;
+        Line line = rows.get(index);
+        if (line.y() >= this.scroll + HEADER && line.y() + ROW <= this.scroll + view) {
+            return;
+        }
+        // The first row wholly in view going down, the last one going up.
+        Line pick = null;
+        for (Line candidate : rows) {
+            boolean visible = candidate.y() >= this.scroll && candidate.y() + ROW <= this.scroll + view;
+            if (visible && (pick == null || pixels < 0)) {
+                pick = candidate;
+            }
+        }
+        if (pick != null) {
+            focusedKey = navKey(pick);
+            if (pick.option() != null) {
+                this.described = pick.option();
+            }
+            layoutButtons();
+        }
+    }
+
+    /** The screen's focus came to the list (a controller, or the arrow keys from the search field). */
+    void focusGained() {
+        keysInUse();
+        List<Line> rows = navRows();
+        if (focusedButton < 0 && focusedRow(rows) < 0 && !rows.isEmpty()) {
+            focusRow(rows.get(0));
+        }
+    }
+
+    /** The screen's focus left the list, for the search field. */
+    void focusLost() {
+        keyboardFocus = false;
+        keysLead = false;
+    }
+
+    enum Press {
+        APPLY, UNDO
+    }
+
+    /** A bottom button pressed from a controller's own button for it. */
+    void press(Press press) {
+        clickSound();
+        (press == Press.APPLY ? this.actions.apply() : this.actions.undo()).run();
+    }
+
+    /** Lays the buttons out again, as their controller pictures come and go with the controller's use. */
+    void refreshHints() {
+        layoutButtons();
+    }
+
+    /** The list's area, where the screen's arrow navigation looks for the list. */
+    ScreenRectangle listArea() {
+        return new ScreenRectangle(this.listX, this.top, this.listW, Math.max(1, this.bottom - this.top));
+    }
+
+    /** What a screen reader says for the focused row: its name and value. */
+    Component focusedNarration() {
+        FlatButton button = focusedFooterButton();
+        if (button != null) {
+            return button.shownLabel();
+        }
+        List<Line> rows = navRows();
+        int index = focusedRow(rows);
+        if (index < 0) {
+            return null;
+        }
+        Line line = rows.get(index);
+        if (line.option() == null) {
+            return Component.translatable(line.group().key());
+        }
+        return caption(line.option()).copy().append(": ").append(valueText(line.option()));
     }
 
     boolean searchFocused() {
@@ -848,6 +1218,72 @@ final class SettingsLayout {
         this.scroll = clampScroll(this.scroll - amount * ROW * 2);
         this.onScroll.accept(this.scroll);
         return true;
+    }
+
+    private final FocusTarget focusTarget = new FocusTarget();
+
+    /** The list as one element of the screen, for the screen's own focus navigation; see {@link FocusTarget}. */
+    FocusTarget focusTarget() {
+        return this.focusTarget;
+    }
+
+    /**
+     * The list's rows are drawn here, not vanilla widgets, so for Minecraft's focus navigation the whole list is
+     * one invisible element that keeps the focus and moves it between its rows itself. Controller mods (Controlify,
+     * and those that work like it) move through a screen by asking it for the next focus in a direction, rather than
+     * by pressing arrow keys: those requests land here and step through the rows as the arrow keys do. Up from the
+     * first row gives the focus back to the screen, which moves it on to the search field above.
+     */
+    final class FocusTarget implements net.minecraft.client.gui.components.events.GuiEventListener,
+        net.minecraft.client.gui.narration.NarratableEntry {
+
+        private boolean focused;
+
+        @Override
+        public net.minecraft.client.gui.ComponentPath nextFocusPath(
+            net.minecraft.client.gui.navigation.FocusNavigationEvent event) {
+            if (event instanceof net.minecraft.client.gui.navigation.FocusNavigationEvent.ArrowNavigation arrow) {
+                if (!this.focused) {
+                    return net.minecraft.client.gui.ComponentPath.leaf(this);
+                }
+                return navigate(arrow.direction(), 1) ? net.minecraft.client.gui.ComponentPath.leaf(this) : null;
+            }
+            // Tab and a new screen's first focus: into the list, and on out of it (Tab itself switches sections).
+            return this.focused ? null : net.minecraft.client.gui.ComponentPath.leaf(this);
+        }
+
+        @Override
+        public void setFocused(boolean focused) {
+            if (focused && !this.focused) {
+                focusGained();
+            } else if (!focused && this.focused) {
+                focusLost();
+            }
+            this.focused = focused;
+        }
+
+        @Override
+        public boolean isFocused() {
+            return this.focused;
+        }
+
+        @Override
+        public ScreenRectangle getRectangle() {
+            return listArea();
+        }
+
+        @Override
+        public NarrationPriority narrationPriority() {
+            return this.focused ? NarrationPriority.FOCUSED : NarrationPriority.NONE;
+        }
+
+        @Override
+        public void updateNarration(net.minecraft.client.gui.narration.NarrationElementOutput output) {
+            Component text = focusedNarration();
+            if (text != null) {
+                output.add(net.minecraft.client.gui.narration.NarratedElementType.TITLE, text);
+            }
+        }
     }
 
     // ---- helpers ----
@@ -912,6 +1348,15 @@ final class SettingsLayout {
     private static Tooltip tooltipOf(OptionInstance<?> option) {
         OptionInstance.TooltipSupplier<Object> supplier = accessor(option).radiante$tooltip();
         return supplier == null ? null : supplier.apply(option.get());
+    }
+
+    /**
+     * What the focus remembers an option by: its caption's translation key, taken before an untranslated pipeline
+     * attribute's key is turned into a readable name (which has no key left), or else the name itself.
+     */
+    private static String focusKey(OptionInstance<?> option) {
+        String key = keyOf(accessor(option).radiante$caption());
+        return key != null ? key : caption(option).getString();
     }
 
     private static String keyOf(Component caption) {

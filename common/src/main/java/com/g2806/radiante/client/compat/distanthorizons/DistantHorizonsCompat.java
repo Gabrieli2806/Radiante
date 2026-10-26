@@ -26,10 +26,6 @@ public final class DistantHorizonsCompat {
     private DistantHorizonsCompat() {
     }
 
-    /**
-     * Distant Horizons is about to switch vanilla's clouds off (its "override vanilla graphics settings" toggle).
-     * The player's setting is kept, to be put back once the toggle is off; see {@link #tick}.
-     */
     /** Registers what Distant Horizons adds to the traced world besides its terrain: far beacon beams. */
     public static void init() {
         if (INSTALLED) {
@@ -37,6 +33,10 @@ public final class DistantHorizonsCompat {
         }
     }
 
+    /**
+     * Distant Horizons is about to switch vanilla's clouds off (its "override vanilla graphics settings" toggle).
+     * The player's setting is kept, to be put back once the toggle is off; see {@link #tick}.
+     */
     public static void onCloudsDisabled() {
         CloudStatus current = Minecraft.getInstance().options.cloudStatus().get();
         if (current != CloudStatus.OFF) {

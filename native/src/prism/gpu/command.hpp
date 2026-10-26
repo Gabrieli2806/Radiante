@@ -69,12 +69,6 @@ struct ImageUse {
 
 class CommandBuffer : public SharedObject<CommandBuffer> {
   public:
-    struct SubmitInfo {
-        std::vector<std::pair<VkSemaphore, VkPipelineStageFlags>> waitSemaphoresAndStageMasks;
-        std::vector<VkSemaphore> signalSemaphores;
-        VkFence signalFence;
-    };
-
     struct BufferMemoryBarrier {
         VkPipelineStageFlags2 srcStageMask;
         VkAccessFlags2 srcAccessMask;
@@ -99,13 +93,6 @@ class CommandBuffer : public SharedObject<CommandBuffer> {
         uint32_t dstQueueFamilyIndex;
         std::shared_ptr<Image> image;
         VkImageSubresourceRange subresourceRange;
-    };
-
-    struct MemoryBarrier {
-        VkPipelineStageFlags2 srcStageMask;
-        VkAccessFlags2 srcAccessMask;
-        VkPipelineStageFlags2 dstStageMask;
-        VkAccessFlags2 dstAccessMask;
     };
 
     struct RenderPassBeginInfo {
@@ -140,10 +127,6 @@ class CommandBuffer : public SharedObject<CommandBuffer> {
 
     std::shared_ptr<CommandBuffer> barriersBufferImage(const std::vector<BufferMemoryBarrier> &bufferBarriers,
                                                        const std::vector<ImageMemoryBarrier> &imageBarriers);
-    std::shared_ptr<CommandBuffer> barriersMemory(const std::vector<MemoryBarrier> &memoryBarriers);
-
-    std::shared_ptr<CommandBuffer> copyToDeviceLocalBuffer(std::shared_ptr<DeviceLocalBuffer> buffer);
-    std::shared_ptr<CommandBuffer> copyToDeviceLocalImage(std::shared_ptr<DeviceLocalImage> image);
 
     std::shared_ptr<CommandBuffer> beginRenderPass(const RenderPassBeginInfo &info);
     std::shared_ptr<CommandBuffer> endRenderPass();
@@ -165,7 +148,6 @@ class CommandBuffer : public SharedObject<CommandBuffer> {
     std::shared_ptr<CommandBuffer> raytracing(std::shared_ptr<SBT> sbt, uint32_t width, uint32_t height, uint32_t depth);
 
     void submitMainQueueIndividual(std::shared_ptr<Device> device, std::shared_ptr<Fence> fence = nullptr);
-    void submitMainQueue(std::shared_ptr<Device> device, const SubmitInfo &submitInfo);
 
   private:
     std::shared_ptr<Device> device_;

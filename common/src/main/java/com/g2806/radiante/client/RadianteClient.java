@@ -58,6 +58,7 @@ public final class RadianteClient {
         com.g2806.radiante.client.compat.journeymap.JourneyMapCompat.init();
         com.g2806.radiante.client.compat.litematica.LitematicaCompat.init();
         com.g2806.radiante.client.compat.distanthorizons.DistantHorizonsCompat.init();
+        com.g2806.radiante.client.compat.controlify.ControlifyCompat.init();
         DevAutomation.register();
         com.g2806.radiante.client.gui.RadianteDebugEntries.register();
         LOGGER.info("Radiante {} running on {} (Bedrock pack converter {})", RadiantePlatform.INSTANCE.modVersion(),
@@ -159,13 +160,15 @@ public final class RadianteClient {
             throw new RuntimeException(e);
         }
 
+        CacheTrim.run(radianceDir);
+
         long unpackStart = System.nanoTime();
         loadInstalledNatives();
         removeStaleNatives();
         com.g2806.radiante.client.download.UpscalerDownloads.applyPendingDeletes();
         com.g2806.radiante.client.download.UpscalerDownloads.applyStagedUpdates();
-        copyFolder("shaders", radianceDir.resolve("shaders"));
-        copyFolder(null, radianceDir.resolve("modules"), "/modules");
+        copyFolder(radianceDir.resolve("shaders"), NATIVE_RESOURCE_ROOT + "/shaders");
+        copyFolder(radianceDir.resolve("modules"), "/modules");
         if (windows) {
             if (!com.g2806.radiante.client.download.UpscalerDownloads.isRemovedByPlayer(
                 com.g2806.radiante.client.download.UpscalerDownloads.Component.XESS)) {
@@ -274,10 +277,10 @@ public final class RadianteClient {
         }
     }
 
-    /** Libraries older builds shipped and this one no longer does. */
     /** Where the Linux renderer and its DLSS libraries sit inside radiante-native. */
     private static final String LINUX_FOLDER = "linux-x64";
 
+    /** Libraries older builds shipped and this one no longer does. */
     private static final String[] RETIRED_NATIVES = {"libxess_fg.dll", "libxess_dx11.dll"};
 
     /**
@@ -496,19 +499,15 @@ public final class RadianteClient {
             || RadianteClient.class.getResource(resourceFolder + "/libnvidia-ngx-dlss.so.310.9.1") != null
             || RadianteClient.class.getResource(resourceFolder + "/libnvidia-ngx-dlss.so.310.9.1.xz") != null;
         if (present) {
-            copyFolder(null, target, resourceFolder);
+            copyFolder(target, resourceFolder);
         }
-    }
-
-    private static void copyFolder(String nativeSubFolder, Path target) {
-        copyFolder(nativeSubFolder, target, NATIVE_RESOURCE_ROOT + "/" + nativeSubFolder);
     }
 
     /**
      * Copies a folder of the mod's resources. Folders are found through a file known to be there, not looked up
      * directly: NeoForge serves mod resources from its own file system, which resolves files but not directories.
      */
-    private static void copyFolder(String ignored, Path target, String resourceFolder) {
+    private static void copyFolder(Path target, String resourceFolder) {
         // A Linux-only build ships no prismrt.dll, so its libprismrt.so (one folder deeper) serves as the anchor instead.
         // In a released jar the libraries are packed (.xz); natives.sha256 sits next to them.
         URL anchor = null;

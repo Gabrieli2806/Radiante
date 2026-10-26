@@ -3,22 +3,55 @@
 # Radiante settings
 
 Opened with `F6` in a world, or from Radiante's button in Options → Video Settings (title screen
-included). Changes add up and are applied together when you press "Done", so the renderer rebuilds
-once. While it does, a popup in the top right corner shows the progress (compiling shaders, then "settings
-applied", or the error if it failed); you can keep using the menus and the game meanwhile. This works the
-same in a world and on the title screen.
+included). The sections are listed on the left (Quality, Image, Lighting, Sky & Water, Performance,
+Other) and one is shown at a time; the panel on the right describes the option under the mouse.
+Changes add up and are applied together with **Apply** (the screen stays open) or **Done**, so the
+renderer rebuilds once; **Undo** drops what was changed since the last Apply. While a change
+compiles, a popup in the top right corner shows the progress (compiling shaders, building pipelines,
+then "Settings applied" or the error); you can keep using the menus and the game meanwhile. This
+works the same in a world and on the title screen.
 
 ![Radiante settings: Quality](../images/ui/settings-quality.png)
 
 ## Search
 
-The **Search...** box filters settings across every category by name. The quickest way to find
-something without knowing its category.
+The **Search...** box filters settings across every section by name. The quickest way to find
+something without knowing its section. With Advanced off, a section says how many more matches it
+has among the advanced settings.
 
-## Impact labels
+## Keyboard
 
-The settings that cost the most show **Performance impact: Low / Medium / High / Varies** in their
-tooltip. Varies means it depends on the scene (for example, on how many lights there are).
+Up and Down move through the options and the headings of the advanced groups, and on past the last
+one to the buttons along the bottom; Up from the first option goes to the search box. Left and Right
+move a slider by one step (ten with Shift), step a list, fold a group shut or open, or move between
+the buttons. Enter or Space flips a switch, steps a list, folds a group or presses the button. Tab
+moves to the next section (Shift+Tab: the previous one).
+
+## Controller
+
+The screen works with controller mods: those that move through menus the way Minecraft's arrow keys
+do (Controlify and the like) and those that press keys for the controller's buttons. The D-pad or
+left stick moves as the arrow keys above, A acts as Enter and B leaves the screen like **Done**. With
+Controlify, also:
+
+| Button | Does |
+|---|---|
+| LB / RB | Previous / next section |
+| X | Apply |
+| Y | Undo |
+| Right stick | Up and down scroll the list (the focus stays on a row in view); left and right move a slider ten steps |
+
+Controlify shows its button pictures beside Done, Apply and Undo and under the sections. Its virtual
+mouse stays off on this screen unless you turn it on there.
+
+## What the panel says
+
+- **Performance impact: None / Low / Medium / High / Varies** for the settings that cost frame
+  time. Varies means it depends on the scene (for example, on how many lights there are).
+- A row that does nothing as things are set is grey, and the panel says why: another setting has to
+  be turned on first, another one takes its place, ray tracing is off, or Bedrock's files are missing.
+- **Also decides:** the settings this one switches off or takes the place of.
+- A setting the renderer profile manages says so: changing it turns the profile into Custom.
 
 ## Quality and Reset to Defaults
 
@@ -27,30 +60,31 @@ mode, light bounces, volumetric fog, clouds, render distance and more. Changing 
 hand turns it into Custom. Details in
 [styles-and-quality.md](styles-and-quality.md#quality-levels).
 
-**Reset to Defaults** returns everything to a fresh install, including pipeline and shader pack
-settings that have no control here. The pipeline goes back to RT-DLSS when DLSS is loaded, FSR
-otherwise.
+**Reset to Defaults**, at the bottom left, returns everything to a fresh install, including
+pipeline and shader pack settings that have no control here, and picks the Bedrock RTX (Enhanced)
+profile again. Holding **Ctrl** turns it into **Rebuild Shaders**: it applies the changes and
+builds the shaders again, for when the picture looks wrong after changing settings.
 
 ## Settings that need a restart
 
-Some (HDR Output, installing or deleting an upscaler) only apply after a restart. They are marked
-**(restart)** and, when you leave the screen, a notice lists the pending changes with **Close the
-game now** or **Later**.
+HDR Output, and installing or deleting an upscaler, only apply after a restart. HDR Output is
+marked **(restart)** and, when you leave the screen, a notice lists the pending changes with
+**Close the game now** or **Later**.
 
-## Categories
+## Sections
 
 | Section | Contents |
 |---|---|
-| [Quality & Upscaling](settings/quality-and-upscaling.md) | Ray tracing switch, pipeline, DLSS or upscaling mode, render resolution, frame generation, Reflex. |
-| [Image](settings/image.md) | Renderer profile, picture style, tone mapping, exposure, HDR, motion blur, depth of field. |
-| [Lighting](settings/lighting.md) | Brightness, bounce light, block light sampling, ReSTIR, SER, item light. |
-| [Sky, Fog & Water](settings/sky-fog-water.md) | Atmosphere, clouds and their shadows, stars, biome ambiance, fog and its style, rain, water, glass. |
-| [Performance](settings/performance.md) | Light bounces, mirrors, cache, checkerboard, parallax, Bedrock pack materials, chunk building. |
+| [Quality](settings/quality-and-upscaling.md) | Ray tracing switch, quality level, pipeline, DLSS or upscaling mode, Ray Reconstruction, render and output resolution, frame generation, Reflex. |
+| [Image](settings/image.md) | Renderer profile, picture style, exposure, FSR sharpness, HDR, motion blur, depth of field. |
+| [Lighting](settings/lighting.md) | Brightness, bounced and sky light, block light sampling, ReSTIR, SER, held item light, first person shadow. |
+| [Sky & Water](settings/sky-fog-water.md) | Atmosphere, clouds, stars, sun, sun path, rain, glass, biome ambiance, volumetric fog, water. |
+| [Performance](settings/performance.md) | Light bounces, mirrors, glass, water texture, portal, rain, cache, checkerboard, parallax, Bedrock pack materials, fog quality, chunk building. |
 | [Other](settings/other.md) | Block outline, other mods' overlays, text backgrounds, parallax edges, debug logging. |
 
 A setting only shows when the pipeline, GPU or shader pack supports it: DLSS Mode only with
-RT-DLSS, Reflex only on NVIDIA, SER only on RTX 40 or newer. If something in these docs is missing
-from your screen, that is why.
+RT-DLSS, Upscaling Mode only with RT-FSR or RT-XeSS, Reflex only on NVIDIA, frame generation not
+with HDR Output. If something in these docs is missing from your screen, that is why.
 
 ## Presets
 
@@ -61,8 +95,8 @@ and HDR stay as they are.
 
 ## Advanced
 
-**Advanced: OFF / ON**, at the bottom, shows the fine-tuning controls of each category in groups
-under its main ones (exposure and tone, camera effects, light, clouds, atmosphere, water, fog,
-stars, denoiser, renderer, upscaler, debug views). Their values apply whether or not they are
-shown; a category says how many more it has while Advanced is off. They are the pipeline's own
-parameters: change them one at a time, and use **Undo** or **Reset to Defaults** to come back.
+**Advanced: OFF / ON**, at the bottom, shows the fine-tuning controls of each section in folding
+groups under its main ones (exposure and tone, camera effects, light, clouds, atmosphere, water,
+fog, stars, sun and moon path, denoiser, renderer, upscaler, debug views, other pipeline settings).
+Their values apply whether or not they are shown. They are the pipeline's own parameters: change
+them one at a time, and use **Undo** or **Reset to Defaults** to come back.

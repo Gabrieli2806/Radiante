@@ -1,0 +1,73 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+
+// Moves the foliage of the sections near the camera to where the wind puts it this frame (Chunks::recordWind in
+// render/chunks.cpp). One row of work groups per section geometry: each vertex is read at rest, moved by
+// util/wind.glsl and written where the structure refit and the hit shaders read it. Vertices without a wind code are
+// never written; they keep the rest position they were uploaded with.
+
+#include "wind.glsl"
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+struct WindJob {
+    uint64_t positions;
+    uint64_t rest;
+    uint vertexCount;
+    // 1 to move by the wind, 0 to go back to rest.
+    float scale;
+    // The section's origin with x and z wrapped into WIND_PERIOD, and relative to the camera.
+    float wrappedX;
+    float wrappedY;
+    float wrappedZ;
+    float relativeX;
+    float relativeY;
+    float relativeZ;
+};
+
+layout(std430, buffer_reference, buffer_reference_align = 8) readonly buffer WindJobs {
+    WindJob jobs[];
+};
+
+// Four floats per vertex: x, y, z relative to the section origin, and the wind code.
+layout(std430, buffer_reference, buffer_reference_align = 4) buffer WindPositions {
+    float values[];
+};
+
+layout(push_constant) uniform WindParams {
+    uint64_t jobs;
+    uint jobCount;
+    float time;
+    float strength;
+    float weather;
+}
+params;
+
+void main() {
+    uint jobIndex = gl_WorkGroupID.y;
+    if (jobIndex >= params.jobCount) { return; }
+    WindJob job = WindJobs(params.jobs).jobs[jobIndex];
+    uint vertex = gl_GlobalInvocationID.x;
+    if (vertex >= job.vertexCount) { return; }
+
+    WindPositions rest = WindPositions(job.rest);
+    uint base = vertex * 4u;
+    vec3 local = vec3(rest.values[base], rest.values[base + 1u], rest.values[base + 2u]);
+    float code = rest.values[base + 3u];
+    if (code <= 0.0) { return; }
+
+    vec3 offset = vec3(0.0);
+    if (job.scale > 0.0) {
+        vec3 wrapped = vec3(job.wrappedX, job.wrappedY, job.wrappedZ) + local;
+        float distanceToCamera = length(vec3(job.relativeX, job.relativeY, job.relativeZ) + local);
+        offset = windOffset(wrapped, code, params.time, params.strength, params.weather) * windFade(distanceToCamera);
+    }
+
+    WindPositions moved = WindPositions(job.positions);
+    vec3 position = local + offset;
+    moved.values[base] = position.x;
+    moved.values[base + 1u] = position.y;
+    moved.values[base + 2u] = position.z;
+}

@@ -1,9 +1,12 @@
 #include "prism/all_extern.hpp"
 #include "prism/middleware/jni_support.hpp"
 #include "prism/render/emission.hpp"
+#include "prism/render/opacity_micromaps.hpp"
 #include "prism/render/textures.hpp"
 
+#include <algorithm>
 #include <cstdint>
+#include <vector>
 
 namespace jni = prism::jni;
 
@@ -39,17 +42,6 @@ JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_TextureProxy_
     });
 }
 
-JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_TextureProxy_setClamp(JNIEnv *,
-                                                                                         jclass,
-                                                                                         jint id,
-                                                                                         jint addressMode) {
-    jni::guard("[Radiante] setClamp", [=] {
-        auto textures = jni::textures();
-        if (textures == nullptr) return;
-        textures->setAddressMode(static_cast<uint32_t>(id), static_cast<VkSamplerAddressMode>(addressMode));
-    });
-}
-
 JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_TextureProxy_queueUpload(JNIEnv *,
                                                                                             jclass,
                                                                                             jlong srcPointer,
@@ -82,6 +74,29 @@ JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_TextureProxy_
         if (emission == nullptr) return;
         emission->updateTile(static_cast<uint32_t>(textureId), static_cast<uint64_t>(tileKey),
                              jni::as<const EmissionCellUpload *>(cellsPtr), cellCount);
+    });
+}
+
+// The block atlas is about to be mirrored: its level 0 uploads from now on are its cut-out coverage.
+JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_TextureProxy_beginCutoutCoverage(
+    JNIEnv *, jclass, jint textureId, jint width, jint height) {
+    jni::guard("[Radiante] beginCutoutCoverage", [=] {
+        omm::coverage::begin(static_cast<uint32_t>(textureId), static_cast<uint32_t>(std::max(width, 0)),
+                             static_cast<uint32_t>(std::max(height, 0)));
+    });
+}
+
+// The mirror is complete; `animatedRects` holds x, y, width and height of each animated sprite, in level 0 texels.
+JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_TextureProxy_finishCutoutCoverage(
+    JNIEnv *env, jclass, jint textureId, jintArray animatedRects) {
+    jni::guard("[Radiante] finishCutoutCoverage", [=] {
+        std::vector<int32_t> rects;
+        if (animatedRects != nullptr) {
+            const jsize length = env->GetArrayLength(animatedRects);
+            rects.resize(static_cast<size_t>(length));
+            if (length > 0) env->GetIntArrayRegion(animatedRects, 0, length, reinterpret_cast<jint *>(rects.data()));
+        }
+        omm::coverage::finish(static_cast<uint32_t>(textureId), rects);
     });
 }
 

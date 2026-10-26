@@ -53,9 +53,8 @@ enum OptionImpact {
         Map.entry("options.radiante.frame_generation_backend", VARIES),
         Map.entry("options.radiante.fog_style", MEDIUM),
         Map.entry("options.radiante.cloud_shadows", LOW),
-        Map.entry("options.radiante.rain_refraction", LOW),
         Map.entry("options.radiante.held_item_light", LOW),
-        Map.entry("options.radiante.entity_light_reach", LOW),
+        Map.entry("options.radiante.glowing_pixel_light", LOW),
         Map.entry("options.radiante.first_person_shadow", LOW),
         Map.entry("options.radiante.ser", VARIES),
         Map.entry("options.radiante.cache_deep_bounces", HIGH),
@@ -74,6 +73,7 @@ enum OptionImpact {
         Map.entry("options.radiante.tunable.water_texture", LOW),
         Map.entry("options.radiante.tunable.portal_transparency", LOW),
         Map.entry("options.radiante.tunable.rain_opacity", LOW),
+        Map.entry("options.radiante.wind", LOW),
         Map.entry("options.radiante.tunable.water_clear_teal", LOW));
 
     static OptionImpact of(String optionKey) {

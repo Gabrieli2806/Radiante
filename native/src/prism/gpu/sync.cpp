@@ -7,26 +7,6 @@
 
 namespace gpu {
 
-// ---- Semaphore
-
-Semaphore::Semaphore(std::shared_ptr<Device> device) : device_(std::move(device)) {
-    VkSemaphoreCreateInfo info{VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
-    if (vkCreateSemaphore(device_->vkDevice(), &info, nullptr, &semaphore_) != VK_SUCCESS) {
-        throw std::runtime_error("semaphore could not be made");
-    }
-}
-
-Semaphore::~Semaphore() {
-    retire::later(
-        [device = device_, semaphore = semaphore_] { vkDestroySemaphore(device->vkDevice(), semaphore, nullptr); });
-}
-
-VkSemaphore &Semaphore::vkSemaphore() {
-    return semaphore_;
-}
-
-// ---- Fence
-
 Fence::Fence(std::shared_ptr<Device> device) : Fence(std::move(device), false) {}
 
 Fence::Fence(std::shared_ptr<Device> device, bool signaled) : device_(std::move(device)) {

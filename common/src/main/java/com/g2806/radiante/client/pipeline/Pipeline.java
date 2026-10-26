@@ -40,13 +40,11 @@ public class Pipeline {
     public static Pipeline INSTANCE = new Pipeline();
     public static final String RAY_TRACING_MODULE_NAME = "render_pipeline.module.ray_tracing.name";
     private static final String RAY_TRACING_SHADER_PACK_PATH_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.shader_pack_path";
-    private static final String VANILLA_RAY_TRACING_SHADER_PACK_PATH = "shaders/world/ray_tracing/vanilla-pt.zip";
-    private static final String INTERNAL_RAY_TRACING_SHADER_PACK_PATH = VANILLA_RAY_TRACING_SHADER_PACK_PATH;
+    private static final String BUILT_IN_SHADER_PACK_PATH = "shaders/world/ray_tracing/radiante-pt.zip";
     private static final String SHADER_PACK_CONFIG_FILE = "configs.json";
     public static final String DLSS_MODULE_NAME = "render_pipeline.module.dlss.name";
     private static final String NRD_MODULE_NAME = "render_pipeline.module.nrd.name";
     private static final String TEMPORAL_ACCUMULATION_MODULE_NAME = "render_pipeline.module.temporal_accumulation.name";
-    private static final String FSR3_MODULE_NAME = "render_pipeline.module.fsr_upscaler.name";
     public static final String TONE_MAPPING_MODULE_NAME = "render_pipeline.module.tone_mapping.name";
     public static final String POST_RENDER_MODULE_NAME = "render_pipeline.module.post_render.name";
     private static Path PIPELINE_CONFIG_PATH = null;
@@ -67,21 +65,44 @@ public class Pipeline {
     private Pipeline() {
     }
 
-    public record ShaderPackChoice(String id, String displayName, String relativePath) {
-    }
-
     public static void initFolderPath(Path folderPath) {
         PIPELINE_CONFIG_PATH = folderPath.resolve("pipeline.yaml");
+        migrateRenamedPack(folderPath);
+    }
+
+    /**
+     * The built-in shader pack was called vanilla-pt before it was renamed radiante-pt. What a player stored under
+     * the old name moves over: the pack's settings file (next to the zip), and the pipeline's pointer to the zip.
+     * The old zip is left to go, or the shader pack list would offer a second copy.
+     */
+    private static void migrateRenamedPack(Path folderPath) {
+        try {
+            Path packs = folderPath.resolve("shaders/world/ray_tracing");
+            Path oldSettings = packs.resolve("vanilla-pt.zip.txt");
+            Path newSettings = packs.resolve("radiante-pt.zip.txt");
+            if (Files.isRegularFile(oldSettings)) {
+                if (!Files.exists(newSettings)) {
+                    Files.move(oldSettings, newSettings);
+                } else {
+                    Files.delete(oldSettings);
+                }
+            }
+            Files.deleteIfExists(packs.resolve("vanilla-pt.zip"));
+            if (PIPELINE_CONFIG_PATH != null && Files.isRegularFile(PIPELINE_CONFIG_PATH)) {
+                String stored = Files.readString(PIPELINE_CONFIG_PATH);
+                String moved = stored.replace("ray_tracing/vanilla-pt.zip", "ray_tracing/radiante-pt.zip");
+                if (!moved.equals(stored)) {
+                    Files.writeString(PIPELINE_CONFIG_PATH, moved);
+                }
+            }
+        } catch (IOException | RuntimeException e) {
+            RadianteClient.LOGGER.warn("Could not move the stored settings of the renamed shader pack", e);
+        }
     }
 
     public static void reloadAllModuleEntries() {
         try {
             INSTANCE.moduleEntries = ModuleEntry.loadAllModuleEntries();
-
-//            System.out.println("Loaded " + INSTANCE.moduleEntries.size() + " module entries.");
-//            for (ModuleEntry entry : INSTANCE.moduleEntries.values()) {
-//                System.out.println(entry);
-//            }
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -157,7 +178,7 @@ public class Pipeline {
             return areModulesAvailable(
                     RAY_TRACING_MODULE_NAME,
                     NRD_MODULE_NAME,
-                    FSR3_MODULE_NAME,
+                    FSR_MODULE_NAME,
                     TONE_MAPPING_MODULE_NAME,
                     POST_RENDER_MODULE_NAME);
         }
@@ -238,12 +259,6 @@ public class Pipeline {
         assemblePresetByKeyInternal(fallbackPresetName);
     }
 
-    public static Module addModule(Module module) {
-        INSTANCE.modules.add(module);
-
-        return module;
-    }
-
     public static void connect(ImageConfig src, ImageConfig dst) {
         if (!Objects.equals(src.format, dst.format)) {
             throw new RuntimeException(
@@ -270,8 +285,6 @@ public class Pipeline {
             "render_pipeline.module.dlss.attribute.mode.quality",
             "render_pipeline.module.dlss.attribute.mode.dlaa");
 
-    private static final String FSR3_QUALITY_ATTRIBUTE = "render_pipeline.module.fsr_upscaler.attribute.quality_mode";
-    private static final String XESS_QUALITY_ATTRIBUTE = "render_pipeline.module.xess_sr.attribute.quality_mode";
 
     /**
      * The upscaler of the active pipeline and its quality mode, for the debug screen: "DLSS Balanced + Ray
@@ -294,8 +307,8 @@ public class Pipeline {
             }
             String modeAttribute = switch (module.name) {
                 case DLSS_MODULE_NAME -> DLSS_MODE_ATTRIBUTE;
-                case FSR3_MODULE_NAME -> FSR3_QUALITY_ATTRIBUTE;
-                case XESS_MODULE_NAME -> XESS_QUALITY_ATTRIBUTE;
+                case FSR_MODULE_NAME -> FSR_MODE_ATTRIBUTE;
+                case XESS_MODULE_NAME -> XESS_MODE_ATTRIBUTE;
                 default -> null;
             };
             if (modeAttribute == null) {
@@ -358,10 +371,6 @@ public class Pipeline {
         return changed;
     }
 
-    /**
-     * The render resolution modes of the FSR and XeSS upscalers, from full resolution down; the renderer draws at
-     * the mode's share of the screen and upscales the rest. Index-aligned with the quality levels (QualityPreset).
-     */
     public static final String FSR_MODULE_NAME = "render_pipeline.module.fsr_upscaler.name";
     /**
      * The share of the screen each upscaler renders at, in percent; 0 leaves it to the upscaler's mode. Every
@@ -371,6 +380,10 @@ public class Pipeline {
     public static final String FSR_RENDER_SCALE_ATTRIBUTE = "render_pipeline.module.fsr_upscaler.attribute.render_scale";
     public static final String XESS_RENDER_SCALE_ATTRIBUTE = "render_pipeline.module.xess_sr.attribute.render_scale";
     public static final String FSR_MODE_ATTRIBUTE = "render_pipeline.module.fsr_upscaler.attribute.quality_mode";
+    /**
+     * The render resolution modes of the FSR and XeSS upscalers, from full resolution down; the renderer draws at
+     * the mode's share of the screen and upscales the rest. Index-aligned with the quality levels (QualityPreset).
+     */
     public static final List<String> FSR_MODES = List.of(
         "render_pipeline.module.fsr_upscaler.attribute.quality_mode.ultra",
         "render_pipeline.module.fsr_upscaler.attribute.quality_mode.performance",
@@ -465,7 +478,6 @@ public class Pipeline {
     public static final String SER_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.ser";
     /** ReSTIR reuse of block light samples across frames and pixels (needs block light sampling). */
     public static final String RESTIR_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.restir";
-    /** Past the first bounce, diffuse light taken from the radiance cache instead of traced further. */
     /** Bedrock packs' MER maps read as authored instead of through their LabPBR conversion. */
     public static final String BEDROCK_MATERIALS_ATTRIBUTE =
         "render_pipeline.module.ray_tracing.attribute.bedrock_materials";
@@ -484,12 +496,15 @@ public class Pipeline {
         "render_pipeline.module.ray_tracing.attribute.bedrock_enhanced";
 
     /**
-     * Whether block lights cast what their Bedrock MER maps show (EmissionTiles.uploadFromMer): only the experimental
-     * profile shows that glow and lights its world with it; the others keep the light levels' scale.
+     * Whether block lights cast what their Bedrock MER maps show (EmissionTiles.uploadFromMer): the Bedrock RTX
+     * profiles show that glow and light the world with it; with either switch off (Custom) the light levels' scale
+     * is kept.
      */
     public static boolean castsBedrockGlow() {
         return isShaderPackToggleOn(BEDROCK_MATERIALS_ATTRIBUTE) && isShaderPackToggleOn(BEDROCK_ORIGINAL_ATTRIBUTE);
     }
+
+    /** Past the first bounce, diffuse light taken from the radiance cache instead of traced further. */
     public static final String CACHE_DEEP_BOUNCES_ATTRIBUTE =
         "render_pipeline.module.ray_tracing.attribute.cache_deep_bounces";
     /** One bounce traced everywhere, the rest of the light from the radiance cache, as Bedrock RTX does. */
@@ -507,14 +522,31 @@ public class Pipeline {
     /** Glass blocks without the frame vanilla draws around each one, so neighbours join into one sheet. */
     public static final String SEAMLESS_GLASS_ATTRIBUTE =
         "render_pipeline.module.ray_tracing.attribute.seamless_glass";
-    /** Rain streaks that bend the view behind them like little lenses. */
-    public static final String RAIN_REFRACTION_ATTRIBUTE =
-        "render_pipeline.module.ray_tracing.attribute.rain_refraction";
     /** Volumetric fog made with a lit 3D grid instead of a march per pixel. */
     public static final String FROXEL_FOG_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.froxel_fog";
     /** Volumetric clouds shade the ground under them (only with Volumetric clouds). */
     public static final String CLOUD_SHADOWS_ATTRIBUTE =
         "render_pipeline.module.ray_tracing.attribute.volumetric_cloud_cast_shadow";
+    /**
+     * Leaves, grass, flowers, vines and water plants sway in the wind (util/wind.glsl). Switching it remeshes the
+     * world: sections carry their wind codes only while it is on, so with it off nothing is moved and nothing is refit.
+     */
+    public static final String WIND_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.wind";
+    /** How far the wind moves foliage, 1 as designed; live, without remeshing. */
+    public static final String WIND_STRENGTH_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.wind_strength";
+
+    /** The wind's strength for this frame (WorldUBO.windStrength): the slider, or 0 with wind off or not offered. */
+    public static float windStrength() {
+        if (!isShaderPackToggleOn(WIND_ATTRIBUTE)) {
+            return 0.0f;
+        }
+        String value = getShaderPackValue(WIND_STRENGTH_ATTRIBUTE);
+        try {
+            return value == null ? 1.0f : Math.max(0.0f, Float.parseFloat(value.trim()));
+        } catch (NumberFormatException notANumber) {
+            return 1.0f;
+        }
+    }
 
     /**
      * Switches one of the shader pack's on/off attributes, such as motion blur or depth of field. Returns true when
@@ -683,7 +715,7 @@ public class Pipeline {
     private static Path resolveShaderPackPath(String configuredPath) {
         String value = configuredPath == null ? "" : configuredPath.trim();
         Path shaderPackPath = value.isEmpty()
-                ? Path.of(VANILLA_RAY_TRACING_SHADER_PACK_PATH)
+                ? Path.of(BUILT_IN_SHADER_PACK_PATH)
                 : Path.of(value);
         if (!shaderPackPath.isAbsolute() && RadianteClient.radianceDir != null) {
             shaderPackPath = RadianteClient.radianceDir.resolve(shaderPackPath);
@@ -728,10 +760,8 @@ public class Pipeline {
         try {
             Object loaded = loadShaderPackDocument(shaderPackPath, SHADER_PACK_CONFIG_FILE);
             if (loaded instanceof Map<?, ?> root) {
+                // The key the renderer reads too (shader_pack_loader.cpp), so both sides agree on the pack.
                 Object value = root.get("requires_emission");
-                if (value == null) {
-                    value = root.get("requiresEmission");
-                }
                 if (value instanceof Boolean bool) {
                     return bool;
                 }
@@ -742,20 +772,11 @@ public class Pipeline {
         } catch (Exception e) {
             RadianteClient.LOGGER.warn("Failed to read shader pack config: {}", shaderPackPath, e);
         }
-
-        String fileName = shaderPackPath.getFileName() == null ? "" : shaderPackPath.getFileName().toString();
-        return fileName.equals("restir-di.zip") || fileName.equals("restir-di");
+        return false;
     }
 
-    public static boolean shaderPackRequiresEmission(String configuredPath) {
-        return readRequiresEmissionFromConfig(resolveShaderPackPath(configuredPath));
-    }
-
-    public static boolean isShaderPackSelectable(ShaderPackChoice choice) {
-        return choice != null && (!shaderPackRequiresEmission(choice.relativePath()) || Options.collectChunkEmission);
-    }
     private static boolean isShaderPackValueSelectable(String configuredPath) {
-        return !shaderPackRequiresEmission(configuredPath) || Options.collectChunkEmission;
+        return !readRequiresEmissionFromConfig(resolveShaderPackPath(configuredPath)) || Options.collectChunkEmission;
     }
 
     private static boolean fallbackUnavailableShaderPacks() {
@@ -768,9 +789,9 @@ public class Pipeline {
             if (shaderPackPath == null || isShaderPackValueSelectable(shaderPackPath.value)) {
                 continue;
             }
-            shaderPackPath.value = VANILLA_RAY_TRACING_SHADER_PACK_PATH;
+            shaderPackPath.value = BUILT_IN_SHADER_PACK_PATH;
             changed = true;
-            RadianteClient.LOGGER.warn("Selected shader pack requires chunk emission collection. Falling back to vanilla PT.");
+            RadianteClient.LOGGER.warn("Selected shader pack requires chunk emission collection. Falling back to the built-in pack.");
         }
         return changed;
     }
@@ -783,35 +804,7 @@ public class Pipeline {
         build();
     }
 
-    public static boolean setShaderPack(ShaderPackChoice choice) {
-        return setShaderPack(choice, true);
-    }
 
-    public static boolean setShaderPack(ShaderPackChoice choice, boolean rebuildNow) {
-        if (!isShaderPackSelectable(choice)) {
-            return false;
-        }
-
-        boolean changed = false;
-        for (Module module : INSTANCE.modules) {
-            if (module == null || !Objects.equals(module.name, RAY_TRACING_MODULE_NAME)) {
-                continue;
-            }
-            AttributeConfig shaderPackPath = findAttribute(module, RAY_TRACING_SHADER_PACK_PATH_ATTRIBUTE);
-            if (shaderPackPath == null || Objects.equals(shaderPackPath.value, choice.relativePath())) {
-                continue;
-            }
-            assign(shaderPackPath, choice.relativePath());
-            getModuleAttributes(module);
-            changed = true;
-        }
-
-        if (changed && rebuildNow) {
-            savePipeline();
-            build();
-        }
-        return changed;
-    }
     /** Why the last {@link #build()} failed, for the progress toast; null when it succeeded. */
     private static volatile String lastBuildError;
 
@@ -1122,7 +1115,6 @@ public class Pipeline {
                     && PipelineMode.fromString(storage.mode) == PipelineMode.PRESET
                     && Objects.equals(processPresetName(storage.presetName), INSTANCE.activePresetName)) {
                 applyPresetModuleOverrides(storage.presetModules);
-            normaliseRayReconstruction();
                 normaliseRayReconstruction();
             }
 
@@ -1361,7 +1353,7 @@ public class Pipeline {
 
         Module denoiserModule = addModule(NRD_MODULE_NAME);
 
-        Module upscalerModule = addModule(FSR3_MODULE_NAME);
+        Module upscalerModule = addModule(FSR_MODULE_NAME);
 
         Module toneMappingModule = addModule(TONE_MAPPING_MODULE_NAME);
 
@@ -1901,7 +1893,7 @@ public class Pipeline {
                 if (configuredPath.isEmpty()) {
                     if (RadianteClient.radianceDir != null) {
                         shaderPackPath = RadianteClient.radianceDir
-                                .resolve(INTERNAL_RAY_TRACING_SHADER_PACK_PATH)
+                                .resolve(BUILT_IN_SHADER_PACK_PATH)
                                 .toAbsolutePath()
                                 .normalize();
                     }
@@ -2066,35 +2058,13 @@ public class Pipeline {
     public String getActivePresetName() {
         return activePresetName;
     }
-    public static void switchToPipelineMode() {
-        switchToPipelineMode(true);
-    }
 
-    public static void switchToPipelineMode(boolean commitChanges) {
-        if (INSTANCE.mode == PipelineMode.PIPELINE) {
-            return;
-        }
-
-        INSTANCE.mode = PipelineMode.PIPELINE;
-
-        if (commitChanges) {
-            savePipeline();
-            build();
-        }
-    }
-
+    /** Assembles a preset, keeping the module settings it shares with the current one; the caller builds it. */
     public static void switchToPresetMode(String presetName) {
-        switchToPresetMode(presetName, true);
-    }
-
-    public static void switchToPresetMode(String presetName, boolean commitChanges) {
         List<PresetStoredModule> carryOverModules = capturePresetModules();
 
         INSTANCE.mode = PipelineMode.PRESET;
-        String processedPresetName = processPresetName(presetName);
-
-        // should set preset name properly
-        assemblePreset(processedPresetName);
+        assemblePreset(processPresetName(presetName));
 
         PipelineConfigStorage storage = loadConfigStorage();
         if (storage != null && Objects.equals(storage.mode, PipelineMode.PRESET.name())
@@ -2105,11 +2075,6 @@ public class Pipeline {
 
         applyPresetModuleOverrides(carryOverModules);
         normaliseRayReconstruction();
-
-        if (commitChanges) {
-            savePipeline();
-            build();
-        }
     }
 
     public static void assemblePreset(String presetName) {
@@ -2262,7 +2227,7 @@ public class Pipeline {
                 if (configuredPath.isEmpty()) {
                     if (RadianteClient.radianceDir != null) {
                         shaderPackPath = RadianteClient.radianceDir
-                                .resolve(INTERNAL_RAY_TRACING_SHADER_PACK_PATH)
+                                .resolve(BUILT_IN_SHADER_PACK_PATH)
                                 .toAbsolutePath()
                                 .normalize();
                     }

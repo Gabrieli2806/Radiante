@@ -48,7 +48,7 @@ public class ChunkProxy {
             geometryTextures, vertexFormats, vertexCounts, vertices, important);
     }
 
-    /** No-op kept for options that ask for a full world rebuild. */
+    /** Builds every section again, for an option whose change shows in the terrain (block emission). */
     public static void rebuildAll() {
         com.g2806.radiante.client.render.ChunkManager.markAllDirty();
     }

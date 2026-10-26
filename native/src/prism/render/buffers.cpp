@@ -5,42 +5,26 @@
 #include "prism/render/render_framework.hpp"
 #include "prism/render/renderer.hpp"
 #include "prism/render/world.hpp"
-#include "prism/util/logging.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
-#include <cstring>
-#include <limits>
 #include <stdexcept>
-#include <string>
 
 // The C++ layout must be the std140 one the shaders see: a size check alone missed offHandLightPos sitting 4 bytes
 // early. BufferProxy.WORLD_UBO_SIZE on the Java side fills everything before packParams; the two must move together.
+static_assert(offsetof(gpu::Data::WorldUBO, windTime) == 692); // BufferProxy.WIND_OFFSET
 static_assert(offsetof(gpu::Data::WorldUBO, offHandLightPos) == 704);
 static_assert(offsetof(gpu::Data::WorldUBO, packParams) == 736);
 static_assert(sizeof(gpu::Data::WorldUBO) == 1760);
 
 namespace {
 
-constexpr size_t OVERLAY_BUFFER_BASE_SIZE = 16 * 1024;
-constexpr size_t OVERLAY_POST_UNIFORM_BASE_SIZE = 512 * 1024;
-
 // The light meter holds 256 samples of a vec4 (the cube root of the incident light per channel, and the sample's
 // weight); one more with how much of a day it is (1 by day, 0 at night); one with the experimental Bedrock profile's
 // meter state (exposure.comp); then that profile's history of each sample: 256 of the light accumulated and 256 of
 // the surface it lies on (world.rgen).
 constexpr size_t LIGHT_METER_BYTES = (256 + 1 + 1 + 256 + 256) * 4 * sizeof(float);
-
-std::ostream &buffersErr() {
-    return radiante::err() << "[Buffers] ";
-}
-
-[[noreturn]] void failUnallocated(uint32_t id) {
-    std::string message = "The given buffer id: " + std::to_string(id) + " is not allocated for buffer";
-    buffersErr() << message << std::endl;
-    throw std::out_of_range(message);
-}
 
 // HostVisibleBuffer::uploadToBuffer only reads from its source.
 void write(gpu::HostVisibleBuffer &buffer, const void *src, size_t size, size_t offset = 0) {
@@ -118,11 +102,6 @@ void recordBarriers(VkCommandBuffer commandBuffer, const std::vector<VkBufferMem
 Buffers::Buffers(std::shared_ptr<Framework> framework) : framework_(framework) {
     const uint32_t frames = framework->swapchain()->imageCount();
     uniforms_.resize(frames);
-    overlay_.resize(frames);
-
-    const VkDeviceSize alignment =
-        std::max<VkDeviceSize>(1, framework->physicalDevice()->properties().limits.minUniformBufferOffsetAlignment);
-    postStride_ = static_cast<uint32_t>((sizeof(gpu::Data::OverlayPostUBO) + alignment - 1) / alignment * alignment);
 
     // Before the first frame there is no previous one: its camera is the identity.
     lastWorld_.cameraViewMat = glm::mat4(1.0f);
@@ -145,16 +124,6 @@ uint32_t Buffers::currentFrame() const {
     return framework()->safeAcquireCurrentContext()->frameIndex;
 }
 
-void Buffers::resetFrame() {
-    const uint32_t frame = currentFrame();
-    std::scoped_lock lock(mutex_);
-    OverlaySlot &slot = overlay_[frame];
-    slot.sizes.clear();
-    slot.postUniforms.clear();
-    slot.postCount = 0;
-    overlayNextId_ = 0;
-}
-
 void Buffers::performQueuedUpload() {
     auto framework = this->framework();
     auto context = framework->safeAcquireCurrentContext();
@@ -162,61 +131,40 @@ void Buffers::performQueuedUpload() {
     const std::shared_ptr<gpu::CommandBuffer> &commandBuffer = context->uploadCommandBuffer;
 
     std::scoped_lock lock(mutex_);
-    OverlaySlot &overlay = overlay_[context->frameIndex];
-
-    uploadBuffers_.clear();
-    for (size_t id = 0; id < overlay.sizes.size(); id++) {
-        if (overlay.buffers[id] != nullptr) uploadBuffers_.push_back(overlay.buffers[id]);
-    }
-    const size_t overlayCount = uploadBuffers_.size();
-    uploadBuffers_.insert(uploadBuffers_.end(), importantUploads_.begin(), importantUploads_.end());
-    if (uploadBuffers_.empty()) return;
+    if (importantUploads_.empty()) return;
 
     // Earlier transfers out of these buffers finish before they are overwritten.
     uploadBarriers_.clear();
-    for (const auto &buffer : uploadBuffers_) {
+    for (const auto &buffer : importantUploads_) {
         uploadBarriers_.push_back(bufferBarrier(buffer->vkBuffer(), queueFamily, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
                                                 VK_ACCESS_2_MEMORY_READ_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
                                                 VK_ACCESS_2_MEMORY_WRITE_BIT));
     }
     recordBarriers(commandBuffer->vkCommandBuffer(), uploadBarriers_);
 
-    for (size_t id = 0; id < overlay.sizes.size(); id++) {
-        if (overlay.buffers[id] != nullptr && overlay.sizes[id] > 0) {
-            overlay.buffers[id]->uploadToBuffer(commandBuffer, static_cast<size_t>(overlay.sizes[id]), 0, 0);
-        }
-    }
     for (const auto &buffer : importantUploads_) buffer->uploadToBuffer(commandBuffer);
-    importantUploads_.clear();
 
-    // The overlay draws from its buffers; world geometry also feeds acceleration structure builds and ray tracing.
-    constexpr VkPipelineStageFlags2 overlayReaders = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
-                                                     VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT |
-                                                     VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
-    constexpr VkPipelineStageFlags2 worldReaders = overlayReaders |
-                                                   VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR |
-                                                   VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR;
+    // World geometry feeds acceleration structure builds and ray tracing, and the stages that read it as plain data.
+    // Section buffers also hold the inputs of their opacity micromaps, where the device has them.
+    const VkPipelineStageFlags2 worldReaders =
+        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT |
+        VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT | VK_PIPELINE_STAGE_2_ACCELERATION_STRUCTURE_BUILD_BIT_KHR |
+        VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR |
+        (gpu::opacityMicromapsEnabled() ? VK_PIPELINE_STAGE_2_MICROMAP_BUILD_BIT_EXT : VK_PIPELINE_STAGE_2_NONE);
     constexpr VkAccessFlags2 readWrite = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
     uploadBarriers_.clear();
-    for (size_t i = 0; i < uploadBuffers_.size(); i++) {
-        uploadBarriers_.push_back(bufferBarrier(uploadBuffers_[i]->vkBuffer(), queueFamily,
-                                                VK_PIPELINE_STAGE_2_TRANSFER_BIT, readWrite,
-                                                i < overlayCount ? overlayReaders : worldReaders, readWrite));
+    for (const auto &buffer : importantUploads_) {
+        uploadBarriers_.push_back(bufferBarrier(buffer->vkBuffer(), queueFamily, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                                                readWrite, worldReaders, readWrite));
     }
     recordBarriers(commandBuffer->vkCommandBuffer(), uploadBarriers_);
-    uploadBuffers_.clear();
+    importantUploads_.clear();
 }
 
 void Buffers::queueImportantWorldUpload(std::shared_ptr<gpu::DeviceLocalBuffer> buffer) {
     if (buffer == nullptr) return;
     std::scoped_lock lock(mutex_);
     importantUploads_.push_back(std::move(buffer));
-}
-
-void Buffers::queueImportantWorldUpload(std::shared_ptr<gpu::DeviceLocalBuffer> vertexBuffer,
-                                        std::shared_ptr<gpu::DeviceLocalBuffer> indexBuffer) {
-    queueImportantWorldUpload(std::move(vertexBuffer));
-    queueImportantWorldUpload(std::move(indexBuffer));
 }
 
 void Buffers::setAndUploadWorldUniformBuffer(gpu::Data::WorldUBO &ubo) {
@@ -278,6 +226,11 @@ void Buffers::setAndUploadWorldUniformBuffer(gpu::Data::WorldUBO &ubo) {
     write(*ensureUniform(uniforms.world, *framework, sizeof(ubo), usage), &ubo, sizeof(ubo));
     write(*ensureUniform(uniforms.lastWorld, *framework, sizeof(ubo), usage), &lastWorld_, sizeof(lastWorld_));
     lastWorld_ = ubo;
+}
+
+gpu::Data::WorldUBO Buffers::lastWrittenWorldUniform() {
+    std::scoped_lock lock(mutex_);
+    return lastWorld_;
 }
 
 void Buffers::setPackParams(const std::array<glm::vec4, PRISM_PACK_PARAM_COUNT> &params) {
@@ -351,127 +304,4 @@ std::shared_ptr<gpu::DeviceLocalBuffer> Buffers::lightMeterBuffer() {
                                                          VK_BUFFER_USAGE_TRANSFER_DST_BIT);
     }
     return lightMeter_;
-}
-
-uint32_t Buffers::allocateBuffer() {
-    const uint32_t frame = currentFrame();
-    std::scoped_lock lock(mutex_);
-    OverlaySlot &slot = overlay_[frame];
-    const uint32_t id = overlayNextId_++;
-    if (slot.sizes.size() <= id) slot.sizes.resize(id + 1, -1);
-    if (slot.buffers.size() <= id) slot.buffers.resize(id + 1);
-    return id;
-}
-
-void Buffers::initializeBuffer(uint32_t id, uint32_t size, VkBufferUsageFlags usageFlags) {
-    auto framework = this->framework();
-    const uint32_t frame = framework->safeAcquireCurrentContext()->frameIndex;
-    std::scoped_lock lock(mutex_);
-    OverlaySlot &slot = overlay_[frame];
-    if (id >= slot.sizes.size()) failUnallocated(id);
-
-    slot.sizes[id] = size;
-    auto &buffer = slot.buffers[id];
-    size_t capacity = buffer != nullptr ? buffer->size() : OVERLAY_BUFFER_BASE_SIZE;
-    while (capacity < size) capacity *= 2;
-    if (buffer == nullptr || capacity != buffer->size()) {
-        buffer = gpu::DeviceLocalBuffer::create(framework->vma(), framework->device(), capacity, usageFlags);
-    }
-}
-
-void Buffers::buildIndexBuffer(uint32_t dstId, int type, int drawMode, int vertexCount, int expectedIndexCount) {
-    // Only quads (GL_QUADS, mode 7) need an index buffer made for them.
-    if (drawMode != 7) {
-        std::string message = "no index buffer can be built for draw mode " + std::to_string(drawMode);
-        buffersErr() << message << std::endl;
-        throw std::runtime_error(message);
-    }
-    auto build = [&]<typename Index>() {
-        if (vertexCount / 4 * 6 != expectedIndexCount) {
-            throw std::runtime_error("quads of " + std::to_string(vertexCount) + " vertices do not take " +
-                                     std::to_string(expectedIndexCount) + " indices");
-        }
-        std::vector<Index> indices;
-        indices.reserve(static_cast<size_t>(std::max(vertexCount, 0) + 3) / 4 * 6);
-        for (int i = 0; i < vertexCount; i += 4) {
-            for (int corner : {0, 1, 2, 2, 3, 0}) indices.push_back(static_cast<Index>(i + corner));
-        }
-        stageOverlayUpload(currentFrame(), dstId, reinterpret_cast<const uint8_t *>(indices.data()),
-                           indices.size() * sizeof(Index));
-    };
-    if (type == 0) build.template operator()<uint16_t>();
-    if (type == 1) build.template operator()<uint32_t>();
-}
-
-void Buffers::queueOverlayUpload(uint8_t *srcPointer, uint32_t dstId) {
-    // Java's memory holds as many bytes as it asked initializeBuffer for.
-    stageOverlayUpload(currentFrame(), dstId, srcPointer, std::numeric_limits<size_t>::max());
-}
-
-void Buffers::stageOverlayUpload(uint32_t frame, uint32_t id, const uint8_t *src, size_t srcSize) {
-    std::scoped_lock lock(mutex_);
-    OverlaySlot &slot = overlay_[frame];
-    if (id >= slot.sizes.size() || slot.sizes[id] <= 0 || slot.buffers[id] == nullptr) return;
-    const size_t size = std::min(static_cast<size_t>(slot.sizes[id]), srcSize);
-    slot.buffers[id]->uploadToStagingBuffer(const_cast<uint8_t *>(src), size, 0);
-}
-
-std::shared_ptr<gpu::DeviceLocalBuffer> Buffers::getBuffer(uint32_t id) {
-    const uint32_t frame = currentFrame();
-    std::scoped_lock lock(mutex_);
-    OverlaySlot &slot = overlay_[frame];
-    if (id >= slot.sizes.size()) failUnallocated(id);
-    return slot.buffers[id];
-}
-
-void Buffers::ensurePostBuffer(OverlaySlot &slot, size_t size) {
-    if (slot.postBuffer != nullptr && slot.postBuffer->size() >= size) return;
-    size_t capacity = slot.postBuffer != nullptr ? slot.postBuffer->size()
-                                                 : std::max<size_t>(OVERLAY_POST_UNIFORM_BASE_SIZE, postStride_);
-    while (capacity < size) capacity *= 2;
-    auto framework = this->framework();
-    slot.postBuffer = gpu::HostVisibleBuffer::create(framework->vma(), framework->device(), capacity,
-                                                     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-}
-
-void Buffers::appendOverlayPostUniform(const gpu::Data::OverlayPostUBO &ubo) {
-    const uint32_t frame = currentFrame();
-    std::scoped_lock lock(mutex_);
-    OverlaySlot &slot = overlay_[frame];
-    const size_t offset = static_cast<size_t>(slot.postCount) * postStride_;
-    slot.postUniforms.resize(offset + sizeof(ubo), 0);
-    std::memcpy(slot.postUniforms.data() + offset, &ubo, sizeof(ubo));
-    ensurePostBuffer(slot, slot.postUniforms.size());
-    slot.postCount++;
-}
-
-int Buffers::getPostID() {
-    const uint32_t frame = currentFrame();
-    std::scoped_lock lock(mutex_);
-    return static_cast<int>(overlay_[frame].postCount) - 1;
-}
-
-uint32_t Buffers::overlayPostUniformOffset(int postID) {
-    return postID < 0 ? 0 : static_cast<uint32_t>(postID) * postStride_;
-}
-
-uint32_t Buffers::overlayPostUniformDescriptorRange() {
-    return sizeof(gpu::Data::OverlayPostUBO);
-}
-
-std::shared_ptr<gpu::HostVisibleBuffer> Buffers::overlayPostUniformBuffer() {
-    const uint32_t frame = currentFrame();
-    std::scoped_lock lock(mutex_);
-    OverlaySlot &slot = overlay_[frame];
-    ensurePostBuffer(slot, 0);
-    return slot.postBuffer;
-}
-
-void Buffers::buildAndUploadOverlayUniformBuffer() {
-    const uint32_t frame = currentFrame();
-    std::scoped_lock lock(mutex_);
-    OverlaySlot &slot = overlay_[frame];
-    if (slot.postUniforms.empty()) return;
-    ensurePostBuffer(slot, slot.postUniforms.size());
-    write(*slot.postBuffer, slot.postUniforms.data(), slot.postUniforms.size());
 }

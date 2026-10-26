@@ -32,28 +32,6 @@ namespace VertexFormat {
 // coordinate, "uv1" the overlay, "uv2" the lightmap, and a packed normal uses only its first three bytes.
 // ---------------------------------------------------------------------------------------------------------------------
 
-struct Triangle {
-    T_VEC3 pos;
-    T_VEC3 color;
-};
-
-struct TexturedTriangle {
-    T_VEC3 pos;
-    T_VEC2 uv;
-};
-
-struct ArrayTexturedTriangle {
-    T_VEC3 pos;
-    T_FLOAT metallic;
-    T_VEC3 norm;
-    T_FLOAT roughness;
-    T_VEC2 uv;
-    T_FLOAT textureLayer;
-    T_FLOAT pad0;
-    T_VEC3 color;
-    T_FLOAT intensity;
-};
-
 struct PositionOnly {
     T_VEC3 position;
 };
@@ -158,6 +136,8 @@ struct PBRVertex {
     T_UINT coordinate;
     T_FLOAT albedoEmission;
 
+    // Section geometry carries its wind code in x (util/wind.glsl): 0 for a vertex that stays put. y and z are unused
+    // there; the star pass reads all three.
     T_VEC3 postBase;
     T_UINT alphaMode;
 };
@@ -217,37 +197,6 @@ namespace Data {
 // ---------------------------------------------------------------------------------------------------------------------
 // Uniform and storage blocks.
 // ---------------------------------------------------------------------------------------------------------------------
-
-struct Camera {
-    T_MAT4 viewMatrix;
-    T_MAT4 projMatrix;
-    T_MAT4 viewMatrixInv;
-    T_MAT4 projMatrixInv;
-    T_VEC2 jitter;
-    T_VEC2 pad0;
-};
-
-struct DirectionalLight {
-    T_VEC3 direction;
-    T_FLOAT pad0;
-    T_VEC3 color;
-    T_FLOAT intensity;
-};
-
-struct World {
-    DirectionalLight directionalLight;
-    T_FLOAT time;
-    T_UINT seed;
-};
-
-struct OverlayPostUBO {
-    T_MAT4 projectionMat;
-    T_VEC2 inSize;
-    T_VEC2 outSize;
-    T_VEC2 blurDir;
-    T_FLOAT radius;
-    T_FLOAT radiusMultiplier;
-};
 
 // Per-frame state of the world pass. Java writes everything before packParams (736 bytes, BufferProxy.java's
 // WORLD_UBO_SIZE) each frame; the native side fills the fields marked as set natively and packParams before upload.
@@ -336,10 +285,13 @@ struct WorldUBO {
     T_UINT lodCoverageAddressHi;
     T_UINT lodCoveragePad0;
     T_UINT lodCoveragePad1;
-    T_UINT heldLightPad0;
-    T_UINT heldLightPad1;
-    // std140 starts the next vec4 at 704; C++ would put it at 700 without this.
-    T_UINT heldLightPad2;
+    // Foliage wind (util/wind.glsl), written by Java: the wind time in seconds of game time, the player's strength (0
+    // with wind off) and the weather's (1 in clear weather, more in rain and thunder). The native pass that moves
+    // foliage reads them too.
+    T_FLOAT windTime;
+    T_FLOAT windStrength;
+    // std140 starts the next vec4 at 704; C++ would put it at 700 without this one.
+    T_FLOAT windWeather;
 
     // ---- Off hand (704..735)
     // The off hand's light, laid out like heldLightPos / heldLightColor, so a torch in each hand lights both sides.
@@ -441,37 +393,6 @@ struct TextureMapEntry {
 
 struct TextureMapping {
     TextureMapEntry entries[4096];
-};
-
-// Auto exposure: the luminance histogram of the frame and the exposure derived from it.
-struct ExposureData {
-    T_INT width;
-    T_INT height;
-    T_INT stride;
-    T_FLOAT exposure;
-
-    T_FLOAT minL;
-    T_FLOAT maxL;
-    T_UINT total;
-    T_UINT pad0;
-
-    T_UINT bins[256];
-};
-
-// The inputs of vanilla's lightmap.
-struct LightMapUBO {
-    T_FLOAT ambientLightFactor;
-    T_FLOAT skyFactor;
-    T_FLOAT blockFactor;
-    T_INT useBrightLightmap;
-
-    T_VEC3 skyLightColor;
-    T_FLOAT nightVisionFactor;
-
-    T_FLOAT darknessScale;
-    T_FLOAT darkenWorldFactor;
-    T_FLOAT brightnessFactor;
-    T_FLOAT pad0;
 };
 
 #ifdef __cplusplus

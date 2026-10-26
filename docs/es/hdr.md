@@ -4,7 +4,7 @@
 
 Muestra el mundo trazado en HDR real en una pantalla HDR: el sol, la lava, las lámparas y los
 reflejos brillan por encima del blanco, en vez de recortarse en blanco plano como en SDR. Los
-controles están en la categoría [Imagen](opciones/imagen.md), al final.
+controles están en la sección [Imagen](opciones/imagen.md), entre Nitidez de FSR y Desenfoque de Movimiento.
 
 ## Requisitos
 
@@ -15,7 +15,7 @@ controles están en la categoría [Imagen](opciones/imagen.md), al final.
 ## Cómo activarlo
 
 1. Activa HDR en Windows: Configuración → Sistema → Pantalla → HDR, y actívalo para tu monitor.
-2. En Radiante, activa **Salida HDR** (categoría Imagen).
+2. En Radiante, activa **Salida HDR** (sección Imagen).
 3. **Reinicia el juego.** El formato de la ventana se decide al crearla, así que el cambio no se
    aplica en caliente — si acabas de activarlo, el tooltip del ajuste te avisa de que está
    "activado, pero no en uso" hasta que reinicies.
@@ -25,9 +25,9 @@ controles están en la categoría [Imagen](opciones/imagen.md), al final.
 | Control | Rango | Por defecto | Se aplica |
 |---|---|---|---|
 | Salida HDR | Activado/Desactivado | Desactivado | Al reiniciar el juego |
-| Brillo Máximo HDR | 400 – 4000 nits | 1000 nits | Al instante |
-| Blanco de Papel HDR | 80 – 400 nits | 200 nits | Al instante |
-| Vista de Depuración HDR | Activado/Desactivado | Desactivado (no se guarda) | Al instante |
+| Brillo Máximo HDR | 400 – 4000 nits | 1000 nits | Al aplicar, sin reiniciar |
+| Blanco de Papel HDR | 80 – 400 nits | 200 nits | Al aplicar, sin reiniciar |
+| Vista de Depuración HDR | Activado/Desactivado | Desactivado (no se guarda) | Al aplicar, sin reiniciar |
 
 ## Brillo Máximo y Blanco de Papel
 

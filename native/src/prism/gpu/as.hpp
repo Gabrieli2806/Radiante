@@ -2,6 +2,7 @@
 
 #include "prism/all_extern.hpp"
 
+#include <deque>
 #include <span>
 #include <vector>
 
@@ -13,6 +14,16 @@ class CommandBuffer;
 class PhysicalDevice;
 class Device;
 class VMA;
+class MicromapBuild;
+
+// The opacity micromap one triangle geometry is built with: per triangle a 32-bit index into the micromap's triangles
+// (or one of the special indices, VK_OPACITY_MICROMAP_SPECIAL_INDEX_*), and how many of the geometry's triangles use
+// each subdivision level and format.
+struct OpacityMicromapAttachment {
+    std::shared_ptr<MicromapBuild> build;
+    VkDeviceAddress indices = 0;
+    std::vector<VkMicromapUsageEXT> usage;
+};
 
 // An acceleration structure living in a range of a buffer it keeps alive. Batch builds place many structures in one
 // buffer. Destruction is deferred until no frame in flight can trace it (gpu::retire).
@@ -66,6 +77,7 @@ class BlasBuild : public SharedObject<BlasBuild> {
 
     // Indexed triangles with an explicit vertex format and stride. An empty draw becomes an empty geometry, so
     // geometry indices still line up with the hit groups.
+    // A non-opaque geometry may come with an opacity micromap, whose build is recorded ahead of this structure's.
     BlasBuild &triangles(VkDeviceAddress vertices,
                          VkFormat vertexFormat,
                          VkDeviceSize vertexStride,
@@ -73,7 +85,8 @@ class BlasBuild : public SharedObject<BlasBuild> {
                          VkDeviceAddress indices,
                          VkIndexType indexType,
                          uint32_t indexCount,
-                         bool opaque);
+                         bool opaque,
+                         const OpacityMicromapAttachment *micromap = nullptr);
     // Float3 positions at the start of each Vertex, 32-bit indices.
     template <typename Vertex>
     BlasBuild &
@@ -105,12 +118,23 @@ class BlasBuild : public SharedObject<BlasBuild> {
                                                                const std::shared_ptr<PhysicalDevice> &,
                                                                const std::shared_ptr<Device> &,
                                                                const std::shared_ptr<VMA> &);
+    friend void recordBlasUpdates(const std::shared_ptr<CommandBuffer> &,
+                                  std::span<const std::shared_ptr<BlasBuild>>,
+                                  std::shared_ptr<DeviceLocalBuffer> &,
+                                  const std::shared_ptr<PhysicalDevice> &,
+                                  const std::shared_ptr<Device> &,
+                                  const std::shared_ptr<VMA> &);
 
     VkAccelerationStructureBuildGeometryInfoKHR geometryInfo() const;
 
     VkBuildAccelerationStructureFlagsKHR flags_;
     std::vector<VkAccelerationStructureGeometryKHR> geometries_;
     std::vector<VkAccelerationStructureBuildRangeInfoKHR> ranges_;
+    // The micromap descriptions chained to geometries_ (a deque, so they stay where they are as it grows), their usage
+    // counts, and the micromap builds that have to run first.
+    std::deque<VkAccelerationStructureTrianglesOpacityMicromapEXT> micromapLinks_;
+    std::deque<std::vector<VkMicromapUsageEXT>> micromapUsage_;
+    std::vector<std::shared_ptr<MicromapBuild>> micromapBuilds_;
     VkAccelerationStructureBuildSizesInfoKHR sizes_{VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR};
     bool sized_ = false;
     std::shared_ptr<BLAS> target_;
@@ -123,6 +147,17 @@ class BlasBuild : public SharedObject<BlasBuild> {
                                                                   const std::shared_ptr<PhysicalDevice> &physicalDevice,
                                                                   const std::shared_ptr<Device> &device,
                                                                   const std::shared_ptr<VMA> &vma);
+
+// Records an in-place update (a refit) of every structure, each built before with ALLOW_UPDATE from the same
+// geometry description, whose vertices have since moved. `scratch` is kept between calls and only replaced (the old
+// one retired with the frame) when it is too small; callers sharing it across frames order their updates with a
+// barrier, as frames on one queue already are.
+void recordBlasUpdates(const std::shared_ptr<CommandBuffer> &commandBuffer,
+                       std::span<const std::shared_ptr<BlasBuild>> builds,
+                       std::shared_ptr<DeviceLocalBuffer> &scratch,
+                       const std::shared_ptr<PhysicalDevice> &physicalDevice,
+                       const std::shared_ptr<Device> &device,
+                       const std::shared_ptr<VMA> &vma);
 
 // Bottom-level builds placed together in one buffer and recorded together. The batch holds the scratch memory of
 // its last recording until it is destroyed.

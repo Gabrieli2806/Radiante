@@ -77,7 +77,7 @@ class GraphicsPipelineBuilder {
         defineColorBlendAttachmentState(VkPipelineColorBlendAttachmentState colorBlendAttachmentState);
         // No blending; every channel written.
         ColorBlendAttachmentStateBuilder &defineDefaultColorBlendAttachmentState();
-        // The pipeline blends with the states defined so far (unless defineColorBlendState replaces them later).
+        // The pipeline blends with the states defined so far.
         GraphicsPipelineBuilder &endColorBlendAttachmentState();
 
       private:
@@ -118,22 +118,13 @@ class GraphicsPipelineBuilder {
     template <typename T>
     GraphicsPipelineBuilder &defineVertexInputState();
 
-    GraphicsPipelineBuilder &
-    defineInputAssemblyState(VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo);
-
-    // The arrays the create info points to must outlive build().
-    GraphicsPipelineBuilder &defineViewportState(VkPipelineViewportStateCreateInfo viewportStateCreateInfo);
     // One viewport and one scissor, kept by the builder.
     GraphicsPipelineBuilder &defineViewportScissorState(ViewPortAndScissor viewPortAndScissor);
 
     GraphicsPipelineBuilder &
     defineRasterizationState(VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo);
 
-    GraphicsPipelineBuilder &defineMultisampleState(VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo);
-
     ColorBlendAttachmentStateBuilder &beginColorBlendAttachmentState();
-    // Replaces the whole colour blend state, attachments included; their array must outlive build().
-    GraphicsPipelineBuilder &defineColorBlendState(VkPipelineColorBlendStateCreateInfo colorBlendState);
 
     // Keeps the table alive until the builder goes.
     GraphicsPipelineBuilder &definePipelineLayout(std::shared_ptr<DescriptorTable> descriptorTable);
@@ -152,9 +143,8 @@ class GraphicsPipelineBuilder {
 
     std::vector<VkPipelineShaderStageCreateInfo> shaderStages_;
     std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments_;
-    // Whether colorBlendState_ takes its attachments from colorBlendAttachments_ (endColorBlendAttachmentState) or
-    // from the caller (defineColorBlendState). Its pointer is only taken in build(), so later states cannot leave it
-    // dangling.
+    // Whether colorBlendState_ takes its attachments from colorBlendAttachments_ (endColorBlendAttachmentState). Its
+    // pointer is only taken in build(), so later states cannot leave it dangling.
     bool blendsDefinedAttachments_ = false;
 
     VkPipelineVertexInputStateCreateInfo vertexInputState_{VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};

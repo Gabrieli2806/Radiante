@@ -138,7 +138,7 @@ public final class TextureTracker {
     public static synchronized void onClosed(GpuTexture texture) {
         Integer id = IDS.remove(texture);
         if (id != null) {
-            FREE_IDS.enqueue(id);
+            FREE_IDS.enqueue(id.intValue());
         }
     }
 

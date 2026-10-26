@@ -3,6 +3,7 @@
 #include "prism/render/buffers.hpp"
 #include "prism/render/chunks.hpp"
 #include "prism/render/entities.hpp"
+#include "prism/render/opacity_micromaps.hpp"
 #include "prism/render/render_framework.hpp"
 #include "prism/render/renderer.hpp"
 #include "prism/render/world.hpp"
@@ -84,9 +85,10 @@ glm::mat4 toMatrix(const VkTransformMatrixKHR &transform) {
 }
 
 // Records the bottom-level work the frame's top-level build depends on: compaction of freshly built chunks, the
-// chunk builds that must not wait, and the entities' structures.
+// chunk builds that must not wait, the foliage the wind moves, and the entities' structures.
 void recordStructureBuilds(Chunks &chunks,
                            Entities &entities,
+                           const glm::dvec3 &cameraPos,
                            const std::shared_ptr<gpu::CommandBuffer> &commandBuffer,
                            const std::shared_ptr<gpu::PhysicalDevice> &physicalDevice,
                            const std::shared_ptr<gpu::Device> &device,
@@ -104,6 +106,15 @@ void recordStructureBuilds(Chunks &chunks,
         (void)gpu::recordBlasBuilds(commandBuffer, importantBuilds, physicalDevice, device, vma);
         importantBuilds.clear();
     }
+
+    // After the builds above: a section built this frame is refit from the structure they make (recordWind's own
+    // barrier orders the two). Nothing is recorded while no section sways.
+    if (auto buffers = Renderer::instance().buffers(); buffers != nullptr) {
+        const gpu::Data::WorldUBO ubo = buffers->lastWrittenWorldUniform();
+        chunks.recordWind(commandBuffer, cameraPos,
+                          {.time = ubo.windTime, .strength = ubo.windStrength, .weather = ubo.windWeather});
+    }
+    gpu::diagnostics::checkpoint(commandBuffer->vkCommandBuffer(), "prepare:wind");
 
     if (auto batch = entities.blasBatch(); batch != nullptr) batch->record(commandBuffer, physicalDevice, device, vma);
     for (auto &batch : entities.staticBlasBatches()) batch->record(commandBuffer, physicalDevice, device, vma);
@@ -359,7 +370,7 @@ void WorldPrepareContext::render() {
         }
     }
 
-    recordStructureBuilds(*chunks, *entities, commandBuffer, physicalDevice, device, vma);
+    recordStructureBuilds(*chunks, *entities, cameraPos, commandBuffer, physicalDevice, device, vma);
 
     const WorldPrepare::ChunkCache &cache = prepare->refreshChunkCache(*chunks);
     const WorldPrepare::LodWindow lod = prepare->refreshLodCoverage(*chunks, commandBuffer);
@@ -431,6 +442,24 @@ void WorldPrepareContext::render() {
                       << " MB pos/mat/idx/blas=" << Chunks::devBytes[0] / 1048576 << "/"
                       << Chunks::devBytes[1] / 1048576 << "/" << Chunks::devBytes[2] / 1048576 << "/"
                       << Chunks::devBytes[3] / 1048576 << " tris=" << Chunks::devBytes[4] << std::endl;
+            if (gpu::opacityMicromapsEnabled()) {
+                // Cut-out triangles baked so far, by what their micromap made of them (moved: left to the shaders in a
+                // geometry of their own; known: the share of micro-triangles camera rays need no shader for), and the
+                // memory the micromaps of the sections drawn now take.
+                const omm::Stats &omm = omm::stats();
+                const uint64_t known = omm.knownMicroTriangles.load(), unknown = omm.unknownMicroTriangles.load();
+                std::cout << "[micromap profile] micromaps=" << gpu::Micromap::liveBytes() / 1024
+                          << "KiB inputs=" << omm.inputBytesLive.load() / 1024 << "KiB triangles=" << omm.triangles.load()
+                          << " opaque=" << omm.fullyOpaque.load() << " transparent=" << omm.fullyTransparent.load()
+                          << " states=" << omm.withStates.load() << " unknown=" << omm.fullyUnknown.load()
+                          << " left=" << omm.moved.load() << " (not cut-out "
+                          << omm.left[omm::Stats::kNotCutout].load() << ", no area "
+                          << omm.left[omm::Stats::kNoArea].load() << ", animated "
+                          << omm.left[omm::Stats::kAnimated].load() << ", straddling "
+                          << omm.left[omm::Stats::kStraddles].load() << ")"
+                          << " micro-triangles known=" << (known + unknown > 0 ? 100.0 * known / (known + unknown) : 0.0)
+                          << "%" << std::endl;
+            }
             g_profile = PrepareProfile{};
         }
     }

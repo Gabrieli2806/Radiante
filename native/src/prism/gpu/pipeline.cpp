@@ -2,6 +2,7 @@
 
 #include "prism/gpu/descriptor.hpp"
 #include "prism/gpu/device.hpp"
+#include "prism/gpu/micromap.hpp"
 #include "prism/gpu/render_pass.hpp"
 #include "prism/gpu/retire.hpp"
 #include "prism/gpu/shader.hpp"
@@ -203,18 +204,6 @@ GraphicsPipelineBuilder &GraphicsPipelineBuilder::useVertexLayout(const VertexLa
     return *this;
 }
 
-GraphicsPipelineBuilder &
-GraphicsPipelineBuilder::defineInputAssemblyState(VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo) {
-    inputAssemblyState_ = inputAssemblyStateCreateInfo;
-    return *this;
-}
-
-GraphicsPipelineBuilder &
-GraphicsPipelineBuilder::defineViewportState(VkPipelineViewportStateCreateInfo viewportStateCreateInfo) {
-    viewportState_ = viewportStateCreateInfo;
-    return *this;
-}
-
 GraphicsPipelineBuilder &GraphicsPipelineBuilder::defineViewportScissorState(ViewPortAndScissor viewPortAndScissor) {
     viewPortAndScissor_ = viewPortAndScissor;
     viewportState_ = {
@@ -233,21 +222,8 @@ GraphicsPipelineBuilder::defineRasterizationState(VkPipelineRasterizationStateCr
     return *this;
 }
 
-GraphicsPipelineBuilder &
-GraphicsPipelineBuilder::defineMultisampleState(VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo) {
-    multisampleState_ = multisampleStateCreateInfo;
-    return *this;
-}
-
 GraphicsPipelineBuilder::ColorBlendAttachmentStateBuilder &GraphicsPipelineBuilder::beginColorBlendAttachmentState() {
     return colorBlendAttachmentStateBuilder_;
-}
-
-GraphicsPipelineBuilder &
-GraphicsPipelineBuilder::defineColorBlendState(VkPipelineColorBlendStateCreateInfo colorBlendState) {
-    colorBlendState_ = colorBlendState;
-    blendsDefinedAttachments_ = false;
-    return *this;
 }
 
 GraphicsPipelineBuilder &
@@ -376,6 +352,9 @@ std::shared_ptr<RayTracingPipeline> RayTracingPipelineBuilder::build(std::shared
     info.pGroups = shaderGroups_.data();
     info.maxPipelineRayRecursionDepth = maxRecursion_;
     info.layout = pipelineLayout_;
+    // Section structures carry opacity micromaps wherever the device has them, and a pipeline may only trace those
+    // when made for it.
+    if (opacityMicromapsEnabled()) info.flags |= VK_PIPELINE_CREATE_RAY_TRACING_OPACITY_MICROMAP_BIT_EXT;
 
     const auto started = std::chrono::steady_clock::now();
     VkPipeline pipeline = VK_NULL_HANDLE;

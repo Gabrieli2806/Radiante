@@ -41,6 +41,45 @@ public abstract class GameRendererMixin {
     @Final
     private net.minecraft.client.renderer.ProjectionMatrixBuffer hud3dProjectionMatrixBuffer;
 
+    @Shadow
+    @Final
+    private net.minecraft.client.renderer.ScreenEffectRenderer screenEffectRenderer;
+
+    @Shadow
+    @Final
+    private net.minecraft.client.renderer.feature.FeatureRenderDispatcher featureRenderDispatcher;
+
+    @Shadow
+    @Final
+    private net.minecraft.client.renderer.SubmitNodeStorage handAndScreenSubmitNodeStorage;
+
+    /**
+     * What Minecraft lays over the view from inside the camera: the flames when the player burns, the block the head is
+     * in, the totem's flash. They are drawn in the pass that draws the hand, which is skipped while tracing because the
+     * hand is traced, so they were never seen; they are drawn here the same way, over the traced picture. (The water
+     * overlay is left out, ScreenEffectRendererMixin: the traced water is the view under water.)
+     */
+    private void radiante$screenEffects(float partialTicks) {
+        net.minecraft.client.renderer.state.GameRenderState state = this.gameRenderState();
+        if (this.mainRenderTarget.getDepthTexture() == null) {
+            return;
+        }
+        net.minecraft.client.renderer.state.level.CameraRenderState cameraState =
+            state.levelRenderState.cameraRenderState;
+        this.hudProjection.setupPerspective(0.05F, 100.0F, cameraState.hudFov,
+            state.windowRenderState.width, state.windowRenderState.height);
+        com.mojang.blaze3d.systems.RenderSystem.setProjectionMatrix(
+            this.hud3dProjectionMatrixBuffer.getBuffer(this.hudProjection),
+            com.mojang.blaze3d.ProjectionType.PERSPECTIVE);
+        // In front of everything, as in vanilla, where this pass starts from a cleared depth.
+        com.mojang.blaze3d.systems.RenderSystem.getDevice().createCommandEncoder()
+            .clearDepthTexture(this.mainRenderTarget.getDepthTexture(), 0.0);
+        this.screenEffectRenderer.submit(state.optionsRenderState.cameraType.isFirstPerson(),
+            cameraState.entityRenderState.isSleeping, partialTicks, this.handAndScreenSubmitNodeStorage,
+            state.guiRenderState.isHudHidden);
+        this.featureRenderDispatcher.renderAllFeatures(this.handAndScreenSubmitNodeStorage);
+    }
+
     /**
      * The three coloured axes F3 puts at the crosshair. Minecraft draws them at the end of the pass that draws the
      * hand, which is skipped while tracing because the hand is traced; they are drawn here the same way, over the
@@ -89,13 +128,15 @@ public abstract class GameRendererMixin {
         // then went on over the traced picture; otherwise it is traced now.
         if (!RadianteRenderer.wasFrameTraced()) {
             RadianteRenderer.renderLevel(gameRenderer, this.gameRenderState().levelRenderState);
+            radiante$screenEffects(deltaTracker.getGameTimeDeltaPartialTick(false));
             radiante$debugCrosshair();
         }
         com.g2806.radiante.client.DevAutomation.frameDrawn();
     }
 
     // 26.2 has no render3dHud: renderLevel draws the hand, the screen effects and the F3 crosshair inline, and
-    // ends the world fog itself. Each of the three is skipped while tracing, as main skips render3dHud.
+    // ends the world fog itself, after them, so the fog never outlives the level render. The hand is skipped while
+    // tracing; the screen effects and the crosshair are drawn over the traced picture once it is in the target.
     @WrapOperation(method = "renderLevel", at = @At(value = "INVOKE",
         target = "Lnet/minecraft/client/renderer/GameRenderer;renderItemInHand(Lnet/minecraft/client/renderer/state/level/CameraRenderState;FLorg/joml/Matrix4fc;)V"))
     private void radiante$skipHandWhenTracing(GameRenderer gameRenderer,
@@ -111,7 +152,9 @@ public abstract class GameRendererMixin {
     private void radiante$skipScreenEffectsWhenTracing(net.minecraft.client.renderer.ScreenEffectRenderer renderer,
         boolean isFirstPerson, boolean isSleeping, float partialTicks,
         net.minecraft.client.renderer.SubmitNodeCollector collector, boolean hideGui, Operation<Void> original) {
-        if (!RadianteRenderer.isTracingLevel()) {
+        // Vanilla's hand pass already cleared the depth and set the hud projection, so over a picture traced inside
+        // the level render they are drawn right here; otherwise after the trace (radiante$renderLevel).
+        if (!RadianteRenderer.isTracingLevel() || RadianteRenderer.wasFrameTraced()) {
             original.call(renderer, isFirstPerson, isSleeping, partialTicks, collector, hideGui);
         }
     }

@@ -2,6 +2,7 @@
 
 #include "prism/gpu/diagnostics.hpp"
 #include "prism/gpu/instance.hpp"
+#include "prism/gpu/micromap.hpp"
 #include "prism/gpu/physical_device.hpp"
 #include "prism/gpu/queue_lock.hpp"
 #include "prism/render/framegen/reflex.hpp"
@@ -11,6 +12,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <memory>
@@ -34,11 +36,12 @@ std::ostream &deviceError() {
 // What createMerged enabled on the device it made last. A wrapper answers for its own device only.
 struct CreatedDevice {
     VkDevice handle = VK_NULL_HANDLE;
-    bool extendedDynamicState2LogicOp = false;
     bool dlss = false;
     bool dlssFrameGeneration = false;
     bool fsrFrameGeneration = false;
     bool shaderExecutionReordering = false;
+    bool opacityMicromap = false;
+    uint32_t opacityMicromapMaxLevel = 0;
     bool xess = false;
 };
 
@@ -500,6 +503,12 @@ VkResult Device::createMerged(VkPhysicalDevice physicalDeviceHandle,
     // Shader execution reordering: the GPU regroups rays by what they hit before shading them (RTX 40 and newer).
     const bool reorderOffered = extensions.offered(VK_NV_RAY_TRACING_INVOCATION_REORDER_EXTENSION_NAME);
     if (reorderOffered) extensions.request(VK_NV_RAY_TRACING_INVOCATION_REORDER_EXTENSION_NAME);
+    // Opacity micromaps: cut-out terrain (leaves, grass, flowers) is baked into per-texel opacity, so most rays that
+    // meet it are answered by the traversal hardware without running the any-hit shader. Optional: without them the
+    // any-hit shader decides every such hit, as before. RADIANTE_NO_OMM leaves them off, to compare the two.
+    const bool micromapWanted = std::getenv("RADIANTE_NO_OMM") == nullptr;
+    const bool micromapOffered = extensions.offered(VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME);
+    if (micromapWanted && micromapOffered) extensions.request(VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME);
     if (diagnostics::checkpointsRequested() && extensions.offered(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)) {
         extensions.request(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
     }
@@ -520,7 +529,6 @@ VkResult Device::createMerged(VkPhysicalDevice physicalDeviceHandle,
     FeatureChain enabled(reorderEnabled);
     enabled.invocationReorder.rayTracingInvocationReorder = reorderEnabled ? VK_TRUE : VK_FALSE;
     enableRendererFeatures(enabled, supported, extensions);
-    const bool logicOp = enabled.dynamicState2.extendedDynamicState2LogicOp == VK_TRUE;
 
     MinecraftFeatures minecraft;
     minecraft.merge(*baseInfo, enabled);
@@ -553,6 +561,28 @@ VkResult Device::createMerged(VkPhysicalDevice physicalDeviceHandle,
         }
     }
 
+    VkPhysicalDeviceOpacityMicromapFeaturesEXT micromap{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_FEATURES_EXT};
+    bool micromapEnabled = false;
+    uint32_t micromapMaxLevel = 0;
+    if (extensions.enabled(VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME)) {
+        VkPhysicalDeviceOpacityMicromapFeaturesEXT supportedMicromap{
+            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_FEATURES_EXT};
+        VkPhysicalDeviceFeatures2 query{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &supportedMicromap};
+        vkGetPhysicalDeviceFeatures2(physicalDeviceHandle, &query);
+        VkPhysicalDeviceOpacityMicromapPropertiesEXT micromapProperties{
+            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_OPACITY_MICROMAP_PROPERTIES_EXT};
+        VkPhysicalDeviceProperties2 properties{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2, &micromapProperties};
+        vkGetPhysicalDeviceProperties2(physicalDeviceHandle, &properties);
+        micromapMaxLevel = std::min(micromapProperties.maxOpacity2StateSubdivisionLevel,
+                                    micromapProperties.maxOpacity4StateSubdivisionLevel);
+        micromapEnabled = supportedMicromap.micromap == VK_TRUE;
+        if (micromapEnabled) {
+            micromap.micromap = VK_TRUE;
+            micromap.pNext = enabled.features2.pNext;
+            enabled.features2.pNext = &micromap;
+        }
+    }
+
     // Minecraft's queues, layers and flags as it asked for them.
     VkDeviceCreateInfo createInfo = *baseInfo;
     createInfo.pNext = &enabled.features2;
@@ -573,16 +603,19 @@ VkResult Device::createMerged(VkPhysicalDevice physicalDeviceHandle,
 
     g_created = {
         .handle = *outDevice,
-        .extendedDynamicState2LogicOp = logicOp,
         .dlss = dlssCompatible,
         .dlssFrameGeneration = dlssFrameGenerationCompatible,
         .fsrFrameGeneration = fsrFrameGenerationCompatible,
         .shaderExecutionReordering = reorderEnabled,
+        .opacityMicromap = micromapEnabled,
+        .opacityMicromapMaxLevel = micromapMaxLevel,
         .xess = xessCompatible,
     };
     deviceLog() << "created shared device with " << enabledExtensions.size() << " extensions (dlss=" << dlssCompatible
                 << ", dlss frame generation=" << dlssFrameGenerationCompatible
                 << ", fsr frame generation=" << fsrFrameGenerationCompatible << ", ser=" << reorderEnabled
+                << ", opacity micromaps=" << micromapEnabled
+                << (micromapOffered ? (micromapWanted ? "" : " (turned off by RADIANTE_NO_OMM)") : " (not offered)")
                 << ", xess=" << xessCompatible << ")" << std::endl;
     return VK_SUCCESS;
 }
@@ -603,6 +636,7 @@ Device::Device(std::shared_ptr<Instance> instance,
     // installed again, while other threads may be submitting.
     if (volkGetLoadedDevice() != device_) volkLoadDevice(device_);
     installQueueLockHooks();
+    setOpacityMicromapsEnabled(isOpacityMicromapEnabled());
 }
 
 Device::~Device() {
@@ -623,10 +657,6 @@ VkQueue &Device::secondaryQueue() {
     return secondaryQueue_;
 }
 
-bool Device::hasExtendedDynamicState2LogicOp() const {
-    return g_created.handle == device_ && g_created.extendedDynamicState2LogicOp;
-}
-
 bool Device::isDlssDeviceExtensionsCompatible() const {
     return g_created.handle == device_ && g_created.dlss;
 }
@@ -645,6 +675,14 @@ bool Device::isFsrFrameGenerationDeviceExtensionsCompatible() const {
 
 bool Device::isShaderExecutionReorderingEnabled() const {
     return g_created.handle == device_ && g_created.shaderExecutionReordering;
+}
+
+bool Device::isOpacityMicromapEnabled() const {
+    return g_created.handle == device_ && g_created.opacityMicromap;
+}
+
+uint32_t Device::opacityMicromapMaxSubdivisionLevel() const {
+    return isOpacityMicromapEnabled() ? g_created.opacityMicromapMaxLevel : 0;
 }
 
 // ---- pipeline cache

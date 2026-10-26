@@ -10,11 +10,19 @@ Para reportar un problema basta con ese archivo. Busca primero `[native]` y `Rad
 
 ## El juego está en OpenGL
 
-Radiante necesita Vulkan. Si el juego arranca en OpenGL, un mensaje pide cambiar la API Gráfica a
-"Preferir Vulkan" o "Predeterminado" en las opciones de vídeo y reiniciar.
+Radiante necesita Vulkan. Si el juego arranca en OpenGL, la pantalla "Radiante: se necesita Vulkan"
+ofrece **Cambiar a Vulkan**; reinicia después. También puedes poner tú la API Gráfica en "Preferir
+Vulkan" o "Predeterminado" en las opciones de vídeo.
 
-Si Minecraft cambió a OpenGL solo tras un arranque fallido, es su propia protección. Radiante no
-guarda ese cambio como tu elección: solo dura esa sesión. Vuelve a intentarlo.
+Si Minecraft cambió a OpenGL solo tras un arranque fallido (o porque otro Minecraft se abría a la
+vez), "Radiante: reinicia el juego" lo indica. Es la propia protección de Minecraft, y Radiante no
+la guarda como tu elección: solo dura esa sesión. Reinicia, una instancia a la vez.
+
+## "Radiante: no pudo iniciar"
+
+El renderizador no arrancó esta vez. Suele pasar cuando se abren varias instancias de Minecraft a
+la vez, o cuando falta memoria de vídeo. Cierra las otras instancias y reinicia; si se repite, el
+log dice por qué.
 
 ## Mi GPU no soporta trazado de rayos
 
@@ -25,8 +33,8 @@ real: ver [Linux](linux.md). Puedes seguir sin trazado de rayos con el renderiza
 
 ## Mundo negro
 
-- **Linux con FSR, en versiones anteriores a la 0.5.0**: FSR no se podía crear
-  (`FSR3 CreateContext` en el log). Arreglado en 0.5.0.
+- **Linux, `FSR3 CreateContext` en el log**: un renderizador compilado sin los arreglos de Linux;
+  ver [Linux](linux.md).
 - Busca `[native]` en el log: el renderizador dice qué falló, y un error repetido cada fotograma
   aparece una vez con su número de repeticiones.
 
@@ -41,7 +49,8 @@ Ver [Escaladores](escaladores.md).
 
 ## Instalé DLSS y sigo en FSR
 
-Es lo esperado: instalar no cambia tu pipeline. Elige **RT-DLSS** en el selector Pipeline.
+El primer menú tras el reinicio pregunta si cambiar; si elegiste **Mantener el pipeline actual**,
+elige **RT-DLSS** en el selector Pipeline.
 
 ## El botón de instalar pide salir del mundo
 
@@ -65,7 +74,8 @@ Ver [Generación de fotogramas y Reflex](frame-generacion-reflex.md).
 
 1. ¿Reiniciaste el juego? Salida HDR lo necesita.
 2. ¿HDR está activado en el sistema para ese monitor, no solo soportado?
-3. Si el tooltip de "Salida HDR" dice "activado, pero no en uso", el problema es el punto 2.
+3. Si la descripción de "Salida HDR" dice que está activada pero todavía no en uso, el problema es
+   el punto 2.
 
 Ver [HDR](hdr.md).
 
@@ -83,14 +93,20 @@ Minecraft) y comprueba si sigue pasando.
 Ver la [guía de rendimiento](rendimiento.md). Lo primero: el nivel de Calidad, y después el modo
 del escalador y Rebotes de Luz.
 
+## La imagen se ve mal tras cambiar ajustes
+
+Mantén **Ctrl** y pulsa **Recompilar Shaders** (Restablecer valores se convierte en él), abajo a la
+izquierda de los ajustes: aplica los cambios y vuelve a compilar los shaders.
+
 ## Quiero volver a los valores de un install nuevo
 
-**Restablecer valores**, junto al selector de Calidad. Devuelve todo, incluidos los ajustes del
-pipeline sin control visible. El pipeline vuelve a RT-DLSS si DLSS está cargado, a FSR si no. Ver
-[Ajustes](opciones.md).
+**Restablecer valores**, abajo a la izquierda de los ajustes. Devuelve todo, incluidos los ajustes
+del pipeline sin control visible, y vuelve a elegir el perfil Bedrock RTX (Mejorado). El pipeline
+vuelve a RT-DLSS si DLSS está cargado, a FSR si no. Ver [Ajustes](opciones.md).
 
 ## Nada de esto funcionó
 
 Pregunta en [Discord](https://discord.gg/DhBbAzugZ9) o abre un
-[issue](https://github.com/Gabrieli2806/Radiante/issues) con tu `latest.log`, tu GPU,
-tu sistema y el loader. Revisa antes el [ROADMAP](../../ROADMAP.md) por si ya es conocido.
+[issue](https://github.com/Gabrieli2806/Radiante/issues/new/choose) con tu `latest.log`, tu GPU,
+tu sistema y el loader. Revisa antes los [issues abiertos](https://github.com/Gabrieli2806/Radiante/issues)
+por si ya es conocido.

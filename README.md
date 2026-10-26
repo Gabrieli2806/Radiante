@@ -1,17 +1,17 @@
 # Radiante
 
 Path-traced rendering for Minecraft 26.3 (Fabric, NeoForge and Forge), built on Minecraft's own Vulkan backend.
+Builds for 26.2 (Fabric, NeoForge and Forge) and for 26.4 snapshots (Fabric) come from the same code.
 
-[GitHub](https://github.com/Gabrieli2806/Radiante) · [Modrinth](https://modrinth.com/project/radiante) · [CurseForge](https://www.curseforge.com/minecraft/mc-mods/radiante) · [Discord](https://discord.gg/DhBbAzugZ9) · [Full documentation](docs/en/README.md)
+[GitHub](https://github.com/Gabrieli2806/Radiante) · [Modrinth](https://modrinth.com/project/radiante) · [CurseForge](https://www.curseforge.com/minecraft/mc-mods/radiante) · [Discord](https://discord.gg/DhBbAzugZ9) · [Issues](https://github.com/Gabrieli2806/Radiante/issues) · [Full documentation](docs/en/README.md)
 
 Languages: **EN** · [ES](README.es.md)
 
 ![Radiante with DLSS Quality: forest and river in sunlight](docs/images/scenes/hero.webp)
 
-Radiante is a standalone path-traced renderer for Minecraft. Its native renderer, PrismRT, runs on the render pearl
-(`com.mojang.renderpearl`) Vulkan backend introduced in Minecraft 26.3: instead of creating its own Vulkan device next
-to the game, it shares the device Minecraft already created, so the ray tracer and the vanilla GUI draw into the same
-frame.
+Radiante is a standalone path-traced renderer for Minecraft. Its native renderer, PrismRT, runs on Minecraft's render
+pearl (`com.mojang.renderpearl`) Vulkan backend: instead of creating its own Vulkan device next to the game, it shares
+the device Minecraft already created, so the ray tracer and the vanilla GUI draw into the same frame.
 
 **Ray tracing off and on.** The same view with vanilla lighting and with Radiante.
 
@@ -24,9 +24,9 @@ frame.
 - Hardware ray tracing (`VK_KHR_ray_tracing_pipeline`) for terrain, with path-traced direct lighting,
   shadows and global illumination, on Windows and Linux.
 - Physically based sky, sun and atmospheric scattering.
-- One built-in shader pack, `vanilla-pt`, with direct sampling of block lights (torches, lava, lamps) and ReSTIR
-  reuse of them, froxel or ray-marched volumetric fog, volumetric clouds with optional shadows, rain refraction and
-  wet ground, and seamless glass.
+- One built-in shader pack, `radiante-pt`, with direct sampling of block lights (torches, lava, lamps) and ReSTIR
+  reuse of them, froxel or ray-marched volumetric fog, volumetric clouds with optional shadows, wet
+  ground and seamless glass.
 - Biome Ambiance: every biome of the overworld, the Nether and the End has an air of its own and every kind of
   water a look of its own, kept subtle and blended across borders. Biomes from mods and data packs get theirs
   worked out from their tags, climate and colours, with nothing to set up.
@@ -38,8 +38,13 @@ frame.
 - NVIDIA Reflex through `VK_NV_low_latency2`, no restart needed.
 - Motion blur and depth of field, both toggleable. HDR output on HDR displays.
 - Bedrock `.mcpack` resource pack support (materials read from the pack's own MER maps, per-biome fog and water),
-  detected directly in the pack list, and a Bedrock RTX renderer profile.
+  detected directly in the pack list.
+- Renderer profiles: Bedrock RTX (Enhanced), the default, with Bedrock RTX's sky, exposure, glass, water and fog, and
+  Realistic, the same with less fill light, more contrast and calmer colour. Changing a setting a profile manages
+  turns it into Custom.
 - Presets: save a look, switch between looks with a click, share one as a code.
+- A settings screen with search, keyboard navigation and an Advanced view; changes compile in the background with a
+  progress popup, and after an update the shaders are compiled on the title screen before the first world.
 - [Distant Horizons](https://modrinth.com/mod/distanthorizons) support: its far terrain is path traced along with
   the rest of the world, one colour per block face, hidden column by column where near terrain is already built
   (optional; nothing changes without it). Frame cost grows with DH's render distance.
@@ -52,9 +57,12 @@ frame.
 - A GPU with Vulkan ray tracing support (`VK_KHR_ray_tracing_pipeline` and
   `VK_KHR_acceleration_structure`).
 - Minecraft 26.3 with one of:
-  - Fabric Loader 0.19.5+ and Fabric API 0.160.5+26.3,
+  - Fabric Loader 0.19.5+ and Fabric API (built against 0.162.0+26.3),
   - NeoForge 26.3.0.10-beta+,
   - Forge 26.3-66.0.3+.
+- Minecraft 26.2 (branch `mc/26.2`): Fabric Loader 0.19.5+ with Fabric API, NeoForge 26.2.0.93+ or Forge
+  26.2-65.1.5+.
+- Minecraft 26.4 snapshots (branch `mc/26.4`): Fabric only, Fabric Loader 0.20.1+ with Fabric API.
 - FSR (upscaling and frame generation) is built in. NVIDIA DLSS (~115 MB) and Intel XeSS (~73 MB, Windows only)
   are downloaded in game on request, from NVIDIA's and Intel's own repositories, and used from the next start;
   the first menu offers DLSS on NVIDIA GPUs and XeSS on Intel ones, and Radiante settings can download or delete
@@ -85,10 +93,10 @@ Full player documentation (every setting, upscalers, Linux, troubleshooting): [d
 Check `logs/launcher_log.txt` (or `latest.log`) of the instance you actually launch, in this order:
 
 1. **`Using graphics device: llvmpipe`** - not on the GPU driver, see the Flatpak note above.
-2. **`version 'GLIBC_2.xx' not found`** - the system glibc is older than the one `libcore.so` was built against.
-   Release builds need glibc 2.35+; a `libcore.so` built on a newer distribution must keep the symbol pinning in
-   `native/glibc_compat.h` and `native/src/core/glibc_shims.cpp` (check with
-   `objdump -T libcore.so | grep -o 'GLIBC_2\.[0-9]*' | sort -Vu | tail -1`).
+2. **`version 'GLIBC_2.xx' not found`** - the system glibc is older than the one `libprismrt.so` was built against.
+   Release builds need glibc 2.35+; a `libprismrt.so` built on a newer distribution must keep the symbol pinning in
+   `native/glibc_compat.h` and `native/src/prism/glibc_shims.cpp` (check with
+   `objdump -T libprismrt.so | grep -o 'GLIBC_2\.[0-9]*' | sort -Vu | tail -1`).
 3. **`UnsatisfiedLinkError: ... RendererProxy.<method>`** - the Java side is newer than the native library. Any change
    under `native/` (made on Windows too) needs `native/build-linux.sh` again before packaging.
 4. **`FSR3: CreateContext failed`** or **`Failed to load shared shader pack`** - a FidelityFX or minizip build problem;
@@ -105,14 +113,14 @@ Linux-specific fixes in the bundled third-party code, which must be kept when up
   platform; the opaque context sizes (`FFX_SDK_DEFAULT_CONTEXT_SIZE`, `FFX_DENOISER_CONTEXT_SIZE`) are doubled off
   Windows, and the `static_assert`s checking that the private contexts fit are enabled everywhere. Shortening names
   instead (an earlier attempt) truncated shader binding names: FSR frame generation output black/garbage frames and
-  the FSR upscaler failed to create, which made the `RT-NRD-FSR` preset render black. Names are formatted with
+  the FSR upscaler failed to create, which made the `RT-FSR` pipeline render black. Names are formatted with
   `%ls`, never `%s`, in wide `swprintf` calls.
-- `libcore.so` exports only the JNI entry points (`native/src/core/exports.map`) and keeps its static libstdc++
+- `libprismrt.so` exports only the JNI entry points (`native/src/prism/exports.map`) and keeps its static libstdc++
   private; otherwise it clashes with the system libstdc++ already loaded in the game and crashes at startup.
 
 ## Building
 
-The mod bundles a native library (`core.dll` on Windows, `libcore.so` on Linux) built from `native/`. Both link
+The mod bundles a native library (`prismrt.dll` on Windows, `libprismrt.so` on Linux) built from `native/`. Both link
 against NVIDIA's NGX libraries from the DLSS SDK, which is not in this repository; the DLSS runtimes themselves are
 never shipped (players download them in game). Get the SDK libraries once, at the version the build expects:
 
@@ -123,36 +131,39 @@ cp -r /tmp/dlss/lib/Windows_x86_64 native/extern/DLSS/lib/   # or Linux_x86_64 o
 ```
 
 ```sh
-# 1. native renderer (Visual Studio 2026 toolchain, x64, Vulkan SDK 1.4.341+)
-cmake -S native -B build/native -G "Visual Studio 18 2026" -A x64 -DPRISM_ENABLE_NRD=ON -DUSE_AMD=ON
-cmake --build build/native --config Release --target INSTALL -j 16
+# 1. native renderer (Visual Studio 2026 with the C++ workload, Vulkan SDK 1.4.341+)
+native/build-windows.bat
 
 # 2. the mod, one jar per loader in fabric/, neoforge/ and forge/ build/libs
 ./gradlew.bat build
 ```
 
-The CMake install step copies the shaders and modules into `common/src/main/resources/radiante-native/`; the
-built `core.dll` goes into the same folder. `./gradlew.bat :fabric:runClient`, `:neoforge:runClient` or
-`:forge:runClient` launches a development client; each uses its own folder (`run/` for Fabric, `run-neoforge/`, `run-forge/`), so they can run at the same time.
+`native/build-windows.bat` configures, builds and installs with CMake (`-DPRISM_ENABLE_NRD=ON -DUSE_AMD=ON`) in
+`C:\rtb\radiante`, or in `RADIANTE_BUILD_DIR` when that is set. The install step copies `prismrt.dll`, the shaders
+and the modules into `common/src/main/resources/radiante-native/`, which is not in git: build the native part again
+after switching branches. `./gradlew.bat :fabric:runClient`, `:neoforge:runClient` or `:forge:runClient` launches a
+development client; each uses its own folder (`run/` for Fabric, `run-neoforge/`, `run-forge/`), so they can run at
+the same time.
 
 #### Which build a change needs
 
 Gradle does **not** rebuild the native part. Shaders are packed into
-`radiante-native/shaders/world/ray_tracing/vanilla-pt.zip` (and the other shader folders) only by the CMake
+`radiante-native/shaders/world/ray_tracing/radiante-pt.zip` (and the other shader folders) only by the CMake
 install step, so a change under `native/` that is followed by Gradle alone builds a jar with the **old** shaders,
 and the change never shows in game.
 
 | What changed | Run |
 | --- | --- |
 | Java only (`common/`, `fabric/`, `neoforge/`, `forge/`) | Gradle |
-| Shaders (`native/src/shader/**`: `.glsl`, `.rgen`, `.rchit`, `.rahit`, `.comp`, `configs.json`, `lang/`) | native build (step 1, or `nativeuild-windows.bat`), then Gradle |
-| Native C++ (`native/src/core/**`, `native/include/**`) | native build, then Gradle |
+| Shaders (`native/src/shader/**`: `.glsl`, `.rgen`, `.rchit`, `.rahit`, `.comp`, `configs.json`, `lang/`) | native build (step 1), then Gradle |
+| Native C++ (`native/src/prism/**`, `native/src/common/**`, `native/include/**`) | native build, then Gradle |
 
 To check a shader change made it in, the timestamp of
-`common/src/main/resources/radiante-native/shaders/world/ray_tracing/vanilla-pt.zip` must be newer than the edit.
+`common/src/main/resources/radiante-native/shaders/world/ray_tracing/radiante-pt.zip` (and of `prismrt.dll` for C++)
+must be newer than the edit; if the system clock jumped back, MSBuild skips the edit and a clean build is needed.
 Restart the game after installing the new jar: shaders are loaded once at start.
 
-On Linux the native renderer is `libcore.so`, installed into `radiante-native/linux-x64/`:
+On Linux the native renderer is `libprismrt.so`, installed into `radiante-native/linux-x64/`:
 
 ```sh
 # needs cmake, ninja, g++ 13+, git and the Vulkan SDK (VULKAN_SDK set, glslangValidator on PATH)
@@ -160,26 +171,28 @@ native/build-linux.sh            # add -DVulkan_LIBRARY=/usr/lib/x86_64-linux-gn
 ./gradlew :fabric:build
 ```
 
-A jar built on Linux only contains the Linux renderer (and one built on Windows only `core.dll`); for a release
+A jar built on Linux only contains the Linux renderer (and one built on Windows only `prismrt.dll`); for a release
 that runs on both, build the native part on both systems before packaging. The GitHub Actions workflow
-(`.github/workflows/build.yml`) does this: it builds `core.dll` on Windows and `libcore.so` on Linux, packages one
-jar per loader with both, and fails if either is missing. Check a jar with
-`unzip -l <jar> | grep -E 'core.dll|libcore.so'`.
+(`.github/workflows/build.yml`) does this: it builds `prismrt.dll` on Windows and `libprismrt.so` on Linux, packages
+one jar per loader with both, and fails if either is missing. Check a jar with
+`unzip -l <jar> | grep -E 'prismrt.dll|libprismrt.so'`.
 
 ### Releases
 
 Releases are cut by the GitHub Actions workflow, not by hand:
 
 1. Add a `## [x.y.z] - date` section to `changelog.md`.
-2. Bump `mod_version` in `gradle.properties` and push to `main` (or `multiloader`).
+2. Bump `mod_version` in `gradle.properties` and push to `main` (or to a port branch, `mc/26.2` or `mc/26.4`).
 3. The workflow sees a version with no `v<mod_version>+<minecraft_version>` tag yet, builds both renderers and the
-   three jars, and publishes a GitHub release with that tag. Its notes are the changelog section for the version.
-4. If the repository has them configured, the same run uploads each loader's jar to Modrinth and CurseForge, as a
-   release (a `0.x` version or a pre-release such as `1.0.0-rc1` goes up as a beta): secrets `MODRINTH_TOKEN` /
-   `CURSEFORGE_TOKEN`, variables `MODRINTH_ID` / `CURSEFORGE_ID`. A site whose token
-   or ID is missing is skipped.
+   jars, and publishes a GitHub release with that tag. Its notes are the changelog section for the version. A
+   version with a `-` (such as `1.2.0-beta.1`) is marked as a pre-release and stays on GitHub.
+4. If the repository has them configured, the same run uploads each loader's jar to Modrinth and CurseForge (a `0.x`
+   version goes up as a beta, any other as a release): secrets `MODRINTH_TOKEN` / `CURSEFORGE_TOKEN`, variables
+   `MODRINTH_ID` / `CURSEFORGE_ID`. A site whose token or ID is missing is skipped, and so is a loader the branch
+   builds no jar for (the 26.4 port is Fabric only).
 
-Pushes that only touch Markdown or `docs/` do not start a build. Pull requests build but never publish.
+Pushes that only touch Markdown, `docs/` or `screenshots/` do not start a build. Pull requests build but never
+publish.
 
 ### Project layout
 
@@ -191,8 +204,10 @@ Pushes that only touch Markdown or `docs/` do not start a build. Pull requests b
 - `native/` - the C++ Vulkan renderer (ray tracing pipelines, shaders under `native/src/shader/`, upscaler,
   frame generation and denoiser integration) built with CMake, and installed into `common/`'s resources. Packaging
   xz-compresses the libraries and records their SHA-256, which is checked when they are unpacked at start.
-- `.github/workflows/build.yml` - CI and releases (see [Releases](#releases)).
+- `.github/workflows/build.yml` - CI and releases (see [Releases](#releases)); `.github/ISSUE_TEMPLATE/` - the bug
+  report and feature request forms.
 - Versions for all of them live in the root `gradle.properties`.
+- Branches: `main` is Minecraft 26.3; `mc/26.2` and `mc/26.4` are ports that `main` is merged into.
 
 Useful run flags (Fabric):
 
@@ -217,14 +232,13 @@ A detailed technical explanation of the native renderer is in [docs/prismrt.md](
 
 ## Contributing
 
-Bug reports, shader tweaks and pull requests are welcome.
+Bug reports, shader tweaks and pull requests are welcome. Bugs and ideas are tracked in
+[GitHub Issues](https://github.com/Gabrieli2806/Radiante/issues); check the open ones before starting on something.
 
 ### Getting set up
 
 1. Fork the repo and clone your fork.
 2. Follow [Building](#building) above to get a native build and a dev client running.
-3. VS Code users: `.vscode/` ships tasks for each loader's client (build and debug), plus attach configs on
-   port 5005. `File > Open Workspace` on the repo root picks these up automatically.
 
 ### Making changes
 
@@ -233,8 +247,9 @@ Bug reports, shader tweaks and pull requests are welcome.
 - Keep `common/` loader-agnostic. If a change needs loader-specific behaviour, add it behind
   `RadiantePlatform` and implement it in `fabric/`, `neoforge/` and `forge/`, not with `instanceof` checks
   against a loader's classes in `common/`.
-- Shader changes live under `native/src/shader/`; native renderer/C++ changes under `native/src/core/` and
-  `native/src/common/`. Match the surrounding code's comment density and naming — comments here explain *why*
+- Shader changes live under `native/src/shader/` (the path tracer is
+  `native/src/shader/world/ray_tracing/internal/radiante-pt/`); native renderer/C++ changes under `native/src/prism/`
+  and `native/src/common/`. Match the surrounding code's comment density and naming — comments here explain *why*
   a value or check exists, not what the line does.
 - Mod compatibility fixes should be general, not tied to one mod. If mod X breaks because Radiante skips or
   replaces something vanilla does (e.g. `LevelRenderer.render`, whose head hooks still run through
@@ -243,8 +258,8 @@ Bug reports, shader tweaks and pull requests are welcome.
   optional (reflection, no hard dependency).
 - Test in a `Radiante*`-prefixed world under `run/saves/` (a fresh superflat is usually enough) — never point
   a dev/test run at a world you actually play in. `-PquickPlay="<world>"` boots straight into one.
-- Before opening a PR: rebuild natives (`cmake --build ... --target INSTALL`), run `./gradlew.bat build` for
-  all three loaders, and sanity-check the change in game (screenshot it if it's visual).
+- Before opening a PR: rebuild natives (`native/build-windows.bat` or `native/build-linux.sh`), run
+  `./gradlew.bat build` for all three loaders, and sanity-check the change in game (screenshot it if it's visual).
 - No AI attribution (co-author lines, "Generated with ..." trailers, etc.) in commit messages or PR
   descriptions — write them as your own.
 
@@ -253,7 +268,7 @@ Bug reports, shader tweaks and pull requests are welcome.
 - One logical change per PR; keep unrelated formatting/reflow out of the diff.
 - Describe what changed and why, and how you tested it (screenshots for visual changes are especially
   helpful).
-- Reference the relevant [ROADMAP.md](ROADMAP.md) item if the PR closes or advances one.
+- Reference the issue the PR fixes or advances (`fixes #<n>` only when the fix is verified).
 - Large or architectural changes (new render passes, new upscaler backends, loader-parity work) are easier to
   land if discussed in an issue or on [Discord](https://discord.gg/DhBbAzugZ9) first.
 

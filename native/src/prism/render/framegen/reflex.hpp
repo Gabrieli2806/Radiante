@@ -17,7 +17,6 @@ class Reflex {
 
     // The player's choice; it applies from the next frame.
     static void setEnabled(bool enabled);
-    static bool isActive();
 
     // Chains VkSwapchainLatencyCreateInfoNV into Minecraft's VkSwapchainCreateInfoKHR (given by address).
     static void chainSwapchainCreate(void *createInfo);
