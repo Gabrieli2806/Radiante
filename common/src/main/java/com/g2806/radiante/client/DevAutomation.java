@@ -14,6 +14,10 @@ import net.minecraft.client.Screenshot;
  * the frame rate), {@code warmup} (start the title screen's shader warm-up now, whatever the stored fingerprint says) or {@code quit}.
  * For controller support: {@code key=up} (a key pressed on the open screen), {@code nav=down} (a focus move, the way
  * Controlify moves) and {@code pad=...} (a virtual gamepad through Controlify's SDL, see {@link DevGamepad}).
+ * For footage: {@code campose=name} / {@code campath=name[,rec]} / {@code camfree} (smooth camera paths, see
+ * {@link DevCamera}), {@code rec=name} / {@code recstop} (every frame to a video, see {@link DevRecorder}),
+ * {@code winsize=w,h}, {@code maxfps=n} and {@code title=text}. Steps can also be fed to a running client through
+ * the file {@code RADIANTE_DEV_INBOX} names, and {@code testworld=name,seed} creates a world from a given seed.
  */
 public final class DevAutomation {
 
@@ -53,6 +57,9 @@ public final class DevAutomation {
      */
     public static void frame() {
         Minecraft minecraft = Minecraft.getInstance();
+        if (active) {
+            DevCamera.frame(minecraft);
+        }
         if (!active || minecraft.player == null || glideFrames == 0) {
             return;
         }
@@ -104,9 +111,14 @@ public final class DevAutomation {
             PRE_STEPS.sort((a, b) -> Integer.compare(a.tick(), b.tick()));
         }
 
+        String inboxPath = System.getenv("RADIANTE_DEV_INBOX");
+        if (inboxPath != null && !inboxPath.isBlank()) {
+            inbox = java.nio.file.Path.of(inboxPath);
+        }
+
         String script = System.getenv("RADIANTE_DEV_SCRIPT");
         if (script == null || script.isBlank()) {
-            active = !PRE_STEPS.isEmpty();
+            active = !PRE_STEPS.isEmpty() || inbox != null;
             return;
         }
         for (String part : script.split(";")) {
@@ -148,7 +160,11 @@ public final class DevAutomation {
     }
 
     /** Opens a test world, creating it as a flat creative world first if needed; only names with the test prefix. */
-    private static void openOrCreateTestWorld(Minecraft minecraft, String name) {
+    private static void openOrCreateTestWorld(Minecraft minecraft, String nameAndSeed) {
+        // name,seed: a new world from that seed rather than from the name.
+        int comma = nameAndSeed.indexOf(',');
+        String name = comma < 0 ? nameAndSeed : nameAndSeed.substring(0, comma);
+        long seed = comma < 0 ? name.hashCode() : Long.parseLong(nameAndSeed.substring(comma + 1).strip());
         if (!name.startsWith(TEST_WORLD_PREFIX)) {
             RadianteClient.LOGGER.warn("[dev] refusing test world {}: name must start with {}", name, TEST_WORLD_PREFIX);
             return;
@@ -164,7 +180,7 @@ public final class DevAutomation {
             net.minecraft.world.level.GameType.CREATIVE, net.minecraft.world.level.LevelSettings.DifficultySettings.DEFAULT,
             true, net.minecraft.world.level.WorldDataConfiguration.DEFAULT);
         minecraft.createWorldOpenFlows().createFreshLevel(name, settings,
-            new net.minecraft.world.level.levelgen.WorldOptions(name.hashCode(), false, false),
+            new net.minecraft.world.level.levelgen.WorldOptions(seed, name.contains("Terrain"), false),
             // "Terrain" in the name asks for real terrain (hills, trees, water) instead of a flat test world.
             name.contains("Terrain") ? net.minecraft.world.level.levelgen.presets.WorldPresets::createNormalWorldDimensions
                 : net.minecraft.world.level.levelgen.presets.WorldPresets::createTestWorldDimensions,
@@ -210,6 +226,10 @@ public final class DevAutomation {
         while (nextPre < PRE_STEPS.size() && PRE_STEPS.get(nextPre).tick() <= clientTicks) {
             run(minecraft, PRE_STEPS.get(nextPre++).action());
         }
+        pollInbox(minecraft);
+        if (windowTitle != null && clientTicks % 40 == 0) {
+            minecraft.getWindow().setTitle(windowTitle);
+        }
 
         if (openingTestWorld
             && minecraft.gui.screen() instanceof net.minecraft.client.gui.screens.BackupConfirmScreen backup) {
@@ -238,7 +258,142 @@ public final class DevAutomation {
         }
     }
 
+    /**
+     * Development: a file the running client keeps reading ({@code RADIANTE_DEV_INBOX}), so a capture session can be
+     * driven step by step without restarting the game or sending it keys. Lines added to it are {@code delay:action}
+     * steps separated by {@code ;}, the delay in client ticks from when the line is read. World steps only run in a
+     * test world, as a script's do.
+     */
+    private static java.nio.file.Path inbox;
+    private static String windowTitle;
+    private static long inboxRead;
+    private static final List<Step> INBOX_STEPS = new ArrayList<>();
+
+    private static void pollInbox(Minecraft minecraft) {
+        if (inbox == null) {
+            return;
+        }
+        if (clientTicks % 5 == 0) {
+            try {
+                long size = java.nio.file.Files.exists(inbox) ? java.nio.file.Files.size(inbox) : 0L;
+                if (size < inboxRead) {
+                    inboxRead = 0L;
+                }
+                if (size > inboxRead) {
+                    byte[] bytes = java.nio.file.Files.readAllBytes(inbox);
+                    int end = bytes.length - 1;
+                    while (end >= inboxRead && bytes[end] != '\n') {
+                        end--;
+                    }
+                    if (end >= inboxRead) {
+                        String text = new String(bytes, (int) inboxRead, end + 1 - (int) inboxRead,
+                            java.nio.charset.StandardCharsets.UTF_8);
+                        inboxRead = end + 1;
+                        for (String line : text.split("\n")) {
+                            for (String part : line.strip().split(";")) {
+                                int colon = part.indexOf(':');
+                                if (colon > 0 && part.substring(0, colon).strip().matches("\\d+")) {
+                                    INBOX_STEPS.add(new Step(clientTicks
+                                        + Integer.parseInt(part.substring(0, colon).strip()), part.substring(colon + 1).strip()));
+                                }
+                            }
+                        }
+                        INBOX_STEPS.sort((a, b) -> Integer.compare(a.tick(), b.tick()));
+                    }
+                }
+            } catch (java.io.IOException | RuntimeException e) {
+                RadianteClient.LOGGER.warn("[dev] inbox not read", e);
+            }
+        }
+        while (!INBOX_STEPS.isEmpty() && INBOX_STEPS.get(0).tick() <= clientTicks) {
+            String action = INBOX_STEPS.remove(0).action();
+            boolean worldStep = !(action.startsWith("testworld=") || action.startsWith("rejoin=") || action.equals("quit")
+                || action.startsWith("winsize=") || action.startsWith("maxfps=") || action.startsWith("vsync=")
+                || action.equals("leaveworld") || action.startsWith("log="));
+            if (worldStep && (minecraft.player == null || minecraft.level == null || !isTestWorld(minecraft))) {
+                RadianteClient.LOGGER.warn("[dev] inbox step {} skipped: not in a test world", action);
+                continue;
+            }
+            try {
+                run(minecraft, action);
+            } catch (RuntimeException e) {
+                RadianteClient.LOGGER.warn("[dev] inbox step {} failed", action, e);
+            }
+        }
+    }
+
     private static void run(Minecraft minecraft, String action) {
+        if (action.startsWith("campath=")) {
+            // campath=name[,rec]: plays campaths/name.txt from its first keyframe (rec: recording it, see DevCamera).
+            String[] parts = action.substring(8).split(",");
+            if (DevCamera.load(minecraft, parts[0])) {
+                DevCamera.play(minecraft, parts.length > 1 && parts[1].equals("rec"));
+            }
+            return;
+        }
+        if (action.startsWith("campose=")) {
+            // campose=name: the camera waits at the path's first keyframe, for the denoisers to settle before a take.
+            if (DevCamera.load(minecraft, action.substring(8))) {
+                DevCamera.pose(minecraft);
+            }
+            return;
+        }
+        if (action.equals("camfree")) {
+            DevCamera.stop();
+            return;
+        }
+        if (action.startsWith("rec=")) {
+            // rec=name: records every frame, GUI included, until recstop (for screens rather than camera paths).
+            DevRecorder.start(minecraft, action.substring(4), 60);
+            return;
+        }
+        if (action.equals("recstop")) {
+            DevRecorder.stop();
+            return;
+        }
+        if (action.startsWith("log=")) {
+            // log=text: a marker in the log, to find where a step of a session starts.
+            RadianteClient.LOGGER.info("[dev] log {}", action.substring(4));
+            return;
+        }
+        if (action.equals("pos")) {
+            var player = minecraft.player;
+            RadianteClient.LOGGER.info("[dev] pos {} {} {} yaw {} pitch {} dim {}", player.getX(), player.getEyeY(),
+                player.getZ(), player.getYRot(), player.getXRot(), minecraft.level.dimension().identifier());
+            return;
+        }
+        if (action.startsWith("winsize=")) {
+            // winsize=1920,1080: the window's size in pixels, for captures at an exact size.
+            String[] wh = action.substring(8).split(",");
+            minecraft.getWindow().setWindowed(Integer.parseInt(wh[0]), Integer.parseInt(wh[1]));
+            RadianteClient.LOGGER.info("[dev] window {} -> framebuffer {}x{}", action.substring(8),
+                minecraft.getWindow().getWidth(), minecraft.getWindow().getHeight());
+            return;
+        }
+        if (action.startsWith("maxfps=")) {
+            // maxfps=60: a frame rate cap (vsync off), e.g. the rate a recording plays at.
+            minecraft.options.enableVsync().set(false);
+            minecraft.options.framerateLimit().set(Integer.parseInt(action.substring(7)));
+            minecraft.options.inactivityFpsLimit().set(net.minecraft.client.InactivityFpsLimit.MINIMIZED);
+            RadianteClient.LOGGER.info("[dev] max fps {}", action.substring(7));
+            return;
+        }
+        if (action.startsWith("title=")) {
+            // title=text: the window's title, kept while the script runs, so a capture window says what it is.
+            windowTitle = action.substring(6);
+            minecraft.getWindow().setTitle(windowTitle);
+            return;
+        }
+        if (action.startsWith("winpos=")) {
+            String[] xy = action.substring(7).split(",");
+            org.lwjgl.sdl.SDLVideo.SDL_SetWindowPosition(minecraft.getWindow().handle(), Integer.parseInt(xy[0]),
+                Integer.parseInt(xy[1]));
+            return;
+        }
+        if (action.equals("leaveworld")) {
+            minecraft.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE);
+            return;
+        }
         if (action.equals("f3")) {
             minecraft.debugEntries.setOverlayVisible(!minecraft.debugEntries.isOverlayVisible());
             return;

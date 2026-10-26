@@ -48,6 +48,7 @@
     "world.CloudRendererAccessor",
     "world.ScreenEffectRendererMixin",
     "world.GameRendererMixin",
+    "world.DevCameraFovMixin",
     "world.LevelExtractorMixin",
     "world.LevelRendererMixin",
     "world.LevelRendererSkipMixin",

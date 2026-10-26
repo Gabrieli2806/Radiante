@@ -121,6 +121,12 @@ public abstract class GameRendererMixin {
             this.mainRenderTarget.getColorTextureView(), this.mainRenderTarget.getDepthTextureView());
     }
 
+    /** Development: the finished frame, GUI included, for DevRecorder; nothing unless a recording is running. */
+    @org.spongepowered.asm.mixin.injection.Inject(method = "render", at = @At("TAIL"))
+    private void radiante$devRecordFrame(org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
+        com.g2806.radiante.client.DevRecorder.frameEnd(this.mainRenderTarget);
+    }
+
     @WrapOperation(method = "render", at = @At(value = "INVOKE",
         target = "Lnet/minecraft/client/renderer/GameRenderer;renderLevel()V"))
     private void radiante$renderLevel(GameRenderer gameRenderer, Operation<Void> original) {
