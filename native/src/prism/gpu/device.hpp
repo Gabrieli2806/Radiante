@@ -25,12 +25,14 @@ class Device : public SharedObject<Device> {
     VkQueue &mainVkQueue();
     VkQueue &secondaryQueue();
 
-    bool hasExtendedDynamicState2LogicOp() const;
     bool isDlssDeviceExtensionsCompatible() const;
     bool isXessDeviceExtensionsCompatible() const;
     bool isDlssFrameGenerationDeviceExtensionsCompatible() const;
     bool isFsrFrameGenerationDeviceExtensionsCompatible() const;
     bool isShaderExecutionReorderingEnabled() const;
+    // VK_EXT_opacity_micromap with its micromap feature, and the deepest subdivision level it takes in both formats.
+    bool isOpacityMicromapEnabled() const;
+    uint32_t opacityMicromapMaxSubdivisionLevel() const;
 
     // One VkPipelineCache for every pipeline the renderer builds, kept on disk between runs: a pipeline whose shaders
     // were compiled before is rebuilt from the driver's saved code. Made on first use from the file set with

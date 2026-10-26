@@ -1,7 +1,6 @@
 #include "prism/render/modules/world/post_render/post_render_module.hpp"
 
 #include "prism/render/buffers.hpp"
-#include "prism/render/entities.hpp"
 #include "prism/render/pipeline.hpp"
 #include "prism/render/render_framework.hpp"
 #include "prism/render/renderer.hpp"
@@ -62,16 +61,11 @@ constexpr VkImageLayout kOutputHandOffLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_
 constexpr VkImageLayout kOutputHandOffLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 #endif
 
-// Geometry without a content name looks for a shader variant named "".
-const std::string kNoContentName;
-
-constexpr std::pair<std::string_view, RenderPass::Target> kRenderContents[] = {
-    {"weather", RenderPass::Target::Weather},    {"particle", RenderPass::Target::Particle},
-    {"particles", RenderPass::Target::Particle}, {"text", RenderPass::Target::Text},
-    {"name_tag", RenderPass::Target::NameTag},   {"nametag", RenderPass::Target::NameTag},
-    {"name-tag", RenderPass::Target::NameTag},   {"star", RenderPass::Target::Star},
-    {"stars", RenderPass::Target::Star},
-};
+// What a render pass may draw. Only the stars are drawn here: particles, weather, text and name tags are traced in the
+// world, so a pack's passes for them (accepted, as packs written for other renderers have them) draw nothing.
+constexpr std::string_view kStarContents[] = {"star", "stars"};
+constexpr std::string_view kTracedContents[] = {"weather", "particle", "particles", "text",
+                                                "name_tag", "nametag", "name-tag"};
 
 constexpr std::pair<std::string_view, VkCompareOp> kDepthCompares[] = {
     {"never", VK_COMPARE_OP_NEVER},
@@ -86,11 +80,11 @@ constexpr std::pair<std::string_view, VkCompareOp> kDepthCompares[] = {
     {"always", VK_COMPARE_OP_ALWAYS},
 };
 
-RenderPass::Target parseRenderContent(const std::string &content) {
+// Whether a render pass of this content draws anything.
+bool drawsContent(const std::string &content) {
     const std::string name = ShaderPackLoader::toLower(content);
-    for (const auto &[key, target] : kRenderContents) {
-        if (name == key) return target;
-    }
+    if (std::ranges::find(kStarContents, name) != std::end(kStarContents)) return true;
+    if (std::ranges::find(kTracedContents, name) != std::end(kTracedContents)) return false;
     throw std::runtime_error("unsupported post_render render content: " + content);
 }
 
@@ -100,25 +94,6 @@ VkCompareOp parseDepthCompare(const std::string &value) {
         if (name == key) return compare;
     }
     throw std::runtime_error("unsupported post_render depth_compare: " + value);
-}
-
-// The flag an entity of the frame's post-rendered batch carries when passes of this content draw it. Stars are not
-// entities.
-int entityPostFlag(RenderPass::Target target) {
-    switch (target) {
-        case RenderPass::Target::Weather: return 0b0001;
-        case RenderPass::Target::Particle: return 0b0010;
-        case RenderPass::Target::Text: return 0b0100;
-        case RenderPass::Target::NameTag: return 0b1000;
-        case RenderPass::Target::Star: return 0;
-    }
-    return 0;
-}
-
-// Text, name tags and stars write depth unless their pass says otherwise; particles and weather do not.
-bool writesDepthByDefault(RenderPass::Target target) {
-    return target == RenderPass::Target::Text || target == RenderPass::Target::NameTag ||
-           target == RenderPass::Target::Star;
 }
 
 uint32_t parseCount(const std::string &value, uint32_t fallback) {
@@ -424,6 +399,7 @@ void PostRenderModule::preClose() {
     renderPasses_.clear();
     fullScreenPassByName_.clear();
     renderPassByName_.clear();
+    inertPassNames_.clear();
     executionVariableConfigs_.clear();
     globalVariables_.clear();
     scriptVariables_.clear();
@@ -650,6 +626,7 @@ void PostRenderModule::ensureDynamicPipelines() {
     renderPasses_.clear();
     fullScreenPassByName_.clear();
     renderPassByName_.clear();
+    inertPassNames_.clear();
     if (shaderPack_->hasRuntimeResources()) {
         for (uint32_t i = 0; i < frames_.size(); i++) {
             shaderPack_->bindRuntimeResources(frames_[i].descriptorTable, kRuntimeResourceSet, i);
@@ -688,13 +665,20 @@ void PostRenderModule::ensureDynamicPipelines() {
                 break;
             }
             case ShaderPackLoader::PassConfig::Type::Render: {
+                if (!drawsContent(config.render.content)) {
+                    radiante::err() << "[PostRender] pass '" << config.render.name << "' draws "
+                                    << config.render.content << ", which is traced in the world: skipped" << std::endl;
+                    inertPassNames_.insert(config.render.name);
+                    break;
+                }
                 auto pass = createRenderPass(config.render, executionBufferSize);
-                for (const auto &[variantName, shaders] : pass->config.shaderConfigs) {
-                    RenderPass::ShaderVariant &variant = pass->shaderVariants[variantName];
-                    requestShader(variant.vertexShader, shaders.vertexShaderPath, VK_SHADER_STAGE_VERTEX_BIT,
+                // Packs may give shaders per kind of content; the stars are drawn with the "default" ones.
+                if (auto shaders = pass->config.shaderConfigs.find("default");
+                    shaders != pass->config.shaderConfigs.end()) {
+                    requestShader(pass->vertexShader, shaders->second.vertexShaderPath, VK_SHADER_STAGE_VERTEX_BIT,
                                   pass->config.definitions);
-                    requestShader(variant.fragmentShader, shaders.fragmentShaderPath, VK_SHADER_STAGE_FRAGMENT_BIT,
-                                  pass->config.definitions);
+                    requestShader(pass->fragmentShader, shaders->second.fragmentShaderPath,
+                                  VK_SHADER_STAGE_FRAGMENT_BIT, pass->config.definitions);
                 }
                 renderPasses_.push_back(std::move(pass));
                 break;
@@ -740,7 +724,7 @@ void PostRenderModule::ensureDynamicPipelines() {
             if (job < fullScreenCount) {
                 buildFullScreenPipeline(device, *fullScreenPasses_[job], fullScreenExtents[job]);
             } else {
-                buildRenderPipelines(device, *renderPasses_[job - fullScreenCount]);
+                buildRenderPipeline(device, *renderPasses_[job - fullScreenCount]);
             }
             buildTimes[job] = millisecondsSince(start);
         },
@@ -848,7 +832,6 @@ std::shared_ptr<RenderPass> PostRenderModule::createRenderPass(const ShaderPackL
     auto device = framework->device();
     auto pass = std::make_shared<RenderPass>();
     pass->config = config;
-    pass->target = parseRenderContent(config.content);
     pass->writesFirstHitDepth = writes(kFirstHitDepthImage);
     if (executionBufferSize > 0) {
         pass->executionBuffer = ShaderPack::createPassExecutionBuffer(device, framework->vma(), executionBufferSize);
@@ -919,24 +902,22 @@ void PostRenderModule::buildFullScreenPipeline(const std::shared_ptr<gpu::Device
                           .build(device)};
 }
 
-// One pipeline for every shader variant of the pass; geometry picks its variant by content name (see
-// collectEntityDraws), and the "default" variant's is also the pass's own pipeline.
-void PostRenderModule::buildRenderPipelines(const std::shared_ptr<gpu::Device> &device, RenderPass &pass) const {
+// The pass's pipeline, when it has its "default" shaders; the stars write depth unless the pass says otherwise.
+void PostRenderModule::buildRenderPipeline(const std::shared_ptr<gpu::Device> &device, RenderPass &pass) const {
+    if (pass.vertexShader == nullptr || pass.fragmentShader == nullptr) return;
     const ShaderPackLoader::RenderPassConfig &config = pass.config;
     const bool depthTest = config.depthTest.value_or(true);
-    const bool depthWrite = config.depthWrite.value_or(writesDepthByDefault(pass.target));
-    // Name tags show through walls unless the pass says otherwise.
-    const VkCompareOp depthCompare =
-        parseDepthCompare(config.depthCompare.value_or(pass.target == RenderPass::Target::NameTag ? "always" : "less"));
+    const bool depthWrite = config.depthWrite.value_or(true);
+    const VkCompareOp depthCompare = parseDepthCompare(config.depthCompare.value_or("less"));
     const FrameResources &first = frames_.front();
     const VkExtent2D extent = {first.output->width(), first.output->height()};
 
-    for (auto &[variantName, variant] : pass.shaderVariants) {
+    {
         gpu::GraphicsPipelineBuilder builder;
         auto &blend = builder.defineRenderPass(pass.renderPass, 0)
                           .beginShaderStage()
-                          .defineShaderStage(variant.vertexShader, VK_SHADER_STAGE_VERTEX_BIT)
-                          .defineShaderStage(variant.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)
+                          .defineShaderStage(pass.vertexShader, VK_SHADER_STAGE_VERTEX_BIT)
+                          .defineShaderStage(pass.fragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT)
                           .endShaderStage()
                           .defineVertexInputState<gpu::VertexFormat::PBRVertex>()
                           .defineViewportScissorState(wholeTarget(extent))
@@ -953,9 +934,7 @@ void PostRenderModule::buildRenderPipelines(const std::shared_ptr<gpu::Device> &
                           .beginColorBlendAttachmentState()
                           .defineColorBlendAttachmentState(outputBlend(config.colorBlend));
         if (pass.writesFirstHitDepth) blend.defineColorBlendAttachmentState(kFirstHitDepthBlend);
-        variant.pipeline =
-            blend.endColorBlendAttachmentState().definePipelineLayout(first.descriptorTable).build(device);
-        if (variantName == "default") pass.pipeline = variant.pipeline;
+        pass.pipeline = blend.endColorBlendAttachmentState().definePipelineLayout(first.descriptorTable).build(device);
     }
 }
 
@@ -1068,7 +1047,10 @@ void PostRenderModule::runPass(Recording &recording, const std::string &passName
         return;
     }
     auto pass = renderPassByName_.find(passName);
-    if (pass == renderPassByName_.end()) throw std::runtime_error("unknown post_render pass: " + passName);
+    if (pass == renderPassByName_.end()) {
+        if (inertPassNames_.contains(passName)) return;
+        throw std::runtime_error("unknown post_render pass: " + passName);
+    }
     runRenderPass(recording, *pass->second, variables);
 }
 
@@ -1109,14 +1091,7 @@ void PostRenderModule::runRenderPass(Recording &recording,
     uploadExecutionValues(recording, pass.executionBuffer, variables);
 
     // Nothing to draw: no render pass at all.
-    const bool stars = pass.target == RenderPass::Target::Star;
-    std::shared_ptr<EntityPostBatch> batch;
-    if (stars) {
-        if (starVertexBuffer_ == nullptr || starVertexCount_ == 0 || pass.pipeline == nullptr) return;
-    } else {
-        batch = Renderer::instance().world()->entities()->entityPostBatch();
-        if (!collectEntityDraws(pass, batch.get())) return;
-    }
+    if (starVertexBuffer_ == nullptr || starVertexCount_ == 0 || pass.pipeline == nullptr) return;
 
     commandBuffer.beginRenderPass({
         .renderPass = pass.renderPass,
@@ -1124,46 +1099,8 @@ void PostRenderModule::runRenderPass(Recording &recording,
         .renderAreaExtent = {frame.output->width(), frame.output->height()},
     });
     commandBuffer.bindDescriptorTable(frame.descriptorTable, VK_PIPELINE_BIND_POINT_GRAPHICS);
-    if (stars) {
-        commandBuffer.bindGraphicsPipeline(pass.pipeline)
-            ->bindVertexBuffers(starVertexBuffer_)
-            ->draw(starVertexCount_, 1);
-    } else {
-        const RenderPass::ShaderVariant *bound = nullptr;
-        for (const EntityDraw &draw : entityDraws_) {
-            if (draw.variant != bound) {
-                commandBuffer.bindGraphicsPipeline(draw.variant->pipeline);
-                bound = draw.variant;
-            }
-            commandBuffer.bindVertexBuffers(draw.entity->vertexBuffers[draw.geometry])
-                ->bindIndexBuffer(draw.entity->indexBuffers[draw.geometry])
-                ->drawIndexed(draw.entity->indexCounts[draw.geometry], 1);
-        }
-    }
+    commandBuffer.bindGraphicsPipeline(pass.pipeline)->bindVertexBuffers(starVertexBuffer_)->draw(starVertexCount_, 1);
     commandBuffer.endRenderPass();
-}
-
-// The geometry of this frame's post-rendered entities that the pass draws, in batch order: each piece with the shader
-// variant named after its content, or else the pass's "default" one. True when there is any.
-bool PostRenderModule::collectEntityDraws(const RenderPass &pass, const EntityPostBatch *batch) {
-    entityDraws_.clear();
-    if (batch == nullptr) return false;
-
-    const int flag = entityPostFlag(pass.target);
-    const auto fallback = pass.shaderVariants.find("default");
-    for (const auto &entity : batch->entities) {
-        if (entity->postRenderFlag != flag) continue;
-        for (uint32_t geometry = 0; geometry < entity->geometryCount; geometry++) {
-            const std::string &content = geometry < entity->geometryContentNames.size() ?
-                                             entity->geometryContentNames[geometry] :
-                                             kNoContentName;
-            auto variant = pass.shaderVariants.find(content);
-            if (variant == pass.shaderVariants.end()) variant = fallback;
-            if (variant == pass.shaderVariants.end() || variant->second.pipeline == nullptr) continue;
-            entityDraws_.push_back({&variant->second, entity.get(), geometry});
-        }
-    }
-    return !entityDraws_.empty();
 }
 
 // Brings a pass's inputs into the layout they are sampled in, for the given shader stages.

@@ -46,10 +46,6 @@ void setCheckpointsEnabled(bool enabled) {
     g_enabled = enabled;
 }
 
-bool checkpointsEnabled() {
-    return g_enabled;
-}
-
 void checkpoint(VkCommandBuffer commandBuffer, std::string_view name) {
     if (!g_enabled || vkCmdSetCheckpointNV == nullptr) return;
     vkCmdSetCheckpointNV(commandBuffer, intern(name));

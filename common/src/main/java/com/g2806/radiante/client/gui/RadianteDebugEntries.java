@@ -1,15 +1,15 @@
 package com.g2806.radiante.client.gui;
 
-import com.g2806.radiante.client.RadianteClient;
 import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.pipeline.Pipeline;
 import com.g2806.radiante.client.render.FrameGeneration;
 import com.g2806.radiante.client.render.RadianteRenderer;
-import com.g2806.radiante.platform.RadiantePlatform;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.core.registries.ClientRegistries;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.debug.DebugGroups;
 import net.minecraft.client.gui.components.debug.DebugScreenDisplayer;
 import net.minecraft.client.gui.components.debug.DebugScreenEntry;
@@ -55,7 +55,7 @@ public final class RadianteDebugEntries {
                 // Measured on the GPU with timestamps: what the frame costs there, whatever the CPU is doing.
                 String stats = Pipeline.gpuStats();
                 if (stats != null && !stats.isEmpty()) {
-                    displayer.addToGroup(DebugGroups.MISC, "PrismRT GPU: " + stats);
+                    displayer.addToGroup(DebugGroups.MISC, wrapGpuStats("PrismRT GPU: " + stats));
                 }
             }
         });
@@ -98,6 +98,34 @@ public final class RadianteDebugEntries {
                     generated, FrameGeneration.multiplier()));
             }
         });
+    }
+
+    /**
+     * "PrismRT GPU: 9.12 ms (world 5.10, DLSS 1.20, ...)" split at the commas into lines that fit half the screen, so
+     * it does not run into the right-hand column of the debug screen.
+     */
+    static List<String> wrapGpuStats(String text) {
+        Minecraft minecraft = Minecraft.getInstance();
+        // The debug screen draws each column with a 2 px margin and a 1 px background padding on each side.
+        int maxWidth = minecraft.getWindow().getGuiScaledWidth() / 2 - 8;
+        Font font = minecraft.font;
+        if (font.width(text) <= maxWidth) {
+            return List.of(text);
+        }
+        List<String> lines = new ArrayList<>();
+        StringBuilder line = new StringBuilder();
+        for (String part : text.split("(?<=, )|(?<=ms )")) {
+            if (line.length() > 0 && font.width(line + part.stripTrailing()) > maxWidth) {
+                lines.add(line.toString().stripTrailing());
+                line.setLength(0);
+                line.append("  ");
+            }
+            line.append(part);
+        }
+        if (line.length() > 0) {
+            lines.add(line.toString().stripTrailing());
+        }
+        return lines;
     }
 
     private abstract static class Entry implements DebugScreenEntry {

@@ -10,10 +10,10 @@
 | Versión mínima | Windows 10/11 | glibc 2.35 o más reciente: Ubuntu 22.04, Debian 12, Fedora 36 o posteriores |
 | API gráfica | Vulkan | Vulkan, sobre el driver real de la GPU (no `llvmpipe`) |
 | Java | 25 | 25 |
-| Minecraft | 26.3 | 26.3 |
+| Minecraft | 26.3 (también 26.2 y snapshots de 26.4, ver [Loader](#loader)) | igual |
 
-El mismo jar sirve para los dos sistemas: trae el renderizador de Windows (`core.dll`) y el de Linux
-(`libcore.so`) y elige el correcto al arrancar. macOS no está soportado.
+El mismo jar sirve para los dos sistemas: trae el renderizador de Windows (`prismrt.dll`) y el de
+Linux (`libprismrt.so`) y elige el correcto al arrancar. macOS no está soportado.
 
 En Linux hay detalles propios (launchers en Flatpak, Wayland, glibc): ver [Linux](linux.md).
 
@@ -42,18 +42,25 @@ Minecraft 26.3 con **uno** de estos:
 
 | Loader | Versión mínima |
 |---|---|
-| Fabric | Fabric Loader `0.19.5+` y Fabric API `0.160.5+26.3` |
+| Fabric | Fabric Loader `0.19.5+` y Fabric API (compilado contra `0.162.0+26.3`) |
 | NeoForge | `26.3.0.10-beta+` |
 | Forge | `26.3-66.0.3+` |
 
-Los tres jars salen del mismo código y se ven igual. La generación de fotogramas y Reflex ya no dependen de
-Streamline ni de ningún loader: son el mismo código en los tres. Están probados en Fabric (Windows); en NeoForge y
+Las otras versiones de Minecraft tienen sus propios jars:
+
+| Minecraft | Loaders |
+|---|---|
+| 26.2 | Fabric Loader `0.19.5+` con Fabric API, NeoForge `26.2.0.93+`, Forge `26.2-65.1.5+` |
+| Snapshots de 26.4 | Solo Fabric: Fabric Loader `0.20.1+` con Fabric API |
+
+Todos los jars salen del mismo código y se ven igual. La generación de fotogramas y Reflex no
+dependen del loader: son el mismo código en todos. Están probados en Fabric (Windows); en NeoForge y
 Forge comparten el código pero todavía no se han probado.
 
 ## Recomendado, no obligatorio
 
 - Un resource pack con mapas LabPBR (`_n`/`_s`) o un `.mcpack` de Bedrock RTX: ver [Bedrock RTX](bedrock-rtx.md).
-  Sin uno, Radiante usa los mapas que trae para 154 texturas vanilla.
+  Sin uno, Radiante usa los mapas que trae para 159 texturas vanilla.
 - [Distant Horizons](https://modrinth.com/mod/distanthorizons) para trazar también el terreno lejano: ver
   [Distant Horizons](distant-horizons.md).
 - Una pantalla HDR para la salida HDR: ver [HDR](hdr.md).

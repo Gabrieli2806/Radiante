@@ -1,5 +1,7 @@
 package com.g2806.radiante.client.render;
 
+import com.g2806.radiante.client.proxy.vulkan.TextureProxy;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import java.nio.ByteBuffer;
 import java.util.List;
 import net.minecraft.client.renderer.texture.SpriteContents;
@@ -23,6 +25,15 @@ public final class AtlasMirror {
         int atlasWidth = atlas.getTexture().texture().getWidth(0);
         int atlasHeight = atlas.getTexture().texture().getHeight(0);
 
+        // The block atlas's cut-out coverage is taken from the uploads below, for the opacity micromaps of leaves,
+        // grass and the like. Animated sprites change from frame to frame and are left to the shaders.
+        int coverageId = atlas.location().equals(TextureAtlas.LOCATION_BLOCKS)
+            ? TextureTracker.idOf(atlas.getTexture()) : 0;
+        IntArrayList animated = new IntArrayList();
+        if (coverageId != 0) {
+            TextureProxy.beginCutoutCoverage(coverageId, atlasWidth, atlasHeight);
+        }
+
         for (TextureAtlasSprite sprite : sprites) {
             SpriteContents contents = sprite.contents();
             // The stitcher reserves a padding border around every sprite, so the pixels live at the UV origin
@@ -31,6 +42,12 @@ public final class AtlasMirror {
             int paddingY = Math.round(sprite.getV0() * atlasHeight) - sprite.getY();
             ByteBuffer[] mips = ((SpriteContentsAccess) contents).radiante$mipImages();
             int levels = Math.min(maxMipLevel + 1, mips.length);
+            if (coverageId != 0 && sprite.isAnimated()) {
+                animated.add(sprite.getX() + paddingX);
+                animated.add(sprite.getY() + paddingY);
+                animated.add(contents.width());
+                animated.add(contents.height());
+            }
 
             for (int level = 0; level < levels; level++) {
                 ByteBuffer pixels = mips[level];
@@ -72,6 +89,10 @@ public final class AtlasMirror {
                     }
                 }
             }
+        }
+
+        if (coverageId != 0) {
+            TextureProxy.finishCutoutCoverage(coverageId, animated.toIntArray());
         }
     }
 }

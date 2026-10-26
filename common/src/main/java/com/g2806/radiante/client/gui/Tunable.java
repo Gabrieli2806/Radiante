@@ -61,6 +61,8 @@ enum Tunable {
     // How much of a rain streak shows: thin, nearly clear falling water at the default, an opaque sheet at 100%.
     RAIN_OPACITY(null, "render_pipeline.module.ray_tracing.attribute.rain_opacity", 0.01, 0, 100, 0,
         Format.PERCENT),
+    // How far the wind moves leaves and plants, while Wind is on.
+    WIND_STRENGTH(null, Pipeline.WIND_STRENGTH_ATTRIBUTE, 0.01, 0, 200, 100, Format.PERCENT),
     STARS(Pipeline.POST_RENDER_MODULE_NAME, "render_pipeline.module.post_render.attribute.star_count", 100.0, 1, 200,
         30, Format.NUMBER),
     BOUNCE_LIGHT(null, "render_pipeline.module.ray_tracing.attribute.bounce_light_boost", 0.01, 50, 200, 150,

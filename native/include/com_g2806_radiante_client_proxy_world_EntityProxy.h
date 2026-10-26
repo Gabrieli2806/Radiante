@@ -10,10 +10,10 @@ extern "C" {
 /*
  * Class:     com_g2806_radiante_client_proxy_world_EntityProxy
  * Method:    queueBuild
- * Signature: (FIZIJJJJJJJJJJJJJJJJJ)V
+ * Signature: (FIZIJJJJJJJJJJJJJJJ)V
  */
 JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_world_EntityProxy_queueBuild
-  (JNIEnv *, jclass, jfloat, jint, jboolean, jint, jlong, jlong, jlong, jlong, jlong, jlong, jlong, jlong, jlong, jlong, jlong, jlong, jlong, jlong, jlong, jlong, jlong);
+  (JNIEnv *, jclass, jfloat, jint, jboolean, jint, jlong, jlong, jlong, jlong, jlong, jlong, jlong, jlong, jlong, jlong, jlong, jlong, jlong, jlong, jlong);
 
 /*
  * Class:     com_g2806_radiante_client_proxy_world_EntityProxy

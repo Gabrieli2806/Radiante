@@ -8,8 +8,6 @@ public class TextureProxy {
 
     public synchronized static native void setFilter(int id, int samplingMode, int mipmapMode);
 
-    public synchronized static native void setClamp(int id, int addressMode);
-
     public synchronized static native void queueUpload(long srcPointer,
         int srcSizeInBytes,
         int srcRowPixels,
@@ -21,6 +19,15 @@ public class TextureProxy {
         int width,
         int height,
         int level);
+
+    /**
+     * The block atlas is about to be mirrored: its full-size uploads from here on are the coverage the renderer bakes
+     * the opacity micromaps of cut-out terrain from.
+     */
+    public synchronized static native void beginCutoutCoverage(int id, int width, int height);
+
+    /** The mirror is complete. {@code animatedRects} holds x, y, width and height of each animated sprite. */
+    public synchronized static native void finishCutoutCoverage(int id, int[] animatedRects);
 
     private static native void uploadEmissionTileNative(int textureId, long tileKey, long cellsPtr, int cellCount);
 

@@ -6,13 +6,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.JarURLConnection;
-import java.net.URL;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
@@ -27,58 +22,28 @@ public class ModuleEntry {
         this.resourcePath = resourcePath;
     }
 
+    /**
+     * The modules in radiante/modules, where RadianteClient.ensureNativeLoaded copies them, by the name each declares.
+     * The folder is always on disk; the module itself is then read from the mod's resources (loadModule).
+     */
     public static Map<String, ModuleEntry> loadAllModuleEntries() throws Exception {
         Map<String, ModuleEntry> entries = new HashMap<>();
         String folderName = "modules";
-
-        URL url = RadianteClient.radianceDir.resolve(folderName).toUri().toURL();
-
-        String protocol = url.getProtocol();
-
-        if ("file".equals(protocol)) {
-            File dir = new File(url.toURI());
-            File[] files = dir.listFiles(
-                (d, name) -> name.endsWith(".yaml") || name.endsWith(".yml"));
-
-            if (files != null) {
-                for (File file : files) {
-                    String relativePath = folderName + "/" + file.getName();
-                    try (InputStream is = new FileInputStream(file)) {
-                        String yamlName = extractNameFromYaml(is);
-                        if (yamlName != null) {
-                            entries.put(yamlName, new ModuleEntry(yamlName, relativePath));
-                        }
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
+        File[] files = RadianteClient.radianceDir.resolve(folderName).toFile().listFiles(
+            (d, name) -> name.endsWith(".yaml") || name.endsWith(".yml"));
+        if (files != null) {
+            for (File file : files) {
+                String relativePath = folderName + "/" + file.getName();
+                try (InputStream is = new FileInputStream(file)) {
+                    String yamlName = extractNameFromYaml(is);
+                    if (yamlName != null) {
+                        entries.put(yamlName, new ModuleEntry(yamlName, relativePath));
                     }
-                }
-            }
-        } else if ("jar".equals(protocol)) {
-            JarURLConnection jarConn = (JarURLConnection) url.openConnection();
-            try (JarFile jarFile = jarConn.getJarFile()) {
-                Enumeration<JarEntry> jarEntries = jarFile.entries();
-
-                while (jarEntries.hasMoreElements()) {
-                    JarEntry entry = jarEntries.nextElement();
-                    String entryName = entry.getName();
-
-                    if (entryName.startsWith(folderName + "/") && (entryName.endsWith(".yaml")
-                        || entryName.endsWith(".yml")) && !entry.isDirectory()) {
-
-                        String suffix = entryName.substring(folderName.length() + 1);
-                        if (!suffix.contains("/")) {
-                            try (InputStream is = jarFile.getInputStream(entry)) {
-                                String yamlName = extractNameFromYaml(is);
-                                if (yamlName != null) {
-                                    entries.put(yamlName, new ModuleEntry(yamlName, entryName));
-                                }
-                            }
-                        }
-                    }
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
             }
         }
-
         return entries;
     }
 
@@ -113,17 +78,5 @@ public class ModuleEntry {
         } catch (Exception e) {
             throw new RuntimeException("Failed to load module from: " + this.resourcePath, e);
         }
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append(this.name);
-        if (this.resourcePath != null) {
-            sb.append(", resourcePath: ").append(this.resourcePath);
-        } else {
-            sb.append(", resourcePath: null");
-        }
-        return sb.toString();
     }
 }

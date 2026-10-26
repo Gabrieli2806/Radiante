@@ -1,6 +1,7 @@
 #include "prism/render/textures.hpp"
 
 #include "prism/render/emission.hpp"
+#include "prism/render/opacity_micromaps.hpp"
 #include "prism/render/pipeline.hpp"
 #include "prism/render/render_framework.hpp"
 #include "prism/render/renderer.hpp"
@@ -104,16 +105,31 @@ void Textures::initializeTexture(uint32_t id, uint32_t mipLevels, uint32_t width
     std::scoped_lock lock(mutex_, framework->recreateMtx());
     Entry &entry = this->entry(id, "make an image for");
 
-    gpu::ImageDesc desc;
-    desc.width = width;
-    desc.height = height;
-    desc.mipLevels = mipLevels;
-    desc.format = format;
-    desc.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
-    // The image it replaces retires once the frames in flight that may sample it are done.
-    entry.image = gpu::DeviceLocalImage::create(framework->device(), framework->vma(), desc);
-    entry.sampler = sharedSampler(framework->device(), VK_FILTER_NEAREST, VK_SAMPLER_MIPMAP_MODE_NEAREST,
-                                  VK_SAMPLER_ADDRESS_MODE_REPEAT);
+    // An image of the same size, format and mip count is kept, and so is its descriptor: rewriting a bound descriptor
+    // while frames that may sample it are in flight is what a resource reload or a resolution change used to crash
+    // on, now and then. The next flush clears it, as it would a new image, unless copies are queued for it by then.
+    const bool reuse = entry.image != nullptr && entry.image->width() == width && entry.image->height() == height &&
+                       entry.image->mipLevels() == mipLevels && entry.image->vkFormat() == format;
+    if (reuse) {
+        entry.clear = true;
+    } else {
+        gpu::ImageDesc desc;
+        desc.width = width;
+        desc.height = height;
+        desc.mipLevels = mipLevels;
+        desc.format = format;
+        desc.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+        // The image it replaces retires once the frames in flight that may sample it are done.
+        entry.image = gpu::DeviceLocalImage::create(framework->device(), framework->vma(), desc);
+        entry.clear = false;
+    }
+    auto sampler = sharedSampler(framework->device(), VK_FILTER_NEAREST, VK_SAMPLER_MIPMAP_MODE_NEAREST,
+                                 VK_SAMPLER_ADDRESS_MODE_REPEAT);
+    const bool rebind = !reuse || entry.sampler != sampler;
+    entry.sampler = std::move(sampler);
+
+    // Micromaps baked from the coverage of the image this id had no longer apply.
+    omm::coverage::forget(id);
 
     // Minecraft closes and creates textures all the time: a font page or a GUI sprite dropped and a smaller one taking
     // its id in the same frame. Replayed into the new image, the copies queued for the old one would write outside it,
@@ -128,7 +144,7 @@ void Textures::initializeTexture(uint32_t id, uint32_t mipLevels, uint32_t width
         entry.fresh = true;
         fresh_.push_back(id);
     }
-    bind(*framework, id, entry);
+    if (rebind) bind(*framework, id, entry);
 }
 
 void Textures::setSamplingMode(uint32_t id, VkFilter samplingMode, VkSamplerMipmapMode mipmapMode) {
@@ -141,18 +157,6 @@ void Textures::setSamplingMode(uint32_t id, VkFilter samplingMode, VkSamplerMipm
     // alone keeps the sampler, as it always has: applying it would change how the traced textures look.
     if (entry.sampler->vkSamplingMode() != samplingMode) {
         entry.sampler = sharedSampler(framework->device(), samplingMode, mipmapMode, entry.sampler->vkAddressMode());
-    }
-    bind(*framework, id, entry);
-}
-
-void Textures::setAddressMode(uint32_t id, VkSamplerAddressMode addressMode) {
-    auto framework = this->framework();
-    std::scoped_lock lock(mutex_, framework->recreateMtx());
-    Entry &entry = this->entry(id, "set the address mode of");
-    if (entry.sampler == nullptr) return;
-    if (entry.sampler->vkAddressMode() != addressMode) {
-        entry.sampler = sharedSampler(framework->device(), entry.sampler->vkSamplingMode(),
-                                      entry.sampler->vkMipmapMode(), addressMode);
     }
     bind(*framework, id, entry);
 }
@@ -213,6 +217,11 @@ void Textures::queueUpload(uint8_t *srcPointer,
     const size_t skippedBytes = static_cast<size_t>(srcOffsetY) * rowBytes;
     const size_t readBytes = (static_cast<size_t>(srcOffsetX) + (height - 1) * rowPixels + width) * texelBytes;
     if (skippedBytes + readBytes > srcSizeInBytes) return dropUnreadable();
+    // The block atlas's coverage, which cut-out micromaps are baked from, is taken from its uploads as they pass.
+    if (texelBytes == 4) {
+        omm::coverage::upload(dstId, level, srcPointer + skippedBytes + static_cast<size_t>(srcOffsetX) * texelBytes,
+                              rowPixels, dstOffsetX, dstOffsetY, width, height);
+    }
     // Buffer offsets of a copy are whole texels; staging allocations keep to 4 bytes as well.
     const auto [block, offset] = stage(srcPointer + skippedBytes, readBytes, std::lcm<size_t>(4, texelBytes));
 
@@ -370,8 +379,11 @@ void Textures::flush() {
     for (uint32_t id : fresh_) {
         Entry &entry = entries_[id];
         entry.fresh = false;
-        // One with copies queued is about to be written and put in the shaders' layout anyway.
-        if (entry.copies.empty() && entry.image->state().layout == VK_IMAGE_LAYOUT_UNDEFINED) clearIds_.push_back(id);
+        // One with copies queued is about to be written and put in the shaders' layout anyway. A kept image still
+        // holds the texels of the texture that had its id before.
+        const bool clear = entry.clear || entry.image->state().layout == VK_IMAGE_LAYOUT_UNDEFINED;
+        entry.clear = false;
+        if (entry.copies.empty() && clear) clearIds_.push_back(id);
     }
     fresh_.clear();
 

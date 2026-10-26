@@ -13,19 +13,8 @@ import java.util.List;
  * and said to be inferred; numbers nobody has measured are exposed, kept conservative, and marked
  * {@link ParameterStatus#APPROXIMATE} or {@link ParameterStatus#UNKNOWN}. Nothing here is claimed to be Bedrock's
  * exact value unless its status says {@link ParameterStatus#VERIFIED} or {@link ParameterStatus#MEASURED}.
- *
- * <p>Groups that exist in Bedrock but have no verified knob yet (sun, sky, gi, reflections, transmission, temporal,
- * materials) are listed in {@link #PENDING_GROUPS} with the reason, and have no entries on purpose: lighting
- * constants are not guessed.
  */
 public final class BedrockRtxProfile {
-
-    /**
-     * Bloom pyramid depth: one uniform downscale, Gaussian downscales and upscales; the repeat count of four comes
-     * from the public mcrtx-shader-template's description of the pass order (INFERRED). Fixed in the native renderer ({@code ToneMappingModule::BLOOM_UP_LEVELS}); it is not a runtime
-     * setting, so it is documented here rather than exposed.
-     */
-    public static final int BLOOM_MIP_COUNT = 4;
 
     private static final String TONE = Pipeline.TONE_MAPPING_MODULE_NAME;
     private static final String A = "render_pipeline.module.tone_mapping.attribute.";
@@ -98,8 +87,7 @@ public final class BedrockRtxProfile {
 
         // ---- materials (shader pack attributes, module null). Only behaviour verified from the compiled shader.
         new CompatParameter("materials", null, RT + "albedo_srgb_exact", TRUE, FALSE, ParameterStatus.MATCHES_BEDROCK,
-            "colour textures are decoded with the exact piecewise sRGB curve  "
-                + "section 5)"),
+            "colour textures are decoded with the exact piecewise sRGB curve"),
 
         new CompatParameter("materials", null, RT + "bedrock_emission", TRUE, FALSE, ParameterStatus.MATCHES_BEDROCK,
             "emission follows MER green squared; exact up to green 0.25 with converted packs, brighter sources stay "
@@ -168,24 +156,6 @@ public final class BedrockRtxProfile {
         new CompatParameter("bloom", TONE, A + "bloom_weight_4", "1.0", "1.0", ParameterStatus.UNKNOWN,
             "per-level weight, widest; " + NOT_MEASURED));
 
-    /** Groups of the profile that have no entry yet, and why. */
-    public static final List<String> PENDING_GROUPS = List.of(
-        "materials: the loader converts Bedrock packs to LabPBR (BedrockPackConverter); emission is MER.g squared x 5 "
-            + "x a run-time multiplier in Bedrock (observed) but is NOT applied yet: the converter's "
-            + "LabPBR emission channel is lossy above g = 0.25, so a lossless raw encoding with a per-pack flag is "
-            + "needed first; roughness transfer is unverified",
-        "sun: sun/moon colour and strength come from Bedrock's own tables (bedrock_atmosphere); no extra knob",
-        "sky: same tables; sky_intensity is the existing bedrock_sky_intensity attribute, value unknown",
-        "gi: bounce count, irradiance-cache behaviour and importance sampling are not known",
-        "reflections: roughness-to-BRDF mapping unknown",
-        "transmission: glass and water Fresnel/tint need paired captures",
-        "temporal: denoiser accumulation lengths (diffuseTemporalAlpha etc.) are runtime values, not read");
-
     private BedrockRtxProfile() {
-    }
-
-    /** Parameters of one group, in declaration order. */
-    public static List<CompatParameter> group(String group) {
-        return PARAMETERS.stream().filter(p -> p.group().equals(group)).toList();
     }
 }

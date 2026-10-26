@@ -4,7 +4,6 @@ import com.g2806.radiante.client.RadianteClient;
 import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.pipeline.Pipeline;
 
-import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -189,11 +188,6 @@ public enum RendererProfile {
             }
         }
         return null;
-    }
-
-    /** Whether the Realistic profile sets the attribute (whatever profile is chosen now). */
-    public static boolean realisticSets(String attribute) {
-        return REALISTIC.realisticOverride(attribute) != null;
     }
 
     private static boolean isToneAttribute(String attribute) {

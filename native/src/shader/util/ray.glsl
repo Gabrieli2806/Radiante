@@ -14,7 +14,17 @@ layout(set = 5, binding = 7, rgba16f) uniform image2DArray rayMaterialStateImage
 #endif
 
 // Shadow rays stop at the first blocker, and the shadow hit group has nothing to do in a closest-hit shader.
-#define VPT_SHADOW_RAY_FLAGS (gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT)
+// Where the device has opacity micromaps (VPT_OMM_SUPPORTED), they also read those of cut-out terrain in two states:
+// shadow.rahit tests cut-out alpha at the texture's full resolution, and each micro-triangle the micromap leaves
+// unknown (for camera rays, whose any-hit test reads mip levels) is marked opaque or transparent by exactly that test
+// (render/opacity_micromaps.hpp), so these rays need no any-hit shader there. The flag is gl_RayFlagsForceOpacity-
+// Micromap2StateEXT given by its value: the renderer declares its capability in the compiled module itself
+// (gpu/shader.cpp, declareOpacityMicromaps), as enabling GL_EXT_opacity_micromap here crippled the SPIR-V optimizer.
+#if defined(VPT_OMM_SUPPORTED) && VPT_OMM_SUPPORTED != 0
+#    define VPT_SHADOW_RAY_FLAGS (gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT | 0x400u)
+#else
+#    define VPT_SHADOW_RAY_FLAGS (gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT)
+#endif
 
 // ---- stateBits layout ----------------------------------------------------------------------------------------
 // bits 0-7    bounce count
@@ -29,9 +39,6 @@ const uint rayLobeShift = 12u;
 const uint rayLobeMask = 0x3u << rayLobeShift;
 const uint raySkipFogBit = 1u << 14u;
 const uint rayIgnoreWaterSelfBit = 1u << 15u;
-const uint rayCaptureSurfaceBit = 1u << 16u;
-const uint raySurfaceCacheWrittenBit = 1u << 17u;
-const uint raySurfaceCacheTargetSecondaryBit = 1u << 18u;
 const uint rayIndirectVolumetricCloudBit = 1u << 19u;
 // The surface the ray just left gathered its block light from the light list, and the ray left it through the
 // diffuse lobe, so a light the ray now runs into has been counted already. Survives bounces (resetMainRay keeps it).
@@ -58,16 +65,16 @@ const uint rayGlassParentWaterBit = 1u << 26u;
 const uint rayCrossedGlassBit = 1u << 27u;
 // The path is filling the radiance cache (traceSharcUpdate). Survives bounces.
 const uint rayCacheUpdateBit = 1u << 28u;
-// The hit shader only recorded the hit in MainRay.rec and left the shading to the raygen. A per-trace flag: the
-// raygen clears it before each main trace, since a miss or a still-shading hit shader never sets it.
-const uint rayRecordedBit = 1u << 29u;
-
-bool rayRecorded(MainRay ray) { return (ray.stateBits & rayRecordedBit) != 0u; }
-void raySetRecorded(inout MainRay ray, bool enabled) {
-    ray.stateBits = enabled ? ray.stateBits | rayRecordedBit : ray.stateBits & ~rayRecordedBit;
-}
+// Since it last scattered off a surface, the ray has gone into a vanilla cloud (world/clouds.rchit): the sun and moon
+// behind it are hidden, not shown through its haze. Cleared when the ray leaves a surface it did not just pass through.
+const uint rayCrossedCloudBit = 1u << 29u;
 
 // Every flag accessor below has one of two shapes: test the bit, or set / clear it.
+
+bool rayCrossedCloud(MainRay ray) { return (ray.stateBits & rayCrossedCloudBit) != 0u; }
+void raySetCrossedCloud(inout MainRay ray, bool enabled) {
+    ray.stateBits = enabled ? (ray.stateBits | rayCrossedCloudBit) : (ray.stateBits & ~rayCrossedCloudBit);
+}
 
 bool rayCacheUpdate(MainRay ray) { return (ray.stateBits & rayCacheUpdateBit) != 0u; }
 void raySetCacheUpdate(inout MainRay ray, bool enabled) {
@@ -140,23 +147,6 @@ void raySetIgnoreWaterSelf(inout MainRay ray, bool enabled) {
 }
 bool rayIgnoreWaterSelf(MainRay ray) { return (ray.stateBits & rayIgnoreWaterSelfBit) != 0u; }
 
-void raySetCaptureSurface(inout MainRay ray, bool enabled) {
-    ray.stateBits = enabled ? (ray.stateBits | rayCaptureSurfaceBit) : (ray.stateBits & ~rayCaptureSurfaceBit);
-}
-bool rayCaptureSurface(MainRay ray) { return (ray.stateBits & rayCaptureSurfaceBit) != 0u; }
-
-void raySetSurfaceCacheWritten(inout MainRay ray, bool enabled) {
-    ray.stateBits = enabled ? (ray.stateBits | raySurfaceCacheWrittenBit) : (ray.stateBits & ~raySurfaceCacheWrittenBit);
-}
-bool raySurfaceCacheWritten(MainRay ray) { return (ray.stateBits & raySurfaceCacheWrittenBit) != 0u; }
-
-void raySetSurfaceCacheTargetSecondary(inout MainRay ray, bool enabled) {
-    ray.stateBits = enabled ? (ray.stateBits | raySurfaceCacheTargetSecondaryBit) : (ray.stateBits & ~raySurfaceCacheTargetSecondaryBit);
-}
-bool raySurfaceCacheTargetSecondary(MainRay ray) {
-    return (ray.stateBits & raySurfaceCacheTargetSecondaryBit) != 0u;
-}
-
 void raySetIndirectVolumetricCloud(inout MainRay ray, bool enabled) {
     ray.stateBits = enabled ? (ray.stateBits | rayIndirectVolumetricCloudBit) : (ray.stateBits & ~rayIndirectVolumetricCloudBit);
 }
@@ -215,12 +205,6 @@ vec3 vptSurfaceColour(vec3 stored) {
 // ---- material hand-off ---------------------------------------------------------------------------------------
 // Layer 0: albedo (rgba). Layer 1: f0 and roughness. Layer 2: metallic, transmission, ior, emission.
 // The ray argument is unused; it stays so call sites read as operations on the path.
-
-void rayClearMaterial(inout MainRay ray) {
-    imageStore(rayMaterialStateImage, rayMaterialStateCoord(0), vec4(0.0));
-    imageStore(rayMaterialStateImage, rayMaterialStateCoord(1), vec4(0.0));
-    imageStore(rayMaterialStateImage, rayMaterialStateCoord(2), vec4(0.0));
-}
 
 void rayStoreMaterial(inout MainRay ray,
                       vec4 albedoValue,

@@ -218,33 +218,6 @@ std::shared_ptr<CommandBuffer> CommandBuffer::barriersBufferImage(const std::vec
     return shared_from_this();
 }
 
-std::shared_ptr<CommandBuffer> CommandBuffer::barriersMemory(const std::vector<MemoryBarrier> &memoryBarriers) {
-    std::vector<VkMemoryBarrier2> barriers;
-    barriers.reserve(memoryBarriers.size());
-    for (const auto &b : memoryBarriers) {
-        VkMemoryBarrier2 &barrier = barriers.emplace_back(VkMemoryBarrier2{VK_STRUCTURE_TYPE_MEMORY_BARRIER_2});
-        barrier.srcStageMask = b.srcStageMask;
-        barrier.srcAccessMask = b.srcAccessMask;
-        barrier.dstStageMask = b.dstStageMask;
-        barrier.dstAccessMask = b.dstAccessMask;
-    }
-    VkDependencyInfo dependency{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
-    dependency.memoryBarrierCount = static_cast<uint32_t>(barriers.size());
-    dependency.pMemoryBarriers = barriers.data();
-    vkCmdPipelineBarrier2(commandBuffer_, &dependency);
-    return shared_from_this();
-}
-
-std::shared_ptr<CommandBuffer> CommandBuffer::copyToDeviceLocalBuffer(std::shared_ptr<DeviceLocalBuffer> buffer) {
-    buffer->uploadToBuffer(commandBuffer_);
-    return shared_from_this();
-}
-
-std::shared_ptr<CommandBuffer> CommandBuffer::copyToDeviceLocalImage(std::shared_ptr<DeviceLocalImage> image) {
-    image->uploadToImage(commandBuffer_);
-    return shared_from_this();
-}
-
 std::shared_ptr<CommandBuffer> CommandBuffer::beginRenderPass(const RenderPassBeginInfo &info) {
     VkRenderPassBeginInfo begin{VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     begin.renderPass = info.renderPass->vkRenderPass();
@@ -325,24 +298,6 @@ void CommandBuffer::submitMainQueueIndividual(std::shared_ptr<Device> device, st
     info.commandBufferCount = 1;
     info.pCommandBuffers = &commandBuffer_;
     vkQueueSubmit(device->mainVkQueue(), 1, &info, fence == nullptr ? VK_NULL_HANDLE : fence->vkFence());
-}
-
-void CommandBuffer::submitMainQueue(std::shared_ptr<Device> device, const SubmitInfo &submitInfo) {
-    std::vector<VkSemaphore> waitSemaphores;
-    std::vector<VkPipelineStageFlags> waitStages;
-    for (const auto &[semaphore, stages] : submitInfo.waitSemaphoresAndStageMasks) {
-        waitSemaphores.push_back(semaphore);
-        waitStages.push_back(stages);
-    }
-    VkSubmitInfo info{VK_STRUCTURE_TYPE_SUBMIT_INFO};
-    info.waitSemaphoreCount = static_cast<uint32_t>(waitSemaphores.size());
-    info.pWaitSemaphores = waitSemaphores.data();
-    info.pWaitDstStageMask = waitStages.data();
-    info.commandBufferCount = 1;
-    info.pCommandBuffers = &commandBuffer_;
-    info.signalSemaphoreCount = static_cast<uint32_t>(submitInfo.signalSemaphores.size());
-    info.pSignalSemaphores = submitInfo.signalSemaphores.data();
-    vkQueueSubmit(device->mainVkQueue(), 1, &info, submitInfo.signalFence);
 }
 
 } // namespace gpu

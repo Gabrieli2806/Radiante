@@ -340,9 +340,6 @@ class ImageLoader : public SharedObject<ImageLoader> {
     uint32_t height() {
         return height_;
     }
-    uint32_t channel() {
-        return channel_;
-    }
     uint32_t layer() {
         return layers_;
     }
@@ -353,7 +350,6 @@ class ImageLoader : public SharedObject<ImageLoader> {
   private:
     uint32_t width_ = 0;
     uint32_t height_ = 0;
-    uint32_t channel_ = 0;
     uint32_t layers_ = 0;
     std::vector<uint8_t> data_;
 };

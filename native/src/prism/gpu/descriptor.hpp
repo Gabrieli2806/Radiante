@@ -25,10 +25,8 @@ class DescriptorTable : public SharedObject<DescriptorTable> {
                     std::vector<VkPushConstantRange> pushConstantRanges);
     ~DescriptorTable();
 
-    uint32_t setCount();
     uint32_t dynamicDescriptorCount() const;
     std::vector<VkDescriptorSet> &descriptorSet();
-    std::vector<VkDescriptorSetLayout> &descriptorSetLayout();
     VkPipelineLayout &vkPipelineLayout();
 
     std::shared_ptr<DescriptorTable> bindImage(
@@ -40,8 +38,6 @@ class DescriptorTable : public SharedObject<DescriptorTable> {
                                                       uint32_t binding,
                                                       uint32_t index,
                                                       uint32_t viewIndex = 0);
-    std::shared_ptr<DescriptorTable>
-    bindImageForShader(std::shared_ptr<Image> image, uint32_t set, uint32_t binding, uint32_t viewIndex = 0);
     std::shared_ptr<DescriptorTable> bindSamplerImageForShader(std::shared_ptr<Sampler> sampler,
                                                                std::shared_ptr<Image> image,
                                                                uint32_t set,
@@ -62,8 +58,6 @@ class DescriptorTable : public SharedObject<DescriptorTable> {
                                                      uint32_t index,
                                                      VkDeviceSize offset,
                                                      VkDeviceSize range);
-    std::shared_ptr<DescriptorTable>
-    bindBuffers(std::vector<std::shared_ptr<Buffer>> buffers, uint32_t set, uint32_t binding);
 
     std::shared_ptr<DescriptorTable> bindAS(std::shared_ptr<TLAS> buffer, uint32_t set, uint32_t binding);
 

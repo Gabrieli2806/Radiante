@@ -3,13 +3,13 @@
 # Performance guide
 
 > This page is general advice for gaining FPS. If you are after exactly what each control in the
-> "Performance" settings category does, that is a different page:
+> "Performance" settings section does, that is a different page:
 > **[settings/performance.md](settings/performance.md)**.
 
 ## Start with the Quality selector
 
 Before touching individual controls, try the levels on the **Quality** selector in
-[Quality & Upscaling](settings/quality-and-upscaling.md) — Low, Medium, High, Ultra. Each sets, all
+[Quality](settings/quality-and-upscaling.md) — Low, Medium, High, Ultra. Each sets, all
 at once, the controls measured to cost the most (DLSS mode, block light sampling, volumetric fog,
 clouds, render distance, light bounces and more), in combinations that have already been tested. The
 exact detail of what each level sets is in
@@ -30,7 +30,7 @@ the baseline:
    Starting from Ultra Performance as the baseline, switching to Performance costs about -45% fps,
    and switching to Quality, about -65%. It is the first thing to touch if you need more FPS right
    now.
-2. **Light Bounces** (Performance category, 1 – 8) — 4 to 2 is about +55% fps, with little visible
+2. **Light Bounces** (Performance section, 1 – 128, default 4) — 4 to 2 is about +55% fps, with little visible
    change. Above 4 is for strong GPUs. **Cache Deep Bounces** (on by default) saves a lot where
    there are many lights, and **One Bounce + Cache** goes further: one traced bounce everywhere,
    the rest from the radiance cache, as Bedrock RTX does.
@@ -48,7 +48,7 @@ them for performance.
 
 ## If you are tight on VRAM
 
-- Lower **Chunk Batches** (Performance category) — fewer acceleration structure builds in flight on
+- Lower **Chunk Batches** (Performance section) — fewer acceleration structure builds in flight on
   the GPU at once use less video memory, at the cost of loading terrain somewhat slower.
 - Lower the render distance.
 - If you use Distant Horizons, remember its own render distance also uses VRAM on top of the game's
@@ -83,5 +83,5 @@ on RTX 50).
 
 The goal of a mid-range GPU (say, an RTX 3060 or RX 6700) holding 60 fps at 12 chunks with DLSS or
 FSR is still being built into a documented preset — see
-[ROADMAP.md](../../ROADMAP.md). If you have a GPU in that range and want to share
+[issue #21](https://github.com/Gabrieli2806/Radiante/issues/21). If you have a GPU in that range and want to share
 your own numbers, the [Discord](https://discord.gg/DhBbAzugZ9) is the place.

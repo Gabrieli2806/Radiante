@@ -236,29 +236,6 @@ std::shared_ptr<gpu::DeviceLocalImage> ShaderPack::findRuntimeVKTexture(const Ru
     return runtimeTexture.frameImages[runtimeTexture.config.shared ? 0 : frameIndex];
 }
 
-uint32_t ShaderPack::runtimeTextureSingleLayerViewIndex(const RuntimeTexture &runtimeTexture, uint32_t layer) const {
-    const auto &config = runtimeTexture.config;
-    if (runtimeTexture.singleLayerViewBaseIndex == 0) {
-        throw std::runtime_error("runtime texture does not expose per-layer views: " + config.name);
-    }
-    if (config.dimension == Dimension::Cube) {
-        if (layer >= 6) throw std::runtime_error("cube face index out of range: " + config.name);
-        return runtimeTexture.singleLayerViewBaseIndex + layer;
-    }
-    if (config.dimension != Dimension::Texture2DArray) {
-        throw std::runtime_error("runtime texture is not a 2d_array: " + config.name);
-    }
-
-    uint32_t layerCount = 0;
-    if (config.imported) {
-        layerCount = config.importedDepth;
-    } else if (!runtimeTexture.frameImages.empty() && runtimeTexture.frameImages[0] != nullptr) {
-        layerCount = runtimeTexture.frameImages[0]->layer();
-    }
-    if (layer >= layerCount) throw std::runtime_error("2d_array layer index out of range: " + config.name);
-    return runtimeTexture.singleLayerViewBaseIndex + layer;
-}
-
 std::shared_ptr<gpu::DeviceLocalBuffer> ShaderPack::findRuntimeVKBuffer(RuntimeBuffer &runtimeBuffer,
                                                                        uint32_t frameIndex) {
     return std::as_const(*this).findRuntimeVKBuffer(std::as_const(runtimeBuffer), frameIndex);
@@ -342,13 +319,11 @@ void ShaderPack::initRuntimeTextures() {
                 desc.layers = 6;
                 desc.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
                 // View 0 is the six faces as an array, 1-6 each face (to render into) and 7 the cube (to sample).
-                texture.singleLayerViewBaseIndex = 1;
                 texture.sampledViewIndex = 7;
                 break;
             case Dimension::Texture2DArray:
                 desc.layers = extent.depth;
                 // View 0 is the whole array, 1 on each layer (to render into).
-                texture.singleLayerViewBaseIndex = 1;
                 break;
             case Dimension::Texture3D: desc.depth = extent.depth; break;
             case Dimension::Texture2D: break;

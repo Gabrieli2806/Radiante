@@ -260,13 +260,13 @@ public final class RenderTypeInfo {
     private static final java.util.Set<String> TEXT_HIT_GROUPS = java.util.Set.of(
         "text_see_through", "text_intensity_see_through", "text_polygon_offset", "text_intensity_polygon_offset");
 
-    /** Hit group the shader packs shade this geometry with; a few have their own, everything else the default. */
     /** Lines, outlines and debug shapes: overlays to draw over the world, not geometry to trace. */
     public boolean isOverlayOnly() {
         return this.name.contains("line") || this.name.contains("debug") || this.name.contains("outline")
             || this.name.contains("gizmo");
     }
 
+    /** Hit group the shader packs shade this geometry with; a few have their own, everything else the default. */
     public String groupName() {
         // The shader packs name their hit groups after render layers, which makes it tempting to hand the layer
         // name over and let specialised groups do their job. Doing that stalls the renderer within seconds of

@@ -4,7 +4,7 @@
 
 Shows the traced world in real HDR on an HDR display: sunlight, lava, lamps and reflections go
 brighter than white, instead of clipping to flat white as they would in SDR. The controls are in the
-[Image](settings/image.md) category, at the bottom.
+[Image](settings/image.md) section, between FSR Sharpness and Motion Blur.
 
 ## Requirements
 
@@ -15,7 +15,7 @@ brighter than white, instead of clipping to flat white as they would in SDR. The
 ## How to turn it on
 
 1. Turn on HDR in Windows: Settings → System → Display → HDR, and enable it for your monitor.
-2. In Radiante, turn on **HDR Output** (Image category).
+2. In Radiante, turn on **HDR Output** (Image section).
 3. **Restart the game.** The window's format is decided when it is created, so the change does not
    apply live — if you just turned it on, the setting's tooltip warns you it is "on, but not
    running" until you restart.
@@ -25,9 +25,9 @@ brighter than white, instead of clipping to flat white as they would in SDR. The
 | Control | Range | Default | Applies |
 |---|---|---|---|
 | HDR Output | On/Off | Off | After restarting the game |
-| HDR Peak Brightness | 400 – 4000 nits | 1000 nits | Instantly |
-| HDR Paper White | 80 – 400 nits | 200 nits | Instantly |
-| HDR Debug View | On/Off | Off (not saved) | Instantly |
+| HDR Peak Brightness | 400 – 4000 nits | 1000 nits | On Apply, without a restart |
+| HDR Paper White | 80 – 400 nits | 200 nits | On Apply, without a restart |
+| HDR Debug View | On/Off | Off (not saved) | On Apply, without a restart |
 
 ## Peak Brightness and Paper White
 

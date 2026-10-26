@@ -72,12 +72,12 @@ final class CloudGeometry {
         return this.writer.vertexCount() > 0 ? this.writer : null;
     }
 
-    /** Changes whenever the mesh is rebuilt, so the renderer knows when its cached copy is stale. */
     /** Builds the mesh again, under a new version, on the next update. */
     void invalidate() {
         this.prevStatus = null;
     }
 
+    /** Changes whenever the mesh is rebuilt, so the renderer knows when its cached copy is stale. */
     int version() {
         return this.version;
     }

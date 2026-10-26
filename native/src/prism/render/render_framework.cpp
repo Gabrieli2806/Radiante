@@ -306,7 +306,6 @@ void Framework::acquireContext() {
 
     beginRecording(*context);
 
-    renderer.buffers()->resetFrame();
     renderer.textures()->resetFrame();
     renderer.world()->resetFrame();
     renderer.world()->chunks()->resetFrame();
@@ -517,10 +516,6 @@ void Framework::waitDeviceIdle() {
 
 void Framework::waitRenderQueueIdle() {
     vkQueueWaitIdle(device_->mainVkQueue());
-}
-
-void Framework::waitBackendQueueIdle() {
-    vkQueueWaitIdle(device_->secondaryQueue());
 }
 
 void Framework::close() {

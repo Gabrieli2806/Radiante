@@ -19,6 +19,8 @@ public class BufferProxy {
     private static final int WORLD_UBO_SIZE = 736;
     /** Where WorldUBO.offHandLightPos starts; offHandLightColor follows it. */
     private static final int OFF_HAND_LIGHT_OFFSET = 704;
+    /** Where WorldUBO.windTime starts; windStrength and windWeather follow it, ending at the off hand's light. */
+    private static final int WIND_OFFSET = 692;
     private static final int SKY_UBO_SIZE = 304;
     private static final int TEXTURE_MAPPING_ENTRIES = 4096;
 
@@ -57,7 +59,10 @@ public class BufferProxy {
                                boolean pixelLighting,
                                float rainFallPerFrame,
                                float traceDistance,
-                               float heldLightBrightness) {
+                               float heldLightBrightness,
+                               float windTime,
+                               float windStrength,
+                               float windWeather) {
     }
 
     public static void updateWorldUniform(WorldUniform uniform) {
@@ -147,7 +152,10 @@ public class BufferProxy {
             offset += Float.BYTES;
             bb.putFloat(offset, uniform.heldLightBrightness());
 
-            // After the natively filled tail (frameCounter ... lodCoveragePad1): the off hand's light.
+            // After the natively filled tail (frameCounter ... lodCoveragePad1): the wind, then the off hand's light.
+            bb.putFloat(WIND_OFFSET, uniform.windTime());
+            bb.putFloat(WIND_OFFSET + Float.BYTES, uniform.windStrength());
+            bb.putFloat(WIND_OFFSET + Float.BYTES * 2, uniform.windWeather());
             uniform.offHandLightPos().get(OFF_HAND_LIGHT_OFFSET, bb);
             uniform.offHandLightColor().get(OFF_HAND_LIGHT_OFFSET + Float.BYTES * 4, bb);
             updateWorldUniform(addr);

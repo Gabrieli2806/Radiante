@@ -2,6 +2,62 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+- When a newer DLSS or XeSS is available, the settings button for it reads "Update DLSS" instead of "Delete DLSS" and
+  opens the update offer, so skipping the start-up prompt for a version no longer leaves no way to update.
+- Faster in forests, fields and villages where the GPU driver offers opacity micromaps (`VK_EXT_opacity_micromap`):
+  the leaves, grass, flowers and other cut-out blocks of each section are baked into micromaps, so sun and block
+  light shadow rays and camera rays no longer run the any-hit shader on them. The path tracing pass took 5-23% less
+  GPU time than before in most test views, for about 3 MB of micromaps and 10 MB of their inputs at 12 chunks.
+  Animated sprites (fire, kelp...), glass and odd faces are still decided by the shader, and GPUs without the
+  extension keep the shader path.
+- Far leaves, grass and flowers are cut out texel by texel at any distance, as shadows already were, instead of by
+  the texture's mip levels: distant trees keep their gaps and look less flat.
+- Less noise for the same rays: the path's BSDF and sun-disc samples are Owen-scrambled Sobol points across frames
+  (Burley 2020) instead of independent random numbers, so the frames the denoiser averages cover each pixel more
+  evenly. The noise left in the denoised picture at a still view dropped 7-24% in the test views, for 1-5% more
+  path tracing time.
+- The settings screen works with a controller (#31). Controller mods that move through menus with Minecraft's own
+  focus navigation (Controlify and the like) or press keys for the buttons now step through the options: D-pad or
+  stick to move and change values, A to flip or press, B to leave. With Controlify the bumpers change section, X
+  applies, Y undoes, the right stick scrolls (or moves a slider ten steps), and its button pictures show beside the
+  buttons. The keys reach the buttons along the bottom and the advanced groups' headings too, the description
+  follows the focused row (under it when there is no side panel), and the focus stays put when a change lays the
+  screen out again.
+- The settings screen's arrow keys, Enter, Space and Tab work again on 26.3, where Minecraft's key codes changed;
+  a left click on a list steps it forward again, a right click back.
+- The built-in shader pack is renamed from `vanilla-pt` to `radiante-pt` (shown as Radiante PT). Its stored
+  settings and the pipeline's pointer to it move over by themselves on the first start; the old zip is removed.
+- ROADMAP.md is gone: where the project is heading is tracked in GitHub issues labelled roadmap, next to
+  the bugs and ideas.
+- Rain Refraction is removed: its pass never drew anything (rain is traced in the world). Saved settings that still
+  hold it are ignored.
+- Clean-up of code that was never reached: about 2,600 lines of Java, native and shader code, among them the
+  post-rendered entity path, unused native setters (max fps, vsync) and unused lang keys. No change in the picture.
+- Entities that give off light (glow item frames, end crystals, glow squids, blazes...) keep lighting the scene when
+  the camera turns away from them, as far as the Entity Light Reach; they used to be dropped with the view frustum
+  and the room's light changed with the camera (#40).
+- The PrismRT GPU line on the F3 screen wraps onto more lines instead of running into the right-hand column (#13).
+- The shader cache (`radiante/cache/shaders`) is trimmed at startup to 100 MB, least recently used first, and the
+  pipeline cache is deleted past 256 MB and rebuilt by the warm-up on the next start (#23).
+- Wind (Sky & Water, off by default): leaves, grass, flowers, crops, vines, sugar cane and lily pads sway near the
+  player, harder in rain and thunder, and seagrass and kelp sway with the current. The geometry itself moves (the
+  sections nearby are refit every frame), so shadows and reflections follow, and the motion vectors carry the sway so
+  DLSS and the denoisers do not smear it. Wind Strength (0-200%) applies live. Off, it costs nothing (#32).
+- A texture Minecraft makes again at the same size, format and mip count keeps its image, and its descriptor is not
+  rewritten under the frames in flight: the hazard left from the resource reload crash (#25).
+- New Light From Glowing Pixels option (Lighting, off by default): light blocks cast their light from the glowing
+  parts of their texture, a lit redstone lamp from its filaments, as Bedrock RTX does, instead of from the whole
+  block. The same amount of light, from more and smaller sources (#18).
+- The grass block's side overlay (and any layer lifted over a face of its block) is no longer carved by Carved
+  Surfaces, which along its edges could let the view through to the side under it, so that face showed no overlay
+  (#10).
+- The sun and the moon are hidden behind vanilla clouds: through a cloud's haze they stayed almost fully visible.
+  Their halos and the stars go with them (#12).
+- Moonlight comes from the lit part of the moon's disc, not from a point at its centre: with a crescent moon the
+  light visibly came from beside it (#11).
+
 ## [1.1.0] - 2026-10-24
 
 ### Settings
@@ -15,7 +71,7 @@ All notable changes to this project are documented in this file.
 - Holding Ctrl turns Reset to Defaults into Rebuild Shaders: it applies the changes and builds the shaders again, for
   when the picture looks wrong after changing settings.
 - The Install / Delete button of DLSS and XeSS shows only on the Quality section.
-- New Cloud Height slider (Sky, Fog & Water): raises or lowers the Vanilla clouds.
+- New Cloud Height slider (Sky & Water): raises or lowers the Vanilla clouds.
 - Glowing Item Light Distance is removed: Minecraft stops drawing dropped items long before it mattered.
 - Atmosphere shows Java (Bedrock not available), greyed with the reason, when no Bedrock install or files are found,
   instead of a Bedrock choice that did nothing. Bedrock Caustics is greyed the same way, and off by default.
@@ -111,6 +167,7 @@ and keeps their credits and licence; what the renderer shares with them is in th
   FSR 1's sharpness is fixed.
 - Daylight shadows read darker than Bedrock RTX's, and caustics are sharper.
 - On AMD the first compile of a new ray tracing pipeline takes about 48 s (the driver allows one thread); it is cached.
+
 ## [1.0.0-beta.1] - 2026-10-16
 
 First build of the standalone renderer, PrismRT. Not yet tested in game; report anything that looks or runs wrong.

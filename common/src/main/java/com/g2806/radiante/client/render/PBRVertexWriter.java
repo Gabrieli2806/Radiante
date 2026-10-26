@@ -33,6 +33,11 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private static final int POINT_LIGHT_FLAG = 0x4000;
     /** The surface of lava, a self-lit sheet the shaders show by its colour, not by the light on it; see lava(). */
     private static final int LAVA_FLAG = 0x8000;
+    /**
+     * A layer drawn over a face of the same model and lifted off it (see layerOffset), such as the grass block's side
+     * overlay: not carved by height maps, which along its edges let the view through to the face under it.
+     */
+    private static final int LAYER_FLAG = 0x10000;
 
     public static final int ALPHA_MODE_OPAQUE = 0;
     public static final int ALPHA_MODE_CUTOUT = 1;
@@ -61,7 +66,18 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private static final int OFF_LIGHT_UV = 96;
     private static final int OFF_COORDINATE = 104;
     private static final int OFF_ALBEDO_EMISSION = 108;
+    /** postBase.x, which carries the wind code of section geometry; see wind(). */
+    private static final int OFF_WIND = 112;
     private static final int OFF_ALPHA_MODE = 124;
+
+    /** The kinds of foliage the wind moves, as util/wind.glsl numbers them; see wind(). */
+    public static final int WIND_GROUND = 0;
+    public static final int WIND_LEAVES = 1;
+    public static final int WIND_WATER = 2;
+    /** No wind: the vertices stay put. */
+    public static final int WIND_NONE = -1;
+    private static final float WIND_KIND_STRIDE = 8.0f;
+    private static final float WIND_MAX_WEIGHT = 4.0f;
 
     /**
      * Furthest a vertex may sit from the origin of its coordinate space. Minecraft occasionally poses something at
@@ -76,7 +92,6 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private int vertexCount;
     private long current = -1L;
     private boolean quadHasUnplaceableVertex;
-    private int droppedQuads;
 
     private int textureId;
     private int glintTextureId;
@@ -97,6 +112,10 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private boolean unlit;
     private boolean lava;
     private boolean plant;
+    private int windKind = WIND_NONE;
+    private float windBaseY;
+    private float windRise;
+    private float windScale;
     private int paneFlags;
     private boolean computeQuadNormals;
     /** Divides vanilla's face shading back out of the colour of quads whose normal is computed (fluids). */
@@ -160,11 +179,6 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         return this;
     }
 
-    /**
-     * Whether the vertices from here on are the surface of water. Carried to the shaders in a bit above the alpha
-     * mode, which only uses the low four, so they can treat it as water: refraction, waves, caustics and the pack's
-     * water medium.
-     */
     /** Whether the vertices from here on are what the player holds, whose glow has a brightness of its own. */
     public PBRVertexWriter held(boolean held) {
         this.held = held;
@@ -177,6 +191,11 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         return this;
     }
 
+    /**
+     * Whether the vertices from here on are the surface of water. Carried to the shaders in a bit above the alpha
+     * mode, which only uses the low four, so they can treat it as water: refraction, waves, caustics and the pack's
+     * water medium.
+     */
     public PBRVertexWriter water(boolean water) {
         this.water = water;
         return this;
@@ -195,10 +214,16 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
 
     /**
      * Marks what follows as one of the other see-through blocks (ice, slime, honey), which Bedrock RTX draws the way
-     * it draws glass; only the experimental Bedrock profile reads it.
+     * it draws glass; only the Bedrock RTX profiles read it.
      */
     public PBRVertexWriter blend(boolean blend) {
         this.blend = blend;
+        return this;
+    }
+
+    /** Whether the vertices from here on are lava's surface (LAVA_SURFACE_BIT in the shaders). */
+    public PBRVertexWriter lava(boolean lava) {
+        this.lava = lava;
         return this;
     }
 
@@ -206,12 +231,6 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
      * Marks what follows as a light block in a state that gives no light although it draws the sprites its lit
      * states glow with (unlit redstone ore): it neither glows nor casts light (see EmissionTiles.isUnlit).
      */
-    /** Whether the vertices from here on are lava's surface (LAVA_SURFACE_BIT in the shaders). */
-    public PBRVertexWriter lava(boolean lava) {
-        this.lava = lava;
-        return this;
-    }
-
     public PBRVertexWriter unlit(boolean unlit) {
         this.unlit = unlit;
         return this;
@@ -231,6 +250,33 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     public PBRVertexWriter plant(boolean plant) {
         this.plant = plant;
         return this;
+    }
+
+    /**
+     * How the vertices from here on sway in the wind (util/wind.glsl), carried to the renderer as a wind code in
+     * postBase.x. Each gets a weight, how far it is from where the plant is held: {@code (y - baseY) * scale + rise}
+     * for grass and water plants, so a stalk's foot stays where it grows and its tip moves most; {@code scale} alone
+     * for leaves, which move the same at every corner so that neighbouring blocks never part. WIND_NONE (the default)
+     * keeps them still.
+     */
+    public PBRVertexWriter wind(int kind, float baseY, float rise, float scale) {
+        this.windKind = kind;
+        this.windBaseY = baseY;
+        this.windRise = rise;
+        this.windScale = scale;
+        return this;
+    }
+
+    private float windCode(float y) {
+        if (this.windKind == WIND_NONE) {
+            return 0.0f;
+        }
+        float weight = this.windKind == WIND_LEAVES ? this.windScale
+            : (y - this.windBaseY) * this.windScale + this.windRise;
+        weight = Math.max(0.0f, Math.min(WIND_MAX_WEIGHT, weight));
+        // A leaf or water plant vertex keeps its kind even without weight: a code interpolated across a triangle must
+        // never read as another kind (util/wind.glsl). Grass, the first kind, is 0 at its foot, the same as still.
+        return this.windKind * WIND_KIND_STRIDE + weight;
     }
 
     public PBRVertexWriter layerOffset(float layerOffset) {
@@ -309,18 +355,12 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         return this.address;
     }
 
-    /** Quads dropped since the last reset because a corner could not be placed. */
-    public int droppedQuads() {
-        return this.droppedQuads;
-    }
-
     public void reset() {
         this.layerOffset = 0.0f;
         this.vertexCount = 0;
         this.finishedUpTo = 0;
         this.current = -1L;
         this.quadHasUnplaceableVertex = false;
-        this.droppedQuads = 0;
     }
 
     private void ensureCapacity(long required) {
@@ -345,7 +385,6 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
             this.vertexCount -= 4;
             this.finishedUpTo = this.vertexCount;
             this.quadHasUnplaceableVertex = false;
-            this.droppedQuads++;
             return;
         }
         this.finishedUpTo = this.vertexCount;
@@ -416,10 +455,11 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         MemoryUtil.memPutInt(v + OFF_GLINT_TEXTURE, this.glintTextureId);
         MemoryUtil.memPutInt(v + OFF_COORDINATE, this.coordinate);
         MemoryUtil.memPutFloat(v + OFF_ALBEDO_EMISSION, this.albedoEmission);
+        MemoryUtil.memPutFloat(v + OFF_WIND, windCode(y));
         MemoryUtil.memPutInt(v + OFF_ALPHA_MODE,
             this.alphaMode | (this.water ? WATER_FLAG : 0) | (this.rain ? RAIN_FLAG : 0) | (this.held ? HELD_FLAG : 0) | (this.glass ? GLASS_FLAG : 0)
                 | (this.plant ? PLANT_FLAG : 0) | this.paneFlags | (this.blend ? BLEND_FLAG : 0)
-                | (this.unlit ? UNLIT_FLAG : 0) | (this.lava ? LAVA_FLAG : 0));
+                | (this.unlit ? UNLIT_FLAG : 0) | (this.lava ? LAVA_FLAG : 0) | (this.layerOffset != 0.0f ? LAYER_FLAG : 0));
         if (this.colorOverride != 0) {
             setColor(255, 255, 255, 255);
         }
@@ -515,12 +555,13 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     public VertexConsumer setLineWidth(float width) {
         return this;
     }
-    /** Call once all vertices are written so a trailing quad gets its computed normal. */
+
     /** A coordinate the acceleration structure can hold: finite, and inside the world the renderer traces. */
     private static boolean placeable(float value) {
         return Float.isFinite(value) && Math.abs(value) <= POSITION_LIMIT;
     }
 
+    /** Call once all vertices are written so a trailing quad gets its computed normal. */
     public void finish() {
         finishQuadIfComplete();
     }
