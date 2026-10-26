@@ -5,7 +5,9 @@ Languages: [ES](../es/complementos.md) · **EN**
 A mod built on Radiante (an *addon*) can put its options in Radiante's own settings screen instead of
 writing a config screen and config file of its own. When at least one addon registers, the settings
 get an **Addons** section at the end of the sidebar, with a heading per addon (its icon, name and
-version) and its options under it. Without addons nothing changes.
+version) and its options under it. Without addons nothing changes. Clicking a heading (or Enter, Space
+or a controller's A on it) folds that addon's options away or opens them again: with one addon they
+start open, with two or more folded, and Radiante remembers each one's choice.
 
 Addon options behave like Radiante's own: they are held until **Apply** or **Done**, **Undo** drops
 them, **Reset to Defaults** puts them back to the addon's defaults, the search finds them (or all of
