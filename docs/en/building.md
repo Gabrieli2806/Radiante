@@ -71,8 +71,7 @@ Check a jar: `unzip -l <jar> | grep -E 'prismrt.dll|libprismrt.so'`.
 
 ## GitHub Actions
 
-`.github/workflows/build.yml` does all of the above on every push to `main` or to a port branch
-(`mc/26.2`, `mc/26.4`) and on every pull request:
+`.github/workflows/build.yml` does all of the above on every push to a Minecraft version branch (`mc/26.2`, `mc/26.3`, `mc/26.4`) and on every pull request:
 
 | Job | What it does |
 |---|---|
@@ -88,7 +87,7 @@ Pushes that only touch Markdown, `docs/` or `screenshots/` do not build.
 ## Publishing a version
 
 1. Add `## [x.y.z] - date` to `changelog.md`.
-2. Bump `mod_version` in `gradle.properties` and push to `main` (or to a port branch).
+2. Bump `mod_version` in `gradle.properties` and push to the branch of the Minecraft version.
 3. The workflow sees there is no `v<mod_version>+<minecraft_version>` tag yet (for example
    `v1.1.0+26.3`), builds, and publishes a GitHub release with the jars. The notes are that
    version's changelog section. A version with a `-` (`1.2.0-beta.1`) is marked as a pre-release

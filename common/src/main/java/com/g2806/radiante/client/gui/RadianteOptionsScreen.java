@@ -1116,7 +1116,7 @@ public class RadianteOptionsScreen extends Screen {
                 if (addon.version() != null) {
                     heading.append(Component.literal("  " + addon.version()).withColor(0xFF808888));
                 }
-                blocks.add(new SettingsLayout.Block(heading, AddonIcons.of(addon), List.copyOf(rows),
+                blocks.add(new SettingsLayout.Block(addon.id(), heading, AddonIcons.of(addon), List.copyOf(rows),
                     Component.translatable("options.radiante.addons.no_settings")));
             } catch (RuntimeException | LinkageError e) {
                 RadianteClient.LOGGER.warn("Addon '{}': its settings could not be shown", addon.id(), e);

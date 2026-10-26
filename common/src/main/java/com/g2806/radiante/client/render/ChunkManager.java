@@ -157,6 +157,11 @@ public final class ChunkManager {
         }
     }
 
+    /** Leaves of every tree (the LEAVES tag): foliage a shader pack may treat apart from small plants. */
+    private static boolean isLeaves(BlockState state) {
+        return state.is(BlockTags.LEAVES);
+    }
+
     private static final int VERTEX_FORMAT_PBR = 12;
     public static final int GEOMETRY_TYPE_WORLD_SOLID = 1;
     public static final int GEOMETRY_TYPE_WORLD_TRANSPARENT = 2;
@@ -677,6 +682,7 @@ public final class ChunkManager {
             scratch.blockIsBlend = isBlend(blockState);
             scratch.blockIsUnlit = EmissionTiles.isUnlit(blockState);
             scratch.blockIsPlant = isPlant(blockState);
+            scratch.blockIsLeaves = isLeaves(blockState);
             scratch.blockIsPane = scratch.blockIsGlass && isGlassPane(blockState);
             scratch.windKind = PBRVertexWriter.WIND_NONE;
             if (windOn) {
@@ -695,6 +701,7 @@ public final class ChunkManager {
                 scratch.blockIsBlend = false;
                 scratch.blockIsUnlit = false;
                 scratch.blockIsPlant = false;
+                scratch.blockIsLeaves = false;
                 scratch.blockIsPane = false;
                 // The water round seagrass and kelp stays where it is.
                 scratch.windKind = PBRVertexWriter.WIND_NONE;
@@ -705,6 +712,7 @@ public final class ChunkManager {
                 scratch.blockIsBlend = isBlend(blockState);
                 scratch.blockIsUnlit = EmissionTiles.isUnlit(blockState);
                 scratch.blockIsPlant = isPlant(blockState);
+                scratch.blockIsLeaves = isLeaves(blockState);
                 scratch.blockIsPane = scratch.blockIsGlass && isGlassPane(blockState);
                 scratch.windKind = blockWind;
                 // Water with water or solid blocks on every side draws no face, and never asks for a writer: when
@@ -1010,6 +1018,8 @@ public final class ChunkManager {
         private float windBaseY;
         private float windRise;
         private float windScale;
+        /** The block being written is leaves; see PBRVertexWriter.leaves. */
+        private boolean blockIsLeaves;
         private boolean blockIsPane;
         private boolean paneCapUp;
         private boolean paneCapDown;
@@ -1060,7 +1070,7 @@ public final class ChunkManager {
                 writer = new PBRVertexWriter(4096);
                 writers.put(layer, writer);
             }
-            writer.textureId(atlasId).alphaMode(alphaModeOf(layer)).coordinate(0).water(false).lava(false).glass(this.blockIsGlass).plant(this.blockIsPlant)
+            writer.textureId(atlasId).alphaMode(alphaModeOf(layer)).coordinate(0).water(false).lava(false).glass(this.blockIsGlass).plant(this.blockIsPlant).leaves(this.blockIsLeaves)
                 .glassPane(this.blockIsPane, this.paneCapUp, this.paneCapDown).blend(this.blockIsBlend)
                 .unlit(this.blockIsUnlit).wind(this.windKind, this.windBaseY, this.windRise, this.windScale);
             this.current = writer;

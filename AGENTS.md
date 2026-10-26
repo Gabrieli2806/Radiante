@@ -79,7 +79,9 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 
 ## Branches and releases
 
-- `main` is Minecraft 26.3 (Fabric, NeoForge, Forge). `mc/26.2` and `mc/26.4` are ports: merge `main` into them,
+- Every Minecraft version has its own branch, named after it: `mc/26.2`, `mc/26.3` (the default branch for now) and
+  `mc/26.4`. When 26.4 is stable, `mc/26.4` becomes the default branch. Work on `mc/26.3` first, then port: merge it into
+  the other version branches,
   adapt the API differences, check the mixins against that version's jar (wrong mixin targets do not fail the
   compile), rebuild native, build.
 - **Changing `mod_version` in `gradle.properties` and pushing publishes a release** to GitHub, Modrinth and

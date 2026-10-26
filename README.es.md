@@ -188,7 +188,7 @@ empaqueta un jar por loader con ambos y falla si falta alguno. Para revisar un j
 Las versiones las publica el workflow de GitHub Actions, no se hacen a mano:
 
 1. Añade una sección `## [x.y.z] - fecha` a `changelog.md`.
-2. Sube `mod_version` en `gradle.properties` y haz push a `main` (o a una rama de port, `mc/26.2` o `mc/26.4`).
+2. Sube `mod_version` en `gradle.properties` y haz push a la rama de la versión de Minecraft (`mc/26.2`, `mc/26.3` o `mc/26.4`).
 3. El workflow ve una versión que aún no tiene la etiqueta `v<mod_version>+<minecraft_version>`, compila ambos
    renderizadores y los jars, y publica un release en GitHub con esa etiqueta. Sus notas son la sección del
    changelog de esa versión. Una versión con `-` (como `1.2.0-beta.1`) se marca como preliminar y se queda en
@@ -215,7 +215,8 @@ nunca publican.
 - `.github/workflows/build.yml` - CI y publicación de versiones (ver [Publicar una versión](#publicar-una-versión));
   `.github/ISSUE_TEMPLATE/` - los formularios de reporte de errores y de ideas.
 - Las versiones de todo esto viven en el `gradle.properties` de la raíz.
-- Ramas: `main` es Minecraft 26.3; `mc/26.2` y `mc/26.4` son ports a los que se fusiona `main`.
+- Ramas: una por versión de Minecraft, con su nombre (`mc/26.2`, `mc/26.3`, `mc/26.4`). `mc/26.3` es la de por defecto
+  ahora; la versión estable más nueva pasa a serlo.
 
 Flags útiles al ejecutar (Fabric):
 
@@ -251,7 +252,7 @@ Reportes de errores, ajustes de shaders y pull requests son bienvenidos. Los err
 
 ### Al hacer cambios
 
-- Crea una rama a partir de `main`; dale un nombre corto y descriptivo (`fix/rain-motion-vectors`,
+- Crea una rama a partir de `mc/26.3` (o de la versión en la que trabajas); dale un nombre corto y descriptivo (`fix/rain-motion-vectors`,
   `feat/end-crystal-tint`).
 - Mantén `common/` independiente del loader. Si un cambio necesita comportamiento específico de un loader,
   agrégalo detrás de `RadiantePlatform` e impleméntalo en `fabric/`, `neoforge/` y `forge/`, no con

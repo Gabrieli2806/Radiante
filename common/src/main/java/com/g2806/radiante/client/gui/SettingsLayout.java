@@ -46,11 +46,13 @@ final class SettingsLayout {
     }
 
     /**
-     * Options under a heading that does not fold, as each addon's are in the Addons section. {@code empty} is shown
-     * under the heading when there are no options; a search that finds the heading shows all of them. {@code icon}
-     * (the addon's, null for none) is drawn left of the heading.
+     * Options under a heading that folds them away, as each addon's are in the Addons section; {@code key} (the
+     * addon's id) is what its open or folded state is remembered by. {@code empty} is shown under the heading when
+     * there are no options; a search that finds the heading shows all of them. {@code icon} (the addon's, null for
+     * none) is drawn left of the heading.
      */
-    record Block(Component heading, AddonIcons.Icon icon, List<OptionInstance<?>> options, Component empty) {
+    record Block(String key, Component heading, AddonIcons.Icon icon, List<OptionInstance<?>> options,
+                 Component empty) {
     }
 
     /** Advanced options about one thing, under a heading that folds them away. */
@@ -82,6 +84,45 @@ final class SettingsLayout {
     /** Advanced groups folded open, by key; kept while the game runs. */
     private static final java.util.Set<String> openGroups = new java.util.HashSet<>();
     private static final String GROUP_FOCUS = "#group:";
+    private static final String BLOCK_FOCUS = "#block:";
+
+    /**
+     * Addon blocks the player opened (true) or folded (false), by key; saved in Radiante's options so they stay that
+     * way after a restart. A block never touched is open when it is the only one and folded when there are more, so
+     * one addon shows its options straight away and several make a short list of names.
+     */
+    private static java.util.Map<String, Boolean> blockStates;
+
+    private static java.util.Map<String, Boolean> blockStates() {
+        if (blockStates == null) {
+            blockStates = new java.util.LinkedHashMap<>();
+            for (String entry : com.g2806.radiante.client.option.Options.addonsOpen.split(",")) {
+                int at = entry.indexOf('=');
+                if (at > 0) {
+                    blockStates.put(entry.substring(0, at).trim(), "1".equals(entry.substring(at + 1).trim()));
+                }
+            }
+        }
+        return blockStates;
+    }
+
+    private static boolean blockOpen(Section section, Block block) {
+        Boolean state = blockStates().get(block.key());
+        return state != null ? state : section.blocks().size() == 1;
+    }
+
+    private static void setBlockOpen(String key, boolean open) {
+        blockStates().put(key, open);
+        StringBuilder text = new StringBuilder();
+        blockStates().forEach((id, state) -> text.append(text.isEmpty() ? "" : ",").append(id).append('=')
+            .append(state ? '1' : '0'));
+        com.g2806.radiante.client.option.Options.addonsOpen = text.toString();
+        try {
+            com.g2806.radiante.client.option.Options.overwriteConfig();
+        } catch (RuntimeException e) {
+            // Only where the blocks stand is lost, and only after a restart; the screen goes on.
+        }
+    }
 
     /**
      * A newly opened settings screen starts with no option in focus. One made by the settings screen itself (laid out
@@ -135,18 +176,22 @@ final class SettingsLayout {
     private int contentHeight;
 
     /**
-     * One line of the list: an option (advanced when it comes from a group), a group's heading, a note (a block's
-     * heading when {@code heading} is set), or with none of these a section's heading.
+     * One line of the list: an option (advanced when it comes from a group), a group's heading, a block's heading
+     * (when {@code block} is set), a note, or with none of these a section's heading.
      */
     private record Line(Section section, OptionInstance<?> option, Group group, Component note, boolean advanced,
-                        int y, int height, boolean heading, AddonIcons.Icon icon) {
+                        int y, int height, Block block) {
         Line(Section section, OptionInstance<?> option, Group group, Component note, boolean advanced, int y,
              int height) {
-            this(section, option, group, note, advanced, y, height, false, null);
+            this(section, option, group, note, advanced, y, height, null);
         }
 
         boolean sectionHeading() {
-            return this.option == null && this.group == null && this.note == null;
+            return this.option == null && this.group == null && this.note == null && this.block == null;
+        }
+
+        boolean heading() {
+            return this.block != null;
         }
     }
 
@@ -403,7 +448,7 @@ final class SettingsLayout {
                     && block.heading().getString().toLowerCase(Locale.ROOT).contains(filter);
                 List<OptionInstance<?>> matches = named ? block.options() : matching(block.options(), filter);
                 if (filter.isEmpty() || named || !matches.isEmpty()) {
-                    blocks.add(new Block(block.heading(), block.icon(), matches, block.empty()));
+                    blocks.add(new Block(block.key(), block.heading(), block.icon(), matches, block.empty()));
                 }
             }
             if (shown.isEmpty() && groups.isEmpty() && hidden == 0 && blocks.isEmpty()) {
@@ -417,8 +462,12 @@ final class SettingsLayout {
                 y += ROW;
             }
             for (Block block : blocks) {
-                this.lines.add(new Line(section, null, null, block.heading(), false, y, ROW, true, block.icon()));
+                this.lines.add(new Line(section, null, null, null, false, y, ROW, block));
                 y += ROW;
+                // A search shows what it found in every block, folded or not.
+                if (filter.isEmpty() && !blockOpen(section, block)) {
+                    continue;
+                }
                 for (OptionInstance<?> option : block.options()) {
                     this.lines.add(new Line(section, option, null, null, false, y, ROW));
                     y += ROW;
@@ -554,10 +603,21 @@ final class SettingsLayout {
             boolean hover = inside(mouseX, mouseY, this.listX + 4, y, this.listW - 8, ROW)
                 && mouseY >= this.top && mouseY < this.bottom;
             if (line.heading()) {
-                // A block's heading (an addon's name): brighter than a note, with a rule under it, and the addon's
-                // icon fitted into a square left of the name, the name moved over to make room.
+                // A block's heading (an addon's name): an arrow for folded or open as on the advanced groups, the
+                // addon's icon fitted into a square left of the name, the name brighter than a note, how many
+                // options it holds on the right, and a rule under it.
+                boolean open = blockOpen(line.section(), line.block()) || !searchEmpty();
+                if (hover) {
+                    g.fill(this.listX + 4, y, this.listX + this.listW - 4, y + ROW, ROW_HOVER);
+                }
+                if (keyboardFocus && focusedButton < 0 && navKey(line).equals(focusedKey)) {
+                    g.outline(this.listX + 4, y, this.listW - 8, ROW, ACCENT);
+                }
                 int textX = this.listX + PAD + 4;
-                AddonIcons.Icon addonIcon = line.icon();
+                Component arrow = Component.literal(open ? "▾ " : "▸ ");
+                g.text(this.font, arrow, textX, y + 6, ACCENT);
+                textX += this.font.width(arrow);
+                AddonIcons.Icon addonIcon = line.block().icon();
                 if (addonIcon != null) {
                     int iw = addonIcon.width();
                     int ih = addonIcon.height();
@@ -567,7 +627,9 @@ final class SettingsLayout {
                         y + 1 + (ICON - h) / 2, 0.0f, 0.0f, w, h, iw, ih, iw, ih);
                     textX += ICON + 4;
                 }
-                g.text(this.font, line.note(), textX, y + 6, TEXT);
+                g.text(this.font, line.block().heading(), textX, y + 6, hover ? ACCENT : TEXT);
+                Component count = Component.literal(String.valueOf(line.block().options().size()));
+                g.text(this.font, count, this.listX + this.listW - PAD - 4 - this.font.width(count), y + 6, TEXT_DIM);
                 g.fill(this.listX + PAD + 4, y + ROW - 2, this.listX + this.listW - PAD - 4, y + ROW - 1, 0x60FFFFFF);
                 continue;
             }
@@ -577,8 +639,7 @@ final class SettingsLayout {
             }
             if (line.option() == null) {
                 // A group's heading: an arrow for folded or open, and how many options it holds.
-                boolean open = openGroups.contains(line.group().key())
-                    || !(this.search == null || this.search.getValue().trim().isEmpty());
+                boolean open = openGroups.contains(line.group().key()) || !searchEmpty();
                 if (hover) {
                     g.fill(this.listX + 4, y, this.listX + this.listW - 4, y + ROW, ROW_HOVER);
                 }
@@ -824,14 +885,12 @@ final class SettingsLayout {
             }
             int y = base + line.y();
             if (mouseY >= y && mouseY < y + ROW) {
+                if (line.heading()) {
+                    toggleBlock(line);
+                    return true;
+                }
                 if (line.option() == null) {
-                    clickSound();
-                    if (!openGroups.remove(line.group().key())) {
-                        openGroups.add(line.group().key());
-                    }
-                    layoutLines();
-                    this.scroll = clampScroll(this.scroll);
-                    this.onScroll.accept(this.scroll);
+                    toggleGroup(line.group());
                     return true;
                 }
                 if (!(line.option().values() instanceof OptionInstance.IntRange) && !blocked(line.option())) {
@@ -960,11 +1019,11 @@ final class SettingsLayout {
         clickSound();
     }
 
-    /** The rows the keys stop on: options, and the headings of the advanced groups. */
+    /** The rows the keys stop on: options, and the headings of the advanced groups and of the addons. */
     private List<Line> navRows() {
         List<Line> rows = new ArrayList<>();
         for (Line line : this.lines) {
-            if (line.option() != null || line.group() != null) {
+            if (line.option() != null || line.group() != null || line.heading()) {
                 rows.add(line);
             }
         }
@@ -972,7 +1031,8 @@ final class SettingsLayout {
     }
 
     private static String navKey(Line line) {
-        return line.option() != null ? focusKey(line.option()) : GROUP_FOCUS + line.group().key();
+        return line.option() != null ? focusKey(line.option())
+            : line.heading() ? BLOCK_FOCUS + line.block().key() : GROUP_FOCUS + line.group().key();
     }
 
     /** The row in focus, or else the one under the mouse; -1 for none. */
@@ -1102,6 +1162,13 @@ final class SettingsLayout {
         focusedKey = navKey(line);
         keysInUse();
         int sign = direction == ScreenDirection.LEFT ? -1 : 1;
+        if (line.heading()) {
+            // An addon's heading: Right opens it, Left folds it (not while a search shows it open anyway).
+            if (searchEmpty() && blockOpen(line.section(), line.block()) != (sign > 0)) {
+                toggleBlock(line);
+            }
+            return true;
+        }
         if (line.option() == null) {
             // A group's heading: Right opens it, Left folds it.
             boolean open = openGroups.contains(line.group().key());
@@ -1151,6 +1218,10 @@ final class SettingsLayout {
         Line line = rows.get(index);
         focusedKey = navKey(line);
         keysInUse();
+        if (line.heading()) {
+            toggleBlock(line);
+            return true;
+        }
         if (line.option() == null) {
             toggleGroup(line.group());
             return true;
@@ -1177,9 +1248,42 @@ final class SettingsLayout {
         if (!openGroups.remove(group.key())) {
             openGroups.add(group.key());
         }
+        relayout(GROUP_FOCUS + group.key());
+    }
+
+    /** Folds an addon's block or opens it. A search shows every block it finds open, so then it changes nothing. */
+    private void toggleBlock(Line heading) {
+        if (!searchEmpty()) {
+            return;
+        }
+        clickSound();
+        setBlockOpen(heading.block().key(), !blockOpen(heading.section(), heading.block()));
+        relayout(BLOCK_FOCUS + heading.block().key());
+    }
+
+    /**
+     * Lays the list out again after a heading folded or opened. When that folded away the row in focus, the focus
+     * goes to the heading, so the keys and the description do not point at a row that is gone.
+     */
+    private void relayout(String headingKey) {
         layoutLines();
+        if (focusedKey != null && focusedButton < 0) {
+            boolean shown = false;
+            for (Line line : navRows()) {
+                shown |= focusedKey.equals(navKey(line));
+            }
+            if (!shown) {
+                focusedKey = headingKey;
+                this.described = null;
+                layoutButtons();
+            }
+        }
         this.scroll = clampScroll(this.scroll);
         this.onScroll.accept(this.scroll);
+    }
+
+    private boolean searchEmpty() {
+        return this.search == null || this.search.getValue().trim().isEmpty();
     }
 
     /**
@@ -1268,6 +1372,9 @@ final class SettingsLayout {
             return null;
         }
         Line line = rows.get(index);
+        if (line.heading()) {
+            return line.block().heading();
+        }
         if (line.option() == null) {
             return Component.translatable(line.group().key());
         }

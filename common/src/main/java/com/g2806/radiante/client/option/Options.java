@@ -168,6 +168,12 @@ public class Options {
 
     /** Ray tracing can be switched off with a key, which hands the world back to Minecraft's own renderer. */
     public static boolean rayTracingEnabled = true;
+
+    /**
+     * Which addons' blocks in the settings screen are open (1) or folded (0), as {@code id=1,id=0}; addons not
+     * listed were never opened or folded and follow the default (see SettingsLayout).
+     */
+    public static String addonsOpen = "";
     /** Set when the player chooses to run on OpenGL, where this renderer cannot work at all. */
     public static boolean useOpenGl = false;
     /** OpenGL for this session only, after Minecraft detected a failed start; never saved. */
@@ -290,6 +296,7 @@ public class Options {
         new Entry("cloudsBeforeDistantHorizons", () -> cloudsBeforeDistantHorizons,
             v -> cloudsBeforeDistantHorizons = v),
         new Entry("rendererProfile", () -> rendererProfile, v -> rendererProfile = v),
+        new Entry("addonsOpen", () -> addonsOpen, v -> addonsOpen = v),
         bool("useOpenGl", () -> useOpenGl, v -> useOpenGl = v),
         bool("frameGeneration", () -> frameGeneration, v -> frameGeneration = v),
         number("generatedFrames", () -> generatedFrames, v -> generatedFrames = v),

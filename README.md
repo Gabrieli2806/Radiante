@@ -182,7 +182,7 @@ one jar per loader with both, and fails if either is missing. Check a jar with
 Releases are cut by the GitHub Actions workflow, not by hand:
 
 1. Add a `## [x.y.z] - date` section to `changelog.md`.
-2. Bump `mod_version` in `gradle.properties` and push to `main` (or to a port branch, `mc/26.2` or `mc/26.4`).
+2. Bump `mod_version` in `gradle.properties` and push to the branch of the Minecraft version (`mc/26.2`, `mc/26.3` or `mc/26.4`).
 3. The workflow sees a version with no `v<mod_version>+<minecraft_version>` tag yet, builds both renderers and the
    jars, and publishes a GitHub release with that tag. Its notes are the changelog section for the version. A
    version with a `-` (such as `1.2.0-beta.1`) is marked as a pre-release and stays on GitHub.
@@ -207,7 +207,8 @@ publish.
 - `.github/workflows/build.yml` - CI and releases (see [Releases](#releases)); `.github/ISSUE_TEMPLATE/` - the bug
   report and feature request forms.
 - Versions for all of them live in the root `gradle.properties`.
-- Branches: `main` is Minecraft 26.3; `mc/26.2` and `mc/26.4` are ports that `main` is merged into.
+- Branches: one per Minecraft version, named after it (`mc/26.2`, `mc/26.3`, `mc/26.4`). `mc/26.3` is the default for
+  now; the newest stable version becomes the default.
 
 Useful run flags (Fabric):
 
@@ -242,7 +243,7 @@ Bug reports, shader tweaks and pull requests are welcome. Bugs and ideas are tra
 
 ### Making changes
 
-- Branch off `main`; give the branch a short, descriptive name (`fix/rain-motion-vectors`,
+- Branch off `mc/26.3` (or the version you are working on); give the branch a short, descriptive name (`fix/rain-motion-vectors`,
   `feat/end-crystal-tint`).
 - Keep `common/` loader-agnostic. If a change needs loader-specific behaviour, add it behind
   `RadiantePlatform` and implement it in `fabric/`, `neoforge/` and `forge/`, not with `instanceof` checks

@@ -73,8 +73,7 @@ Comprobar un jar: `unzip -l <jar> | grep -E 'prismrt.dll|libprismrt.so'`.
 
 ## GitHub Actions
 
-`.github/workflows/build.yml` hace todo lo anterior en cada push a `main` o a una rama de port
-(`mc/26.2`, `mc/26.4`) y en cada pull request:
+`.github/workflows/build.yml` hace todo lo anterior en cada push a una rama de versión de Minecraft (`mc/26.2`, `mc/26.3`, `mc/26.4`) y en cada pull request:
 
 | Job | Qué hace |
 |---|---|
@@ -90,7 +89,7 @@ Los push que solo tocan Markdown, `docs/` o `screenshots/` no compilan.
 ## Publicar una versión
 
 1. Añade `## [x.y.z] - fecha` a `changelog.md`.
-2. Sube `mod_version` en `gradle.properties` y haz push a `main` (o a una rama de port).
+2. Sube `mod_version` en `gradle.properties` y haz push a la rama de la versión de Minecraft.
 3. El workflow ve que no existe la etiqueta `v<mod_version>+<minecraft_version>` (por ejemplo
    `v1.1.0+26.3`), compila y publica un release en GitHub con los jars. Las notas son la sección
    del changelog de esa versión. Una versión con `-` (`1.2.0-beta.1`) se marca como preliminar y se

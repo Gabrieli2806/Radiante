@@ -38,6 +38,8 @@ const uint LAVA_SURFACE_BIT = 1u << 28u;
 // A layer drawn over a face of the same model and lifted off it (the grass block's side overlay): not carved by
 // height maps, which along its edges let the view through to the face under it.
 const uint LAYER_SURFACE_BIT = 1u << 29u;
+// Leaves of every tree, marked by the section builder.
+const uint LEAVES_SURFACE_BIT = 1u << 30u;
 
 // The per-geometry vertex buffer address tables (set 1 bindings 4 and 5), visible to the hit stages only.
 layout(set = 1, binding = 4) readonly buffer PositionBufferAddr {
@@ -163,6 +165,10 @@ bool isLayerSurface(uint packedData) {
 
 bool isLavaSurface(uint packedData) {
     return (packedData & LAVA_SURFACE_BIT) != 0u;
+}
+
+bool isLeavesSurface(uint packedData) {
+    return (packedData & LEAVES_SURFACE_BIT) != 0u;
 }
 
 bool isWaterSurface(uint packedData) {
