@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.client.renderer.texture.TextureResources;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 
@@ -83,10 +83,8 @@ final class AddonIcons {
             Identifier id = Identifier.fromNamespaceAndPath("radiante", "addon_icon/" + addon.id());
             int width = image.getWidth();
             int height = image.getHeight();
-            NativeImage pixels = image;
-            // The texture owns the image from here on, and closes it with itself.
-            DynamicTexture texture = new DynamicTexture(() -> "Radiante addon icon " + addon.id(), pixels);
-            image = null;
+            // 26.4: the pixels are copied to the GPU texture here; the image stays ours and is closed below.
+            TextureResources texture = TextureResources.from2dImage(() -> "Radiante addon icon " + addon.id(), image);
             Minecraft.getInstance().getTextureManager().register(id, texture);
             return new Icon(id, width, height);
         } catch (IOException | RuntimeException e) {
