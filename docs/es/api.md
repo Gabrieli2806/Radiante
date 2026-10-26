@@ -129,7 +129,8 @@ RadianteAddons.Setting<Boolean> showRays = addon.toggle("show_rays",
 if (showRays.get()) { ... }
 ```
 
-La guía completa, con listas de valores y deslizadores: [Opciones de complementos](complementos.md).
+El título muestra el icono de los metadatos de tu mod (`addon.icon(...)` elige otro). La guía
+completa, con listas de valores y deslizadores: [Opciones de complementos](complementos.md).
 
 ## Estabilidad
 

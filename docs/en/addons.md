@@ -4,8 +4,8 @@ Languages: [ES](../es/complementos.md) · **EN**
 
 A mod built on Radiante (an *addon*) can put its options in Radiante's own settings screen instead of
 writing a config screen and config file of its own. When at least one addon registers, the settings
-get an **Addons** section at the end of the sidebar, with a heading per addon (its name and version)
-and its options under it. Without addons nothing changes.
+get an **Addons** section at the end of the sidebar, with a heading per addon (its icon, name and
+version) and its options under it. Without addons nothing changes.
 
 Addon options behave like Radiante's own: they are held until **Apply** or **Done**, **Undo** drops
 them, **Reset to Defaults** puts them back to the addon's defaults, the search finds them (or all of
@@ -56,6 +56,11 @@ included): `if (MyAddonClient.debugRays.get()) { ... }`.
 
 - `id` is your mod id: Radiante shows the mod's version beside the title and keeps the values in
   `radiante/addons/<id>.properties`. Ids and keys use lowercase letters, digits, `_`, `-` and `.`.
+- The icon left of the title is your mod's own, found by that id: the `icon` in `fabric.mod.json`,
+  or the `logoFile` in `neoforge.mods.toml` / `mods.toml`. A square PNG of 32 x 32 or less is shown
+  as it is (pixel art stays sharp); a larger one is scaled down. To show another texture, call
+  `addon.icon(Identifier.fromNamespaceAndPath("mymod", "textures/gui/addon.png"))` after `register`.
+  A missing or unreadable icon is logged once and the heading goes without one.
 - Titles and tooltips are your own `Component`s; put their texts in your mod's lang files. The
   tooltip may be `null`. Keep it short: what the option does, and what changing it does.
 - `onChange` listeners run on the client thread when the player applies a change.

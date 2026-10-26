@@ -125,7 +125,8 @@ RadianteAddons.Setting<Boolean> showRays = addon.toggle("show_rays",
 if (showRays.get()) { ... }
 ```
 
-The full guide, with lists of values and sliders: [Addon settings](addons.md).
+The heading shows your mod's icon from its metadata (`addon.icon(...)` names another one). The full
+guide, with lists of values and sliders: [Addon settings](addons.md).
 
 ## Stability
 

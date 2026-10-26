@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 
 /**
  * The public addon API: lets another mod put its own options in Radiante's settings screen, under an Addons section
@@ -36,8 +37,9 @@ public final class RadianteAddons {
 
     /**
      * Adds an addon to the settings screen, under {@code title}. {@code id} is the addon's mod id (lowercase letters,
-     * digits, {@code _ - .}): it names the file the values are stored in, and the addon's version is looked up by it
-     * to show beside the title. Registering the same id twice logs a warning and hands back an addon that is not shown.
+     * digits, {@code _ - .}): it names the file the values are stored in, and the addon's version and icon (the icon
+     * in its {@code fabric.mod.json}, or the {@code logoFile} in its {@code mods.toml}) are looked up by it to show
+     * beside the title. Registering the same id twice logs a warning and hands back an addon that is not shown.
      */
     public static Addon register(String id, Component title) {
         return AddonRegistry.register(id, title);
@@ -48,6 +50,13 @@ public final class RadianteAddons {
 
         /** The id it was registered with. */
         String id();
+
+        /**
+         * Shows {@code texture}, a PNG in the addon's assets (such as {@code mymod:icon.png} for
+         * {@code assets/mymod/icon.png}), beside the title instead of the icon in the mod's metadata. Not needed when
+         * the mod has an icon of its own. Returns this addon.
+         */
+        Addon icon(Identifier texture);
 
         /**
          * An on/off option, drawn as a checkbox. {@code tooltip} (may be null) is shown beside the list: say what it

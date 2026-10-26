@@ -5,7 +5,7 @@ Idiomas: **ES** · [EN](../en/addons.md)
 Un mod hecho sobre Radiante (un *complemento*) puede poner sus opciones en la pantalla de ajustes de
 Radiante, en vez de escribir su propia pantalla y su propio archivo de configuración. Cuando al menos
 un complemento se registra, los ajustes ganan una sección **Complementos** al final de la barra
-lateral, con un título por complemento (su nombre y versión) y sus opciones debajo. Sin complementos
+lateral, con un título por complemento (su icono, nombre y versión) y sus opciones debajo. Sin complementos
 no cambia nada.
 
 Las opciones de un complemento se comportan como las de Radiante: esperan a **Aplicar** o **Listo**,
@@ -58,6 +58,12 @@ jugador): `if (MyAddonClient.debugRays.get()) { ... }`.
 
 - `id` es el id de tu mod: Radiante muestra la versión del mod junto al título y guarda los valores
   en `radiante/addons/<id>.properties`. Los ids y las claves usan minúsculas, dígitos, `_`, `-` y `.`.
+- El icono a la izquierda del título es el de tu mod, buscado por ese id: el `icon` de
+  `fabric.mod.json`, o el `logoFile` de `neoforge.mods.toml` / `mods.toml`. Un PNG cuadrado de 32 x 32
+  o menos se muestra tal cual (el pixel art queda nítido); uno más grande se reduce. Para mostrar
+  otra textura, llama a `addon.icon(Identifier.fromNamespaceAndPath("mymod", "textures/gui/addon.png"))`
+  después de `register`. Un icono que falta o no se puede leer se registra una vez en el log y el
+  título queda sin icono.
 - Los títulos y textos de ayuda son tus propios `Component`; pon sus textos en los archivos de idioma
   de tu mod. El texto de ayuda puede ser `null`. Que sea corto: qué hace la opción y qué cambia al
   cambiarla.

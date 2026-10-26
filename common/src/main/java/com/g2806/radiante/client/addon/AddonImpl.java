@@ -10,6 +10,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 
 /**
  * An addon and its settings. One that could not be registered (a bad or repeated id) is not {@code shown}: its
@@ -23,6 +24,7 @@ public final class AddonImpl implements RadianteAddons.Addon {
     private final boolean shown;
     private final List<SettingImpl<?>> settings = new CopyOnWriteArrayList<>();
     private volatile String version;
+    private volatile Identifier icon;
 
     AddonImpl(String id, Component title, Properties stored, boolean shown) {
         this.id = id;
@@ -52,6 +54,17 @@ public final class AddonImpl implements RadianteAddons.Addon {
             this.version = found == null ? "" : found;
         }
         return this.version.isEmpty() ? null : this.version;
+    }
+
+    @Override
+    public RadianteAddons.Addon icon(Identifier texture) {
+        this.icon = texture;
+        return this;
+    }
+
+    /** The icon the addon named for itself; null to use the one in its mod's metadata. */
+    public Identifier iconTexture() {
+        return this.icon;
     }
 
     /** The settings in the order they were added. */

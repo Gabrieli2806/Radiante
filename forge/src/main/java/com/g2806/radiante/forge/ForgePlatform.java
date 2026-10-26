@@ -1,6 +1,7 @@
 package com.g2806.radiante.forge;
 
 import com.g2806.radiante.platform.RadiantePlatform;
+import java.io.IOException;
 import java.nio.file.Path;
 import net.minecraftforge.fml.loading.FMLPaths;
 
@@ -38,6 +39,24 @@ public final class ForgePlatform implements RadiantePlatform {
         } catch (RuntimeException | LinkageError e) {
             return null;
         }
+    }
+
+    @Override
+    public byte[] modIcon(String modId) throws IOException {
+        // As for the version, a LinkageError means no icon: Forge's mod list API changes between versions.
+        java.nio.file.Path path;
+        try {
+            net.minecraftforge.forgespi.language.IModInfo info = net.minecraftforge.fml.ModList.getModContainerById(modId)
+                .map(net.minecraftforge.fml.ModContainer::getModInfo).orElse(null);
+            String logo = info == null ? null : info.getLogoFile().orElse(null);
+            if (logo == null || logo.isBlank()) {
+                return null;
+            }
+            path = info.getOwningFile().getFile().findResource(logo);
+        } catch (LinkageError e) {
+            return null;
+        }
+        return java.nio.file.Files.readAllBytes(path);
     }
 
     @Override
