@@ -81,6 +81,7 @@ marked **(restart)** and, when you leave the screen, a notice lists the pending 
 | [Sky & Water](settings/sky-fog-water.md) | Atmosphere, clouds, stars, sun, sun path, rain, glass, biome ambiance, volumetric fog, water. |
 | [Performance](settings/performance.md) | Light bounces, mirrors, glass, water texture, portal, rain, cache, checkerboard, parallax, Bedrock pack materials, fog quality, chunk building. |
 | [Other](settings/other.md) | Block outline, other mods' overlays, text backgrounds, parallax edges, debug logging. |
+| [Addons](addons.md) | Only with an addon installed: its own options, under its name. |
 
 A setting only shows when the pipeline, GPU or shader pack supports it: DLSS Mode only with
 RT-DLSS, Upscaling Mode only with RT-FSR or RT-XeSS, Reflex only on NVIDIA, frame generation not

@@ -276,6 +276,8 @@
   "options.radiante.category.sky_and_water": "天空与水",
   "options.radiante.category.performance": "性能",
   "options.radiante.category.other": "其他",
+  "options.radiante.category.addons": "附加组件",
+  "options.radiante.addons.no_settings": "此附加组件没有设置。",
   "options.radiante.advanced": "高级...",
   "options.radiante.advanced.tooltip": "在常规选项下方显示所有管线和着色器设置。关闭只是隐藏，其值仍然生效。",
   "options.radiante.picture_style": "画面风格",

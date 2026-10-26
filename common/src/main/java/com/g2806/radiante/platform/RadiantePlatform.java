@@ -1,6 +1,7 @@
 package com.g2806.radiante.platform;
 
 import com.g2806.radiante.client.render.EntityCollector;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ServiceLoader;
 
@@ -17,6 +18,20 @@ public interface RadiantePlatform {
 
     /** Radiante's own version, as the loader read it from the mod's metadata; "unknown" when it cannot tell. */
     String modVersion();
+
+    /** Another mod's version, for the heading of an addon in the settings; null when it cannot tell. */
+    default String modVersion(String modId) {
+        return null;
+    }
+
+    /**
+     * Another mod's icon as the bytes of a PNG, for the heading of an addon in the settings: the icon in its
+     * {@code fabric.mod.json}, or the {@code logoFile} in its {@code mods.toml}. Null when the mod declares none;
+     * an exception when it declares one that cannot be read.
+     */
+    default byte[] modIcon(String modId) throws IOException {
+        return null;
+    }
 
     /** The game directory; Radiante keeps its native files and settings in a "radiante" folder inside it. */
     Path gameDir();

@@ -89,6 +89,9 @@ public final class DevAutomation {
     }
 
     public static void register() {
+        if (System.getenv("RADIANTE_DEV_ADDON") != null || Boolean.getBoolean("radiante.devAddon")) {
+            registerFakeAddon();
+        }
         String preScript = System.getenv("RADIANTE_DEV_PRESCRIPT");
         if (preScript != null && !preScript.isBlank()) {
             for (String part : preScript.split(";")) {
@@ -115,6 +118,33 @@ public final class DevAutomation {
         STEPS.sort((a, b) -> Integer.compare(a.tick(), b.tick()));
         active = true;
         RadianteClient.LOGGER.info("[dev] script with {} steps", STEPS.size());
+    }
+
+    /**
+     * Development: an addon with one option of each kind (RADIANTE_DEV_ADDON set, or -Dradiante.devAddon=true), to
+     * see the Addons section without installing one. A second registration under the same id and a repeated key
+     * check that mistakes are logged, not shown. Its values go to radiante/addons/radiante_dev_addon.properties. Its
+     * icon is one named through the API (Radiante's own); the empty one names an icon that is not there, which is
+     * logged once and leaves it without one.
+     */
+    private static void registerFakeAddon() {
+        java.util.function.Function<String, net.minecraft.network.chat.Component> title =
+            net.minecraft.network.chat.Component::literal;
+        var addon = com.g2806.radiante.api.RadianteAddons.register("radiante_dev_addon", title.apply("Dev Addon"))
+            .icon(net.minecraft.resources.Identifier.fromNamespaceAndPath("radiante", "icon.png"));
+        addon.toggle("debug_rays", title.apply("Show debug rays"), title.apply("Draws the rays the addon casts."),
+            false).onChange(value -> RadianteClient.LOGGER.info("[dev] addon debug_rays -> {}", value));
+        addon.cycle("mode", title.apply("Mode"), title.apply("How the addon behaves."), List.of("calm", "normal",
+            "wild"), "normal", value -> title.apply(value.substring(0, 1).toUpperCase(java.util.Locale.ROOT) + value.substring(1)))
+            .onChange(value -> {
+                throw new IllegalStateException("dev addon listener failing on purpose: " + value);
+            });
+        addon.slider("range", title.apply("Range"), title.apply("How far the addon looks, in blocks."), 8, 64, 4, 16)
+            .onChange(value -> RadianteClient.LOGGER.info("[dev] addon range -> {}", value));
+        addon.toggle("debug_rays", title.apply("Duplicate"), null, true);
+        com.g2806.radiante.api.RadianteAddons.register("radiante_dev_addon", title.apply("Duplicate addon"));
+        com.g2806.radiante.api.RadianteAddons.register("radiante_dev_empty", title.apply("Empty Dev Addon"))
+            .icon(net.minecraft.resources.Identifier.fromNamespaceAndPath("radiante", "textures/missing_icon.png"));
     }
 
     /** Opens a test world, creating it as a flat creative world first if needed; only names with the test prefix. */
@@ -439,6 +469,13 @@ public final class DevAutomation {
             // Presses the first button on the open screen whose label contains the text.
             if (minecraft.gui.screen() != null) {
                 pressButton(minecraft.gui.screen(), action.substring(6));
+            }
+        } else if (action.startsWith("chars=")) {
+            // chars=text: typed into the open screen's focused field, e.g. the settings search ('+' for a space).
+            var screen = minecraft.gui.screen();
+            if (screen != null) {
+                action.substring(6).replace('+', ' ').codePoints().forEach(
+                    codepoint -> screen.charTyped(new net.minecraft.client.input.CharacterEvent(codepoint)));
             }
         } else if (action.startsWith("click=")) {
             // A left click on the open screen at GUI coordinates, pressed and released.
