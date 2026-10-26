@@ -7,7 +7,9 @@ All notable changes to this project are documented in this file.
 - Addon settings API (`com.g2806.radiante.api.RadianteAddons`): a mod built on Radiante can add toggles, value lists
   and sliders to Radiante's settings screen, under an Addons section with a heading per addon (the mod's icon from its
   metadata, its name and version); Radiante stores their values in `radiante/addons/<id>.properties`. The section
-  only shows when an addon is installed. See [docs/en/addons.md](docs/en/addons.md).
+  only shows when an addon is installed. Each addon's options fold away under its heading (open when it is the only
+  addon, folded when there are more, remembered per addon; a search opens the ones it finds something in). See
+  [docs/en/addons.md](docs/en/addons.md).
 - When a newer DLSS or XeSS is available, the settings button for it reads "Update DLSS" instead of "Delete DLSS" and
   opens the update offer, so skipping the start-up prompt for a version no longer leaves no way to update.
 - Faster in forests, fields and villages where the GPU driver offers opacity micromaps (`VK_EXT_opacity_micromap`):
