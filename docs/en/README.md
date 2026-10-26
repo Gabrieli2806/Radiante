@@ -40,6 +40,7 @@ Documentation version: **1.1.0**.
 ## For developers
 
 - **[Building and releasing](building.md)** — Windows, Linux, GitHub Actions and how a release goes out.
+- **[Making mods for Radiante](api.md)** — the public API: ray tracing state, the sun, your own geometry, settings.
 - **[Addon settings](addons.md)** — how a mod puts its options in Radiante's settings.
 - **[How PrismRT works](../prismrt.md)** — the native renderer's architecture, for contributors (English).
 
