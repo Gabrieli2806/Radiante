@@ -35,6 +35,12 @@ vec3 celestialMoonDirection() {
     return celestialNormalize(skyUBO.moonDirection.xyz, -celestialSunDirection());
 }
 
+// How much of the moon's face its phase shows lit: 1 at the full moon (phase 0), a half at the quarters, 0 at the
+// new moon (phase 4). The moon's light follows it, so a new moon leaves the night to the stars and the sky.
+float celestialMoonLitFraction() {
+    return 0.5 + 0.5 * cos(float(skyUBO.moonPhase) * 0.78539816); // a phase is an eighth of a turn, pi/4
+}
+
 // The body that lights the world: the sun while it is above the horizon, the moon otherwise. The sun's height alone
 // picks it, since the moon is up exactly while the sun is down.
 vec3 celestialLightDirection() {
