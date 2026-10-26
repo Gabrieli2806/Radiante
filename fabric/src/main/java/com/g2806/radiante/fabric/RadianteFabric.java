@@ -13,6 +13,7 @@ public final class RadianteFabric implements ClientModInitializer {
     public void onInitializeClient() {
         RadianteClient.init();
         FabricLevelRenderEvents.init();
+        DevCameraCommands.init();
         for (KeyMapping key : RadianteKeys.ALL) {
             KeyMappingHelper.registerKeyMapping(key);
         }
