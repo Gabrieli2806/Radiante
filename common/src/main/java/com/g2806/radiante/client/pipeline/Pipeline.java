@@ -68,6 +68,7 @@ public class Pipeline {
     public static void initFolderPath(Path folderPath) {
         PIPELINE_CONFIG_PATH = folderPath.resolve("pipeline.yaml");
         migrateRenamedPack(folderPath);
+        ShaderPackLibrary.recoverFromCrashedTrial(folderPath, PIPELINE_CONFIG_PATH);
     }
 
     /**
@@ -1908,6 +1909,8 @@ public class Pipeline {
 
         List<AttributeConfig> mergedAttributeConfigs = Module.copyAttributeConfigs(module.staticAttributeConfigs);
         Map<String, String> translations = new HashMap<>();
+        // The shader pack's own attributes and their defaults, to check the values they end up with.
+        Map<String, String> packDefaults = new HashMap<>();
         Path shaderPackAttributeStoragePath = null;
         boolean preserveCurrentDynamicValues = true;
 
@@ -1999,6 +2002,7 @@ public class Pipeline {
                             attributeConfig.value = Objects.toString(defaultValue, "");
                             attributeConfig.runtime =
                                     Boolean.parseBoolean(Objects.toString(attributeMap.get("runtime"), "false"));
+                            packDefaults.put(attributeConfig.name, attributeConfig.value);
                             mergedAttributeConfigs.add(attributeConfig);
                         }
                     }
@@ -2068,6 +2072,19 @@ public class Pipeline {
                     continue;
                 }
                 attributeConfig.value = currentValues.get(attributeConfig.name);
+            }
+            // A value the pack does not offer goes back to the pack's default. Packs share attribute names, and a
+            // value only one of them has (radiante-pt's Bedrock water, written by the renderer profile) reached
+            // another pack's enum, where the renderer compiled the value's text into the shaders and the build failed.
+            String packDefault = packDefaults.get(attributeConfig.name);
+            String type = attributeConfig.type;
+            if (packDefault != null && attributeConfig.value != null && type != null
+                    && (type.equals("bool") || type.startsWith("enum:") || type.startsWith("int_range:")
+                        || type.startsWith("float_range:"))
+                    && !com.g2806.radiante.client.option.SettingsCode.allowed(type, attributeConfig.value)) {
+                RadianteClient.LOGGER.warn("Shader pack setting {}: \"{}\" is not one of its values; using {}",
+                        attributeConfig.name, attributeConfig.value, packDefault);
+                attributeConfig.value = packDefault;
             }
         }
 

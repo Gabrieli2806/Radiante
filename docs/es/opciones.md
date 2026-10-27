@@ -112,7 +112,9 @@ La lista muestra el icono, el nombre, la versión, el autor y la licencia de cad
 el paquete los da. Haz clic en un paquete y pulsa **Usar** (o doble clic, o Enter) para cambiar:
 los shaders se compilan como con cualquier otro cambio. Si el paquete no carga o un shader no
 compila, Radiante vuelve a Radiante PT y muestra bajo la lista qué falló (los mensajes del
-compilador, con archivo y línea); **Copiar error** lo copia para el autor del paquete. Cada paquete
+compilador, con archivo y línea); **Copiar error** lo copia para el autor del paquete. Si el juego se cierra mientras se prueba un
+paquete (un cierre inesperado o la GPU deja de responder), el siguiente inicio vuelve a Radiante
+PT y lo indica aquí. Cada paquete
 guarda sus ajustes en un archivo a su lado (`<paquete>.zip.txt`), así que cambiar de uno a otro
 los conserva. La mayoría de los ajustes de Radiante son de Radiante PT; otro paquete muestra los
 que ofrece.

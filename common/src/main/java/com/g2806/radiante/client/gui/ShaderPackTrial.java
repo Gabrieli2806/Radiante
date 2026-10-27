@@ -20,14 +20,19 @@ import java.util.List;
  * messages), or the rebuild failing for another reason. Those lines are kept for {@link ShaderPacksScreen} to show,
  * since a pack author needs the compiler's message rather than a black world.
  *
- * <p>A trial ends well when the renderer logs a finished rebuild ({@code [Rebuild] total}); with Radiante's debug
- * log off that line never comes, so a minute of drawing the world without an error counts as well. A pack chosen in
- * an earlier session is tried again on the first world of this one.
+ * <p>A trial ends well once the renderer has logged a finished rebuild ({@code [Rebuild] total}) and then drawn the
+ * world for ten seconds without an error: a pack can compile and still lose the GPU with its first frames, as
+ * Radiance's Vanilla PT does. With Radiante's debug log off that line never comes, so a minute of drawing the world
+ * without an error counts as well. Meanwhile a marker file names the pack ({@link ShaderPackLibrary#markTrial}), so a
+ * crash during the trial puts the built-in pack back at the next start instead of crashing again. A pack chosen in an
+ * earlier session is tried again on the first world of this one.
  */
 public final class ShaderPackTrial {
 
     /** Ticks of drawing a world without an error after which a pack counts as working. */
     private static final int QUIET_TICKS = 20 * 60;
+    /** The same once the renderer said the pipeline was built. */
+    private static final int QUIET_TICKS_AFTER_BUILD = 20 * 10;
     /** Lines of the renderer's log kept for the report. */
     private static final int KEPT_LINES = 80;
 
@@ -53,6 +58,7 @@ public final class ShaderPackTrial {
         lastFailure = null;
         if (path == null || ShaderPackLibrary.samePack(path, Pipeline.builtInShaderPackPath())) {
             trialPath = null;
+            ShaderPackLibrary.markTrial(null);
             return;
         }
         trialPath = path;
@@ -62,6 +68,7 @@ public final class ShaderPackTrial {
         succeeded = false;
         quietTicks = 0;
         verifiedPath = null;
+        ShaderPackLibrary.markTrial(path);
     }
 
     /** Whether a pack is being watched now, for the screen to say it is still being tried. */
@@ -69,8 +76,15 @@ public final class ShaderPackTrial {
         return trialPath != null && ShaderPackLibrary.samePack(trialPath, path);
     }
 
-    /** The last pack that failed, until another is chosen. */
+    /** The last pack that failed (in this session, or by ending the last one), until another is chosen. */
     static Failure lastFailure() {
+        if (lastFailure == null) {
+            String crashed = ShaderPackLibrary.takeCrashedTrial();
+            if (crashed != null) {
+                lastFailure = new Failure(crashed.substring(crashed.replace('\\', '/').lastIndexOf('/') + 1), crashed,
+                    List.of(Component.translatable("screen.radiante.shader_packs.crashed").getString()));
+            }
+        }
         return lastFailure;
     }
 
@@ -106,12 +120,9 @@ public final class ShaderPackTrial {
             fallBack(minecraft);
             return;
         }
-        if (succeeded) {
-            finish();
-            return;
-        }
-        if (RadianteRenderer.isActive() && minecraft.level != null && minecraft.gui.screen() == null
-            && ++quietTicks >= QUIET_TICKS) {
+        // Counted while the world is drawn, behind the shader pack screen too.
+        if (RadianteRenderer.isActive() && minecraft.level != null
+            && ++quietTicks >= (succeeded ? QUIET_TICKS_AFTER_BUILD : QUIET_TICKS)) {
             finish();
         }
     }
@@ -137,12 +148,14 @@ public final class ShaderPackTrial {
         }
         verifiedPath = trialPath;
         trialPath = null;
+        ShaderPackLibrary.markTrial(null);
     }
 
     private static void fallBack(Minecraft minecraft) {
         lastFailure = new Failure(trialName, trialPath, List.copyOf(lines));
         RadianteClient.LOGGER.warn("Shader pack {} failed; going back to the built-in pack", trialPath);
         trialPath = null;
+        ShaderPackLibrary.markTrial(null);
         Pipeline.selectShaderPack(Pipeline.builtInShaderPackPath());
         Screen current = minecraft.gui.screen();
         Screen next = current instanceof ShaderPacksScreen packs ? packs.reopened() : current;

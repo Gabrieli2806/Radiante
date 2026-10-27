@@ -49,7 +49,71 @@ public final class ShaderPackLibrary {
                         String problemDetail, boolean builtIn) {
     }
 
+    /** Marks a pack being tried, so a crash while it runs does not bring the game back into it (see below). */
+    private static final String TRIAL_MARKER = ".trying";
+    /** The pack whose trial a crash ended last session, until the shader pack screen has said so; else null. */
+    private static String crashedTrial;
+
     private ShaderPackLibrary() {
+    }
+
+    /**
+     * Notes that a pack is being tried (or, with null, that the trial ended). A pack can compile and still take the
+     * GPU down with its first frames (Radiance's Vanilla PT reads chunk geometry in a layout the renderer no longer
+     * writes, and the device is lost): the pipeline file already names it then, and every start would crash again.
+     */
+    public static void markTrial(String path) {
+        Path folder = folder();
+        if (folder == null) {
+            return;
+        }
+        try {
+            if (path == null) {
+                Files.deleteIfExists(folder.resolve(TRIAL_MARKER));
+            } else {
+                Files.writeString(folder.resolve(TRIAL_MARKER), path, StandardCharsets.UTF_8);
+            }
+        } catch (IOException e) {
+            RadianteClient.LOGGER.warn("Could not mark the shader pack being tried", e);
+        }
+    }
+
+    /**
+     * At startup, before the pipeline file is read: a trial marker left behind means the game ended while that pack
+     * was being tried, so the pipeline file is pointed back at the built-in pack.
+     */
+    public static void recoverFromCrashedTrial(Path radianteFolder, Path pipelineFile) {
+        Path marker = radianteFolder.resolve(FOLDER).resolve(TRIAL_MARKER);
+        if (!Files.isRegularFile(marker)) {
+            return;
+        }
+        try {
+            String path = Files.readString(marker, StandardCharsets.UTF_8).trim();
+            Files.delete(marker);
+            if (path.isEmpty() || pipelineFile == null || !Files.isRegularFile(pipelineFile)) {
+                return;
+            }
+            String stored = Files.readString(pipelineFile, StandardCharsets.UTF_8);
+            String builtIn = Pipeline.builtInShaderPackPath();
+            String moved = stored.replace("value: " + path, "value: " + builtIn)
+                .replace("value: '" + path + "'", "value: " + builtIn)
+                .replace("value: \"" + path + "\"", "value: " + builtIn);
+            if (!moved.equals(stored)) {
+                Files.writeString(pipelineFile, moved, StandardCharsets.UTF_8);
+                crashedTrial = path;
+                RadianteClient.LOGGER.warn("The game ended while shader pack {} was being tried; using the built-in "
+                    + "pack", path);
+            }
+        } catch (IOException | RuntimeException e) {
+            RadianteClient.LOGGER.warn("Could not undo the shader pack being tried when the game ended", e);
+        }
+    }
+
+    /** The pack a crash ended the trial of last session, once; null when there was none. */
+    public static String takeCrashedTrial() {
+        String path = crashedTrial;
+        crashedTrial = null;
+        return path;
     }
 
     /** The folder packs are put in, made when missing; null before the mod's folder is known. */

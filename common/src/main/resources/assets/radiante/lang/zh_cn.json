@@ -743,5 +743,6 @@
   "screen.radiante.shader_packs.problem.no_passes": "configs.json 中没有 passes。",
   "screen.radiante.shader_packs.problem.unreadable": "无法打开光影包：%s",
   "toast.radiante.shader_pack_failed": "Radiante：光影包失败",
-  "toast.radiante.shader_pack_failed.detail": "%s：已回到 Radiante PT。"
+  "toast.radiante.shader_pack_failed.detail": "%s：已回到 Radiante PT。",
+  "screen.radiante.shader_packs.crashed": "试用此光影包时游戏关闭了（崩溃或 GPU 停止响应），已恢复 Radiante PT。请查看游戏日志或崩溃报告。"
 }

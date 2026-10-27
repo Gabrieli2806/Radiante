@@ -107,7 +107,9 @@ The list shows each pack's icon, name, version, author and licence, where the pa
 Click a pack and press **Use** (or double-click it, or press Enter) to switch: the shaders compile
 as for any other change. If the pack does not load or a shader does not compile, Radiante goes
 back to Radiante PT and shows what went wrong under the list (the compiler's messages, with file
-and line); **Copy Error** copies it for the pack's author. Each pack keeps its own settings in a
+and line); **Copy Error** copies it for the pack's author. If the game closes while a pack is
+being tried (a crash, or the GPU stops responding), the next start goes back to Radiante PT and
+says so here. Each pack keeps its own settings in a
 file next to it (`<pack>.zip.txt`), so switching back and forth keeps them. Most of Radiante's
 settings belong to Radiante PT; another pack shows the ones it offers.
 

@@ -9,7 +9,10 @@ All notable changes to this project are documented in this file.
   opens the folder, and switches packs with the usual background rebuild. A pack that does not load or compile is
   replaced by Radiante PT again, and the renderer's messages (the compiler's, or why `configs.json` was rejected) are
   shown under the list with a button to copy them; the renderer now logs why a pack's `configs.json` was rejected
-  instead of quietly loading the built-in pack. Zips that wrap the pack in a folder are flagged in the list.
+  instead of quietly loading the built-in pack. Zips that wrap the pack in a folder are flagged in the list. A pack
+  that takes the game down while it is being tried (Radiance's Vanilla PT loses the GPU) is replaced by Radiante PT
+  at the next start. A setting value a pack does not offer (radiante-pt's Bedrock water carried into another pack
+  with the same setting) goes back to that pack's default instead of breaking its shaders.
 - Bedrock `.mcaddon` files (and `.mcpack` files holding several packs) in the resource pack folder are listed and
   converted like a `.mcpack`: the resource packs inside are found (pack folders at any depth, nested `.mcpack`
   files), a pack's first subpack is laid over it, and behavior/script packs are skipped with a line in the log, since

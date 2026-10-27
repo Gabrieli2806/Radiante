@@ -743,5 +743,6 @@
   "screen.radiante.shader_packs.problem.no_passes": "configs.json has no passes.",
   "screen.radiante.shader_packs.problem.unreadable": "The pack cannot be opened: %s",
   "toast.radiante.shader_pack_failed": "Radiante: shader pack failed",
-  "toast.radiante.shader_pack_failed.detail": "%s: back to Radiante PT."
+  "toast.radiante.shader_pack_failed.detail": "%s: back to Radiante PT.",
+  "screen.radiante.shader_packs.crashed": "The game closed while this pack was being tried (a crash, or the GPU stopped responding). Radiante PT was put back. Check the game log or crash report."
 }
