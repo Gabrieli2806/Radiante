@@ -61,6 +61,13 @@ void main() {
 
     vec3 baryCoords = vec3(1.0 - (attribs.x + attribs.y), attribs.x, attribs.y);
     uint packedData = m0.packedData;
+    // A ray already in the water passes the far water under the near one. Far terrain sits a little lower and stays
+    // until the near terrain replaces it (lod_coverage.glsl); met from inside, its surface counted as leaving the
+    // water, and the sea past it lost its colour in whole chunks and sections.
+    if (rayInWater(mainRay) && isWaterSurface(packedData) && VPT_LOD_HIT(ubo)) {
+        ignoreIntersectionEXT;
+        return;
+    }
     uint textureID = m0.textureID;
     uint alphaMode = getAlphaMode(packedData);
 
