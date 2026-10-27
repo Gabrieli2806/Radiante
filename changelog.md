@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Bedrock `.mcaddon` files (and `.mcpack` files holding several packs) in the resource pack folder are listed and
+  converted like a `.mcpack`: the resource packs inside are found (pack folders at any depth, nested `.mcpack`
+  files), a pack's first subpack is laid over it, and behavior/script packs are skipped with a line in the log, since
+  they only run in Bedrock. A pack's Vibrant Visuals light colours (`local_lighting.json`) colour the point lights of
+  torches, lanterns, fire and the like while it is enabled, and add point lights to the other blocks it lists as one
+  (candles, amethyst), in the Bedrock RTX profiles.
 - Leaves are marked for the shader pack (`LEAVES_SURFACE_BIT`, `isLeavesSurface` in `util/vertex.glsl`), as small
   plants already are, so a pack can treat the leaves of trees apart: let light through them, say. Nothing changes in
   the built-in pack.

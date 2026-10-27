@@ -24,23 +24,25 @@ import java.util.zip.ZipOutputStream;
 import javax.imageio.ImageIO;
 
 /**
- * Turns Bedrock RTX resource packs ({@code .mcpack}) dropped into the resource pack folder into LabPBR packs the
- * renderer reads; the pack list shows the .mcpack itself (see PackDetectorMixin) and loads the conversion. Bedrock
+ * Turns Bedrock RTX resource packs ({@code .mcpack}, and the resource packs inside an {@code .mcaddon}, see
+ * {@link BedrockPackFiles}) dropped into the resource pack folder into LabPBR packs the renderer reads; the pack list
+ * shows the Bedrock file itself (see PackDetectorMixin) and loads the conversion. Bedrock
  * describes each texture with a texture set: a colour texture, a MER(S) map (metalness,
  * emission, roughness, subsurface) and a height or normal map, under Bedrock's own texture names. Each Java block
  * texture that has a Bedrock counterpart (see texture_map.json) gets the pack's colour, a LabPBR specular map and a
  * LabPBR normal map built from them, so the pack keeps its look: its colours, how rough, metallic and glowing
  * things are, and the relief of its surfaces. The pack's per-biome volumetric fog comes along too (see
- * {@link BedrockFog}).
+ * {@link BedrockFog}), and so do the light colours of its Vibrant Visuals local lighting (see
+ * {@link BedrockLocalLighting}).
  */
 public final class BedrockPackConverter {
 
-    /** Under Radiante's folder in the game directory: the converted packs, one zip per .mcpack. */
+    /** Under Radiante's folder in the game directory: the converted packs, one zip per Bedrock file. */
     private static final String CACHE_FOLDER = "bedrock_packs";
     /** Largest size a Bedrock texture set is converted at, in pixels per side; finer maps are averaged down to it. */
     private static final int MAX_DETAIL = 128;
     /** Stored as the zip comment; a pack converted by another version of the converter is converted again. */
-    private static final String CONVERTER_VERSION = "radiante-bedrock-converter 20";
+    private static final String CONVERTER_VERSION = "radiante-bedrock-converter 21";
 
     /** The converter's version, for the log and the settings screen; packs converted by another are converted again. */
     public static String converterVersion() {
@@ -82,15 +84,16 @@ public final class BedrockPackConverter {
     }
 
     /**
-     * The LabPBR pack for a Bedrock .mcpack, converted the first time it is asked for and kept in Radiante's own folder
-     * (not beside the .mcpack, where it would show up in the pack list a second time), or null if it cannot be.
+     * The LabPBR pack for a Bedrock .mcpack or .mcaddon, converted the first time it is asked for and kept in
+     * Radiante's own folder (not beside the Bedrock file, where it would show up in the pack list a second time), or
+     * null if it cannot be or holds no resource pack.
      */
-    public static synchronized Path converted(Path mcpack) {
-        String name = mcpack.getFileName().toString();
-        String base = name.substring(0, name.length() - ".mcpack".length());
-        Path out = RadiantePlatform.INSTANCE.gameDir().resolve("radiante").resolve(CACHE_FOLDER).resolve(base + ".zip");
+    public static synchronized Path converted(Path pack) {
+        String name = pack.getFileName().toString();
+        Path folder = RadiantePlatform.INSTANCE.gameDir().resolve("radiante").resolve(CACHE_FOLDER);
+        Path out = folder.resolve(cacheName(name));
         try {
-            if (isUpToDate(out, mcpack)) {
+            if (isUpToDate(out, pack)) {
                 return out;
             }
             JsonObject textureMap = loadTextureMap();
@@ -99,9 +102,27 @@ public final class BedrockPackConverter {
             }
             Files.createDirectories(out.getParent());
             long start = System.nanoTime();
-            int converted = convert(mcpack, out, textureMap);
-            RadianteClient.LOGGER.info("Converted Bedrock pack {} ({} textures) in {} ms", name, converted,
-                (System.nanoTime() - start) / 1_000_000);
+            try (BedrockPackFiles files = BedrockPackFiles.open(pack, folder.resolve(".nested"))) {
+                for (BedrockPackFiles.Pack skipped : files.skipped()) {
+                    // Scripts (JavaScript on Bedrock's script API), functions and custom blocks run only in Bedrock's
+                    // engine; there is nothing on Java to hand them to.
+                    RadianteClient.LOGGER.info("Skipped {} in Bedrock pack {} ({}): its {} modules only run in "
+                        + "Bedrock; behavior, script and data packs cannot run on Java", describe(skipped), name,
+                        skipped.where().isEmpty() ? "/" : skipped.where(), String.join(", ", skipped.moduleTypes()));
+                }
+                if (files.resourcePacks().isEmpty()) {
+                    RadianteClient.LOGGER.warn("Bedrock pack {} holds no resource pack, nothing to convert", name);
+                    return null;
+                }
+                for (BedrockPackFiles.Pack resources : files.resourcePacks()) {
+                    RadianteClient.LOGGER.info("Reading {} in Bedrock pack {} ({}){}", describe(resources), name,
+                        resources.where().isEmpty() ? "/" : resources.where(),
+                        resources.subpack() == null ? "" : ", subpack " + resources.subpack());
+                }
+                int converted = convert(files, name, out, textureMap);
+                RadianteClient.LOGGER.info("Converted Bedrock pack {} ({} textures) in {} ms", name, converted,
+                    (System.nanoTime() - start) / 1_000_000);
+            }
             return out;
         } catch (Exception e) {
             RadianteClient.LOGGER.warn("Could not convert Bedrock pack {}", name, e);
@@ -109,8 +130,28 @@ public final class BedrockPackConverter {
         }
     }
 
+    /**
+     * The converted pack's file name. A .mcpack keeps the name it always had; an .mcaddon of the same name gets one of
+     * its own.
+     */
+    static String cacheName(String fileName) {
+        String lower = fileName.toLowerCase(Locale.ROOT);
+        if (lower.endsWith(".mcpack")) {
+            return fileName.substring(0, fileName.length() - ".mcpack".length()) + ".zip";
+        }
+        if (lower.endsWith(".mcaddon")) {
+            return fileName.substring(0, fileName.length() - ".mcaddon".length()) + ".mcaddon.zip";
+        }
+        return fileName + ".zip";
+    }
+
+    private static String describe(BedrockPackFiles.Pack pack) {
+        return pack.name() == null ? "the pack" : "\"" + pack.name() + "\"";
+    }
+
     public static boolean isBedrockPack(Path path) {
-        return path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".mcpack");
+        String name = path.getFileName().toString().toLowerCase(Locale.ROOT);
+        return name.endsWith(".mcpack") || name.endsWith(".mcaddon");
     }
 
     private static boolean isUpToDate(Path out, Path pack) throws IOException {
@@ -139,20 +180,21 @@ public final class BedrockPackConverter {
         }
     }
 
-    private static int convert(Path source, Path out, JsonObject textureMap) throws IOException {
+    private static int convert(BedrockPackFiles files, String fileName, Path out, JsonObject textureMap)
+        throws IOException {
         Path temp = out.resolveSibling(out.getFileName() + ".tmp");
         int converted = 0;
         rawMerIndex = new JsonObject();
-        try (ZipFile zip = new ZipFile(source.toFile());
-             ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(temp))) {
+        try (ZipOutputStream zos = new ZipOutputStream(Files.newOutputStream(temp))) {
             zos.setComment(CONVERTER_VERSION);
-            String root = findPackRoot(zip);
-            String name = packName(zip, root, source);
+            // The topmost resource pack's own name; a pack without one is named after the file.
+            String name = files.name() != null ? files.name()
+                : fileName.substring(0, Math.max(0, fileName.lastIndexOf('.')));
 
             write(zos, "pack.mcmeta", ("{\n  \"pack\": {\n    \"description\": \"" + escape(name)
                 + " - converted from Bedrock by Radiante\",\n    \"min_format\": [" + PACK_FORMAT
                 + ", 0],\n    \"max_format\": [" + PACK_FORMAT + ", 999]\n  }\n}\n").getBytes(StandardCharsets.UTF_8));
-            byte[] icon = read(zip, root + "pack_icon.png");
+            byte[] icon = files.read("pack_icon.png");
             if (icon != null) {
                 write(zos, "pack.png", icon);
             }
@@ -162,11 +204,11 @@ public final class BedrockPackConverter {
                 String bedrockPath = info.get("bedrock").getAsString();
                 boolean colorCompatible = info.get("color").getAsBoolean();
                 try {
-                    if (convertTexture(zip, root, entry.getKey(), bedrockPath, colorCompatible, zos)) {
+                    if (convertTexture(files, entry.getKey(), bedrockPath, colorCompatible, zos)) {
                         converted++;
                         // An animated texture (water) is animated by its .mcmeta, which has to come from the same
                         // pack as the image: without it Java showed the pack's strip of frames as one tall texture.
-                        if (colorCompatible && info.has("mcmeta") && color(zip, root, bedrockPath) != null) {
+                        if (colorCompatible && info.has("mcmeta") && color(files, bedrockPath) != null) {
                             write(zos, "assets/minecraft/textures/block/" + entry.getKey() + ".png.mcmeta",
                                 info.get("mcmeta").toString().getBytes(StandardCharsets.UTF_8));
                         }
@@ -180,10 +222,10 @@ public final class BedrockPackConverter {
             // tinted fringe over it. The fringe comes from the pack and has the pack's shape; Java's painted one
             // under it has another, and its tips showed past the pack's as dark green slits. Plain dirt goes under
             // the pack's fringe instead.
-            TgaReader.Image dirt = color(zip, root, "textures/blocks/dirt");
+            TgaReader.Image dirt = color(files, "textures/blocks/dirt");
             if (dirt != null) {
                 write(zos, "assets/minecraft/textures/block/grass_block_side.png",
-                    png(grassSideBase(dirt, color(zip, root, "textures/blocks/grass_side"))));
+                    png(grassSideBase(dirt, color(files, "textures/blocks/grass_side"))));
             }
 
             JsonObject rawIndex = new JsonObject();
@@ -193,9 +235,13 @@ public final class BedrockPackConverter {
             rawIndex.add("textures", rawMerIndex);
             write(zos, RAW_MER_INDEX, rawIndex.toString().getBytes(StandardCharsets.UTF_8));
 
-            byte[] fog = BedrockFog.convert(zip, root);
+            byte[] fog = BedrockFog.convert(files);
             if (fog != null) {
                 write(zos, BedrockFog.PATH, fog);
+            }
+            byte[] lights = BedrockLocalLighting.convert(files);
+            if (lights != null) {
+                write(zos, BedrockLocalLighting.PATH, lights);
             }
         } catch (IOException | RuntimeException e) {
             Files.deleteIfExists(temp);
@@ -250,8 +296,8 @@ public final class BedrockPackConverter {
     }
 
     /** The colour image of a Bedrock texture set, or null when the pack has none. */
-    private static TgaReader.Image color(ZipFile zip, String root, String bedrockPath) throws IOException {
-        byte[] setBytes = read(zip, root + bedrockPath + ".texture_set.json");
+    private static TgaReader.Image color(BedrockPackFiles files, String bedrockPath) throws IOException {
+        byte[] setBytes = files.read(bedrockPath + ".texture_set.json");
         if (setBytes == null) {
             return null;
         }
@@ -261,13 +307,13 @@ public final class BedrockPackConverter {
             return null;
         }
         String dir = bedrockPath.contains("/") ? bedrockPath.substring(0, bedrockPath.lastIndexOf('/') + 1) : "";
-        return image(zip, root + dir, set.get("color"));
+        return image(files, dir, set.get("color"));
     }
 
     /** One Java texture from its Bedrock texture set; false when the pack has no set for it. */
-    private static boolean convertTexture(ZipFile zip, String root, String javaName, String bedrockPath,
+    private static boolean convertTexture(BedrockPackFiles files, String javaName, String bedrockPath,
         boolean colorCompatible, ZipOutputStream zos) throws IOException {
-        byte[] setBytes = read(zip, root + bedrockPath + ".texture_set.json");
+        byte[] setBytes = files.read(bedrockPath + ".texture_set.json");
         if (setBytes == null) {
             return false;
         }
@@ -278,13 +324,13 @@ public final class BedrockPackConverter {
         }
         String dir = bedrockPath.contains("/") ? bedrockPath.substring(0, bedrockPath.lastIndexOf('/') + 1) : "";
 
-        TgaReader.Image color = image(zip, root + dir, set.get("color"));
+        TgaReader.Image color = image(files, dir, set.get("color"));
         JsonElement merSource = set.has("metalness_emissive_roughness_subsurface")
             ? set.get("metalness_emissive_roughness_subsurface") : set.get("metalness_emissive_roughness");
         boolean hasSubsurface = set.has("metalness_emissive_roughness_subsurface");
-        TgaReader.Image mer = image(zip, root + dir, merSource);
-        TgaReader.Image height = image(zip, root + dir, set.get("heightmap"));
-        TgaReader.Image normal = image(zip, root + dir, set.get("normal"));
+        TgaReader.Image mer = image(files, dir, merSource);
+        TgaReader.Image height = image(files, dir, set.get("heightmap"));
+        TgaReader.Image normal = image(files, dir, set.get("normal"));
 
         // Bedrock RTX packs pair 16 px colours with far finer normal and MER maps (96 px is common) and shade with
         // them at full detail. Squeezed down to the colour's size by picking one texel in six, a bevelled metal
@@ -506,7 +552,7 @@ public final class BedrockPackConverter {
     }
 
     /** A texture set layer: an image by name next to the set, or null for a missing or uniform layer. */
-    private static TgaReader.Image image(ZipFile zip, String dir, JsonElement layer) throws IOException {
+    private static TgaReader.Image image(BedrockPackFiles files, String dir, JsonElement layer) throws IOException {
         if (layer == null || !layer.isJsonPrimitive() || !layer.getAsJsonPrimitive().isString()) {
             return null;
         }
@@ -514,13 +560,13 @@ public final class BedrockPackConverter {
         if (value.startsWith("#")) {
             return null;
         }
-        byte[] tga = read(zip, dir + value + ".tga");
+        byte[] tga = files.read(dir + value + ".tga");
         if (tga != null) {
             return TgaReader.read(tga);
         }
-        byte[] png = read(zip, dir + value + ".png");
+        byte[] png = files.read(dir + value + ".png");
         if (png == null) {
-            png = read(zip, dir + value + ".jpg");
+            png = files.read(dir + value + ".jpg");
         }
         if (png == null) {
             return null;
@@ -564,48 +610,6 @@ public final class BedrockPackConverter {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         ImageIO.write(buffered, "png", out);
         return out.toByteArray();
-    }
-
-    /** The folder the pack's manifest is in: some .mcpack files wrap the pack in a folder of its own. */
-    private static String findPackRoot(ZipFile zip) {
-        String best = null;
-        for (var entries = zip.entries(); entries.hasMoreElements(); ) {
-            String name = entries.nextElement().getName();
-            if (name.endsWith("manifest.json")) {
-                String root = name.substring(0, name.length() - "manifest.json".length());
-                if (best == null || root.length() < best.length()) {
-                    best = root;
-                }
-            }
-        }
-        return best == null ? "" : best;
-    }
-
-    private static String packName(ZipFile zip, String root, Path source) {
-        try {
-            byte[] manifest = read(zip, root + "manifest.json");
-            if (manifest != null) {
-                JsonObject header = JsonParser.parseString(new String(manifest, StandardCharsets.UTF_8))
-                    .getAsJsonObject().getAsJsonObject("header");
-                if (header != null && header.has("name")) {
-                    return header.get("name").getAsString().replaceAll("§.", "");
-                }
-            }
-        } catch (IOException | RuntimeException ignored) {
-            // A manifest Bedrock itself would reject still leaves a usable pack; name it after the file.
-        }
-        String file = source.getFileName().toString();
-        return file.substring(0, file.length() - ".mcpack".length());
-    }
-
-    private static byte[] read(ZipFile zip, String path) throws IOException {
-        ZipEntry entry = zip.getEntry(path);
-        if (entry == null) {
-            return null;
-        }
-        try (InputStream in = zip.getInputStream(entry)) {
-            return in.readAllBytes();
-        }
     }
 
     private static void write(ZipOutputStream zos, String path, byte[] data) throws IOException {

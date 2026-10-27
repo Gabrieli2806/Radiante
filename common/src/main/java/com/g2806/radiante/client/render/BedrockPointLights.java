@@ -18,6 +18,10 @@ import net.minecraft.world.level.block.state.BlockState;
  *
  * <p>Only the Bedrock RTX profiles have them (ChunkManager writes them when Bedrock's glow is cast, see
  * Pipeline.castsBedrockGlow); without that glow every glowing block's texture lights the world.
+ *
+ * <p>An enabled Bedrock pack with Vibrant Visuals local lighting (converted by BedrockLocalLighting) gives these
+ * lights its own colours, and adds a point light to the other blocks it lists as one (candles, amethyst), at the
+ * strength of the block's light level; see {@link #reloadPackLightsIfNeeded}.
  */
 final class BedrockPointLights {
 
@@ -78,17 +82,156 @@ final class BedrockPointLights {
             }
             boolean soul = block == Blocks.SOUL_FIRE || block == Blocks.SOUL_CAMPFIRE;
             boolean campfire = block == Blocks.CAMPFIRE || block == Blocks.SOUL_CAMPFIRE;
-            writer.pointLight(x + 0.5f, y + (campfire ? 0.45f : 0.35f), z + 0.5f, soul ? 0 : 255, soul ? 230 : 120,
-                soul ? 255 : 40, CAST_STRENGTH * FLAME_STRENGTH * (campfire ? 1.2f : 1.0f), FLAME_RADIUS);
+            int[] flame = packColourOr(block, soul ? 0 : 255, soul ? 230 : 120, soul ? 255 : 40);
+            writer.pointLight(x + 0.5f, y + (campfire ? 0.45f : 0.35f), z + 0.5f, flame[0], flame[1], flame[2],
+                CAST_STRENGTH * FLAME_STRENGTH * (campfire ? 1.2f : 1.0f), FLAME_RADIUS);
         } else if (isBerryVine(state)) {
             // Not Bedrock's: the berries of a glow berry vine are level 14 in vanilla and a pack lights only their few
             // texels, so a lush cave of them was dark. Each berried block gives a warm, soft light of its own.
-            writer.pointLight(x + 0.5f, y + 0.4f, z + 0.5f, 255, 170, 70, CAST_STRENGTH * BERRY_STRENGTH, LANTERN_RADIUS);
+            int[] berry = packColourOr(block, 255, 170, 70);
+            writer.pointLight(x + 0.5f, y + 0.4f, z + 0.5f, berry[0], berry[1], berry[2], CAST_STRENGTH * BERRY_STRENGTH,
+                LANTERN_RADIUS);
         } else if (block == Blocks.FIREFLY_BUSH) {
             // Not Bedrock's: the bush glows only in a few specks and lit nothing around it. A soft, greenish-yellow
             // light of its own, a quarter of what a berried vine gives.
-            writer.pointLight(x + 0.5f, y + 0.4f, z + 0.5f, 215, 255, 120, CAST_STRENGTH * BERRY_STRENGTH * 0.25f,
-                LANTERN_RADIUS);
+            int[] bush = packColourOr(block, 215, 255, 120);
+            writer.pointLight(x + 0.5f, y + 0.4f, z + 0.5f, bush[0], bush[1], bush[2],
+                CAST_STRENGTH * BERRY_STRENGTH * 0.25f, LANTERN_RADIUS);
+        } else {
+            PackLight added = packLights.get(block);
+            if (added != null && added.point()) {
+                packPointLight(state, added.rgb(), x, y, z, writer);
+            }
+        }
+    }
+
+    // ---- an enabled Bedrock pack's local lighting
+
+    /** Written into converted Bedrock packs (BedrockLocalLighting.PATH). */
+    private static final net.minecraft.resources.Identifier PACK_LIGHTS =
+        net.minecraft.resources.Identifier.fromNamespaceAndPath("radiante", "bedrock_local_lighting.json");
+
+    /** A block's light in a pack: its colour, scaled up to full brightness, and whether it is a point light. */
+    private record PackLight(int[] rgb, boolean point) {
+    }
+
+    /** The enabled packs' lights by block; empty without such a pack. Read by the chunk builders. */
+    private static volatile java.util.Map<Block, PackLight> packLights = java.util.Map.of();
+    private static Object packLightsLoadedFor;
+
+    /**
+     * Reads the local lighting of the enabled Bedrock packs, once per resource reload (each one rebuilds the block
+     * atlas), the topmost pack winning for a block both list. Call on the render thread before the chunks are marked
+     * for a rebuild after a reload (EmissionTiles.registerIfNeeded), so they are rebuilt with these colours.
+     */
+    static void reloadPackLightsIfNeeded(net.minecraft.client.Minecraft minecraft) {
+        net.minecraft.client.renderer.texture.TextureAtlas atlas =
+            minecraft.getAtlasManager().getAtlasOrThrow(net.minecraft.data.AtlasIds.BLOCKS);
+        Object key = TextureTracker.gpuTextureOrNull(atlas);
+        if (key == null || key == packLightsLoadedFor) {
+            return;
+        }
+        packLightsLoadedFor = key;
+        java.util.Map<Block, PackLight> lights = new java.util.IdentityHashMap<>();
+        int unknown = 0;
+        // Bottom pack first, so the ones above override it.
+        for (net.minecraft.server.packs.resources.Resource resource
+            : minecraft.getResourceManager().getResourceStack(PACK_LIGHTS)) {
+            try (java.io.Reader reader = resource.openAsReader()) {
+                com.google.gson.JsonObject blocks = com.google.gson.JsonParser.parseReader(reader).getAsJsonObject()
+                    .getAsJsonObject("blocks");
+                for (java.util.Map.Entry<String, com.google.gson.JsonElement> entry : blocks.entrySet()) {
+                    net.minecraft.resources.Identifier id = net.minecraft.resources.Identifier.tryParse(entry.getKey());
+                    java.util.Optional<Block> block = id == null ? java.util.Optional.empty()
+                        : net.minecraft.core.registries.BuiltInRegistries.BLOCK.getOptional(id);
+                    int[] rgb = fullBrightness(entry.getValue().getAsJsonObject().getAsJsonArray("color"));
+                    if (block.isEmpty() || block.get() == Blocks.AIR || rgb == null) {
+                        unknown++;
+                        continue;
+                    }
+                    boolean point = "point_light".equals(entry.getValue().getAsJsonObject().get("type").getAsString());
+                    lights.put(block.get(), new PackLight(rgb, point));
+                }
+                RadianteRenderer.LOGGER.info("Using the local lighting of {} for {} blocks", resource.sourcePackId(),
+                    blocks.size());
+            } catch (Exception e) {
+                RadianteRenderer.LOGGER.warn("Could not read the local lighting of {}", resource.sourcePackId(), e);
+            }
+        }
+        if (lights.isEmpty() && packLights.isEmpty()) {
+            return;
+        }
+        if (unknown > 0) {
+            // A Bedrock-only block (an add-on's own, Education Edition's coloured torches) has no Java counterpart.
+            RadianteRenderer.LOGGER.info("{} local lighting entries name no Java block and are ignored", unknown);
+        }
+        packLights = lights;
+        COLOURS.clear();
+        ChunkManager.markAllDirty();
+    }
+
+    /**
+     * Bedrock's colour with its hue and saturation, at full brightness: these lights take their strength from
+     * Radiante's own calibration (or the block's light level), and a pack's dark colour (a lantern's #301d0f) would
+     * otherwise leave the light nearly off.
+     */
+    private static int[] fullBrightness(com.google.gson.JsonArray colour) {
+        if (colour == null || colour.size() < 3) {
+            return null;
+        }
+        int r = colour.get(0).getAsInt();
+        int g = colour.get(1).getAsInt();
+        int b = colour.get(2).getAsInt();
+        int max = Math.max(r, Math.max(g, b));
+        if (max <= 0) {
+            return null;
+        }
+        return new int[] {r * 255 / max, g * 255 / max, b * 255 / max};
+    }
+
+    /** The pack's colour for this block when it lists one, the given colour otherwise. */
+    private static int[] packColourOr(Block block, int r, int g, int b) {
+        PackLight light = packLights.get(block);
+        return light != null ? light.rgb() : new int[] {r, g, b};
+    }
+
+    /** Light level of a torch: a block a pack lights as a point light gets this light's strength at that level. */
+    private static final float TORCH_LEVEL = 14.0f;
+
+    /**
+     * Where a lit candle's flames are, per candle count (vanilla's flame particles): each one gets its share of the
+     * block's light, so a cluster of four is lit from its four wicks.
+     */
+    private static final float[][][] CANDLE_FLAMES = {
+        {{0.5f, 0.5f, 0.5f}},
+        {{0.375f, 0.44f, 0.5f}, {0.625f, 0.5f, 0.44f}},
+        {{0.5f, 0.313f, 0.625f}, {0.375f, 0.44f, 0.5f}, {0.56f, 0.5f, 0.44f}},
+        {{0.44f, 0.313f, 0.56f}, {0.625f, 0.44f, 0.56f}, {0.375f, 0.44f, 0.375f}, {0.56f, 0.5f, 0.375f}},
+    };
+
+    /**
+     * A point light a pack's local lighting asks for at a block that has none of its own here: candles at their
+     * flames, anything else at its middle; as strong as a torch's at the block's light level, and nothing while the
+     * block gives no light (an unlit candle).
+     */
+    private static void packPointLight(BlockState state, int[] rgb, float x, float y, float z, PBRVertexWriter writer) {
+        int level = state.getLightEmission();
+        if (level <= 0) {
+            return;
+        }
+        float strength = CAST_STRENGTH * level / TORCH_LEVEL;
+        Block block = state.getBlock();
+        if (block instanceof net.minecraft.world.level.block.CandleBlock) {
+            int candles = Math.clamp(state.getValue(net.minecraft.world.level.block.CandleBlock.CANDLES), 1, 4);
+            float[][] flames = CANDLE_FLAMES[candles - 1];
+            for (float[] flame : flames) {
+                writer.pointLight(x + flame[0], y + flame[1], z + flame[2], rgb[0], rgb[1], rgb[2],
+                    strength / flames.length, RADIUS);
+            }
+        } else if (block instanceof net.minecraft.world.level.block.CandleCakeBlock) {
+            writer.pointLight(x + 0.5f, y + 0.95f, z + 0.5f, rgb[0], rgb[1], rgb[2], strength, RADIUS);
+        } else {
+            writer.pointLight(x + 0.5f, y + 0.5f, z + 0.5f, rgb[0], rgb[1], rgb[2], strength, LANTERN_RADIUS);
         }
     }
 
@@ -105,7 +248,11 @@ final class BedrockPointLights {
         java.util.Collections.synchronizedMap(new java.util.IdentityHashMap<>());
 
     private static java.util.Optional<int[]> colourFor(Block block) {
-        return java.util.Optional.ofNullable(colourOf0(block));
+        int[] own = colourOf0(block);
+        // An enabled pack's local lighting recolours the lights this block has; it adds none here (packPointLight
+        // does, apart from the held light, which keeps a candle as dim in the hand as it was).
+        PackLight pack = own == null ? null : packLights.get(block);
+        return java.util.Optional.ofNullable(pack != null ? pack.rgb() : own);
     }
 
     private static int[] colourOf0(Block block) {
@@ -155,8 +302,12 @@ final class BedrockPointLights {
 
     /** Whether the block has one of these lights, in some state. */
     static boolean hasLight(Block block) {
-        return block == Blocks.CAVE_VINES || block == Blocks.CAVE_VINES_PLANT || block == Blocks.FIREFLY_BUSH
-            || isFlame(block) || colourOf(block) != null;
+        if (block == Blocks.CAVE_VINES || block == Blocks.CAVE_VINES_PLANT || block == Blocks.FIREFLY_BUSH
+            || isFlame(block) || colourOf(block) != null) {
+            return true;
+        }
+        PackLight pack = packLights.get(block);
+        return pack != null && pack.point();
     }
 
     /** A torch on a wall: its flame higher, and a little towards the wall it hangs on. */
