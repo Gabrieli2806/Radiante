@@ -263,6 +263,7 @@
   "options.radiante.version": "Radiante %s · Bedrock pack converter %s",
   "options.radiante.bedrock_materials": "Bedrock Pack Materials",
   "options.radiante.bedrock_materials.tooltip": "For Bedrock RTX packs (.mcpack): reads metal, roughness and shine straight from the pack's MER maps, as Bedrock does. No effect on Java packs.",
+  "pack.radiante.bedrock_addon": "Bedrock add-on: resource pack only. Behavior pack (%s) not supported on Java",
   "options.radiante.volumetric_fog_samples": "Volumetric Fog Quality",
   "options.radiante.volumetric_fog_samples.tooltip": "Samples per ray for volumetric fog. Lower is faster and a little noisier; higher is smoother and slower.",
   "options.radiante.atmosphere_style": "Atmosphere",

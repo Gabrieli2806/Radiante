@@ -22,6 +22,47 @@ variedad de materiales que lo incluido.
 
 <!-- Captura pendiente: la lista de resource packs con un .mcpack visible y activable -->
 
+### Archivos `.mcaddon`
+
+Un `.mcaddon` (y un `.mcpack` que trae varios packs) funciona igual: colócalo en la carpeta
+`resourcepacks` y aparece en la lista con su nombre de archivo, con el icono y el nombre del
+resource pack que trae dentro.
+
+- Radiante busca todos los packs que contiene: carpetas con un `manifest.json` a cualquier
+  profundidad, y archivos `.mcpack` dentro de él.
+- Solo se usan los **resource packs**. Los behavior packs (bloques propios, funciones, scripts de
+  JavaScript, como las luces dinámicas por script de algunos add-ons) solo funcionan en el motor de
+  Bedrock y se omiten: la lista de packs lo indica bajo el nombre del add-on ("Add-on de Bedrock:
+  solo el resource pack") y el log dice cuáles. Arrastrar un `.mcaddon` a la pantalla de packs
+  también funciona.
+- Un resource pack con **subpacks** se lee como su primer subpack puesto sobre el pack. Bedrock deja
+  elegir otro en los ajustes del pack; aquí todavía no hay esa opción.
+- Si un `.mcaddon` trae varios resource packs, se apilan en el orden en que se encuentran, el
+  primero arriba.
+- Un **attachable del escudo** que le fija piezas (la antorcha de Vazah's Dynamic Lights, por
+  ejemplo) se dibuja sobre el escudo de Java, en cada mano como lo dibuja el pack, y sus texels
+  brillantes brillan. Con los perfiles Bedrock RTX el escudo ilumina el mundo desde la mano como una
+  antorcha (del color de su llama); en los demás perfiles, como un bloque de luz en la mano. Solo se
+  usa el aspecto por defecto del pack: las variantes que Bedrock elige al jugar (antorcha apagada
+  bajo el agua, antorcha de almas) no. Los attachables de otros ítems no se convierten.
+- Límites: los archivos comprimidos dentro del archivo solo se descomprimen hasta un límite de tamaño
+  y cantidad (y nunca uno comprimido de forma sospechosa); lo que se deja fuera aparece en el log.
+
+### Colores de luz de Vibrant Visuals
+
+Un pack con iluminación local de Vibrant Visuals (`local_lighting/local_lighting.json`, el color de
+la luz de cada bloque que ilumina) trae esos colores, mientras el pack está activado y con los
+perfiles **Bedrock RTX**, que son los que ponen luces puntuales:
+
+- Antorchas, faroles, la vara del End, el faro, el fuego, las fogatas, las bayas brillantes y el
+  arbusto de luciérnagas toman el color del pack para la luz que dan (también en la mano, para
+  antorchas y faroles).
+- Los demás bloques que el pack marca como luz puntual, como velas, pasteles con vela y amatista,
+  reciben una luz puntual propia del color del pack, tan fuerte como su nivel de luz.
+- Solo se usa el tono de cada color: el brillo de cada luz sigue la calibración de Radiante. Los
+  bloques que el pack marca como luz estática (lava, luces de rana, lámparas de redstone) conservan
+  el brillo de su textura; su color todavía no se aplica.
+
 ### Qué convierte exactamente
 
 Bedrock describe cada textura con un "texture set": una textura de color, un mapa MER(S)
