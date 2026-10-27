@@ -36,7 +36,7 @@ vec3 sampleTransmittance(float r, float mu) {
 // Light arriving at the ray origin from the sun (sun above the horizon) or the moon.
 vec3 celestialRadiance(vec3 toSun) {
     if (!(toSun.y > 0)) {
-        return VPT_MOON_RADIANCE * worldUBO.moonBrightness;
+        return VPT_MOON_RADIANCE * worldUBO.moonBrightness * celestialMoonLitFraction();
     }
     // The planet's centre sits RG below the world origin.
     vec3 fromCentre = gl_WorldRayOriginEXT - vec3(0.0, -VPT_ATMOSPHERE_RG, 0.0);
@@ -75,7 +75,8 @@ void main() {
     if (bedrockAtmosphereActive()) {
         // Bedrock RTX's own sun/moon light for this time of day (bedrock_atmosphere.glsl), already faded at the
         // horizon, scaled by the Day/Night Brightness settings relative to their defaults (0.25 and 0.35).
-        float brightnessScale = toSun.y >= 0.0 ? worldUBO.sunBrightness / 0.25 : worldUBO.moonBrightness / 0.35;
+        float brightnessScale = toSun.y >= 0.0 ? worldUBO.sunBrightness / 0.25
+                                               : worldUBO.moonBrightness / 0.35 * celestialMoonLitFraction();
         // The sun's direct light a little under Bedrock's (BEDROCK_SUN_SCALE): at full strength daylight read harsh,
         // sunlit ground near white. The sky's light is left as it is, so the meter is not handed the whole cut back.
         vec3 bedrockLight = bedrockCelestialLight(toSun.y) * brightnessScale * (toSun.y >= 0.0 ? BEDROCK_SUN_SCALE : 1.0);
