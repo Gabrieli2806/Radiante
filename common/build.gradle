@@ -13,6 +13,15 @@ dependencies {
 	compileOnly "io.github.llamalad7:mixinextras-common:${rootProject.mixinextras_version}"
 	implementation "org.yaml:snakeyaml:${rootProject.snakeyaml_version}"
 	implementation "org.tukaani:xz:${rootProject.xz_version}"
+
+	// Unit tests of the code that needs no running game (the Bedrock pack reader).
+	testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
+	testImplementation "com.google.code.gson:gson:2.13.2"
+	testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.10.2"
+}
+
+test {
+	useJUnitPlatform()
 }
 
 // JNI headers for the native renderer.

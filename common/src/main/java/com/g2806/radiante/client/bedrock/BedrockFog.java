@@ -6,12 +6,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 
 /**
  * A Bedrock pack's per-biome volumetric fog, as Radiante's biome haze reads it
@@ -55,25 +52,19 @@ final class BedrockFog {
     }
 
     /** The fog file for the converted pack, or null when the pack has no volumetric fog. */
-    static byte[] convert(ZipFile zip, String root) throws IOException {
+    static byte[] convert(BedrockPackFiles files) throws IOException {
         Map<String, JsonObject> fogsById = new HashMap<>();
         Map<String, String> fogIdByBiome = new HashMap<>();
         Map<String, Integer> waterColourByBiome = new HashMap<>();
-        for (var entries = zip.entries(); entries.hasMoreElements(); ) {
-            ZipEntry entry = entries.nextElement();
-            String name = entry.getName();
-            if (!name.startsWith(root)) {
-                continue;
-            }
-            String path = name.substring(root.length());
+        for (String path : files.paths()) {
             try {
                 if (path.startsWith("fogs/") && path.endsWith(".json")) {
-                    JsonObject settings = read(zip, entry).getAsJsonObject("minecraft:fog_settings");
+                    JsonObject settings = read(files, path).getAsJsonObject("minecraft:fog_settings");
                     if (settings != null && settings.has("description")) {
                         fogsById.put(settings.getAsJsonObject("description").get("identifier").getAsString(), settings);
                     }
                 } else if (path.startsWith("biomes/") && path.endsWith(".json")) {
-                    JsonObject biome = read(zip, entry).getAsJsonObject("minecraft:client_biome");
+                    JsonObject biome = read(files, path).getAsJsonObject("minecraft:client_biome");
                     JsonObject fog = biome == null ? null
                         : biome.getAsJsonObject("components").getAsJsonObject("minecraft:fog_appearance");
                     String id = biome == null ? null
@@ -201,10 +192,8 @@ final class BedrockFog {
         return out;
     }
 
-    private static JsonObject read(ZipFile zip, ZipEntry entry) throws IOException {
-        try (InputStream in = zip.getInputStream(entry)) {
-            // Bedrock tolerates comments in its JSON; Gson's lenient parser does too.
-            return JsonParser.parseString(new String(in.readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
-        }
+    private static JsonObject read(BedrockPackFiles files, String path) throws IOException {
+        // Bedrock tolerates comments in its JSON; Gson's lenient parser does too.
+        return JsonParser.parseString(new String(files.read(path), StandardCharsets.UTF_8)).getAsJsonObject();
     }
 }

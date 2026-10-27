@@ -259,6 +259,35 @@ public final class DevAutomation {
                 net.minecraft.network.chat.Component.translatable("resourcePack.title")));
             return;
         }
+        if (action.startsWith("drop=")) {
+            // A file dropped on the open screen, as from the desktop: the pack screen asks to copy it in.
+            var screen = minecraft.gui.screen();
+            if (screen != null) {
+                screen.onFilesDrop(List.of(java.nio.file.Path.of(action.substring(5))));
+            }
+            RadianteClient.LOGGER.info("[dev] dropped {} on {}", action.substring(5),
+                screen == null ? "no screen" : screen.getClass().getSimpleName());
+            return;
+        }
+        if (action.equals("confirm")) {
+            // Answers yes to the open confirmation screen (the pack screen's "copy these packs?").
+            var screen = minecraft.gui.screen();
+            if (screen instanceof net.minecraft.client.gui.screens.ConfirmScreen) {
+                try {
+                    java.lang.reflect.Field field =
+                        net.minecraft.client.gui.screens.ConfirmScreen.class.getDeclaredField("callback");
+                    field.setAccessible(true);
+                    ((it.unimi.dsi.fastutil.booleans.BooleanConsumer) field.get(screen)).accept(true);
+                    RadianteClient.LOGGER.info("[dev] confirmed");
+                } catch (ReflectiveOperationException e) {
+                    RadianteClient.LOGGER.warn("[dev] could not confirm", e);
+                }
+            } else {
+                RadianteClient.LOGGER.info("[dev] nothing to confirm on {}",
+                    screen == null ? "no screen" : screen.getClass().getSimpleName());
+            }
+            return;
+        }
         if (action.startsWith("mouse=")) {
             // mouse=x,y: parks the cursor at window pixels, e.g. in a corner so no tooltip covers a screenshot.
             String[] xy = action.substring(6).split(",");
