@@ -14,9 +14,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Lists Bedrock packs ({@code .mcpack}, a zip under another name) in the resource pack folder as packs of their own.
- * Minecraft only takes zips and folders; a .mcpack is handed the LabPBR conversion Radiante keeps for it, so it can be
- * picked like any other pack, under its own file name, with nothing extra left in the folder.
+ * Lists Bedrock packs ({@code .mcpack} and {@code .mcaddon}, zips under other names) in the resource pack folder as
+ * packs of their own. Minecraft only takes zips and folders; a Bedrock file is handed the LabPBR conversion Radiante
+ * keeps for it (of the resource packs inside, for an .mcaddon), so it can be picked like any other pack, under its own
+ * file name, with nothing extra left in the folder.
  */
 @Mixin(PackDetector.class)
 public abstract class PackDetectorMixin {
@@ -28,7 +29,7 @@ public abstract class PackDetectorMixin {
             return;
         }
         if (isDropCheck()) {
-            // A .mcpack dropped on the pack screen is only checked here before being copied into the folder, where
+            // A .mcpack or .mcaddon dropped on the pack screen is only checked here before being copied into the folder, where
             // it gets converted like any other; without this Minecraft turned it away as "not a valid pack".
             // That detector's pack type is the file's Path itself, which it then copies.
             cir.setReturnValue(content);

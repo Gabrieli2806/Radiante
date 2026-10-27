@@ -369,6 +369,7 @@ public final class RadianteRenderer {
         keepOcclusionGraphFed(minecraft, levelRenderState);
         DevProfiler.mark(3);
 
+        BedrockPointLights.reloadPackLightsIfNeeded(minecraft);
         EmissionTiles.registerIfNeeded(minecraft);
         BiomeAmbiance.reloadPackFogIfNeeded(minecraft);
         ChunkManager.applyImportantUploads();

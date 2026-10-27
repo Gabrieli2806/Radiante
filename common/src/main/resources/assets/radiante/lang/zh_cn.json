@@ -263,6 +263,7 @@
   "options.radiante.version": "Radiante %s · 基岩版材质包转换器 %s",
   "options.radiante.bedrock_materials": "基岩版材质包材质",
   "options.radiante.bedrock_materials.tooltip": "适用于 Bedrock RTX 材质包（.mcpack）：像 Bedrock 一样直接从材质包的 MER 贴图读取金属度、粗糙度和光泽。对 Java 材质包无效。",
+  "pack.radiante.bedrock_addon": "Bedrock 附加包：仅使用资源包。行为包（%s）在 Java 版中不受支持",
   "options.radiante.volumetric_fog_samples": "体积雾质量",
   "options.radiante.volumetric_fog_samples.tooltip": "体积雾每条射线的采样数。越低越快但噪点稍多；越高越平滑但更慢。",
   "options.radiante.atmosphere_style": "大气",

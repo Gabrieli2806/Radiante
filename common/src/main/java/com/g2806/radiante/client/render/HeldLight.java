@@ -112,12 +112,22 @@ public final class HeldLight {
      * ground: the same colour, strength and fall-off, so walking into a cave and setting it down changes nothing.
      */
     private static int[] pointLightOf(ItemStack stack) {
-        if (!(stack.getItem() instanceof BlockItem blockItem)
-            || !com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow()) {
+        if (!com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow()) {
+            return null;
+        }
+        int[] pack = BedrockPointLights.packHeldColour(stack.getItem());
+        if (pack != null) {
+            // A shield with a torch on it (an enabled Bedrock pack's attachable) lights as that torch would.
+            return pack;
+        }
+        if (!(stack.getItem() instanceof BlockItem blockItem)) {
             return null;
         }
         return BedrockPointLights.colourOf(blockItem.getBlock());
     }
+
+    /** Light level of a torch, for an item an enabled pack makes a light in the hand. */
+    private static final int TORCH_LEVEL = 14;
 
     /**
      * A set down light has no reach but the inverse square law; the held one's fade (sampleOneHeldLight) starts this
@@ -132,6 +142,9 @@ public final class HeldLight {
         if (stack.is(Items.LAVA_BUCKET)) {
             return 15;
         }
+        if (BedrockPointLights.packHeldColour(stack.getItem()) != null) {
+            return TORCH_LEVEL;
+        }
         if (stack.getItem() instanceof BlockItem blockItem) {
             return blockItem.getBlock().defaultBlockState().getLightEmission();
         }
@@ -139,6 +152,10 @@ public final class HeldLight {
     }
 
     private static Vector3f tintOf(ItemStack stack) {
+        int[] pack = BedrockPointLights.packHeldColour(stack.getItem());
+        if (pack != null) {
+            return new Vector3f(pack[0] / 255.0f, pack[1] / 255.0f, pack[2] / 255.0f);
+        }
         String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
         if (id.contains("soul")) {
             return new Vector3f(0.45f, 0.85f, 1.0f);

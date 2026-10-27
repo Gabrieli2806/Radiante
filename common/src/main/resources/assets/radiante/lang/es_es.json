@@ -263,6 +263,7 @@
   "options.radiante.version": "Radiante %s · Conversor de packs Bedrock %s",
   "options.radiante.bedrock_materials": "Materiales de Packs Bedrock",
   "options.radiante.bedrock_materials.tooltip": "Para packs Bedrock RTX (.mcpack): lee metal, rugosidad y brillo directamente de los mapas MER del pack, como Bedrock. No afecta a packs de Java.",
+  "pack.radiante.bedrock_addon": "Add-on de Bedrock: solo el resource pack. El behavior pack (%s) no funciona en Java",
   "options.radiante.volumetric_fog_samples": "Calidad de Niebla Volumétrica",
   "options.radiante.volumetric_fog_samples.tooltip": "Muestras por rayo de la niebla volumétrica. Menos es más rápido y algo más ruidoso; más es más suave y lento.",
   "options.radiante.atmosphere_style": "Atmósfera",
