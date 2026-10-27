@@ -99,6 +99,27 @@ cambia entre ellos con un clic, copia uno como código para compartir o importa 
 hayan enviado. Un preset lleva luz, cielo, niebla, agua, tono y efectos de cámara; el escalador,
 la generación de fotogramas y el HDR no cambian.
 
+## Paquetes de shaders
+
+**Paquetes de shaders**, junto a Presets, elige el trazador de rayos: el **Radiante PT** incluido
+(el predeterminado) o un paquete que hayas añadido. Los paquetes van en `radiante/shaderpacks/`
+dentro de la carpeta del juego (**Abrir carpeta** la abre), como `.zip` o como carpeta, con el
+`configs.json` del paquete arriba del todo: un zip de una carpeta que contiene el paquete (como el
+"Download ZIP" de GitHub) aparece con ese problema. Es la carpeta propia de Radiante, no la
+`shaderpacks/` del juego, que Iris y OptiFine usan para otro tipo de paquetes.
+
+La lista muestra el icono, el nombre, la versión, el autor y la licencia de cada paquete, cuando
+el paquete los da. Haz clic en un paquete y pulsa **Usar** (o doble clic, o Enter) para cambiar:
+los shaders se compilan como con cualquier otro cambio. Si el paquete no carga o un shader no
+compila, Radiante vuelve a Radiante PT y muestra bajo la lista qué falló (los mensajes del
+compilador, con archivo y línea); **Copiar error** lo copia para el autor del paquete. Cada paquete
+guarda sus ajustes en un archivo a su lado (`<paquete>.zip.txt`), así que cambiar de uno a otro
+los conserva. La mayoría de los ajustes de Radiante son de Radiante PT; otro paquete muestra los
+que ofrece.
+
+Los paquetes hechos para Radiance (el mod del que nació Radiante) usan el mismo formato pero una
+interfaz del renderizador más antigua, y de momento no funcionan tal cual.
+
 ## Avanzado
 
 **Avanzado: NO / SÍ**, abajo, muestra los controles finos de cada sección en grupos plegables bajo

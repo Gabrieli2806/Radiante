@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Shader Packs screen (button beside Presets in Radiante's settings): lists the built-in Radiante PT and the packs in
+  `radiante/shaderpacks/` (zip or folder, with icon, name, version, author and licence from the pack's manifest),
+  opens the folder, and switches packs with the usual background rebuild. A pack that does not load or compile is
+  replaced by Radiante PT again, and the renderer's messages (the compiler's, or why `configs.json` was rejected) are
+  shown under the list with a button to copy them; the renderer now logs why a pack's `configs.json` was rejected
+  instead of quietly loading the built-in pack. Zips that wrap the pack in a folder are flagged in the list.
 - Bedrock `.mcaddon` files (and `.mcpack` files holding several packs) in the resource pack folder are listed and
   converted like a `.mcpack`: the resource packs inside are found (pack folders at any depth, nested `.mcpack`
   files), a pack's first subpack is laid over it, and behavior/script packs are skipped with a line in the log, since

@@ -94,6 +94,26 @@ between them with a click, copy one as a code to share, or import a code someone
 preset holds lighting, sky, fog, water, tone and camera effects; the upscaler, frame generation
 and HDR stay as they are.
 
+## Shader packs
+
+**Shader Packs**, beside Presets, chooses the path tracer: the built-in **Radiante PT** (the
+default) or a pack you added. Packs go in `radiante/shaderpacks/` inside the game folder (**Open
+Folder** opens it), as a `.zip` or as a folder, with the pack's `configs.json` at the top: a zip
+of a folder that holds the pack (as GitHub's "Download ZIP" makes) is listed with that problem.
+This is Radiante's own folder, not the game's `shaderpacks/`, which Iris and OptiFine use for a
+different kind of pack.
+
+The list shows each pack's icon, name, version, author and licence, where the pack gives them.
+Click a pack and press **Use** (or double-click it, or press Enter) to switch: the shaders compile
+as for any other change. If the pack does not load or a shader does not compile, Radiante goes
+back to Radiante PT and shows what went wrong under the list (the compiler's messages, with file
+and line); **Copy Error** copies it for the pack's author. Each pack keeps its own settings in a
+file next to it (`<pack>.zip.txt`), so switching back and forth keeps them. Most of Radiante's
+settings belong to Radiante PT; another pack shows the ones it offers.
+
+Packs made for Radiance (the mod Radiante grew from) use the same format but an older renderer
+interface, and do not work as they are yet.
+
 ## Advanced
 
 **Advanced: OFF / ON**, at the bottom, shows the fine-tuning controls of each section in folding

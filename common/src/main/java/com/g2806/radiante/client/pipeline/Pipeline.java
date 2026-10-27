@@ -712,6 +712,43 @@ public class Pipeline {
         return null;
     }
 
+    /**
+     * The shader pack the pipeline uses, as stored (relative to the mod's folder, or absolute); the built-in pack's
+     * path when none is set. Null without a ray tracing module.
+     */
+    public static String shaderPackPath() {
+        AttributeConfig attribute = findAttribute(getRayTracingModule(), RAY_TRACING_SHADER_PACK_PATH_ATTRIBUTE);
+        if (attribute == null) {
+            return null;
+        }
+        return attribute.value == null || attribute.value.isBlank() ? BUILT_IN_SHADER_PACK_PATH : attribute.value;
+    }
+
+    /** The built-in pack (radiante-pt) as the pipeline stores it. */
+    public static String builtInShaderPackPath() {
+        return BUILT_IN_SHADER_PACK_PATH;
+    }
+
+    /**
+     * Switches the pipeline to another shader pack; true when it changed. That takes a build, which loads the pack's
+     * own attributes and the values it saved in its settings file (the pack's name plus ".txt") instead of these.
+     */
+    public static boolean selectShaderPack(String path) {
+        AttributeConfig attribute = findAttribute(getRayTracingModule(), RAY_TRACING_SHADER_PACK_PATH_ATTRIBUTE);
+        String value = path == null || path.isBlank() ? BUILT_IN_SHADER_PACK_PATH : path;
+        if (attribute == null || Objects.equals(shaderPackPath(), value)) {
+            return false;
+        }
+        logSettingChange(RAY_TRACING_SHADER_PACK_PATH_ATTRIBUTE, attribute.value, value);
+        assign(attribute, value);
+        return true;
+    }
+
+    /** Whether a pack needs chunk emission collection that is switched off, so the build would use the built-in. */
+    public static boolean shaderPackUnavailable(String path) {
+        return !isShaderPackValueSelectable(path);
+    }
+
     private static Path resolveShaderPackPath(String configuredPath) {
         String value = configuredPath == null ? "" : configuredPath.trim();
         Path shaderPackPath = value.isEmpty()

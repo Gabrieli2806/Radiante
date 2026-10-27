@@ -367,6 +367,13 @@ public final class DevAutomation {
             minecraft.gui.setScreen(new com.g2806.radiante.client.gui.RadianteOptionsScreen(minecraft.gui.screen(), minecraft.options));
             return;
         }
+        if (action.equals("shaderpacks")) {
+            // The shader pack list, as the settings' Shader Packs button opens it; back to the settings when left.
+            var options = minecraft.options;
+            minecraft.gui.setScreen(new com.g2806.radiante.client.gui.ShaderPacksScreen(
+                () -> new com.g2806.radiante.client.gui.RadianteOptionsScreen(null, options)));
+            return;
+        }
         if (action.startsWith("settings=")) {
             minecraft.gui.setScreen(com.g2806.radiante.client.gui.RadianteOptionsScreen.showingPreset(minecraft.gui.screen(),
                 minecraft.options, com.g2806.radiante.client.pipeline.Presets.valueOf(action.substring(9))));
