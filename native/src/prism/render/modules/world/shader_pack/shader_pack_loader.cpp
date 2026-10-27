@@ -1,6 +1,7 @@
 #include "prism/render/modules/world/shader_pack/shader_pack_internal.hpp"
 
 #include "prism/render/renderer.hpp"
+#include "prism/util/logging.hpp"
 
 #include "mz.h"
 #include "mz_strm.h"
@@ -1203,7 +1204,13 @@ ShaderPackLoader::load(const fs::path &path, const fs::path &builtInPath, const 
     const fs::path fallbackPath = underRendererFolder(builtInPath);
     const fs::path requestedPath = underRendererFolder(path.empty() ? builtInPath : path);
     if (tryLoad(requestedPath)) return result;
-    if (!path.empty() && requestedPath != fallbackPath) tryLoad(fallbackPath);
+    if (!path.empty() && requestedPath != fallbackPath) {
+        // Said where Java reads it (RendererProxy.drainNativeErrors): without it a pack whose configs.json is wrong
+        // ran as the built-in one without a word, and the shader pack screen could not say why.
+        radiante::err() << "[ShaderPack] " << requestedPath.string() << " could not be loaded: " << result.error
+                        << "; using the built-in pack" << std::endl;
+        tryLoad(fallbackPath);
+    }
     return result;
 }
 
