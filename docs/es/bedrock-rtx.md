@@ -37,6 +37,14 @@ resource pack que trae dentro.
   elegir otro en los ajustes del pack; aquí todavía no hay esa opción.
 - Si un `.mcaddon` trae varios resource packs, se apilan en el orden en que se encuentran, el
   primero arriba.
+- Un **attachable del escudo** que le fija piezas (la antorcha de Vazah's Dynamic Lights, por
+  ejemplo) se dibuja sobre el escudo de Java, en cada mano como lo dibuja el pack, y sus texels
+  brillantes brillan. Con los perfiles Bedrock RTX el escudo ilumina el mundo desde la mano como una
+  antorcha (del color de su llama); en los demás perfiles, como un bloque de luz en la mano. Solo se
+  usa el aspecto por defecto del pack: las variantes que Bedrock elige al jugar (antorcha apagada
+  bajo el agua, antorcha de almas) no. Los attachables de otros ítems no se convierten.
+- Límites: los archivos comprimidos dentro del archivo solo se descomprimen hasta un límite de tamaño
+  y cantidad (y nunca uno comprimido de forma sospechosa); lo que se deja fuera aparece en el log.
 
 ### Colores de luz de Vibrant Visuals
 

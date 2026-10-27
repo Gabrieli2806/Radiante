@@ -9,7 +9,9 @@ All notable changes to this project are documented in this file.
   files), a pack's first subpack is laid over it, and behavior/script packs are skipped with a line in the log, since
   they only run in Bedrock. A pack's Vibrant Visuals light colours (`local_lighting.json`) colour the point lights of
   torches, lanterns, fire and the like while it is enabled, and add point lights to the other blocks it lists as one
-  (candles, amethyst), in the Bedrock RTX profiles.
+  (candles, amethyst), in the Bedrock RTX profiles. A pack's shield attachable (the torch shield of Vazah's Dynamic
+  Lights) is drawn on Java's shield with its glowing texels, and the shield then gives a light in the hand. Nested
+  archives are unpacked only within size, count and compression-ratio limits.
 - Leaves are marked for the shader pack (`LEAVES_SURFACE_BIT`, `isLeavesSurface` in `util/vertex.glsl`), as small
   plants already are, so a pack can treat the leaves of trees apart: let light through them, say. Nothing changes in
   the built-in pack.

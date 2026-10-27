@@ -118,6 +118,16 @@ final class BedrockPointLights {
     /** The enabled packs' lights by block; empty without such a pack. Read by the chunk builders. */
     private static volatile java.util.Map<Block, PackLight> packLights = java.util.Map.of();
     private static Object packLightsLoadedFor;
+    /**
+     * Items that light the world while held in an enabled pack (a shield with a torch fixed to it, see
+     * BedrockAttachables), with the colour of their glowing texels, scaled to full brightness. Read by HeldLight.
+     */
+    private static volatile java.util.Map<net.minecraft.world.item.Item, int[]> packHeld = java.util.Map.of();
+
+    /** The colour an enabled pack gives this item as a light in the hand, or null. */
+    static int[] packHeldColour(net.minecraft.world.item.Item item) {
+        return packHeld.get(item);
+    }
 
     /**
      * Reads the local lighting of the enabled Bedrock packs, once per resource reload (each one rebuilds the block
@@ -133,13 +143,26 @@ final class BedrockPointLights {
         }
         packLightsLoadedFor = key;
         java.util.Map<Block, PackLight> lights = new java.util.IdentityHashMap<>();
+        java.util.Map<net.minecraft.world.item.Item, int[]> held = new java.util.IdentityHashMap<>();
         int unknown = 0;
         // Bottom pack first, so the ones above override it.
         for (net.minecraft.server.packs.resources.Resource resource
             : minecraft.getResourceManager().getResourceStack(PACK_LIGHTS)) {
             try (java.io.Reader reader = resource.openAsReader()) {
-                com.google.gson.JsonObject blocks = com.google.gson.JsonParser.parseReader(reader).getAsJsonObject()
-                    .getAsJsonObject("blocks");
+                com.google.gson.JsonObject root = com.google.gson.JsonParser.parseReader(reader).getAsJsonObject();
+                com.google.gson.JsonObject blocks = root.getAsJsonObject("blocks");
+                if (root.has("held")) {
+                    for (java.util.Map.Entry<String, com.google.gson.JsonElement> entry
+                        : root.getAsJsonObject("held").entrySet()) {
+                        net.minecraft.resources.Identifier id = net.minecraft.resources.Identifier.tryParse(entry.getKey());
+                        java.util.Optional<net.minecraft.world.item.Item> item = id == null ? java.util.Optional.empty()
+                            : net.minecraft.core.registries.BuiltInRegistries.ITEM.getOptional(id);
+                        int[] rgb = fullBrightness(entry.getValue().getAsJsonArray());
+                        if (item.isPresent() && rgb != null) {
+                            held.put(item.get(), rgb);
+                        }
+                    }
+                }
                 for (java.util.Map.Entry<String, com.google.gson.JsonElement> entry : blocks.entrySet()) {
                     net.minecraft.resources.Identifier id = net.minecraft.resources.Identifier.tryParse(entry.getKey());
                     java.util.Optional<Block> block = id == null ? java.util.Optional.empty()
@@ -158,6 +181,7 @@ final class BedrockPointLights {
                 RadianteRenderer.LOGGER.warn("Could not read the local lighting of {}", resource.sourcePackId(), e);
             }
         }
+        packHeld = held;
         if (lights.isEmpty() && packLights.isEmpty()) {
             return;
         }

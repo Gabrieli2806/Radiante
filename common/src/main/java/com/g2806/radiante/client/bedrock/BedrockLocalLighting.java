@@ -43,21 +43,31 @@ public final class BedrockLocalLighting {
 
     /** The light file for the converted pack, or null when the pack has no local lighting. */
     static byte[] convert(BedrockPackFiles files) throws IOException {
+        return convert(files, null);
+    }
+
+    /**
+     * As above, with the items that light the world while held ({@code {"minecraft:shield": [r, g, b]}}, see
+     * BedrockAttachables), or null for none.
+     */
+    static byte[] convert(BedrockPackFiles files, JsonObject held) throws IOException {
         byte[] source = files.read(SOURCE);
-        if (source == null) {
-            return null;
+        JsonObject blocks = new JsonObject();
+        if (source != null) {
+            try {
+                blocks = parse(new String(source, StandardCharsets.UTF_8));
+            } catch (RuntimeException e) {
+                blocks = new JsonObject();
+            }
         }
-        JsonObject blocks;
-        try {
-            blocks = parse(new String(source, StandardCharsets.UTF_8));
-        } catch (RuntimeException e) {
-            return null;
-        }
-        if (blocks.isEmpty()) {
+        if (blocks.isEmpty() && (held == null || held.isEmpty())) {
             return null;
         }
         JsonObject out = new JsonObject();
         out.add("blocks", blocks);
+        if (held != null && !held.isEmpty()) {
+            out.add("held", held);
+        }
         return new GsonBuilder().setPrettyPrinting().create().toJson(out).getBytes(StandardCharsets.UTF_8);
     }
 

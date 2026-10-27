@@ -188,6 +188,70 @@ class BedrockPackFilesTest {
         }
     }
 
+    /**
+     * A shield attachable with a torch on each side (Vazah's Dynamic Lights): the torches become an item model over
+     * Java's shield, one per hand, and the flame's emissive texels light the texture and the hand.
+     */
+    @Test
+    void torchShield() throws IOException {
+        Map<String, byte[]> entries = new LinkedHashMap<>();
+        entries.put("rp/manifest.json", bytes(RP_MANIFEST));
+        entries.put("rp/attachables/shield.entity.json", bytes("""
+            {"format_version": "1.10.0", "minecraft:attachable": {"description": {"identifier": "minecraft:shield",
+              "materials": {"default": "entity_alphatest", "torch": "entity_emissive"},
+              "textures": {"default": "textures/entity/shield_torch"},
+              "geometry": {"default": "geometry.shield_torch"},
+              "render_controllers": ["controller.render.shield_torch"]}}}
+            """));
+        entries.put("rp/render_controllers/shield.json", bytes("""
+            {"format_version": "1.10", "render_controllers": {"controller.render.shield_torch": {
+              "part_visibility": [{"torch_r": "v.main_hand"}, {"torch_l": "v.off_hand"}]}}}
+            """));
+        entries.put("rp/models/entity/shield.geo.json", bytes("""
+            {"format_version": "1.16.0", "minecraft:geometry": [{"description": {"identifier": "geometry.shield_torch",
+              "texture_width": 64, "texture_height": 64}, "bones": [
+              {"name": "shield", "pivot": [1, 15.5, 3], "cubes": [
+                {"origin": [0, 25, 0], "size": [2, 6, 6], "uv": [26, 0]},
+                {"origin": [0, 26, 1], "size": [2, 4, 4], "inflate": 0.01, "uv": [29, 18]},
+                {"origin": [-5, 17, -1], "size": [12, 22, 1], "uv": [0, 0]}]},
+              {"name": "torch_r", "parent": "shield", "cubes": [{"origin": [-6, 36, -1], "size": [1, 5, 1],
+                "uv": {"north": {"uv": [26, 13], "uv_size": [2, 10]}}}]},
+              {"name": "torch_l", "parent": "shield", "cubes": [{"origin": [7, 36, -1], "size": [1, 5, 1],
+                "uv": {"north": {"uv": [26, 13], "uv_size": [2, 10]}}}]}]}]}
+            """));
+        java.awt.image.BufferedImage texture = new java.awt.image.BufferedImage(64, 64,
+            java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        texture.setRGB(26, 13, 0x0BFFAA14);
+        texture.setRGB(26, 15, 0xFF9F7F50);
+        ByteArrayOutputStream png = new ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(texture, "png", png);
+        entries.put("rp/textures/entity/shield_torch.png", png.toByteArray());
+        Path addon = zip("Shield.mcaddon", entries);
+
+        try (BedrockPackFiles files = BedrockPackFiles.open(addon, temp.resolve("scratch"))) {
+            BedrockAttachables shield = BedrockAttachables.convert(files);
+            Map<String, byte[]> out = shield.files();
+            assertTrue(out.containsKey("assets/minecraft/items/shield.json"));
+            assertTrue(out.containsKey("assets/minecraft/textures/" + BedrockAttachables.TEXTURE + "_s.png"));
+            JsonObject right = JsonParser.parseString(string(out.get(
+                "assets/radiante/models/item/bedrock_shield_right.json"))).getAsJsonObject();
+            // Only the right torch, at x 6 to 7 above the plate's top edge (y 11), as Java's shield model has it.
+            assertEquals(1, right.getAsJsonArray("elements").size());
+            JsonObject torch = right.getAsJsonArray("elements").get(0).getAsJsonObject();
+            assertEquals(6.0f, torch.getAsJsonArray("from").get(0).getAsFloat());
+            assertEquals(8.0f, torch.getAsJsonArray("from").get(1).getAsFloat());
+            assertEquals(13.0f, torch.getAsJsonArray("to").get(1).getAsFloat());
+            assertTrue(out.containsKey("assets/radiante/models/item/bedrock_shield_left_blocking.json"));
+            JsonObject held = shield.held();
+            assertNotNull(held);
+            assertEquals(255, held.getAsJsonArray("minecraft:shield").get(0).getAsInt());
+
+            JsonObject lights = JsonParser.parseString(string(BedrockLocalLighting.convert(files, held)))
+                .getAsJsonObject();
+            assertTrue(lights.has("held"));
+        }
+    }
+
     @Test
     void cacheNames() {
         assertEquals("Pack.zip", BedrockPackConverter.cacheName("Pack.mcpack"));

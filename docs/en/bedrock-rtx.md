@@ -35,6 +35,14 @@ the resource pack inside.
   you pick another on its pack settings; there is no such choice here yet.
 - If an `.mcaddon` holds several resource packs, they are layered in the order found, the first on
   top.
+- A **shield attachable** that fixes parts to the shield (the torch of Vazah's Dynamic Lights, for
+  example) is drawn on Java's shield, in each hand as the pack draws it, and its glowing texels glow.
+  With the Bedrock RTX profiles the shield then lights the world from the hand like a torch (the
+  colour of its flame), in the other profiles like a held light block. Only the pack's default look
+  is used: variants Bedrock picks while playing (an unlit torch under water, a soul torch) are not.
+  Other items' attachables are not converted.
+- Limits: archives inside the file are unpacked only up to a size and count limit (and never one
+  packed suspiciously tightly); anything left out is named in the log.
 
 ### Vibrant Visuals light colours
 

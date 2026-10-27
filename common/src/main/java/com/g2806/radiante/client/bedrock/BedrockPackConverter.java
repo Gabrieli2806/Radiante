@@ -42,7 +42,7 @@ public final class BedrockPackConverter {
     /** Largest size a Bedrock texture set is converted at, in pixels per side; finer maps are averaged down to it. */
     private static final int MAX_DETAIL = 128;
     /** Stored as the zip comment; a pack converted by another version of the converter is converted again. */
-    private static final String CONVERTER_VERSION = "radiante-bedrock-converter 21";
+    private static final String CONVERTER_VERSION = "radiante-bedrock-converter 22";
 
     /** The converter's version, for the log and the settings screen; packs converted by another are converted again. */
     public static String converterVersion() {
@@ -242,7 +242,11 @@ public final class BedrockPackConverter {
             if (fog != null) {
                 write(zos, BedrockFog.PATH, fog);
             }
-            byte[] lights = BedrockLocalLighting.convert(files);
+            BedrockAttachables shield = BedrockAttachables.convert(files);
+            for (Map.Entry<String, byte[]> file : shield.files().entrySet()) {
+                write(zos, file.getKey(), file.getValue());
+            }
+            byte[] lights = BedrockLocalLighting.convert(files, shield.held());
             if (lights != null) {
                 write(zos, BedrockLocalLighting.PATH, lights);
             }
@@ -607,7 +611,7 @@ public final class BedrockPackConverter {
         return null;
     }
 
-    private static byte[] png(TgaReader.Image image) throws IOException {
+    static byte[] png(TgaReader.Image image) throws IOException {
         BufferedImage buffered = new BufferedImage(image.width(), image.height(), BufferedImage.TYPE_INT_ARGB);
         buffered.setRGB(0, 0, image.width(), image.height(), image.argb(), 0, image.width());
         ByteArrayOutputStream out = new ByteArrayOutputStream();
