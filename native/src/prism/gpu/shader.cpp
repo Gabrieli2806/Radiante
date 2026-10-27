@@ -3,6 +3,8 @@
 #include "prism/gpu/device.hpp"
 #include "prism/util/logging.hpp"
 
+#include <spirv-tools/optimizer.hpp>
+
 #include <algorithm>
 #include <atomic>
 #include <cctype>
@@ -542,6 +544,24 @@ void declareOpacityMicromaps(std::vector<uint32_t> &spirv) {
     spirv.insert(spirv.begin() + static_cast<ptrdiff_t>(afterCapabilities), added.begin(), added.end());
 }
 
+// shaderc's performance passes, run without the validation the optimizer does first. A module with the micromap flag
+// but not yet its capability (declareOpacityMicromaps) is invalid until that capability goes in, and newer SPIRV-Tools
+// check the ray flags against the capabilities (Vulkan SDK 1.4.363: "The ForceOpacityMicromap2StateKHR flag requires
+// the RayTracingOpacityMicromapKHR ... capabilities"), so shaderc's own optimization failed and no ray tracing shader
+// compiled. Should the optimizer fail anyway, the unoptimized module is kept: slower, but it runs.
+std::vector<uint32_t> optimizeUnvalidated(std::vector<uint32_t> spirv, const std::string &sourcePath) {
+    spvtools::Optimizer optimizer(SPV_ENV_VULKAN_1_4);
+    optimizer.RegisterPerformancePasses();
+    spvtools::OptimizerOptions optimizerOptions;
+    optimizerOptions.set_run_validator(false);
+    std::vector<uint32_t> optimized;
+    if (!optimizer.Run(spirv.data(), spirv.size(), &optimized, optimizerOptions)) {
+        shaderErr() << "could not optimize " << sourcePath << "; using it unoptimized" << std::endl;
+        return spirv;
+    }
+    return optimized;
+}
+
 std::vector<uint32_t> compileSource(const std::string &sourcePath,
                                     VkShaderStageFlagBits stage,
                                     const std::unordered_map<std::string, std::string> &definitions,
@@ -559,11 +579,17 @@ std::vector<uint32_t> compileSource(const std::string &sourcePath,
     searchPath.push_back(fs::path(sourcePath).parent_path());
     for (const std::string &directory : includeDirectories) { searchPath.emplace_back(directory); }
 
+    const auto ommDefinition = definitions.find("VPT_OMM_SUPPORTED");
+    const bool micromaps = ommDefinition != definitions.end() && ommDefinition->second == "1" &&
+                           (stage & (VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR |
+                                     VK_SHADER_STAGE_MISS_BIT_KHR)) != 0;
+
     shaderc::CompileOptions options;
     for (const auto &[name, value] : definitions) { options.AddMacroDefinition(name, value); }
     options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_4);
     options.SetSourceLanguage(shaderc_source_language_glsl);
-    options.SetOptimizationLevel(shaderc_optimization_level_performance);
+    // Modules with the micromap flag are optimized below instead (optimizeUnvalidated), as shaderc validates first.
+    options.SetOptimizationLevel(micromaps ? shaderc_optimization_level_zero : shaderc_optimization_level_performance);
     options.SetIncluder(std::make_unique<ShaderIncluder>(std::move(searchPath)));
 
     const shaderc::Compiler compiler;
@@ -575,13 +601,9 @@ std::vector<uint32_t> compileSource(const std::string &sourcePath,
         throw std::runtime_error("shader " + sourcePath + " does not compile");
     }
     std::vector<uint32_t> spirv(result.cbegin(), result.cend());
+    if (micromaps) { spirv = optimizeUnvalidated(std::move(spirv), sourcePath); }
     decorateNonUniformResources(spirv);
-    if (const auto micromaps = definitions.find("VPT_OMM_SUPPORTED");
-        micromaps != definitions.end() && micromaps->second == "1" &&
-        (stage & (VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR |
-                  VK_SHADER_STAGE_MISS_BIT_KHR)) != 0) {
-        declareOpacityMicromaps(spirv);
-    }
+    if (micromaps) { declareOpacityMicromaps(spirv); }
     return spirv;
 }
 
