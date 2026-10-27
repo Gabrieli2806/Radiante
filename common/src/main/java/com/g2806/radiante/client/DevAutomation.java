@@ -374,6 +374,14 @@ public final class DevAutomation {
                 () -> new com.g2806.radiante.client.gui.RadianteOptionsScreen(null, options)));
             return;
         }
+        if (action.startsWith("shaderpack=")) {
+            // shaderpack=shaderpacks/<pack>.zip (or "builtin"): switches pack at once, for comparing packs in one view.
+            String path = action.substring(11);
+            boolean changed = com.g2806.radiante.client.pipeline.Pipeline.selectShaderPack(path.equals("builtin")
+                ? com.g2806.radiante.client.pipeline.Pipeline.builtInShaderPackPath() : path);
+            RadianteClient.LOGGER.info("[dev] shader pack {} rebuilt {}", path, changed && applyPipelineChange(true));
+            return;
+        }
         if (action.startsWith("settings=")) {
             minecraft.gui.setScreen(com.g2806.radiante.client.gui.RadianteOptionsScreen.showingPreset(minecraft.gui.screen(),
                 minecraft.options, com.g2806.radiante.client.pipeline.Presets.valueOf(action.substring(9))));

@@ -1,0 +1,326 @@
+#version 460
+#extension GL_EXT_ray_tracing : require
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+
+// Any-hit for shadow rays. Opaque surfaces end the ray (the light is blocked). See-through surfaces (glass, water,
+// translucent and low-alpha materials) let it continue, multiplying its throughput by what they pass: a coloured
+// filter for glass, absorption plus a caustic pattern for the top of a water body. Glow-outline queries just record
+// the colour of the first surface they meet.
+
+#include "util/alpha_mode.glsl"
+#include "common/fft_water.glsl"
+#include "common/bedrock_caustics.glsl"
+
+// Depth (blocks) of water over which sunlight is absorbed at the full rate; deeper water counts half.
+#ifndef VPT_WATER_LIGHT_DEPTH
+#    define VPT_WATER_LIGHT_DEPTH 3.0
+#endif
+const float WATER_LIGHT_MAX_DEPTH = VPT_WATER_LIGHT_DEPTH;
+#include "util/labpbr.glsl"
+#include "util/random.glsl"
+#include "util/ray.glsl"
+#include "util/ray_cone.glsl"
+#include "util/util.glsl"
+#include "common/shared.hpp"
+
+layout(set = 0, binding = 0) uniform sampler2D textures[];
+
+layout(set = 1, binding = 1) readonly buffer BLASOffsets {
+    uint offsets[];
+}
+blasOffsets;
+
+layout(set = 1, binding = 2) readonly buffer IndexBufferAddr {
+    uint64_t addrs[];
+}
+indexBufferAddrs;
+
+layout(set = 1, binding = 7) readonly buffer TextureMappingBuffer {
+    TextureMapping mapping;
+};
+
+layout(set = 2, binding = 0) uniform Uniform {
+    WorldUBO ubo;
+};
+
+layout(set = 2, binding = 2) uniform SkyUniform {
+    SkyUBO skyUBO;
+};
+
+layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer IndexBuffer {
+    uint indices[];
+}
+indexBuffer;
+
+#include "util/vertex.glsl"
+#include "common/lod_coverage.glsl"
+#include "common/seamless_glass.glsl"
+
+layout(location = 1) rayPayloadInEXT ShadowRay shadowRay;
+hitAttributeEXT vec2 attribs;
+
+// 0: glass filters light by its hue at full brightness (glassTint). Non-zero: the Bedrock-observed model below.
+#ifndef VPT_SHADOW_TINT_MODEL
+#    define VPT_SHADOW_TINT_MODEL 0
+#endif
+
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+#    define SHADOW_BEDROCK_PROFILE 1
+#else
+#    define SHADOW_BEDROCK_PROFILE 0
+#endif
+
+// Light reaching the bottom through a (near) horizontal water surface: absorbed on the way down, then focused into
+// the moving caustic pattern. Returns false for steep faces (the sides of a water body), which keep the plain
+// transmission. useRayDistance (Bedrock profile, underwater celestial queries) measures the depth along the ray, as
+// Bedrock's sun shadows do, instead of the vertical, softened depth.
+bool waterSurfaceLight(PositionVertex p0, PositionVertex p1, PositionVertex p2,
+                       MaterialVertex m0, MaterialVertex m1, MaterialVertex m2,
+                       vec3 biomeWaterColour, bool useRayDistance, out vec3 transmission) {
+    transmission = vec3(1.0);
+    mat3 objectToWorld = mat3(gl_ObjectToWorld3x4EXT);
+    vec3 dPdu, dPdv;
+    computedposduDv(p0.pos, p1.pos, p2.pos, m0.textureUV, m1.textureUV, m2.textureUV, dPdu, dPdv);
+    vec3 dPduWorld = objectToWorld * dPdu;
+    vec3 dPdvWorld = objectToWorld * dPdv;
+    vec3 faceNormal = normalize(cross(dPduWorld, dPdvWorld));
+    if (!(abs(faceNormal.y) > 0.75)) { return false; }
+
+    vec3 cameraRelativeHit = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
+    vec3 worldHit = cameraRelativeHit + vec3(ubo.cameraPos.xyz);
+    vec3 upNormal = faceNormal.y >= 0.0 ? faceNormal : -faceNormal;
+    vec2 waveCoord = fftWaterSurfaceCoord(worldHit, dPduWorld, dPdvWorld, upNormal);
+
+    float depth = gl_HitTEXT * max(dot(normalize(gl_WorldRayDirectionEXT), upNormal), 0.01);
+    // As in Bedrock RTX, sunlight keeps reaching the floor of deep water (tinted): absorbing over the full depth left
+    // sunken rooms lit only by their lanterns. Beyond the first few blocks depth counts half, so deep seas still get
+    // darker than ponds.
+    float absorbDepth = min(depth, WATER_LIGHT_MAX_DEPTH) + max(depth - WATER_LIGHT_MAX_DEPTH, 0.0) * 0.5;
+    if (useRayDistance) {
+        // Our ray direction and multi-interface handling still differ from Bedrock's two-stage query.
+        depth = max(gl_HitTEXT, 0.0);
+        absorbDepth = depth;
+    }
+
+    // A Bedrock resource pack brings its own water absorption coefficients; otherwise derive them from the biome's
+    // water colour, matching how the vanilla tint reads.
+    vec3 absorption;
+    if (skyUBO.waterExtinction.w > 0.5) {
+        absorption = exp(-max(skyUBO.waterExtinction.rgb, vec3(0.0)) * absorbDepth);
+    } else {
+        absorption = exp(-(vec3(1.0) - clamp(biomeWaterColour, vec3(0.0), vec3(1.0))) * depth * 0.22);
+    }
+    float caustic = bedrockCausticsAvailable() ?
+                        sampleBedrockCaustic(worldHit.xz, ubo.gameTime, depth) :
+                        sampleFftWaterCaustic(waveCoord, ubo.gameTime, gl_WorldRayDirectionEXT, depth);
+    transmission = absorption * caustic;
+    return true;
+}
+
+void main() {
+    if (VPT_LOD_COVERED(ubo)) {
+        ignoreIntersectionEXT;
+    }
+
+    uint geometry = getGeometryBufferIndex(gl_InstanceCustomIndexEXT, gl_GeometryIndexEXT);
+    uint i0, i1, i2;
+    PositionVertex p0, p1, p2;
+    MaterialVertex m0, m1, m2;
+    loadTriangle(geometry, gl_PrimitiveID, i0, i1, i2, p0, p1, p2, m0, m1, m2);
+    vec3 bary = vec3(1.0 - (attribs.x + attribs.y), attribs.x, attribs.y);
+
+    uint flags = m0.packedData;
+    // A query for the open sky goes through water whatever its texture says (see below): chunk water, marked in its
+    // vertices, is let through before anything of it is read.
+    if ((shadowRay.pad0 == SKY_VISIBILITY_QUERY || shadowRay.pad0 == HAND_CLEARANCE_QUERY) && isWaterSurface(flags)) {
+        ignoreIntersectionEXT;
+    }
+    uint albedoID = m0.textureID;
+    uint alphaMode = getAlphaMode(flags);
+    bool textured = hasTexture(flags);
+
+    vec4 vertexColour = vec4(1.0);
+    if (hasColorLayer(flags)) {
+        vertexColour = bary.x * m0.colorLayer + bary.y * m1.colorLayer + bary.z * m2.colorLayer;
+    }
+
+    // ---- Material lookup ----
+    vec4 albedo = vec4(1.0);
+    vec2 uv = vec2(0.0);
+    if (textured) {
+        uv = bary.x * m0.textureUV + bary.y * m1.textureUV + bary.z * m2.textureUV;
+        // Seamless glass is laid out on the block grid, which a block held in hand is not on.
+        if (isGlassSurface(flags) && !isHeldSurface(flags)) {
+            if (seamlessGlassHidesFace(p0.pos, p1.pos, p2.pos, flags)) {
+                ignoreIntersectionEXT;
+            }
+            vec3 dPdu, dPdv;
+            computedposduDv(p0.pos, p1.pos, p2.pos, m0.textureUV, m1.textureUV, m2.textureUV, dPdu, dPdv);
+            vec3 objectPos = bary.x * p0.pos + bary.y * p1.pos + bary.z * p2.pos;
+            uv = seamlessGlassUV(uv, objectPos, dPdu, dPdv, flags);
+            if (seamlessGlassUniform(flags)) {
+                uv = seamlessGlassUniformUV(m0.textureUV, m1.textureUV, m2.textureUV);
+            }
+        }
+        albedo = sampleTexture(textures[nonuniformEXT(albedoID)], uv, false);
+    }
+
+    // Water is marked either in the vertex flags (chunk water) or by bit 0 of the flag texture's red channel.
+    bool water = isWaterSurface(flags);
+    if (textured) {
+        int flagTextureID = mapping.entries[albedoID].flag;
+        if (flagTextureID >= 0) {
+            ivec4 texelFlags =
+                ivec4(round(sampleTexture(textures[nonuniformEXT(flagTextureID)], uv, 0.0, false) * 255.0));
+            water = water || (texelFlags.r & 0x1) > 0;
+        }
+    }
+
+    vec4 surface = albedo * vertexColour;
+    // Bedrock profile: camera rays already treat glass and blend surfaces by their authored coverage, regardless of
+    // Java's cut-out/stochastic layer, so shadow rays use that coverage too instead of rounding it to opaque.
+    bool authoredCoverage = false;
+#if SHADOW_BEDROCK_PROFILE
+    authoredCoverage = (isGlassSurface(flags) || isBlendSurface(flags)) && !water;
+#endif
+
+    // ---- Coverage ----
+    // Additive surfaces only add light; they never cast a shadow.
+    if (alphaMode == ALPHA_MODE_ADDITIVE) {
+        ignoreIntersectionEXT;
+    }
+    // Stochastic surfaces (ice) stop a shadow ray as often as a camera ray sees them, so on average the shadow lets
+    // through what the surface does. The salt keeps this choice independent of the camera ray's.
+    if (!authoredCoverage && alphaMode == ALPHA_MODE_STOCHASTIC && surface.a >= 0.05 && surface.a < 0.999) {
+        uint seed = xxhash32(uvec3(gl_LaunchIDEXT.xy, ubo.seed ^ uint(gl_PrimitiveID) ^ 0x5bd1e995u));
+        if (rand(seed) >= surface.a) {
+            ignoreIntersectionEXT;
+        }
+    }
+    float alpha = authoredCoverage ? clamp(surface.a, 0.0, 1.0) : resolveSurfaceAlpha(surface.a, alphaMode);
+    if (alpha < 0.05) {
+        ignoreIntersectionEXT;
+    }
+
+    // ---- Queries that stop at the first surface ----
+    if (shadowRay.pad0 == GLOW_OUTLINE_QUERY) {
+        shadowRay.radiance = vertexColour.rgb;
+        shadowRay.throughput = vec3(-1.0);
+        terminateRayEXT;
+    }
+    // Water inside a boat is not there.
+    if (shadowRay.insideBoat > 0u && textured && water) {
+        ignoreIntersectionEXT;
+    }
+    // Plain opaque surfaces block the light.
+    if (!authoredCoverage && !water && alphaMode != ALPHA_MODE_TRANSPARENT) {
+        // A clearance query wants the nearest one, whatever order they are reported in: it keeps the smallest and
+        // lets the ray run on.
+        if (shadowRay.pad0 == HAND_CLEARANCE_QUERY) {
+            shadowRay.radiance.x = min(shadowRay.radiance.x, gl_HitTEXT);
+            ignoreIntersectionEXT;
+        }
+        terminateRayEXT;
+    }
+
+    // ---- See-through surfaces: work out what they pass ----
+    vec3 transmission = vec3(1.0);
+    if (water) {
+        // Water lets the light through whatever its texture and material maps say, so they are not read for it:
+        // most shadow rays from under water (the sun on the floor, the shafts of light in the water, the sky over
+        // it) cross its surface, and every one read the maps for nothing.
+        // A query for the open sky only asks whether anything blocks the way, and water does not: what it takes
+        // from the light (its depth, the caustics) is not asked for, so it is not worked out either.
+        if (shadowRay.pad0 == SKY_VISIBILITY_QUERY || shadowRay.pad0 == HAND_CLEARANCE_QUERY) {
+            ignoreIntersectionEXT;
+        }
+        bool underwaterQuery = false;
+#if SHADOW_BEDROCK_PROFILE
+        underwaterQuery = shadowRay.pad0 == UNDERWATER_CELESTIAL_QUERY;
+        if (underwaterQuery) {
+            // Candidates arrive in no particular order and one candidate can be reported more than once; only the
+            // nearest water boundary may own the factor.
+            if (gl_HitTEXT >= shadowRay.nearestWaterT) {
+                ignoreIntersectionEXT;
+            }
+            shadowRay.nearestWaterT = max(gl_HitTEXT, 0.0);
+            // A nearer vertical boundary also replaces a farther horizontal one. Its light transport is not
+            // reconstructed yet, so it must not inherit a top-surface caustic.
+            shadowRay.waterTransmission = vec3(1.0);
+        }
+#endif
+        vec3 surfaceLight;
+        if (waterSurfaceLight(p0, p1, p2, m0, m1, m2, vertexColour.rgb, underwaterQuery, surfaceLight)) {
+            transmission = surfaceLight;
+        }
+#if SHADOW_BEDROCK_PROFILE
+        // The underwater query keeps the water factor aside (the miss shader applies it) instead of in throughput.
+        if (underwaterQuery) {
+            shadowRay.waterTransmission = transmission;
+            ignoreIntersectionEXT;
+        }
+#endif
+    } else {
+        vec4 specular = vec4(0.0);
+        if (textured) {
+            int specularTextureID = mapping.entries[albedoID].specular;
+            if (specularTextureID >= 0) {
+                specular = sampleTexture(textures[nonuniformEXT(specularTextureID)], uv, false);
+            }
+        }
+
+        // Enchantment glint brightens the filter colour (squared, as it is drawn).
+        vec2 glintUV = bary.x * m0.glintUV + bary.y * m1.glintUV + bary.z * m2.glintUV;
+        glintUV = (ubo.textureMat * vec4(glintUV, 0.0, 1.0)).xy;
+        vec3 glint = vec3(0.0);
+        if (hasGlint(flags)) {
+            glint = sampleTexture(textures[nonuniformEXT(m0.glintTexture)], glintUV, false).rgb;
+        }
+        glint *= glint * GLINT_STRENGTH;
+
+        vec3 filterColour = surface.rgb;
+        if (hasOverlay(flags)) {
+            vec4 overlay = sampleTexture(textures[nonuniformEXT(ubo.overlayTextureID)], m0.overlayUV, 0, false);
+            filterColour = mix(overlay.rgb, filterColour, overlay.a);
+        }
+        filterColour += glint;
+        surface.a = alpha;
+
+        LabPBRMat material = convertLabPBRMaterial(surface, specular, vec4(0.0));
+        bool passesLight = material.transmission > 0.0 || alpha < 0.95;
+        if (!passesLight) {
+            if (shadowRay.pad0 == HAND_CLEARANCE_QUERY) {
+                shadowRay.radiance.x = min(shadowRay.radiance.x, gl_HitTEXT);
+                ignoreIntersectionEXT;
+            }
+            terminateRayEXT;
+        }
+
+        // Glass-like materials filter by their hue at full brightness (glassTint), whatever their texture's
+        // darkness; other translucent surfaces keep vanilla's alpha blend.
+        if (material.transmission > 0.0) {
+            transmission = clamp(glassTint(filterColour, alpha), vec3(0.0), vec3(1.0));
+        } else {
+            transmission = clamp(mix(vec3(1.0), filterColour, alpha), vec3(0.0), vec3(1.0));
+        }
+#if VPT_SHADOW_TINT_MODEL != 0
+        // Bedrock behaviour as observed: sunlight is filtered by the texture colour as is (not brought to full
+        // brightness) and by the opaque share of the surface, with alpha remapped so the lower half of its range
+        // counts as clear: T = colour * (1 - saturate(2 alpha - 1)). The light becomes shadow once almost nothing is
+        // left (channel sum at or below 0.01, checked after multiplying below).
+        transmission = clamp(viewGlassTintBedrock(filterColour, alpha), vec3(0.0), vec3(1.0));
+#endif
+    }
+
+    shadowRay.throughput *= transmission;
+#if VPT_SHADOW_TINT_MODEL != 0
+    if (dot(shadowRay.throughput, vec3(1.0)) <= 0.01) {
+        shadowRay.throughput = vec3(0.0);
+        terminateRayEXT;
+    }
+#endif
+    ignoreIntersectionEXT;
+}

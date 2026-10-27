@@ -1,0 +1,193 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+
+// Temporal accumulation for the volumetric clouds. Each sky pixel blends this frame's cloud radiance and
+// transmittance with the reprojected history from a two-layer ping-pong array; the history is clamped to the
+// current 5x5 sky neighbourhood and trusted less under motion, sudden changes and cloud edges. Non-sky pixels
+// pass through with alpha -1 so the apply pass leaves them alone.
+
+// Which history layer is read this frame (the other one is written), and whether that layer holds valid data yet.
+// The C++ side sets both per frame.
+#ifndef VPT_VOLUMETRIC_CLOUD_HISTORY_PING_INPUT
+#    define VPT_VOLUMETRIC_CLOUD_HISTORY_PING_INPUT true
+#endif
+#ifndef VPT_VOLUMETRIC_CLOUD_HISTORY_READY
+#    define VPT_VOLUMETRIC_CLOUD_HISTORY_READY false
+#endif
+
+#include "common/shared.hpp"
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 3, binding = 4, rg16f) uniform readonly image2D motionVectorImage;
+layout(set = 3, binding = 11, rgba16f) uniform readonly image2D firstHitClearImage;
+layout(set = 5, binding = 32, r16f) uniform readonly image2D postStarCloudTransmittanceImage;
+layout(set = 5, binding = 34, rgba16f) uniform image2D volumetricCloudTemporalImage;
+layout(set = 5, binding = 35, rgba16f) uniform image2DArray volumetricCloudHistoryImage;
+
+// Alpha of an empty history / non-sky entry.
+const vec4 NO_CLOUD = vec4(0.0, 0.0, 0.0, -1.0);
+
+bool finiteFloat(float value) {
+    return !isnan(value) && !isinf(value);
+}
+
+bool finiteVec3(vec3 value) {
+    return !any(isnan(value)) && !any(isinf(value));
+}
+
+// Rec. 709 luma, used to compare history and current brightness.
+float lumaOf(vec3 color) {
+    return dot(color, vec3(0.2126, 0.7152, 0.0722));
+}
+
+// The raygen marks pixels whose primary ray reached the sky with a positive alpha in the first-hit image.
+bool isSkyTexel(ivec2 texel) {
+    return imageLoad(firstHitClearImage, texel).a > 0.0;
+}
+
+// This frame's cloud transmittance, treated as fully clear when the stored value is not finite.
+float cloudTransmittanceAt(ivec2 texel) {
+    float stored = imageLoad(postStarCloudTransmittanceImage, texel).r;
+    if (!finiteFloat(stored)) { return 1.0; }
+    return clamp(stored, 0.0, 1.0);
+}
+
+bool historyUsable(vec4 entry) {
+    return entry.a >= 0.0 && finiteVec3(entry.rgb) && finiteFloat(entry.a);
+}
+
+// Adds one bilinear tap; invalid taps and zero weights are skipped so they do not drag the result to black.
+void addHistoryTap(inout vec4 sum, inout float weightSum, ivec2 texel, int layer, float weight) {
+    vec4 entry = imageLoad(volumetricCloudHistoryImage, ivec3(texel, layer));
+    if (weight <= 0.0 || !historyUsable(entry)) { return; }
+    sum += vec4(max(entry.rgb, vec3(0.0)), clamp(entry.a, 0.0, 1.0)) * weight;
+    weightSum += weight;
+}
+
+// Bilinear history fetch at a fractional pixel position, renormalised over the valid taps. Fails when the
+// position is off-screen or no tap carried meaningful weight.
+bool fetchHistory(vec2 position, ivec2 size, int layer, out vec4 result) {
+    result = NO_CLOUD;
+    vec2 lastTexel = vec2(size - ivec2(1));
+    if (any(lessThan(position, vec2(0.0))) || position.x > lastTexel.x || position.y > lastTexel.y) { return false; }
+
+    vec2 cell = floor(position);
+    vec2 t = position - cell;
+    ivec2 origin = ivec2(cell);
+    ivec2 maxTexel = size - ivec2(1);
+
+    vec4 sum = vec4(0.0);
+    float weightSum = 0.0;
+    addHistoryTap(sum, weightSum, origin, layer, (1.0 - t.x) * (1.0 - t.y));
+    addHistoryTap(sum, weightSum, min(origin + ivec2(1, 0), maxTexel), layer, t.x * (1.0 - t.y));
+    addHistoryTap(sum, weightSum, min(origin + ivec2(0, 1), maxTexel), layer, (1.0 - t.x) * t.y);
+    addHistoryTap(sum, weightSum, min(origin + ivec2(1, 1), maxTexel), layer, t.x * t.y);
+
+    if (weightSum <= 1e-5) { return false; }
+    result = sum / weightSum;
+    return true;
+}
+
+// Colour and transmittance range over the sky pixels of the 5x5 window around the texel. Falls back to the centre
+// values when no neighbour qualifies.
+void neighbourhoodRange(ivec2 texel,
+                        ivec2 size,
+                        float centreTransmittance,
+                        out vec3 lowColour,
+                        out vec3 highColour,
+                        out float lowTransmittance,
+                        out float highTransmittance) {
+    vec3 centreColour = max(imageLoad(firstHitClearImage, texel).rgb, vec3(0.0));
+    lowColour = centreColour;
+    highColour = centreColour;
+    lowTransmittance = centreTransmittance;
+    highTransmittance = centreTransmittance;
+    bool seeded = false;
+
+    for (int dy = -2; dy <= 2; ++dy) {
+        for (int dx = -2; dx <= 2; ++dx) {
+            ivec2 neighbour = clamp(texel + ivec2(dx, dy), ivec2(0), size - ivec2(1));
+            if (!isSkyTexel(neighbour)) { continue; }
+            vec3 colour = imageLoad(firstHitClearImage, neighbour).rgb;
+            if (!finiteVec3(colour)) { continue; }
+
+            float transmittance = cloudTransmittanceAt(neighbour);
+            colour = max(colour, vec3(0.0));
+            // The first qualifying neighbour replaces the centre seed rather than widening it.
+            lowColour = seeded ? min(lowColour, colour) : colour;
+            highColour = seeded ? max(highColour, colour) : colour;
+            lowTransmittance = seeded ? min(lowTransmittance, transmittance) : transmittance;
+            highTransmittance = seeded ? max(highTransmittance, transmittance) : transmittance;
+            seeded = true;
+        }
+    }
+}
+
+void main() {
+    ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(firstHitClearImage);
+    if (any(greaterThanEqual(texel, size))) { return; }
+
+    vec3 radianceNow = imageLoad(firstHitClearImage, texel).rgb;
+    radianceNow = finiteVec3(radianceNow) ? max(radianceNow, vec3(0.0)) : vec3(0.0);
+    float transmittanceNow = cloudTransmittanceAt(texel);
+
+    int readLayer = VPT_VOLUMETRIC_CLOUD_HISTORY_PING_INPUT ? 0 : 1;
+    int writeLayer = VPT_VOLUMETRIC_CLOUD_HISTORY_PING_INPUT ? 1 : 0;
+
+    if (!isSkyTexel(texel)) {
+        imageStore(volumetricCloudTemporalImage, texel, vec4(radianceNow, -1.0));
+        imageStore(volumetricCloudHistoryImage, ivec3(texel, writeLayer), NO_CLOUD);
+        return;
+    }
+
+    vec3 radianceOut = radianceNow;
+    float transmittanceOut = transmittanceNow;
+
+    vec2 motion = imageLoad(motionVectorImage, texel).xy;
+    vec4 previous;
+    if (VPT_VOLUMETRIC_CLOUD_HISTORY_READY && fetchHistory(vec2(texel) + motion, size, readLayer, previous)) {
+        vec3 lowColour;
+        vec3 highColour;
+        float lowTransmittance;
+        float highTransmittance;
+        neighbourhoodRange(texel, size, transmittanceNow, lowColour, highColour, lowTransmittance, highTransmittance);
+
+        // Clamp the history into a padded neighbourhood box to reject stale colours (ghosting).
+        vec3 padding = max(vec3(0.05), (highColour - lowColour) * 0.35);
+        vec3 previousColour = clamp(max(previous.rgb, vec3(0.0)), lowColour - padding, highColour + padding);
+        float previousTransmittance = clamp(previous.a, 0.0, 1.0);
+
+        float lumaNow = lumaOf(radianceNow);
+        float lumaPrevious = lumaOf(previousColour);
+        float relativeLumaChange = abs(lumaPrevious - lumaNow) / max(max(lumaPrevious, lumaNow), 1e-3);
+        float transmittanceChange = abs(previousTransmittance - transmittanceNow);
+
+        // Cloud edges: a wide transmittance spread, or a wide brightness spread with at least some transmittance
+        // spread. History is trusted less there because reprojection smears edges first.
+        float lumaLow = lumaOf(lowColour);
+        float lumaHigh = lumaOf(highColour);
+        float transmittanceSpread = max(highTransmittance - lowTransmittance, 0.0);
+        float lumaSpread = max(lumaHigh - lumaLow, 0.0) / max(lumaHigh, 1e-3);
+        float edge = max(smoothstep(0.025, 0.18, transmittanceSpread),
+                         smoothstep(0.16, 0.75, lumaSpread) * smoothstep(0.02, 0.10, transmittanceSpread));
+
+        float blend = mix(0.985, 0.84, smoothstep(0.0, 28.0, length(motion)));
+        blend *= 1.0 - smoothstep(0.08, 0.35, transmittanceChange);
+        blend *= 1.0 - smoothstep(0.20, 1.25, relativeLumaChange);
+        blend *= mix(1.0, 0.60, edge);
+        blend = clamp(blend, mix(0.55, 0.10, edge), mix(0.992, 0.90, edge));
+
+        radianceOut = mix(radianceNow, previousColour, blend);
+        transmittanceOut = mix(transmittanceNow, previousTransmittance, blend);
+    }
+
+    // Never let a bad blend reach the history: fall back to this frame's values.
+    if (!finiteVec3(radianceOut)) { radianceOut = radianceNow; }
+    if (!finiteFloat(transmittanceOut)) { transmittanceOut = transmittanceNow; }
+
+    vec4 resolved = vec4(radianceOut, clamp(transmittanceOut, 0.0, 1.0));
+    imageStore(volumetricCloudTemporalImage, texel, resolved);
+    imageStore(volumetricCloudHistoryImage, ivec3(texel, writeLayer), resolved);
+}
