@@ -110,6 +110,9 @@ public final class BedrockPackConverter {
                         + "Bedrock; behavior, script and data packs cannot run on Java", describe(skipped), name,
                         skipped.where().isEmpty() ? "/" : skipped.where(), String.join(", ", skipped.moduleTypes()));
                 }
+                for (String warning : files.warnings()) {
+                    RadianteClient.LOGGER.warn("Bedrock pack {}: {}", name, warning);
+                }
                 if (files.resourcePacks().isEmpty()) {
                     RadianteClient.LOGGER.warn("Bedrock pack {} holds no resource pack, nothing to convert", name);
                     return null;

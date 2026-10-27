@@ -141,6 +141,53 @@ class BedrockPackFilesTest {
         }
     }
 
+    /** A nested archive that unpacks to far more than it takes (a zip bomb) is left out, and no copy stays behind. */
+    @Test
+    void nestedZipBombIsRefused() throws IOException {
+        Map<String, byte[]> entries = new LinkedHashMap<>();
+        entries.put("rp/manifest.json", bytes(RP_MANIFEST));
+        // 64 MB of zeros deflate to about 64 KB: a ratio near 1000.
+        entries.put("bomb.mcpack", new byte[64 * 1024 * 1024]);
+        Path addon = zip("Bomb.mcaddon", entries);
+        Path scratch = temp.resolve("scratch");
+        try (BedrockPackFiles files = BedrockPackFiles.open(addon, scratch)) {
+            assertEquals(1, files.resourcePacks().size());
+            assertEquals(1, files.warnings().size());
+            assertTrue(files.warnings().get(0).contains("zip bomb"), files.warnings().get(0));
+        }
+        assertFalse(Files.exists(scratch) && Files.list(scratch).findAny().isPresent());
+    }
+
+    /** Archives inside a pack's own folder are its files, not packs: they are never unpacked. */
+    @Test
+    void archivesInsidePackFoldersAreNotFollowed() throws IOException {
+        Map<String, byte[]> inner = Map.of("manifest.json", bytes(BP_MANIFEST));
+        Map<String, byte[]> entries = new LinkedHashMap<>();
+        entries.put("rp/manifest.json", bytes(RP_MANIFEST));
+        entries.put("rp/extras/inner.mcpack", zipBytes(inner));
+        Path addon = zip("Inside.mcaddon", entries);
+        Path scratch = temp.resolve("scratch");
+        try (BedrockPackFiles files = BedrockPackFiles.open(addon, scratch)) {
+            assertEquals(1, files.resourcePacks().size());
+            assertTrue(files.skipped().isEmpty());
+            assertFalse(Files.exists(scratch));
+        }
+    }
+
+    /** No more than a handful of nested archives are unpacked from one file; the rest are reported. */
+    @Test
+    void tooManyNestedArchives() throws IOException {
+        Map<String, byte[]> entries = new LinkedHashMap<>();
+        for (int i = 0; i < 12; i++) {
+            entries.put("pack" + i + ".mcpack", zipBytes(Map.of("manifest.json", bytes(RP_MANIFEST))));
+        }
+        Path addon = zip("Many.mcaddon", entries);
+        try (BedrockPackFiles files = BedrockPackFiles.open(addon, temp.resolve("scratch"))) {
+            assertEquals(8, files.resourcePacks().size());
+            assertTrue(files.warnings().get(0).contains("too many nested archives"), files.warnings().get(0));
+        }
+    }
+
     @Test
     void cacheNames() {
         assertEquals("Pack.zip", BedrockPackConverter.cacheName("Pack.mcpack"));
