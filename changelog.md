@@ -13,6 +13,9 @@ All notable changes to this project are documented in this file.
   that takes the game down while it is being tried (Radiance's Vanilla PT loses the GPU) is replaced by Radiante PT
   at the next start. A setting value a pack does not offer (radiante-pt's Bedrock water carried into another pack
   with the same setting) goes back to that pack's default instead of breaking its shaders.
+- Shader pack authors: a guide (`docs/en/shader-packs.md`, `docs/es/paquetes-de-shaders.md`), an example pack in
+  `examples/shaderpacks/` that holds only the files it changes and is built on top of Radiante PT with
+  `./gradlew shaderPackExamples`, and the design, roadmap and decisions for pack support in `docs/dev/shader-packs/`.
 - Bedrock `.mcaddon` files (and `.mcpack` files holding several packs) in the resource pack folder are listed and
   converted like a `.mcpack`: the resource packs inside are found (pack folders at any depth, nested `.mcpack`
   files), a pack's first subpack is laid over it, and behavior/script packs are skipped with a line in the log, since

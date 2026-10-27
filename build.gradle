@@ -98,6 +98,37 @@ def compressNatives = tasks.register('compressNatives') {
 	}
 }
 
+// The example shader packs in examples/shaderpacks/ hold only the files they change: each is built on top of
+// radiante-pt, laid out as native/src/shader/CMakeLists.txt lays out the built-in pack (the pack, then util/, common/
+// and the SHaRC headers), with the example's own files over it. A pack copied whole would drift from radiante-pt with
+// every change to it. ./gradlew shaderPackExamples writes the zips to build/shaderpacks/, ready for
+// radiante/shaderpacks/.
+def shaderPackExamples = tasks.register('shaderPackExamples') {
+	group = 'radiante'
+	description = 'Builds the example shader packs on top of radiante-pt into build/shaderpacks.'
+}
+file('examples/shaderpacks').listFiles()?.findAll { it.isDirectory() && new File(it, 'configs.json').exists() }?.each { example ->
+	def id = example.name.replaceAll('[^A-Za-z0-9]', '_')
+	// Staged as files first: copied in order into a folder, a later file replaces an earlier one of the same name, as
+	// CMake's file(COPY) does for the built-in pack; a zip would keep both entries.
+	def stage = tasks.register("stageShaderPackExample_${id}", Sync) {
+		into layout.buildDirectory.dir("shaderpack-staging/${example.name}")
+		duplicatesStrategy = DuplicatesStrategy.INCLUDE
+		from('native/src/shader/world/ray_tracing/internal/radiante-pt')
+		from('native/src/shader/util') { into 'util' }
+		from('native/src/common') { into 'common' }
+		from('native/extern/sharc/include') { into 'extern/sharc/include' }
+		// Last, so the example's files replace radiante-pt's.
+		from(example) { exclude 'README.md' }
+	}
+	def zip = tasks.register("shaderPackExample_${id}", Zip) {
+		archiveFileName = "${example.name}.zip"
+		destinationDirectory = layout.buildDirectory.dir('shaderpacks')
+		from(stage)
+	}
+	shaderPackExamples.configure { dependsOn zip }
+}
+
 // For the loader modules: the jar takes the compressed natives instead of the plain ones.
 ext.packNatives = { Jar jar ->
 	jar.dependsOn compressNatives
