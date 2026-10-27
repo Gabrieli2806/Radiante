@@ -42,7 +42,7 @@ public final class BedrockPackConverter {
     /** Largest size a Bedrock texture set is converted at, in pixels per side; finer maps are averaged down to it. */
     private static final int MAX_DETAIL = 128;
     /** Stored as the zip comment; a pack converted by another version of the converter is converted again. */
-    private static final String CONVERTER_VERSION = "radiante-bedrock-converter 22";
+    private static final String CONVERTER_VERSION = "radiante-bedrock-converter 23";
 
     /** The converter's version, for the log and the settings screen; packs converted by another are converted again. */
     public static String converterVersion() {
@@ -194,9 +194,7 @@ public final class BedrockPackConverter {
             String name = files.name() != null ? files.name()
                 : fileName.substring(0, Math.max(0, fileName.lastIndexOf('.')));
 
-            write(zos, "pack.mcmeta", ("{\n  \"pack\": {\n    \"description\": \"" + escape(name)
-                + " - converted from Bedrock by Radiante\",\n    \"min_format\": [" + PACK_FORMAT
-                + ", 0],\n    \"max_format\": [" + PACK_FORMAT + ", 999]\n  }\n}\n").getBytes(StandardCharsets.UTF_8));
+            write(zos, "pack.mcmeta", packMeta(name, files.skipped()).getBytes(StandardCharsets.UTF_8));
             byte[] icon = files.read("pack_icon.png");
             if (icon != null) {
                 write(zos, "pack.png", icon);
@@ -256,6 +254,52 @@ public final class BedrockPackConverter {
         }
         Files.move(temp, out, StandardCopyOption.REPLACE_EXISTING);
         return converted;
+    }
+
+    /** Shown under an add-on's name in the pack list: only its resource pack is used. */
+    static final String ADDON_DESCRIPTION_KEY = "pack.radiante.bedrock_addon";
+
+    /**
+     * The converted pack's pack.mcmeta. An add-on that came with behavior packs says on its second line of the pack
+     * list that only its resource pack is used, and which kinds of module were left out (scripts, data), so a player
+     * who expected the add-on's scripted features knows why they are missing.
+     */
+    static String packMeta(String name, java.util.List<BedrockPackFiles.Pack> skipped) {
+        JsonElement description;
+        if (skipped.isEmpty()) {
+            description = new com.google.gson.JsonPrimitive(name + " - converted from Bedrock by Radiante");
+        } else {
+            java.util.Set<String> types = new java.util.LinkedHashSet<>();
+            for (BedrockPackFiles.Pack pack : skipped) {
+                types.addAll(pack.moduleTypes());
+            }
+            String kinds = String.join(", ", types);
+            JsonArray parts = new JsonArray();
+            parts.add(name + "\n");
+            JsonObject note = new JsonObject();
+            note.addProperty("translate", ADDON_DESCRIPTION_KEY);
+            note.addProperty("fallback",
+                "Bedrock add-on: resource pack only. Behavior pack (" + kinds + ") not supported on Java");
+            JsonArray with = new JsonArray();
+            with.add(kinds);
+            note.add("with", with);
+            note.addProperty("color", "gray");
+            parts.add(note);
+            description = parts;
+        }
+        JsonObject pack = new JsonObject();
+        pack.add("description", description);
+        JsonArray min = new JsonArray();
+        min.add(PACK_FORMAT);
+        min.add(0);
+        JsonArray max = new JsonArray();
+        max.add(PACK_FORMAT);
+        max.add(999);
+        pack.add("min_format", min);
+        pack.add("max_format", max);
+        JsonObject meta = new JsonObject();
+        meta.add("pack", pack);
+        return new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(meta);
     }
 
     /** Grass green of the plains, for the part of the side that is always under the fringe. */
@@ -623,9 +667,5 @@ public final class BedrockPackConverter {
         zos.putNextEntry(new ZipEntry(path));
         zos.write(data);
         zos.closeEntry();
-    }
-
-    private static String escape(String text) {
-        return text.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }

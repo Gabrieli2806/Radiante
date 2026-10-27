@@ -32,7 +32,9 @@ resource pack que trae dentro.
   profundidad, y archivos `.mcpack` dentro de él.
 - Solo se usan los **resource packs**. Los behavior packs (bloques propios, funciones, scripts de
   JavaScript, como las luces dinámicas por script de algunos add-ons) solo funcionan en el motor de
-  Bedrock y se omiten; el log dice cuáles.
+  Bedrock y se omiten: la lista de packs lo indica bajo el nombre del add-on ("Add-on de Bedrock:
+  solo el resource pack") y el log dice cuáles. Arrastrar un `.mcaddon` a la pantalla de packs
+  también funciona.
 - Un resource pack con **subpacks** se lee como su primer subpack puesto sobre el pack. Bedrock deja
   elegir otro en los ajustes del pack; aquí todavía no hay esa opción.
 - Si un `.mcaddon` trae varios resource packs, se apilan en el orden en que se encuentran, el

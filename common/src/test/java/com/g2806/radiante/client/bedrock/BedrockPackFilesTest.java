@@ -71,6 +71,13 @@ class BedrockPackFilesTest {
             assertEquals("Lights Pack", files.name());
             assertEquals(1, files.skipped().size());
             assertEquals(List.of("data", "script"), files.skipped().get(0).moduleTypes());
+            // The pack list says only the resource pack is used, and what was left out.
+            JsonObject description = JsonParser.parseString(BedrockPackConverter.packMeta(files.name(),
+                files.skipped())).getAsJsonObject().getAsJsonObject("pack");
+            var note = description.getAsJsonArray("description").get(1).getAsJsonObject();
+            assertEquals(BedrockPackConverter.ADDON_DESCRIPTION_KEY, note.get("translate").getAsString());
+            assertEquals("data, script", note.getAsJsonArray("with").get(0).getAsString());
+            assertTrue(BedrockPackConverter.packMeta("Plain", List.of()).contains("converted from Bedrock"));
 
             // The subpack over the pack root, the pack root under it; the behavior pack not at all.
             assertEquals("plain", string(files.read("textures/blocks/a.png")));

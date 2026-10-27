@@ -30,7 +30,8 @@ the resource pack inside.
   `.mcpack` files inside it.
 - Only **resource packs** are used. Behavior packs (custom blocks, functions, JavaScript scripts,
   such as the scripted dynamic lights of some add-ons) only run in Bedrock's own engine and are
-  skipped; the log says which ones.
+  skipped: the pack list says so under the add-on's name ("Bedrock add-on: resource pack only"),
+  and the log says which ones. Dragging an `.mcaddon` onto the pack screen works too.
 - A resource pack with **subpacks** is read as its first subpack laid over the pack. Bedrock lets
   you pick another on its pack settings; there is no such choice here yet.
 - If an `.mcaddon` holds several resource packs, they are layered in the order found, the first on
