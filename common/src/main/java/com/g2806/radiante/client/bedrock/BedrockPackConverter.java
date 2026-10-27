@@ -48,8 +48,8 @@ public final class BedrockPackConverter {
     public static String converterVersion() {
         return CONVERTER_VERSION.substring(CONVERTER_VERSION.lastIndexOf(' ') + 1);
     }
-    /** Resource pack format of Minecraft 26.3. */
-    private static final int PACK_FORMAT = 97;
+    /** Resource pack format of Minecraft 26.4. */
+    private static final int PACK_FORMAT = 100;
     /** Slope of normals built from a height map: height units per texel. */
     private static final float HEIGHT_TO_NORMAL = 2.0f;
     /**
