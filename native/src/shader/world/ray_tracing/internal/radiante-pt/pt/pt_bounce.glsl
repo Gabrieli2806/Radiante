@@ -131,7 +131,10 @@ void traceSecondary(inout MainRay rayState,
     int extraBounces = 0;
     bool viewChain = false;
     bool clearView = false;
-    int budget = VPT_NUM_RAY_BOUNCES;
+    // Counted from the surface the camera first stops at: each glass face the view crossed on its way there is one
+    // step of startBounce, and a wall seen through two blocks of glass had used up the whole budget before its first
+    // bounce and came out black.
+    int budget = VPT_NUM_RAY_BOUNCES + max(startBounce - 1, 0);
     // Bedrock RTX's budget everywhere (VPT_BEDROCK_ONE_BOUNCE): one bounce traced past the first surface, the rest of
     // the light from the radiance cache where it lands (below). Mirrors and clear glass still get their extra bounces.
     if (VPT_BEDROCK_ONE_BOUNCE != 0) { budget = min(budget, startBounce + 1); }

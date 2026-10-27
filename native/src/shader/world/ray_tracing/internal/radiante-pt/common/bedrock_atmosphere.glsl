@@ -109,7 +109,9 @@ vec3 bedrockSkyRadiance(vec3 dir, vec3 sunDir) {
     // And the glow around the sun (the moon by night): 0.05 x max(cos, 0)^7 of the light's colour, part of the sky
     // that lights the world as much as of the one the camera sees.
     vec3 toLight = sunDir.y >= 0.0 ? sunDir : celestialMoonDirection();
-    vec3 glow = 0.05 * pow(max(dot(dir, normalize(toLight)), 0.0), 7.0) * bedrockCelestialLight(sunDir.y);
+    // By night the glow is the moon's, and it follows its phase as its light does (celestialMoonLitFraction).
+    float glowPhase = sunDir.y >= 0.0 ? 1.0 : celestialMoonLitFraction();
+    vec3 glow = 0.05 * pow(max(dot(dir, normalize(toLight)), 0.0), 7.0) * bedrockCelestialLight(sunDir.y) * glowPhase;
     return (mix(a * a, b * b, strip - first) + glow) * bedrockSkyIntensityAdjustment(sunDir.y) *
            VPT_BEDROCK_SKY_INTENSITY;
 #else

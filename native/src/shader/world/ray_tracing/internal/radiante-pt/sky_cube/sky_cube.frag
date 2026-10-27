@@ -134,7 +134,7 @@ void main() {
     vec3 sunDir = celestialSunDirection();
     vec3 moonDir = celestialMoonDirection();
     vec3 sunLight = VPT_SUN_RADIANCE * worldUBO.sunBrightness;
-    vec3 moonLight = VPT_MOON_RADIANCE * worldUBO.moonBrightness;
+    vec3 moonLight = VPT_MOON_RADIANCE * worldUBO.moonBrightness * celestialMoonLitFraction();
 
     // Twilight. Plain single scattering goes black as soon as the sun sets, while the moon is still too low to light
     // anything, which left a grey-black gap darker than midnight before the night blue appeared. Real skies (and

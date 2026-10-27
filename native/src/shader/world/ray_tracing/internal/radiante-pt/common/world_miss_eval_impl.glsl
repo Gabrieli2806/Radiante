@@ -345,7 +345,7 @@ void main() {
                               (VPT_SUN_RADIANCE * worldUBO.sunBrightness) * sunHaloTint *
                               celestialHaloFade(sunDirHalo, rayDir) * (1.0 - progress) * celestialSeen;
         backgroundRadiance += celestialHalo(rayDir, moonDirHalo, MOON_HALO_WIDTH, MOON_HALO_STRENGTH) *
-                              (VPT_MOON_RADIANCE * worldUBO.moonBrightness) * moonHaloTint *
+                              (VPT_MOON_RADIANCE * worldUBO.moonBrightness * celestialMoonLitFraction()) * moonHaloTint *
                               celestialHaloFade(moonDirHalo, rayDir) * (1.0 - progress) * celestialSeen;
     }
 

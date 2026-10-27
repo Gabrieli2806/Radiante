@@ -337,6 +337,11 @@ void main() {
     vec3 glassReflectionRadiance = vec3(0.0);
     if (g_glassReflection && isHand == 0) {
         MainRay saved = mainRay;
+        // The surfaces the reflection meets store their materials in this pixel's material image too, over the
+        // surface the camera sees through the glass. Read back after it, the denoiser's guides (albedo, specular,
+        // roughness) became the reflected world's: they slid with the reflection as the view moved, and DLSS Ray
+        // Reconstruction lost the history of everything behind glass - grainy in motion, in the reflection's shapes.
+        MaterialInfo seenMaterial = rayLoadMaterial(mainRay);
         MainRay reflection = mainRay;
         resetMainRay(reflection, selectedFirstHit.startBounce);
         reflection.origin = g_glassReflectionOrigin + g_glassReflectionDirection * 0.002;
@@ -364,6 +369,8 @@ void main() {
             glassReflectionRadiance = vec3(0.0);
         }
         mainRay = saved;
+        rayStoreMaterial(mainRay, seenMaterial.albedoValue, seenMaterial.f0, seenMaterial.roughness,
+                         seenMaterial.metallic, seenMaterial.transmission, seenMaterial.ior, seenMaterial.emission);
     }
 
     bool hitSky = selectedFirstHit.hitSky;
