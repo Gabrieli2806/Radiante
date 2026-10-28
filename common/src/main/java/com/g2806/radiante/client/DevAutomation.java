@@ -520,14 +520,6 @@ public final class DevAutomation {
         } else if (action.startsWith("rd=")) {
             minecraft.options.renderDistance().set(Integer.parseInt(action.substring(3)));
             RadianteClient.LOGGER.info("[dev] render distance {}", action.substring(3));
-        } else if (action.startsWith("profile=")) {
-            // profile=<BEDROCK_RTX_ENHANCED|CUSTOM>: applies a
-            // renderer profile at once (see applyPipelineChange).
-            var profile = com.g2806.radiante.client.profile.RendererProfile.of(action.substring(8));
-            boolean changed = profile.apply();
-            boolean rebuilt = changed && applyPipelineChange(false);
-            RadianteClient.LOGGER.info("[dev] profile {} rebuilt {}{}", profile, rebuilt,
-                changed && !rebuilt ? " (runtime)" : "");
         } else if (action.startsWith("pipe=")) {
             // pipe=dlss:<index> | fog:<bool> | clouds:<index> - shader pack settings, applied at once (see
             // applyPipelineChange), for benchmarks.

@@ -39,9 +39,8 @@ the device Minecraft already created, so the ray tracer and the vanilla GUI draw
 - Motion blur and depth of field, both toggleable. HDR output on HDR displays.
 - Bedrock `.mcpack` resource pack support (materials read from the pack's own MER maps, per-biome fog and water),
   detected directly in the pack list.
-- Renderer profiles: Bedrock RTX (Enhanced), the default, with Bedrock RTX's sky, exposure, glass, water and fog, and
-  Realistic, the same with less fill light, more contrast and calmer colour. Changing a setting a profile manages
-  turns it into Custom.
+- The Bedrock RTX look by default: Bedrock RTX's sky, exposure, tone curve, glass, water and fog are radiante-pt's
+  defaults, with a few extras such as glowing End portals. Every setting can still be changed.
 - Presets: save a look, switch between looks with a click, share one as a code.
 - A settings screen with search, keyboard navigation and an Advanced view; changes compile in the background with a
   progress popup, and after an update the shaders are compiled on the title screen before the first world.
@@ -279,4 +278,4 @@ GPL-3.0. Radiante began as a fork of Radiance and MCVR by LJIONG and Interstella
 
 Radiante is not affiliated with, endorsed by or sponsored by Mojang, Microsoft or NVIDIA. Minecraft, Minecraft Bedrock,
 Bedrock RTX and NVIDIA are trademarks of their owners; their names are used only to describe compatibility with
-their resource packs and the look the Bedrock RTX profile aims for.
+their resource packs and the look radiante-pt's defaults aim for.

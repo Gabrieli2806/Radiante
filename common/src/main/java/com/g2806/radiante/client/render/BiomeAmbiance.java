@@ -46,8 +46,8 @@ import org.joml.Vector4f;
  * <ol>
  * <li>A Bedrock RTX pack converted by {@link com.g2806.radiante.client.bedrock.BedrockPackConverter} brings its own
  * fog and water per biome. Their hue and how they compare from biome to biome are kept; how strong they are is
- * brought into the same subtle range as the rest (see {@link #styled}). Without one, the Bedrock RTX (Enhanced)
- * profile takes its own built-in ones ({@link BedrockDefaults}), the same way.
+ * brought into the same subtle range as the rest (see {@link #styled}). Without one, Radiante's
+ * built-in Bedrock RTX ones are taken ({@link BedrockDefaults}), the same way.
  * <li>Radiante's own values for the vanilla biomes, written with those packs as the reference.
  * <li>Any other biome - a mod's or a data pack's - is worked out from what it says about itself: its tags (the
  * loaders' shared {@code c:} tags too), its climate, and its own fog and water colours. Nothing has to be set up per
@@ -362,8 +362,6 @@ public final class BiomeAmbiance {
     private static final Map<String, float[]> PACK_WATER_BY_BIOME = new HashMap<>();
     private static final Map<String, Integer> PACK_WATER_COLOUR_BY_BIOME = new HashMap<>();
     private static Object packFogLoadedFor;
-    /** Whether that load was made under the profile that uses the built-in fog (BedrockDefaults). */
-    private static boolean packFogDefaults;
 
     // ---- what the shaders are handed
 
@@ -451,12 +449,10 @@ public final class BiomeAmbiance {
     public static void reloadPackFogIfNeeded(Minecraft minecraft) {
         TextureAtlas atlas = minecraft.getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS);
         Object key = TextureTracker.gpuTextureOrNull(atlas);
-        boolean defaults = BedrockDefaults.active();
-        if (key == null || (key == packFogLoadedFor && defaults == packFogDefaults)) {
+        if (key == null || key == packFogLoadedFor) {
             return;
         }
         packFogLoadedFor = key;
-        packFogDefaults = defaults;
         PACK_BY_BIOME.clear();
         PACK_WATER_BY_BIOME.clear();
         PACK_WATER_COLOUR_BY_BIOME.clear();
@@ -464,9 +460,9 @@ public final class BiomeAmbiance {
         hasWater = false;
         Optional<Resource> resource = minecraft.getResourceManager().getResource(PACK_FOG);
         if (resource.isEmpty()) {
-            // No Bedrock pack brings a fog: the Bedrock RTX (Enhanced) profile takes its built-in one, the same file
-            // a converted pack would bring (BedrockDefaults), so the profile reads it the same way.
-            JsonObject builtIn = defaults ? BedrockDefaults.fogBiomes() : null;
+            // No Bedrock pack brings a fog: the built-in one is taken, the same file a converted pack would bring
+            // (BedrockDefaults), read the same way.
+            JsonObject builtIn = BedrockDefaults.fogBiomes();
             if (builtIn != null) {
                 readPackFog(builtIn);
                 RadianteRenderer.LOGGER.info("Using the built-in fog and water for {} biomes (no Bedrock pack)",

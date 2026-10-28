@@ -42,9 +42,9 @@ vanilla dibujan en el mismo frame.
 - Motion blur y profundidad de campo, ambos activables/desactivables. Salida HDR en pantallas HDR.
 - Soporte de resource packs `.mcpack` de Bedrock (materiales leídos de los mapas MER del propio pack, niebla y
   agua por bioma), detectados directamente en la lista de packs.
-- Perfiles de render: Bedrock RTX (Mejorado), el predeterminado, con el cielo, la exposición, el vidrio, el agua y
-  la niebla de Bedrock RTX, y Realista, lo mismo con menos luz de relleno, más contraste y color más calmado.
-  Cambiar un ajuste que gestiona un perfil lo convierte en Personalizado.
+- El aspecto Bedrock RTX por defecto: el cielo, la exposición, la curva de tonos, el vidrio, el agua y la niebla de
+  Bedrock RTX son los valores por defecto de radiante-pt, con algunos extras como portales del End que brillan. Todos
+  los ajustes se pueden cambiar.
 - Presets: guarda un aspecto, cambia entre aspectos con un clic, comparte uno como código.
 - Una pantalla de ajustes con búsqueda, navegación con teclado y una vista Avanzada; los cambios se compilan en
   segundo plano con un aviso de progreso, y tras una actualización los shaders se compilan en el menú principal
@@ -292,4 +292,4 @@ GPL-3.0. Radiante comenzó como un fork de Radiance y MCVR, de LJIONG e Interste
 
 Radiante no está afiliado, respaldado ni patrocinado por Mojang, Microsoft ni NVIDIA. Minecraft, Minecraft Bedrock,
 Bedrock RTX y NVIDIA son marcas de sus dueños; sus nombres se usan solo para describir la compatibilidad con sus
-resource packs y el aspecto al que aspira el perfil Bedrock RTX.
+resource packs y el aspecto al que aspiran los valores por defecto de radiante-pt.

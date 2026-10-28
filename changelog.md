@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Renderer profiles are gone: radiante-pt's defaults are now the Bedrock RTX (Enhanced) look, all in one, so the
+  Renderer Profile selector, the Realistic and Custom profiles and the "set by the profile" notes are removed. Every
+  setting the profile used to hold (exposure, Bedrock's tone curve, glass, water, fog, low-light boost...) is a plain
+  setting with that value as its default, and the built-in Bedrock fog, water and light block glow are used whenever no
+  Bedrock pack provides them. Tone Mapping offers Bedrock RTX's curve, and the Bedrock picture style matches the
+  defaults. Low-Light Boost, Glass Reflections and Water Murkiness read 100% at the Bedrock value. A player who had
+  Realistic or Custom gets the settings those profiles set put back to the defaults once, on the first start; other
+  settings are kept. Realistic's values are recorded in
+  [docs/dev/realistic-profile-values.md](docs/dev/realistic-profile-values.md) for a shader pack.
 - Without a Bedrock pack, the Bedrock RTX (Enhanced) profile now has built-in defaults for the fog and water of every
   biome and for the glow and cast light of each light block, laid over the pixels Radiante finds glowing in vanilla's
   texture. Textures, normal maps and other materials still need a pack. Realistic and Custom are unchanged, and an

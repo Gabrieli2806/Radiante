@@ -107,7 +107,7 @@ public final class PbrAtlases {
                     }
                 } else if (defaults && EmissionTiles.isLightSprite(entry.getValue())
                     && BedrockDefaults.glow(entry.getKey()) != null && coversVanilla(resources, entry.getKey())) {
-                    // No Bedrock pack covers this light block: the Bedrock RTX (Enhanced) profile gives it its built-in
+                    // No Bedrock pack covers this light block: it takes Radiante's built-in Bedrock RTX
                     // glow, through the very path a pack's MER map takes.
                     if (rawMer == null) { rawMer = fill(width, height, 0); }
                     EmissionTiles.defaultMer(entry.getValue(), BedrockDefaults.glow(entry.getKey()), specular, rawMer,
@@ -224,7 +224,7 @@ public final class PbrAtlases {
 
     private static Optional<Resource> rawMerResource(ResourceManager resources, Identifier spriteId,
         Map<String, Integer> packHeights) {
-        // Nor for a sprite whose glow Radiante sets itself: the Bedrock RTX profiles take emission from
+        // Nor for a sprite whose glow Radiante sets itself: radiante-pt's Bedrock RTX look takes emission from
         // the MER as authored, and the eye of ender sat dark again in the light it casts.
         if (!spriteId.getNamespace().equals("minecraft") || !spriteId.getPath().startsWith("block/")
             || EmissionTiles.setsOwnGlow(spriteId)) {

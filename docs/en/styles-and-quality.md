@@ -49,21 +49,18 @@ Sky Light (and the tone mapping method) all at once:
 | Style | Tone Mapping | Saturation | Bounced Light | Sky Light |
 |---|---|---|---|---|
 | **Natural** | PBR Neutral | 100% | 100% | 100% |
-| **Bedrock** | PBR Neutral | 120% | 150% | 180% |
+| **Bedrock** (default) | Bedrock RTX | 100% | 150% | 180% |
 | **Vivid** | ACES | 130% | 150% | 150% |
 
 - **Natural** — physically correct light and colour, with nothing tuned on top. It is the neutral
   baseline.
-- **Bedrock** — tuned to match Bedrock RTX's look: more saturated, with brighter shade and bounced
+- **Bedrock** — Bedrock RTX's look, the default: Bedrock's tone curve, with brighter shade and bounced
   light than physically correct, so rooms feel more lit from a single light source.
 - **Vivid** — more contrast (via the more filmic ACES tone mapping) and more colour than Natural,
   without Bedrock's extra bounced light.
 
-The renderer profiles set these values themselves (Bedrock RTX (Enhanced): saturation 100%, bounced
-light 150%, sky light 180%), which match no style, so with a profile the selector shows **Custom**.
-Picking a style turns the profile into Custom. The profiles also use Bedrock's own tone curve, which
-a style leaves in place: the Tone Mapping column only applies when one of the three curves above is
-in use.
+Bedrock is radiante-pt's default look, with Bedrock RTX's own tone curve. Changing any of these by
+hand shows the style as **Custom**.
 
 **Picture styles.** Natural, Bedrock and Vivid change saturation, tone mapping and how far bounced light carries.
 

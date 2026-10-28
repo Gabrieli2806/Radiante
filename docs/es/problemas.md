@@ -101,7 +101,7 @@ izquierda de los ajustes: aplica los cambios y vuelve a compilar los shaders.
 ## Quiero volver a los valores de un install nuevo
 
 **Restablecer valores**, abajo a la izquierda de los ajustes. Devuelve todo, incluidos los ajustes
-del pipeline sin control visible, y vuelve a elegir el perfil Bedrock RTX (Mejorado). El pipeline
+del pipeline sin control visible, lo que devuelve el aspecto Bedrock RTX. El pipeline
 vuelve a RT-DLSS si DLSS está cargado, a FSR si no. Ver [Ajustes](opciones.md).
 
 ## Nada de esto funcionó

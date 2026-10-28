@@ -65,7 +65,7 @@ public final class ChunkManager {
 
     /**
      * The other blocks Bedrock draws blended, as it does glass: ice, frosted ice, slime and honey. Bedrock RTX sees
-     * through them the way it sees through glass; the Bedrock RTX profiles do the same.
+     * through them the way it sees through glass; radiante-pt does the same.
      */
     private static boolean isBlend(BlockState state) {
         net.minecraft.world.level.block.Block block = state.getBlock();

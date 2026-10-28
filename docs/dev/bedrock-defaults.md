@@ -1,8 +1,9 @@
 # Bedrock RTX (Enhanced) defaults without a pack
 
-With the **Bedrock RTX (Enhanced)** profile and a Bedrock pack enabled, Radiante gets its fog, water and light block
-glow from the pack. Without any Bedrock pack it used Radiante's own values, which look different. Since this change
-the profile falls back to built-in values when no Bedrock pack is enabled. This page lists what differs, what
+With a Bedrock pack enabled, Radiante gets its fog, water and light block glow from the pack. Without any Bedrock pack
+it used Radiante's own values, which look different. It now falls back to built-in values when no Bedrock pack is
+enabled. (This was first done for the Bedrock RTX (Enhanced) renderer profile; profiles are gone and radiante-pt's
+defaults are that look, so the fallback is always used.) This page lists what differs, what
 was changed and what still needs a pack.
 
 ## Method
@@ -24,13 +25,12 @@ converted zip (they are short: read the PNGs with Pillow and apply the formula a
 ## How it is wired
 
 - `BedrockDefaults` loads both files from the classpath, not through the resource manager, so they never count as an
-  enabled pack. `active()` is true only for `RendererProfile.BEDROCK_RTX_ENHANCED`. Realistic and Custom keep
-  Radiante's own values.
+  enabled pack. They are always in use; a pack that covers a biome or a sprite wins.
 - Fog and water (`BiomeAmbiance.reloadPackFogIfNeeded`): when no resource pack provides
-  `radiante:bedrock_fog.json` and the profile is Enhanced, the built-in file is read through the same code as a pack's
+  `radiante:bedrock_fog.json`, the built-in file is read through the same code as a pack's
   (`readPackFog`, then `styled` for the air and the pack-water path for water, `asPacked` under Bedrock's own mode). The
-  result matches having a converted pack with this fog enabled. A profile change reloads it.
-- Light blocks (`PbrAtlases.build`, `EmissionTiles.defaultMer`): when the profile is Enhanced, Bedrock glow is cast
+  result matches having a converted pack with this fog enabled.
+- Light blocks (`PbrAtlases.build`, `EmissionTiles.defaultMer`): when Bedrock glow is cast
   (`Pipeline.castsBedrockGlow`), there is no `radiante:bedrock_mer/` map in any enabled pack, and a light block's sprite
   is still vanilla's (colour from `vanilla`, specular map absent or Radiante's built-in one), a MER map is written for
   the sprite. Its green² adds up to the pack's `glow` over the sprite. Radiante's existing derived emission decides
@@ -171,8 +171,8 @@ The reference pack has no files that set these, so nothing changes:
 - It has no `atmospherics`, `lighting`, `color_grading` or `water` (Vibrant Visuals) JSON.
 - Its `textures/environment` holds only `end_flash.tga` and `weather.tga`.
 
-Under the profile, sun intensity, sky, exposure and tone mapping were already the same with and without the pack
-(`BedrockRtxProfile`, `RendererProfile.ORIGINAL_TONE_VALUES`). The difference in brightness and colour the player
+Sun intensity, sky, exposure and tone mapping were already the same with and without the pack (radiante-pt's
+defaults, listed in `BedrockRtxValues`). The difference in brightness and colour the player
 sees comes from fog, water and light block glow, and above all from how much light the blocks cast. By the estimate
 above, the old level-based scale was one to two orders of magnitude higher, and auto-exposure adapted to it. This is
 an estimate from the code, not a measurement.
@@ -189,8 +189,8 @@ an estimate from the code, not a measurement.
   stems): Radiante finds no glowing texels in them, so they stay dark. The amounts involved are tiny (G² below 0.002).
 - **Dark sprites** (a light block the pack gives no glow): they cast nothing, as with the pack, but still show
   Radiante's surface glow instead of the authored zero.
-- **Custom profile:** changing any managed setting turns the profile into Custom, which drops these defaults and goes
-  back to Radiante's own.
+- **Bedrock glow off:** with Bedrock Pack Materials or Bedrock RTX's mode turned off, the light block glow table is not
+  used; the fog and water table still is.
 
 ## Not checked in game
 

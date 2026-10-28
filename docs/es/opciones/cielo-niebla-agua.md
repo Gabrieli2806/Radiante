@@ -10,8 +10,7 @@
 |---|---|
 | ![Apagada](../../images/compare/volumetric-fog-off.webp) | ![Encendida](../../images/compare/volumetric-fog-on.webp) |
 
-Los valores por defecto son los que pone el perfil por defecto, **Bedrock RTX (Mejorado)**; cuando
-el perfil **Realista** pone otro, va entre paréntesis.
+Los valores por defecto son los de radiante-pt, el aspecto Bedrock RTX ([bedrock-rtx.md](../bedrock-rtx.md)).
 
 | Control | Rango / Valores | Por defecto | Qué hace |
 |---|---|---|---|
@@ -24,26 +23,26 @@ el perfil **Realista** pone otro, va entre paréntesis.
 | **Calidad de Nubes** | 8 – 256 | 64 | Pasos por rayo a través de las nubes volumétricas. Más es más suave y cuesta FPS. |
 | **Estrellas** | 100 – 20000 | 3000 | Cuántas estrellas tiene el cielo nocturno. |
 | **Estrellas con la Altura** | 0% – 400% | 100% | Cuánto más nítidas se ven las estrellas mientras más alto estés: a 100% brillan el doble desde la cima de una montaña (cerca de Y 190) que a nivel del mar. 0% las deja igual en todas partes. Con Ambiente de Bioma activado también cuenta el aire del bioma: más nítidas sobre desiertos, cumbres y mar abierto, más tenues en la bruma de un pantano o una jungla. |
-| **Resplandor del Sol** | 0% – 300% | 100% (50%) | El halo alrededor del sol. |
-| **Rayos de Luz** | 0% – 400% | 100% (53%) | Haces de luz por ventanas, claraboyas y hojas. Requiere Niebla Volumétrica; no tiene efecto con el volumen de niebla de Bedrock (ver abajo). |
+| **Resplandor del Sol** | 0% – 300% | 100% | El halo alrededor del sol. |
+| **Rayos de Luz** | 0% – 400% | 100% | Haces de luz por ventanas, claraboyas y hojas. Requiere Niebla Volumétrica; no tiene efecto con el volumen de niebla de Bedrock (ver abajo). |
 | **Trayectoria del Sol** | Vanilla · Inclinada · Personalizada | Vanilla | Vanilla: el sol y la luna pasan directamente sobre la cabeza de este a oeste. Inclinada: la trayectoria se inclina diez grados al sur, así que las sombras del mediodía no caen rectas hacia abajo. Personalizada aparece cuando los ajustes de [Trayectoria del Sol y la Luna](#trayectoria-del-sol-y-la-luna-avanzado) tienen otros valores. |
 | **Rotación Vanilla del Sol/Luna** | Activado / Desactivado | Activado | Mantiene los cuadrados del sol y la luna alineados con su trayectoria como en vanilla, en vez de girar al cruzar el cielo. |
 | **Suelo Mojado con Lluvia** | Activado / Desactivado | Activado | Las superficies a cielo abierto se oscurecen y brillan mientras llueve, y se secan poco a poco. |
 | **Viento** | Activado / Desactivado | Desactivado | Las hojas, la hierba, las flores, los cultivos, los brotes, la caña de azúcar, las enredaderas y los nenúfares se mecen con el viento a unos 48 bloques de ti, más con lluvia y tormenta; las algas y el kelp se mecen despacio con la corriente. Se mueve la geometría misma, así que las sombras, los reflejos y la luz entre las hojas se mueven con ella. Cambiarlo recarga la geometría del mundo. En un bosque denso cuesta unos 0,6 ms por fotograma en una RTX 5070; desactivado, nada. |
 | **Fuerza del Viento** | 0% – 200% | 100% | Cuánto mueve el viento las hojas y las plantas con Viento activado. 0% las deja quietas. |
-| **Vidrio sin Bordes** | Activado / Desactivado | Desactivado | Quita el marco de cada bloque y panel de vidrio: una pared de vidrio se ve como una sola lámina. Los perfiles lo apagan, porque Bedrock muestra cada bloque en su marco; activarlo deja el perfil en Personalizado. |
+| **Vidrio sin Bordes** | Activado / Desactivado | Desactivado | Quita el marco de cada bloque y panel de vidrio: una pared de vidrio se ve como una sola lámina. Apagado por defecto, porque Bedrock muestra cada bloque en su marco. |
 | **Alcance del vidrio continuo** | Bloques y paneles · Solo bloques de vidrio · Solo paneles | Bloques y paneles | Qué vidrio une Vidrio sin Bordes. Requiere Vidrio sin Bordes. |
 | **Ambiente de Bioma** | Activado / Desactivado | Desactivado | El aire y el agua propios de cada bioma, de forma sutil: polvo cálido sobre desiertos, bruma verdosa en pantanos, neblina fría y brillante en la nieve, rojo, turquesa y ceniza en el Nether, violeta en el End; bajo el agua, clara y luminosa junto a la playa, oscura y cerrada en el océano profundo. Se difumina de un bioma al siguiente, no entra en cuevas del Overworld y funciona con o sin Niebla Volumétrica. Más en [Ambiente de Bioma](#ambiente-de-bioma), abajo. |
 | **Intensidad del Ambiente de Bioma** | 0% – 400% | 100% | Qué tan densa es la bruma de cada bioma. 100% es el aspecto ajustado, sutil; no afecta al rendimiento. Requiere Ambiente de Bioma. |
-| **Niebla Volumétrica** | Activado / Desactivado | Activado | Marcha por el aire con rayos: la luz del sol y la luna se dispersan en él, y árboles y terreno proyectan haces de luz a través de él. Cuesta notablemente más tiempo de GPU que la neblina simple. Con los perfiles Bedrock RTX es el volumen de niebla propio de Bedrock. |
-| **Estilo de Niebla** | Froxel · Radiante | Froxel | Froxel: rejilla 3D (froxels) iluminada por celda y conservada entre fotogramas; haces más nítidos, las luces de bloque brillan en la niebla, y cuesta menos. Radiante: cada píxel recorre el aire; sigue las superficies exacto pero cuesta más. Oculto con los perfiles Bedrock RTX, cuya niebla es el volumen propio de Bedrock. |
+| **Niebla Volumétrica** | Activado / Desactivado | Activado | Marcha por el aire con rayos: la luz del sol y la luna se dispersan en él, y árboles y terreno proyectan haces de luz a través de él. Cuesta notablemente más tiempo de GPU que la neblina simple. Por defecto es el volumen de niebla propio de Bedrock. |
+| **Estilo de Niebla** | Froxel · Radiante | Froxel | Froxel: rejilla 3D (froxels) iluminada por celda y conservada entre fotogramas; haces más nítidos, las luces de bloque brillan en la niebla, y cuesta menos. Radiante: cada píxel recorre el aire; sigue las superficies exacto pero cuesta más. Oculto mientras la Niebla Volumétrica de Bedrock (Avanzado, activa por defecto) nubla el aire con su propio volumen. |
 | **Intensidad de Niebla Volumétrica** | 0% – 400% | 100% | Qué tan denso es el aire que muestra los rayos de sol y de luz. No afecta al rendimiento — solo el número de muestras (en [Rendimiento](rendimiento.md)) lo hace. |
 | **Distancia de Niebla** | 48 – 192 bloques | 128 | Hasta dónde llegan la niebla volumétrica y los rayos de luz. |
-| **Olas del Agua** | 0% – 400% | 100% (143%) | Qué tan agitada es la superficie del agua. 0% es plana como un espejo. |
-| **Turbidez del Agua** | 0% – 500% | 500% | Qué tan rápido se desvanece la vista bajo el agua. Menos es más claro. Los perfiles ponen 1000%, la extinción completa de Bedrock, más allá del final del slider, que entonces muestra 500%. |
+| **Olas del Agua** | 0% – 400% | 100% | Qué tan agitada es la superficie del agua. 0% es plana como un espejo. |
+| **Turbidez del Agua** | 0% – 400% | 100% | Qué tan rápido se desvanece la vista bajo el agua. Menos es más claro. 100% es la extinción completa de Bedrock. |
 | **Rayos de Luz Bajo el Agua** | 0% – 400% | 100% | Haces de sol que atraviesan la superficie cuando estás bajo el agua. |
 
-Con los perfiles Bedrock RTX (o con Niebla Volumétrica de Bedrock activada en Avanzado) el aire lo nubla
+Con la Niebla Volumétrica de Bedrock activada (en Avanzado, por defecto) el aire lo nubla
 el volumen propio de Bedrock, que no usa Intensidad de Niebla Volumétrica, Distancia de Niebla,
 Rayos de Luz ni Calidad de Niebla Volumétrica: esas filas salen en gris y lo dicen.
 

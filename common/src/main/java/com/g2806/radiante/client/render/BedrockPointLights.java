@@ -16,7 +16,7 @@ import net.minecraft.world.level.block.state.BlockState;
  * (calibrated to Bedrock RTX): where the light sits in the block, its colour, a strength of 2 / 25.5 for all of
  * them, and a radius of 0.23 for lanterns, 0.115 for the rest. The soul torch has none there.
  *
- * <p>Only the Bedrock RTX profiles have them (ChunkManager writes them when Bedrock's glow is cast, see
+ * <p>They exist while Bedrock's glow is cast, the default (ChunkManager writes them when Bedrock's glow is cast, see
  * Pipeline.castsBedrockGlow); without that glow every glowing block's texture lights the world.
  *
  * <p>An enabled Bedrock pack with Vibrant Visuals local lighting (converted by BedrockLocalLighting) gives these

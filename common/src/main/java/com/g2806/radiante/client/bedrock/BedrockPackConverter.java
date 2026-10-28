@@ -466,7 +466,7 @@ public final class BedrockPackConverter {
 
     /**
      * Keeps the texture's MER(S) data exactly as authored. The LabPBR maps made from it are approximations (emission
-     * is scaled and clamped, roughness and metalness are re-encoded); this copy is what a Bedrock-faithful profile
+     * is scaled and clamped, roughness and metalness are re-encoded); this copy is what Bedrock-faithful rendering
      * must be able to read back.
      *
      * <p>Its alpha carries the set's height map, when Bedrock shades the set by one: 1 + height x 253 (height 0 to 1,
