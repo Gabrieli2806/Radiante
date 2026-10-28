@@ -16,7 +16,7 @@
 static_assert(offsetof(gpu::Data::WorldUBO, windTime) == 692); // BufferProxy.WIND_OFFSET
 static_assert(offsetof(gpu::Data::WorldUBO, offHandLightPos) == 704);
 static_assert(offsetof(gpu::Data::WorldUBO, packParams) == 736);
-static_assert(sizeof(gpu::Data::WorldUBO) == 1760);
+static_assert(sizeof(gpu::Data::WorldUBO) == 736 + 16 * PRISM_PACK_PARAM_COUNT);
 
 namespace {
 

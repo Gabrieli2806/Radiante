@@ -19,8 +19,10 @@
 #define INV_TWO_PI 0.15915494309189533
 #define INV_4_PI 0.07957747154594766
 
-// Slots in WorldUBO.packParams: shader pack settings the shaders read live instead of having them compiled in.
-#define PRISM_PACK_PARAM_COUNT 64
+// Slots in WorldUBO.packParams: shader pack settings the shaders read live instead of having them compiled in. Radiante
+// PT takes about 60; 256 leaves a pack that extends it room for its own. 4 KB of the world uniform, well inside the
+// 16 KB every Vulkan device allows a uniform buffer.
+#define PRISM_PACK_PARAM_COUNT 256
 
 #ifdef __cplusplus
 namespace gpu {
@@ -298,7 +300,7 @@ struct WorldUBO {
     T_VEC4 offHandLightPos;
     T_VEC4 offHandLightColor;
 
-    // ---- Shader pack settings (736..1759), never written by Java
+    // ---- Shader pack settings (736..4831), never written by Java
     // The pack's settings marked "runtime" in its configs.json, one slot each in the order the pack lists them: a
     // number in x (an int, a bool as 0 or 1, a choice as its index), a vec3 in xyz. Buffers::setPackParams copies
     // them in every frame, so changing one needs no shader rebuild.
