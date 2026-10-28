@@ -231,6 +231,7 @@ vec3 endSkyRadiance(vec3 dir, bool seen) {
 #include "common/water_medium.glsl"
 #include "hooks/sky.glsl"
 #include "hooks/stars.glsl"
+#include "hooks/sky_emission.glsl"
 #include "hooks/clouds.glsl"
 #include "hooks/celestial.glsl"
 #include "hooks/dimension_sky.glsl"
@@ -401,6 +402,15 @@ void main() {
     // stars off, or hidden), a pack's night sky - Mellow's aurora - was never drawn at all.
     if (worldUBO.skyType == 1 && (rayBounce(mainRay) == 0u || rayCameraPath(mainRay))) {
         mainRay.directLightRadiance.x *= clamp(hookStars(backgroundRadiance, rayDir), 0.0, 1.0);
+    }
+#endif
+#ifndef RADIANTE_HOOK_SKY_EMISSION_DEFAULT
+    // A pack's glowing sky (hooks/sky_emission.glsl) for every ray, so it lights the world as well as being seen;
+    // bounced rays ask for the cheap version (seen false). Behind a vanilla cloud like the discs, and under the
+    // pack's clouds, which come next.
+    if (worldUBO.skyType == 1) {
+        backgroundRadiance +=
+            hookSkyEmission(rayDir, rayBounce(mainRay) == 0u || rayCameraPath(mainRay)) * celestialSeen;
     }
 #endif
 #ifndef RADIANTE_HOOK_CLOUDS_DEFAULT

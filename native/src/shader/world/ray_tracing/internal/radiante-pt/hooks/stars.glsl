@@ -4,9 +4,10 @@
 // Hook point (shader packs that extend radiante-pt replace this file). Part of the pack interface: the signature
 // stays as it is within radiante-pt@1.
 //
-// A pack's night sky (stars, aurora), called in the overworld miss shader only for the sky the camera sees (also
-// through glass or water), after rain has greyed the sky and the sun, moon and halos are added, and before
-// hookCloudLayer, so a pack's clouds cover it. Not called under water.
+// A pack's night sky (stars), called in the overworld miss shader only for the sky the camera sees (also through
+// glass or water), after rain has greyed the sky and the sun, moon and halos are added, and before
+// hookCloudLayer, so a pack's clouds cover it. Not called under water. What should also light the world (an aurora)
+// goes in hooks/sky_emission.glsl instead.
 //   radiance  the sky's radiance along direction; add the pack's stars to it
 //   direction world-space ray direction, unit length (y up)
 // Returns how much of radiante-pt's own stars (vanilla's, drawn after the frame) to keep: 1 keeps them, 0 hides them
