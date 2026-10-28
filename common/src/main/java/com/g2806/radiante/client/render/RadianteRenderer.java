@@ -221,6 +221,7 @@ public final class RadianteRenderer {
         reserveFallbackTexture();
         Pipeline.migrateStoredDefaults();
         Pipeline.loadPipeline();
+        com.g2806.radiante.client.option.OptionsMigration.applyAfterPipelineLoad();
         Pipeline.build();
         LOGGER.info("Radiante renderer initialised on {} with the {} pipeline", gpuName,
             Pipeline.INSTANCE.getActivePresetName());

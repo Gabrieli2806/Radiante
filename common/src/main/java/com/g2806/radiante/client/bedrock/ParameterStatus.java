@@ -1,7 +1,7 @@
-package com.g2806.radiante.client.profile;
+package com.g2806.radiante.client.bedrock;
 
 /**
- * How well a compatibility parameter is known. Every value in {@link BedrockRtxProfile} carries one, so a number that
+ * How well a compatibility parameter is known. Every value in {@link BedrockRtxValues} carries one, so a number
  * that matches Bedrock is never mistaken for one that was guessed.
  */
 public enum ParameterStatus {

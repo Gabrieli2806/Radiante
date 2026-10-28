@@ -7,7 +7,7 @@ package com.g2806.radiante.client.bedrock;
  * materials differently (metalness, emissive, roughness and subsurface in the channels of one MER(S) image), and
  * converting that to LabPBR is lossy: emission, for one, was stored as {@code min(254, 4 x value)}. The converter
  * therefore also keeps the original MER(S) data, unchanged, next to the LabPBR maps (see
- * {@link BedrockPackConverter#RAW_MER_DIR}), tagged {@link #BEDROCK_MER}, so a Bedrock-specific renderer profile can
+ * {@link BedrockPackConverter#RAW_MER_DIR}), tagged {@link #BEDROCK_MER}, so Bedrock-specific rendering can
  * apply Bedrock's own transforms to the original values instead of to a pre-cooked approximation.
  *
  * <p>With the Bedrock Pack Materials option on (the default), the shaders read metalness and roughness from the raw

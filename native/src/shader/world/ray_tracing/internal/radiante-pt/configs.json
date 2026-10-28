@@ -12,19 +12,19 @@
         {
             "name": "render_pipeline.module.ray_tracing.attribute.bedrock_original",
             "type": "bool",
-            "default_value": "render_pipeline.false",
+            "default_value": "render_pipeline.true",
             "define": "VPT_BEDROCK_ORIGINAL"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.bedrock_enhanced",
             "type": "bool",
-            "default_value": "render_pipeline.false",
+            "default_value": "render_pipeline.true",
             "define": "VPT_BEDROCK_ENHANCED"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.face_shading",
             "type": "bool",
-            "default_value": "render_pipeline.true",
+            "default_value": "render_pipeline.false",
             "runtime": true,
             "define": "VPT_FACE_SHADING"
         },
@@ -230,7 +230,7 @@
         {
             "name": "render_pipeline.module.ray_tracing.attribute.water_surface_mode",
             "type": "enum:render_pipeline.module.ray_tracing.attribute.water_surface_mode.vanilla-render_pipeline.module.ray_tracing.attribute.water_surface_mode.realistic-render_pipeline.module.ray_tracing.attribute.water_surface_mode.bedrock",
-            "default_value": "render_pipeline.module.ray_tracing.attribute.water_surface_mode.realistic",
+            "default_value": "render_pipeline.module.ray_tracing.attribute.water_surface_mode.bedrock",
             "define": {
                 "VPT_WATER_SURFACE_MODE": "uint(X)"
             }
@@ -238,7 +238,7 @@
         {
             "name": "render_pipeline.module.ray_tracing.attribute.volumetric_light_mode",
             "type": "enum:render_pipeline.module.ray_tracing.attribute.volumetric_light_mode.vanilla-render_pipeline.module.ray_tracing.attribute.volumetric_light_mode.volumetric",
-            "default_value": "render_pipeline.module.ray_tracing.attribute.volumetric_light_mode.vanilla",
+            "default_value": "render_pipeline.module.ray_tracing.attribute.volumetric_light_mode.volumetric",
             "define": "VPT_VOLUMETRIC_LIGHT_MODE"
         },
         {
@@ -268,7 +268,7 @@
         {
             "name": "render_pipeline.module.ray_tracing.attribute.seamless_glass",
             "type": "bool",
-            "default_value": "render_pipeline.true",
+            "default_value": "render_pipeline.false",
             "define": "VPT_SEAMLESS_GLASS"
         },
         {
@@ -288,13 +288,13 @@
         {
             "name": "render_pipeline.module.ray_tracing.attribute.bedrock_volumetric_fog",
             "type": "bool",
-            "default_value": "render_pipeline.false",
+            "default_value": "render_pipeline.true",
             "define": "VPT_BEDROCK_FOG"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.bedrock_fog_anisotropy",
             "type": "float_range:-0.9-0.95",
-            "default_value": "0.6",
+            "default_value": "0.4",
             "runtime": true,
             "define": "VPT_BEDROCK_FOG_G"
         },
@@ -335,7 +335,7 @@
         {
             "name": "render_pipeline.module.ray_tracing.attribute.water_density",
             "type": "float_range:0.0-4.0",
-            "default_value": "0.1",
+            "default_value": "1.0",
             "runtime": true,
             "define": "VPT_WATER_DENSITY"
         },
@@ -432,7 +432,7 @@
         {
             "name": "render_pipeline.module.ray_tracing.attribute.glass_reflection",
             "type": "float_range:0.0-1.0",
-            "default_value": "0.5",
+            "default_value": "1.0",
             "runtime": true,
             "define": "VPT_GLASS_REFLECTION"
         },
@@ -487,31 +487,31 @@
         {
             "name": "render_pipeline.module.ray_tracing.attribute.albedo_srgb_exact",
             "type": "bool",
-            "default_value": "render_pipeline.false",
+            "default_value": "render_pipeline.true",
             "define": "VPT_ALBEDO_SRGB_EXACT"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.bedrock_fresnel",
             "type": "bool",
-            "default_value": "render_pipeline.false",
+            "default_value": "render_pipeline.true",
             "define": "VPT_FRESNEL_MODEL"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.bedrock_shadow_tint",
             "type": "bool",
-            "default_value": "render_pipeline.false",
+            "default_value": "render_pipeline.true",
             "define": "VPT_SHADOW_TINT_MODEL"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.bedrock_glass_tint",
             "type": "bool",
-            "default_value": "render_pipeline.false",
+            "default_value": "render_pipeline.true",
             "define": "VPT_GLASS_TINT_MODEL"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.bedrock_emission",
             "type": "bool",
-            "default_value": "render_pipeline.false",
+            "default_value": "render_pipeline.true",
             "define": "VPT_EMISSION_MODEL"
         },
         {
@@ -523,7 +523,7 @@
         {
             "name": "render_pipeline.module.ray_tracing.attribute.bedrock_medium_clamp",
             "type": "bool",
-            "default_value": "render_pipeline.false",
+            "default_value": "render_pipeline.true",
             "define": "VPT_MEDIUM_DISTANCE_CLAMP"
         },
         {

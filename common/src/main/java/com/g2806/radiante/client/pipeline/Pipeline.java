@@ -488,17 +488,16 @@ public class Pipeline {
      * material from the same block's top. Bedrock RTX has no such shading.
      */
     public static final String FACE_SHADING_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.face_shading";
-    /** Bedrock RTX's own mode (sky, sun, exposure, materials); on under the Enhanced profile. */
+    /** Bedrock RTX's own mode (sky, sun, exposure, materials); on by default. */
     public static final String BEDROCK_ORIGINAL_ATTRIBUTE =
         "render_pipeline.module.ray_tracing.attribute.bedrock_original";
-    /** On top of that one, what goes beyond Bedrock on purpose (RendererProfile.BEDROCK_RTX_ENHANCED). */
+    /** On top of that one, what goes beyond Bedrock on purpose (glowing light blocks and end portal); on by default. */
     public static final String BEDROCK_ENHANCED_ATTRIBUTE =
         "render_pipeline.module.ray_tracing.attribute.bedrock_enhanced";
 
     /**
-     * Whether block lights cast what their Bedrock MER maps show (EmissionTiles.uploadFromMer): the Bedrock RTX
-     * profiles show that glow and light the world with it; with either switch off (Custom) the light levels' scale
-     * is kept.
+     * Whether block lights cast what their Bedrock MER maps show (EmissionTiles.uploadFromMer): by default they show
+     * that glow and light the world with it; with either switch off the light levels' scale is kept.
      */
     public static boolean castsBedrockGlow() {
         return isShaderPackToggleOn(BEDROCK_MATERIALS_ATTRIBUTE) && isShaderPackToggleOn(BEDROCK_ORIGINAL_ATTRIBUTE);
@@ -828,8 +827,7 @@ public class Pipeline {
                 lastBuildError = null;
             }
         } finally {
-            // A build carries every value, those the profile writes on the way (enforce) included, so nothing is left
-            // to push live or to build again for; hence cleared after it, not before. A failed build is tried again
+            // A build carries every value, so nothing is left to push live or to build again for; hence cleared after it, not before. A failed build is tried again
             // with the next change, live or not, as it was before values could change live.
             INSTANCE.pendingRuntimeChanges.clear();
             INSTANCE.structuralChange = !built;
@@ -852,13 +850,9 @@ public class Pipeline {
     /**
      * Hands the runtime attributes changed since the last build to the renderer, which uses them from the next frame:
      * nothing is compiled and no wait screen is needed. False when the pipeline has to be built after all (the
-     * renderer turned a value down, or the profile's values written first changed a compiled-in one); that build
-     * carries every value.
+     * renderer turned a value down); that build carries every value.
      */
     public static boolean pushRuntimeChanges() {
-        // As a build does first: otherwise a value the renderer profile manages would change live here and quietly
-        // come back at the next build.
-        com.g2806.radiante.client.profile.RendererProfile.current().enforce();
         boolean live = !INSTANCE.structuralChange;
         for (Map.Entry<String, String> change : INSTANCE.pendingRuntimeChanges.entrySet()) {
             if (!live) {
@@ -938,10 +932,6 @@ public class Pipeline {
     private static boolean buildInternal(boolean prewarmOnly) {
         connectFogTransmission();
         fallbackUnavailableShaderPacks();
-        // The chosen renderer profile's values hold on every build: a preset switch, a reset or a pipeline file
-        // written by an older session put them back to defaults, and Bedrock RTX's eye adaptation and the rest
-        // silently went away while the profile still read Bedrock RTX.
-        com.g2806.radiante.client.profile.RendererProfile.current().enforce();
         syncDenoiserSignals();
         getModuleAttributes();
 

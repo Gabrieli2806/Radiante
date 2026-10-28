@@ -324,7 +324,7 @@ public final class EmissionTiles {
             coloured = false;
         }
         boolean eye = sprite.contents().name().equals(END_PORTAL_EYE);
-        // Under the Bedrock profile the eye glows like any other light of its level (no pack map) or as its pack
+        // While Bedrock's glow is cast the eye glows like any other light of its level (no pack map) or as its pack
         // authors it (see keepSetGlow): Bedrock RTX shows an eye of ender in its frame barely glowing, and the full
         // glow lit a ring of frames brighter than any lamp around it.
         boolean bedrockGlow = com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow();
@@ -454,8 +454,8 @@ public final class EmissionTiles {
     }
 
     /**
-     * Re-registers a light emitting block's cells from its Bedrock MER map (see PbrAtlases), for the Bedrock RTX
-     * profiles, which cast light as Bedrock RTX does: a glowing texel lights its surroundings with exactly
+     * Re-registers a light emitting block's cells from its Bedrock MER map (see PbrAtlases), while Bedrock's
+     * glow is cast (the default), as Bedrock RTX casts light: a glowing texel lights its surroundings with exactly
      * the light it shows, its colour times MER green squared (times 5 and the emissive multiplier, in the shaders).
      * Each cell holds the mean of that over its texels, the dark ones included, and is marked exact (a negative
      * emission, see emission.cpp) so the shaders take it at that scale and not at a light level's. Before, how much
@@ -690,7 +690,7 @@ public final class EmissionTiles {
     }
 
     /**
-     * How much more light than its pack gives it a block casts (the Bedrock profile's Enhanced extras). Glow berries
+     * How much more light than its pack gives it a block casts (the Enhanced extras on top of Bedrock RTX). Glow berries
      * are a plant that a pack lights only on its berries, a few specks, so a lush cave of them was nearly dark; they
      * now light it as the warm lanterns the level 14 of vanilla's berries suggests.
      */
@@ -720,7 +720,7 @@ public final class EmissionTiles {
     private static final float LAVA_LIGHT_BLUE = 0.12f;
 
     /**
-     * Under the Bedrock profile lava glows and casts what its pack's MER map says (uploadFromMer), so none of the
+     * While Bedrock's glow is cast lava glows and casts what its pack's MER map says (uploadFromMer), so none of the
      * legacy tuning above (surface glow, cast, light colour) reached it: a sea of lava, glowing at the pack's full
      * strength, burnt the Nether out to pale peach and a flat red. The share of that glow kept (its MER green is
      * set to its root, see softenMer), and the share of it a lava block casts on the blocks around it on top.
@@ -785,7 +785,7 @@ public final class EmissionTiles {
 
     /** A sprite whose glow Radiante sets itself, whatever a pack gives it: see {@link #keepSetGlow}. */
     static boolean setsOwnGlow(Identifier spriteId) {
-        // Not under the Bedrock profile: there the eye glows and casts what its pack's MER map says, as in Bedrock
+        // Not while Bedrock's glow is cast: then the eye glows and casts what its pack's MER map says, as in Bedrock
         // RTX (Vanilla RTX: 5 of 255, next to nothing). Kept out of the MER, its worked out level-8 glow lit a
         // closed room brighter than three torches.
         return END_PORTAL_EYE.equals(spriteId) && !com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow();
@@ -877,7 +877,7 @@ public final class EmissionTiles {
      * shape (which texels glow, and how much more than each other), and its brightest texel is brought up to what a
      * light of that level shows when Radiante works the glow out itself (the level times that texel's brightness); a
      * map that gives the block no glow at all gives way to the worked out one. Lights the pack already makes brighter
-     * than that are left as they are. (The Bedrock RTX profiles show and cast the glow of the MER map as
+     * than that are left as they are. (While Bedrock's glow is cast, radiante-pt shows and casts the glow of the MER map as
      * the pack authors it, as Bedrock RTX does: see uploadFromMer.)
      */
     static void keepVisibleGlow(TextureAtlasSprite sprite, ByteBuffer specular, byte[] derived, int atlasWidth,

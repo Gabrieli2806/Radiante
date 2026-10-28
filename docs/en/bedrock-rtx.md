@@ -38,8 +38,8 @@ the resource pack inside.
   top.
 - A **shield attachable** that fixes parts to the shield (the torch of Vazah's Dynamic Lights, for
   example) is drawn on Java's shield, in each hand as the pack draws it, and its glowing texels glow.
-  With the Bedrock RTX profiles the shield then lights the world from the hand like a torch (the
-  colour of its flame), in the other profiles like a held light block. Only the pack's default look
+  The shield then lights the world from the hand like a torch (the colour of its flame); with
+  Bedrock's glow turned off under Advanced, like a held light block. Only the pack's default look
   is used: variants Bedrock picks while playing (an unlit torch under water, a soul torch) are not.
   Other items' attachables are not converted.
 - Limits: archives inside the file are unpacked only up to a size and count limit (and never one
@@ -48,8 +48,8 @@ the resource pack inside.
 ### Vibrant Visuals light colours
 
 A pack with Vibrant Visuals local lighting (`local_lighting/local_lighting.json`, the light colour
-of each light block) brings those colours along, while the pack is enabled and with the
-**Bedrock RTX** profiles, which are the ones that place point lights:
+of each light block) brings those colours along while the pack is enabled (and Bedrock's glow,
+on by default, is cast; it is what places point lights):
 
 - Torches, lanterns, the end rod, the beacon, fire, campfires, glow berries and the firefly bush
   take the pack's colour for the light they cast (held in the hand too, for torches and lanterns).
@@ -86,26 +86,25 @@ copy: the small smooth specks of ores and the edges of metal keep their reflecti
 emitting block glows where the pack says it does. How much light a block casts still follows its
 light level, so a pack's lights fit Radiante's light scale. It has no effect on Java packs.
 
-## The renderer profiles
+## The Bedrock RTX look
 
-**Renderer Profile** (in the [Image](settings/image.md) section) has two profiles; changing a
-setting one of them manages turns it into **Custom**.
+radiante-pt's defaults are the Bedrock RTX look; there is no profile to pick. They bring the rest of
+the look to Bedrock RTX: Bedrock's sky and sunlight, bloom, a Bedrock-style tone curve built from
+the picture's histogram, exposure metered on the light reaching the surfaces in view, exact sRGB
+colours, Bedrock's glass and water reflections and water surface, sunlight filtered by glass,
+Bedrock's own fog volume and denser water. On top of Bedrock it keeps a few extras: light blocks
+with little glow in the pack look lit by their own light, and End portals glow. It works with or
+without a `.mcpack`; the two together are the closest to Bedrock RTX. Every setting can still be
+changed; **Reset to Defaults** brings the look back.
 
-- **Bedrock RTX (Enhanced)**, the default, brings the rest of the look to Bedrock RTX: Bedrock's
-  sky and sunlight, bloom, a Bedrock-style tone curve built from the picture's histogram, exposure
-  metered on the light reaching the surfaces in view, exact sRGB colours, Bedrock's glass and water
-  reflections and water surface, sunlight filtered by glass, Bedrock's own fog volume and denser
-  water. On top of Bedrock it keeps a few extras: light blocks with little glow in the pack look lit
-  by their own light, and End portals glow. It works with or without a `.mcpack`; the two together
-  are the closest to Bedrock RTX.
+Without any Bedrock pack enabled, Radiante uses built-in values for each biome's fog and water and
+for how much light each light block gives (torches, lanterns, glowstone, sea lanterns, froglights,
+fire and so on). Only numbers are used, not textures: which pixels of a block glow, its normal maps
+and its other materials still need a pack. Any Bedrock pack you enable replaces all of this.
 
-  Without any Bedrock pack enabled, this profile uses built-in values for each biome's fog and water and for
-  how much light each light block gives (torches, lanterns, glowstone, sea lanterns, froglights, fire and
-  so on). Only numbers are used, not textures: which pixels of a block glow, its normal maps and
-  its other materials still need a pack. Any Bedrock pack you enable replaces all of this.
-- **Realistic** starts from the same look and sets less fill light, more contrast, calmer colour,
-  finer waves and clearer teal water, so that nothing looks like plastic. See
-  [Image](settings/image.md) for every value.
+Other looks come as shader packs. Earlier versions had a **Realistic** renderer profile; if it
+or **Custom** was chosen, the settings it set are put back to these defaults once on the first start
+after the update, and every other setting is kept.
 
 ## Files from a Bedrock install
 
@@ -120,7 +119,7 @@ pack. Radiante looks for each of them at, in order:
 | File | Used for | Without it |
 |---|---|---|
 | `sky.png` (64×256) and `look_up_tables.png` (128 wide) | **Atmosphere: Bedrock** (in [Sky & Water](settings/sky-fog-water.md)): Bedrock RTX's sky and sunlight colours | The option is grey and shows Java (Bedrock not available); Radiante's own sky is used. |
-| `water_n.tga` | Bedrock's water surface (three scrolling layers of its water normals), used by the Bedrock RTX (Enhanced) profile | The water keeps Radiante's own surface. |
+| `water_n.tga` | Bedrock's water surface (three scrolling layers of its water normals), used by default | The water keeps Radiante's own surface. |
 | `caustics.png` and `wibbly.png` | **Bedrock Caustics**, under Advanced (off by default) | The option is grey; Radiante's procedural caustics are used. |
 
 <!-- Screenshot pending: the sky with Atmosphere set to Java and to Bedrock, same time of day -->

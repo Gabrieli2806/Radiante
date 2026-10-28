@@ -49,7 +49,6 @@ enum OptionImpact {
         Map.entry("options.radiante.hdr_output", LOW),
         Map.entry("options.radiante.upscaler_mode", HIGH),
         Map.entry("options.radiante.ray_tracing", HIGH),
-        Map.entry("options.radiante.renderer_profile", VARIES),
         Map.entry("options.radiante.frame_generation_backend", VARIES),
         Map.entry("options.radiante.fog_style", MEDIUM),
         Map.entry("options.radiante.cloud_shadows", LOW),

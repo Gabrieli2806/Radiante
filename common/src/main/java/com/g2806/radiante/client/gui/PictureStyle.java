@@ -10,7 +10,7 @@ import java.util.Objects;
  */
 enum PictureStyle {
     NATURAL("options.radiante.picture_style.natural", ToneMethod.PBR_NEUTRAL, 100, 100, 100),
-    BEDROCK("options.radiante.picture_style.bedrock", ToneMethod.PBR_NEUTRAL, 120, 150, 180),
+    BEDROCK("options.radiante.picture_style.bedrock", ToneMethod.BEDROCK, 100, 150, 180),
     VIVID("options.radiante.picture_style.vivid", ToneMethod.ACES, 130, 150, 150),
     CUSTOM("options.radiante.picture_style.custom", null, 0, 0, 0);
 
@@ -47,6 +47,8 @@ enum PictureStyle {
 
     /** The tone mapping curves offered; the pipeline has a few more, shown as they are when chosen elsewhere. */
     enum ToneMethod {
+        // Bedrock RTX's histogram curve, the default.
+        BEDROCK("bedrock_provisional"),
         PBR_NEUTRAL("pbr_neutral"),
         ACES("aces"),
         REINHARD("reinhard");

@@ -163,9 +163,6 @@ public class Options {
      */
     public static String cloudsBeforeDistantHorizons = "";
 
-    /** The renderer profile last applied (com.g2806.radiante.client.profile.RendererProfile), by name. */
-    public static String rendererProfile = "BEDROCK_RTX_ENHANCED";
-
     /** Ray tracing can be switched off with a key, which hands the world back to Minecraft's own renderer. */
     public static boolean rayTracingEnabled = true;
 
@@ -295,7 +292,6 @@ public class Options {
         bool("rayTracingEnabled", () -> rayTracingEnabled, v -> rayTracingEnabled = v),
         new Entry("cloudsBeforeDistantHorizons", () -> cloudsBeforeDistantHorizons,
             v -> cloudsBeforeDistantHorizons = v),
-        new Entry("rendererProfile", () -> rendererProfile, v -> rendererProfile = v),
         new Entry("addonsOpen", () -> addonsOpen, v -> addonsOpen = v),
         bool("useOpenGl", () -> useOpenGl, v -> useOpenGl = v),
         bool("frameGeneration", () -> frameGeneration, v -> frameGeneration = v),
@@ -384,6 +380,9 @@ public class Options {
             chunkBuildingAuto = chunkBuildingBatchSize == 12 && chunkBuildingTotalBatches == 12;
         }
         applyChunkBuildingAuto();
+        // Renderer profiles are gone; the one saved is dealt with once the pipeline is loaded (OptionsMigration), and
+        // the key goes with the rewrite below.
+        OptionsMigration.rememberProfile(props.getProperty(OptionsMigration.PROFILE_KEY));
         // Held lights used to follow the block setting; a config from before keeps them where they were.
         if (!props.containsKey("heldLightBrightness")) {
             heldLightBrightness = emissionBrightness;
