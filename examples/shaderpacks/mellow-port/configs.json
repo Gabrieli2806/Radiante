@@ -1,0 +1,41 @@
+{
+    "radiante": {
+        "display_name": "Mellow (Radiante port)",
+        "version": "0.1.0",
+        "author": "G2806, from Mellow by TheCMK",
+        "license": "GPL-3.0 (Mellow parts MIT)",
+        "description": "Mellow's volumetric clouds and atmospheric fog on Radiante's path-traced light. A port of the MIT-licensed Iris pack Mellow by TheCMK.",
+        "api_version": 0,
+        "extends": "radiante-pt@1"
+    },
+    "attributes": [
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.mellow_clouds",
+            "type": "bool",
+            "default_value": "render_pipeline.true",
+            "define": "MELLOW_CLOUDS"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.mellow_cloud_amount",
+            "type": "int_range:12-26",
+            "default_value": "22",
+            "define": "MELLOW_CLOUD_AMOUNT"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.mellow_cloud_speed",
+            "type": "int_range:0-6",
+            "default_value": "2",
+            "define": "MELLOW_CLOUD_SPEED"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.mellow_fog",
+            "type": "float_range:0.0-0.5",
+            "default_value": "0.25",
+            "define": "MELLOW_FOG"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.cloud_mode",
+            "default_value": "render_pipeline.module.ray_tracing.attribute.cloud_mode.off"
+        }
+    ]
+}

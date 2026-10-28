@@ -1,0 +1,5 @@
+# Mellow port: its own settings; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.mellow_clouds=Mellow：云
+render_pipeline.module.ray_tracing.attribute.mellow_cloud_amount=Mellow：云量
+render_pipeline.module.ray_tracing.attribute.mellow_cloud_speed=Mellow：云速度
+render_pipeline.module.ray_tracing.attribute.mellow_fog=Mellow：大气雾

@@ -49,6 +49,15 @@ texture's own pixels. A retro palette with an ordered dither goes over the pictu
 
 It shows a pack changing where light is computed (`SampledSurface.worldPos` in `hookSurface`), not only its colour.
 
+## mellow-port
+
+A port of two effects of [Mellow](https://modrinth.com/shader/mellow), an Iris pack by TheCMK under the MIT licence
+(`LICENSE-MELLOW`), onto Radiante's light: its volumetric clouds (`hooks/sky.glsl`, drawn into the sky every ray that
+leaves the world sees, so they show in reflections and light the world) and its atmospheric fog (`hooks/fog.glsl`,
+with Volumetric Light on). Mellow's noise images are replaced by procedural noise at the same scales, and its sun and
+sky colours by Radiante's. Settings: Clouds, Cloud Amount, Cloud Speed, Atmospheric Fog. It shows what a port by hand
+looks like: the effect's function is kept, what it read from Iris (images, uniforms) is mapped to Radiante's.
+
 The packs are GPL-3.0, as Radiante PT they build on.
 
 ## Build and try
