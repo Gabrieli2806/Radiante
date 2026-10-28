@@ -229,6 +229,7 @@ vec3 endSkyRadiance(vec3 dir, bool seen) {
 }
 
 #include "common/water_medium.glsl"
+#include "hooks/sky.glsl"
 
 // The sky a ray reaches while still in water. Hit shaders fog each stretch of water a ray crosses up to the surface it
 // hits; a ray that leaves the loaded world under water (a sea running past the render distance, water held up by
@@ -290,7 +291,9 @@ void main() {
     float celestialSeen = rayCrossedCloud(mainRay) ? CLOUD_DISC_SEEN : 1.0;
     mainRay.directLightRadiance.x *= celestialSeen;
     vec3 rainyRadiance = mix(vec3(0.0), vec3(0.1), smoothstep(-0.3, 0.3, sunDir.y));
-    vec3 backgroundRadiance = mix(texture(skyFull, rayDir).rgb, rainyRadiance, progress);
+    vec3 clearSky = texture(skyFull, rayDir).rgb;
+    hookSky(clearSky, rayDir); // a pack's sky (hooks/sky.glsl); nothing in radiante-pt
+    vec3 backgroundRadiance = mix(clearSky, rainyRadiance, progress);
 
     if (worldUBO.skyType == 1) {
         float cameraHeight = worldUBO.cameraViewMatInv[3].y;

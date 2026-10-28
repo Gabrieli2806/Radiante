@@ -4,6 +4,28 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Shader Packs screen (button beside Presets in Radiante's settings): lists the built-in Radiante PT and the packs in
+  `radiante/shaderpacks/` (zip or folder, with icon, name, version, author and licence from the pack's manifest),
+  opens the folder, and switches packs with the usual background rebuild. A pack that does not load or compile is
+  replaced by Radiante PT again, and the renderer's messages (the compiler's, or why `configs.json` was rejected) are
+  shown under the list with a button to copy them; the renderer now logs why a pack's `configs.json` was rejected
+  instead of quietly loading the built-in pack. Zips that wrap the pack in a folder are flagged in the list. A pack
+  that takes the game down while it is being tried (Radiance's Vanilla PT loses the GPU) is replaced by Radiante PT
+  at the next start. A setting value a pack does not offer (radiante-pt's Bedrock water carried into another pack
+  with the same setting) goes back to that pack's default instead of breaking its shaders.
+- Shader pack authors: a guide (`docs/en/shader-packs.md`, `docs/es/paquetes-de-shaders.md`), an example pack in
+  `examples/shaderpacks/` that holds only the files it changes and is built on top of Radiante PT with
+  `./gradlew shaderPackExamples`, and the design, roadmap and decisions for pack support in `docs/dev/shader-packs/`.
+- Shader packs can build on Radiante PT instead of copying it: `"extends": "radiante-pt@1"` in the manifest, and the
+  pack holds only its own files; Radiante PT's files go under it and `configs.json` and the lang files are merged
+  (attributes, textures, buffers and passes by name, new passes placed with `before`/`after`). Radiante PT gains six
+  hook points a pack replaces (`hooks/surface.glsl`, `direct_light`, `water`, `sky`, `fog`, `post_grade`); with its
+  own empty hooks it compiles to the same shaders as before, so nothing changes in the built-in pack. The example
+  pack is rewritten on them, and a second example, Inkwell, gives a comic-book look (banded light, poster colours,
+  ink outlines, flat sky). Packs made for another base, a newer `api_version` or another Radiante version
+  (`requires.radiante`) are listed with the reason. Every pack zip is now extracted entry by entry, refusing paths
+  that leave the pack, symbolic links and more than 20000 files or 512 MB actually written. Packs that copied
+  Radiante PT's files keep working as before.
 - Bedrock `.mcaddon` files (and `.mcpack` files holding several packs) in the resource pack folder are listed and
   converted like a `.mcpack`: the resource packs inside are found (pack folders at any depth, nested `.mcpack`
   files), a pack's first subpack is laid over it, and behavior/script packs are skipped with a line in the log, since

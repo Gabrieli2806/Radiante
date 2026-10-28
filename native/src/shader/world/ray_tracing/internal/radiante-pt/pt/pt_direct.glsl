@@ -79,23 +79,37 @@ vec3 sampleSurfaceDirectLight(SampledSurface surface,
         if (onDisc) { sampledLightDir = moonSample; }
     }
     float sampledLightNoL = dot(sampledLightDir, surface.geometricNormal);
+    // Light behind an opaque surface gives nothing, unless a pack's direct light hook says otherwise (light through
+    // leaves): its BRDF starts at zero, and a zero after the hook skips the shadow ray as before. With the default
+    // hook the early exit stays as it always was.
+#ifdef RADIANTE_HOOK_DIRECT_LIGHT_DEFAULT
     if (isOpaqueSurface && sampledLightNoL <= 0.0) { return vec3(0.0); }
-
-    vec3 lightBRDF;
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
-    if (!endFlash && isOpaqueSurface) {
-        // Bedrock evaluates the BRDF at directionToSun. Jitter only the
-        // visibility ray: jittering a narrow GGX peak produced bright fireflies
-        // on the building and again when the building was reflected in water.
-        if (dot(lightDir, surface.geometricNormal) <= 0.0) { return vec3(0.0); }
-        lightBRDF = bedrockSolarBrdf(surface.mat, viewDir, surface.shadingNormal, lightDir);
-    } else
+    const bool lightBehind = false;
+#else
+    bool lightBehind = isOpaqueSurface && sampledLightNoL <= 0.0;
 #endif
-    {
-        float lightPdf;
-        lightBRDF = DisneyEval(surface.mat, viewDir, surface.shadingNormal, sampledLightDir, lightPdf);
-        if (lightPdf <= 1e-6) { return vec3(0.0); }
+
+    vec3 lightBRDF = vec3(0.0);
+    if (!lightBehind) {
+#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
+        if (!endFlash && isOpaqueSurface) {
+            // Bedrock evaluates the BRDF at directionToSun. Jitter only the
+            // visibility ray: jittering a narrow GGX peak produced bright fireflies
+            // on the building and again when the building was reflected in water.
+            if (dot(lightDir, surface.geometricNormal) <= 0.0) { return vec3(0.0); }
+            lightBRDF = bedrockSolarBrdf(surface.mat, viewDir, surface.shadingNormal, lightDir);
+        } else
+#endif
+        {
+            float lightPdf;
+            lightBRDF = DisneyEval(surface.mat, viewDir, surface.shadingNormal, sampledLightDir, lightPdf);
+            if (lightPdf <= 1e-6) { return vec3(0.0); }
+        }
     }
+    hookDirectLight(surface, viewDir, sampledLightDir, sampledLightNoL, lightBRDF);
+#ifndef RADIANTE_HOOK_DIRECT_LIGHT_DEFAULT
+    if (lightBehind && all(equal(lightBRDF, vec3(0.0)))) { return vec3(0.0); }
+#endif
 
     vec3 shadowOriginPos = surface.worldPos;
     vec3 shadowOriginGeomNormal = surface.geometricNormal;

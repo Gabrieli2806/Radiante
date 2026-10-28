@@ -1,0 +1,56 @@
+{
+    "radiante": {
+        "display_name": "Radiante Example Pack",
+        "version": "2.0.0",
+        "author": "G2806",
+        "license": "GPL-3.0",
+        "description": "Warm grade, light through leaves, teal water, cooler sky.",
+        "icon": "pack.png",
+        "api_version": 0,
+        "extends": "radiante-pt@1"
+    },
+    "attributes": [
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.example_grade",
+            "type": "bool",
+            "default_value": "render_pipeline.true",
+            "define": "EXAMPLE_GRADE"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.example_foliage_translucency",
+            "type": "bool",
+            "default_value": "render_pipeline.true",
+            "define": "EXAMPLE_FOLIAGE_TRANSLUCENCY"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.example_foliage_transmission",
+            "type": "float_range:0.0-2.0",
+            "default_value": "1.4",
+            "runtime": true,
+            "define": "EXAMPLE_FOLIAGE_TRANSMISSION"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.example_water_tint",
+            "type": "vec3",
+            "default_value": "2.2,1.0,0.7",
+            "define": {
+                "EXAMPLE_WATER_TINT": "vec3(X)"
+            }
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.example_sky_tint",
+            "type": "vec3",
+            "default_value": "0.88,0.97,1.15",
+            "define": {
+                "EXAMPLE_SKY_TINT": "vec3(X)"
+            }
+        }
+    ],
+    "execution_post": {
+        "global_variables": [
+            {
+                "RADIANTE_HOOK_POST_GRADE": true
+            }
+        ]
+    }
+}

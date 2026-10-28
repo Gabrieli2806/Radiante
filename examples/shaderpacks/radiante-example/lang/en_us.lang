@@ -1,0 +1,6 @@
+# Radiante Example Pack: only its own settings; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.example_grade=Example: Colour Grade
+render_pipeline.module.ray_tracing.attribute.example_foliage_translucency=Example: Light Through Leaves
+render_pipeline.module.ray_tracing.attribute.example_foliage_transmission=Example: Leaf Transmission
+render_pipeline.module.ray_tracing.attribute.example_water_tint=Example: Water Absorption (RGB)
+render_pipeline.module.ray_tracing.attribute.example_sky_tint=Example: Sky Tint (RGB)

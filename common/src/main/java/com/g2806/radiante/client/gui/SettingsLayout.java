@@ -59,9 +59,12 @@ final class SettingsLayout {
     record Group(String key, List<OptionInstance<?>> options) {
     }
 
-    /** What the bottom buttons do. {@code advanced} is whether the Advanced options show; the toggle flips it. */
+    /**
+     * What the buttons do. {@code advanced} is whether the Advanced options show; the toggle flips it.
+     * {@code shaderPacks} opens the shader pack list (null for no button).
+     */
     record Actions(Runnable reset, Runnable undo, Runnable apply, Runnable done, Extra extra, Runnable share,
-                   boolean advanced, Runnable toggleAdvanced, Runnable rebuild) {
+                   boolean advanced, Runnable toggleAdvanced, Runnable rebuild, Runnable shaderPacks) {
     }
 
     /**
@@ -318,12 +321,22 @@ final class SettingsLayout {
         this.listW = remaining - (this.panelW > 0 ? this.panelW + GAP : 0);
         this.panelX = this.listX + this.listW + GAP;
 
-        // Share sits at the end of the search bar, out of the way of the settings and their buttons.
+        // Share sits at the end of the search bar, out of the way of the settings and their buttons, and Shader Packs
+        // beside it: both open screens of their own rather than change a setting.
         FlatButton share = flat("options.radiante.share", "options.radiante.share.tooltip", this.actions.share(), true);
         int shareW = this.font.width(share.label()) + 16;
         this.buttons.add(new FlatButton(share.label(), share.action(), true, share.tooltip(),
             this.width - margin - shareW, 13, shareW));
-        this.search = new EditBox(this.font, this.sidebarX, 12, this.width - margin * 2 - shareW - 4, 18,
+        int topRight = shareW;
+        if (this.actions.shaderPacks() != null) {
+            FlatButton packs = flat("options.radiante.shader_packs", "options.radiante.shader_packs.tooltip",
+                this.actions.shaderPacks(), true);
+            int packsW = this.font.width(packs.label()) + 16;
+            this.buttons.add(new FlatButton(packs.label(), packs.action(), true, packs.tooltip(),
+                this.width - margin - shareW - 4 - packsW, 13, packsW));
+            topRight += packsW + 4;
+        }
+        this.search = new EditBox(this.font, this.sidebarX, 12, this.width - margin * 2 - topRight - 4, 18,
             Component.translatable("options.radiante.search"));
         this.search.setHint(Component.translatable("options.radiante.search").withStyle(ChatFormatting.DARK_GRAY));
         this.search.setValue(initialSearch);

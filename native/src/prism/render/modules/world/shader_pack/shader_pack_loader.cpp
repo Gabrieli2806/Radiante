@@ -1,11 +1,9 @@
 #include "prism/render/modules/world/shader_pack/shader_pack_internal.hpp"
+#include "prism/render/modules/world/shader_pack/shader_pack_extends.hpp"
 
 #include "prism/render/renderer.hpp"
+#include "prism/util/logging.hpp"
 
-#include "mz.h"
-#include "mz_strm.h"
-#include "mz_zip.h"
-#include "mz_zip_rw.h"
 
 #include <algorithm>
 #include <cctype>
@@ -14,6 +12,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <unordered_set>
+#include <vector>
 
 using json = nlohmann::json;
 
@@ -222,45 +221,6 @@ std::string extractionFolderName(const fs::path &zipPath) {
     return name.str();
 }
 
-struct ZipReaderDeleter {
-    void operator()(void *reader) const {
-        mz_zip_reader_delete(&reader);
-    }
-};
-
-bool extractZip(const fs::path &zipPath, const fs::path &destination, std::string &error) {
-    // Extracted afresh every time: what an earlier extraction left could be from another version of the zip.
-    std::error_code fileError;
-    fs::remove_all(destination, fileError);
-    fs::create_directories(destination, fileError);
-    if (fileError) {
-        error = "failed to prepare temp dir: " + destination.string();
-        return false;
-    }
-
-    std::unique_ptr<void, ZipReaderDeleter> reader(mz_zip_reader_create());
-    if (reader == nullptr) {
-        error = "failed to create zip reader";
-        return false;
-    }
-    if (mz_zip_reader_open_file(reader.get(), zipPath.string().c_str()) != MZ_OK) {
-        error = "failed to open zip file";
-        return false;
-    }
-    const int32_t extracted = mz_zip_reader_save_all(reader.get(), destination.string().c_str());
-    const int32_t closed = mz_zip_reader_close(reader.get());
-    if (extracted != MZ_OK) {
-        error = "failed to extract zip file " + zipPath.string() + " (minizip error " + std::to_string(extracted) +
-                (extracted == MZ_SUPPORT_ERROR ? ", compression method not built in" : "") + ")";
-        return false;
-    }
-    if (closed != MZ_OK) {
-        error = "failed to close zip file";
-        return false;
-    }
-    return true;
-}
-
 // The folder the pack's files are in: the pack itself, or where its zip was extracted. Empty on failure.
 fs::path packRoot(const fs::path &path, std::string &error) {
     if (path.empty()) {
@@ -278,7 +238,7 @@ fs::path packRoot(const fs::path &path, std::string &error) {
         return {};
     }
     const fs::path destination = Renderer::folderPath / "temp/shaders/world/ray_tracing" / extractionFolderName(path);
-    if (!extractZip(path, destination, error)) return {};
+    if (!shader_pack::extractPackZip(path, destination, error)) return {};
     return destination;
 }
 
@@ -1180,6 +1140,36 @@ std::string ShaderPackLoader::toLower(std::string value) {
 ShaderPackLoader::LoadResult
 ShaderPackLoader::load(const fs::path &path, const fs::path &builtInPath, const std::string &language) {
     LoadResult result;
+    auto underRendererFolder = [](const fs::path &packPath) {
+        return packPath.empty() || packPath.is_absolute() ? packPath : Renderer::folderPath / packPath;
+    };
+    const fs::path fallbackPath = underRendererFolder(builtInPath);
+    // A pack that names a base in "extends" is put together in a folder of its own first: the base's files, the
+    // pack's over them, configs.json and the lang files merged (shader_pack_extends.hpp). The folder's name is the
+    // same for the same pack every time, so the SPIR-V cache keeps its shaders.
+    auto stageIfExtending = [&](const fs::path &root, const fs::path &packPath) -> fs::path {
+        const fs::path configPath = root / "configs.json";
+        if (!fs::exists(configPath)) return root;
+        std::ifstream stream(configPath);
+        const json config = json::parse(stream, nullptr, false);
+        if (config.is_discarded() || !config.is_object()) return root; // parseConfigFile says what is wrong
+        const auto base = shader_pack::readExtends(config);
+        if (!base.has_value()) return root;
+        shader_pack::checkExtendsBase(*base);
+        if (fs::weakly_canonical(packPath) == fs::weakly_canonical(fallbackPath)) {
+            fail("the built-in pack cannot extend itself");
+        }
+        std::string error;
+        const fs::path baseRoot = packRoot(fallbackPath, error);
+        if (baseRoot.empty()) fail("extends: the base pack could not be read: " + error);
+        const fs::path stage = Renderer::folderPath / "temp/shaders/world/ray_tracing" /
+                               (extractionFolderName(packPath) + "_extended");
+        shader_pack::stageExtendedPack(baseRoot, root, stage);
+        radiante::out() << "[ShaderPack] " << packPath.filename().string() << " extends " << base->id
+                        << ", staged in " << stage.string() << std::endl;
+        return stage;
+    };
+
     auto tryLoad = [&](const fs::path &packPath) {
         std::string error;
         const fs::path root = packRoot(packPath, error);
@@ -1188,7 +1178,7 @@ ShaderPackLoader::load(const fs::path &path, const fs::path &builtInPath, const 
             return false;
         }
         try {
-            result.shaderPack = parseConfigFile(root, language);
+            result.shaderPack = parseConfigFile(stageIfExtending(root, packPath), language);
         } catch (const std::exception &exception) {
             result.error = exception.what();
             return false;
@@ -1196,14 +1186,15 @@ ShaderPackLoader::load(const fs::path &path, const fs::path &builtInPath, const 
         result.success = true;
         return true;
     };
-    auto underRendererFolder = [](const fs::path &packPath) {
-        return packPath.empty() || packPath.is_absolute() ? packPath : Renderer::folderPath / packPath;
-    };
-
-    const fs::path fallbackPath = underRendererFolder(builtInPath);
     const fs::path requestedPath = underRendererFolder(path.empty() ? builtInPath : path);
     if (tryLoad(requestedPath)) return result;
-    if (!path.empty() && requestedPath != fallbackPath) tryLoad(fallbackPath);
+    if (!path.empty() && requestedPath != fallbackPath) {
+        // Said where Java reads it (RendererProxy.drainNativeErrors): without it a pack whose configs.json is wrong
+        // ran as the built-in one without a word, and the shader pack screen could not say why.
+        radiante::err() << "[ShaderPack] " << requestedPath.string() << " could not be loaded: " << result.error
+                        << "; using the built-in pack" << std::endl;
+        tryLoad(fallbackPath);
+    }
     return result;
 }
 

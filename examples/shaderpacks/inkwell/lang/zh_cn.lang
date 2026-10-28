@@ -1,0 +1,7 @@
+# Inkwell: only its own settings; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.inkwell_bands=Inkwell：光照色阶
+render_pipeline.module.ray_tracing.attribute.inkwell_cel=Inkwell：卡通着色
+render_pipeline.module.ray_tracing.attribute.inkwell_poster_levels=Inkwell：海报色彩
+render_pipeline.module.ray_tracing.attribute.inkwell_outline=Inkwell：墨线描边
+render_pipeline.module.ray_tracing.attribute.inkwell_flat_sky=Inkwell：平涂天空
+render_pipeline.module.ray_tracing.attribute.inkwell_paper=Inkwell：纸张质感

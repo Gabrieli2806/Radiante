@@ -1646,7 +1646,15 @@ public class RadianteOptionsScreen extends Screen {
                     Options.overwriteConfig();
                     reopenWithSameChoices();
                 },
-                this::rebuildShaders),
+                this::rebuildShaders,
+                () -> {
+                    // As Share: what is only staged here is not applied by leaving for the pack list, and the
+                    // settings screen comes back fresh, reading the settings of whichever pack is in use then.
+                    this.applied = true;
+                    Screen last = this.lastScreen;
+                    this.minecraft.gui.setScreen(new ShaderPacksScreen(
+                        () -> new RadianteOptionsScreen(last, this.options)));
+                }),
             value -> this.scroll = value);
         this.layout.restartInfo(new SettingsLayout.RestartInfo() {
             @Override
