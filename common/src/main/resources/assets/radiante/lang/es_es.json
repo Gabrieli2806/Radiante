@@ -742,6 +742,10 @@
   "screen.radiante.shader_packs.problem.bad_config": "No se puede leer configs.json: %s",
   "screen.radiante.shader_packs.problem.no_passes": "configs.json no tiene pases.",
   "screen.radiante.shader_packs.problem.unreadable": "No se puede abrir el paquete: %s",
+  "screen.radiante.shader_packs.problem.base": "Se basa en \"%s\", que este Radiante no tiene: los paquetes pueden extender radiante-pt.",
+  "screen.radiante.shader_packs.problem.base_version": "Hecho para %s; este Radiante tiene radiante-pt@1. Busca una versión del paquete para él.",
+  "screen.radiante.shader_packs.problem.api_version": "Hecho para la interfaz de paquetes %s, más nueva de la que ofrece este Radiante. Actualiza Radiante.",
+  "screen.radiante.shader_packs.problem.requires": "Necesita Radiante %s. Actualiza Radiante.",
   "toast.radiante.shader_pack_failed": "Radiante: falló el paquete de shaders",
   "toast.radiante.shader_pack_failed.detail": "%s: se vuelve a Radiante PT.",
   "screen.radiante.shader_packs.crashed": "El juego se cerró mientras se probaba este paquete (un cierre inesperado o la GPU dejó de responder). Se volvió a poner Radiante PT. Revisa el registro o el informe de error del juego."

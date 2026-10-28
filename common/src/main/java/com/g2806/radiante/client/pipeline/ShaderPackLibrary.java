@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.pipeline;
 
 import com.g2806.radiante.client.RadianteClient;
+import com.g2806.radiante.platform.RadiantePlatform;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -29,7 +30,9 @@ import java.util.zip.ZipFile;
  * object ({@code display_name}), or a {@code "radiante"} object that may also give {@code version}, {@code author},
  * {@code description}, {@code license}, {@code api_version} and {@code icon} (a PNG inside the pack). A
  * {@code pack.png} or {@code icon.png} at the top of the pack is used as the icon when the manifest names none.
- * Only metadata is read here; the renderer loads the pack itself.
+ * Only metadata is read here; the renderer loads the pack itself. The manifest's {@code extends},
+ * {@code api_version} and {@code requires} are checked here ({@link ShaderPackManifest}), so a pack this Radiante
+ * cannot run is listed with the reason instead of failing when chosen.
  */
 public final class ShaderPackLibrary {
 
@@ -210,10 +213,19 @@ public final class ShaderPackLibrary {
             if (icon == null && iconPath == null) {
                 icon = files.readSmall("icon.png");
             }
-            String problem = root.has("passes") ? null : "screen.radiante.shader_packs.problem.no_passes";
+            // A pack that extends radiante-pt holds only what it changes: the passes may all be the base's.
+            String problem = root.has("passes") || (manifest != null && manifest.has("extends")) ? null
+                : "screen.radiante.shader_packs.problem.no_passes";
+            String problemDetail = null;
+            ShaderPackManifest.Problem manifestProblem =
+                builtIn ? null : ShaderPackManifest.check(manifest, RadiantePlatform.INSTANCE.modVersion());
+            if (problem == null && manifestProblem != null) {
+                problem = manifestProblem.key();
+                problemDetail = manifestProblem.detail();
+            }
             return new Entry(stored, fileName, displayName != null && !displayName.isBlank() ? displayName : fallbackName,
                 text(manifest, "version"), author(manifest), text(manifest, "description"), text(manifest, "license"),
-                text(manifest, "api_version"), icon, problem, null, builtIn);
+                text(manifest, "api_version"), icon, problem, problemDetail, builtIn);
         } catch (IOException | RuntimeException e) {
             return new Entry(stored, fileName, fallbackName, null, null, null, null, null, null,
                 "screen.radiante.shader_packs.problem.unreadable", e.getMessage(), builtIn);

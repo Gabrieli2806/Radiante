@@ -742,6 +742,10 @@
   "screen.radiante.shader_packs.problem.bad_config": "无法读取 configs.json：%s",
   "screen.radiante.shader_packs.problem.no_passes": "configs.json 中没有 passes。",
   "screen.radiante.shader_packs.problem.unreadable": "无法打开光影包：%s",
+  "screen.radiante.shader_packs.problem.base": "基于 \"%s\"，但此版本 Radiante 没有它：光影包只能扩展 radiante-pt。",
+  "screen.radiante.shader_packs.problem.base_version": "为 %s 制作；此版本 Radiante 提供 radiante-pt@1。请寻找适用于它的光影包版本。",
+  "screen.radiante.shader_packs.problem.api_version": "为光影包接口 %s 制作，比此版本 Radiante 提供的更新。请更新 Radiante。",
+  "screen.radiante.shader_packs.problem.requires": "需要 Radiante %s。请更新 Radiante。",
   "toast.radiante.shader_pack_failed": "Radiante：光影包失败",
   "toast.radiante.shader_pack_failed.detail": "%s：已回到 Radiante PT。",
   "screen.radiante.shader_packs.crashed": "试用此光影包时游戏关闭了（崩溃或 GPU 停止响应），已恢复 Radiante PT。请查看游戏日志或崩溃报告。"
