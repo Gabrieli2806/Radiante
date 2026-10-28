@@ -87,6 +87,9 @@ public final class PbrAtlases {
         hasRawMer = false;
         int found = 0;
         Map<String, Integer> packHeights = packHeights(resources);
+        // Only with no Bedrock pack at all: one that leaves a light block out means it to glow as Radiante works out.
+        boolean defaults = BedrockDefaults.emissionActive() && resources.listResources("bedrock_mer",
+            id -> id.getNamespace().equals("radiante") && id.getPath().endsWith(".png")).isEmpty();
         try {
             for (Map.Entry<Identifier, TextureAtlasSprite> entry : sprites.entrySet()) {
                 if (isPackMap(sprites, entry.getKey())) {
@@ -102,6 +105,16 @@ public final class PbrAtlases {
                         EmissionTiles.softenMer(entry.getValue(), rawMer, width, height);
                         EmissionTiles.uploadFromMer(albedoTextureId, entry.getValue(), rawMer, width, height);
                     }
+                } else if (defaults && EmissionTiles.isLightSprite(entry.getValue())
+                    && BedrockDefaults.glow(entry.getKey()) != null && coversVanilla(resources, entry.getKey())) {
+                    // No Bedrock pack covers this light block: the Bedrock RTX (Enhanced) profile gives it its built-in
+                    // glow, through the very path a pack's MER map takes.
+                    if (rawMer == null) { rawMer = fill(width, height, 0); }
+                    EmissionTiles.defaultMer(entry.getValue(), BedrockDefaults.glow(entry.getKey()), specular, rawMer,
+                        width, height);
+                    hasRawMer = true;
+                    EmissionTiles.softenMer(entry.getValue(), rawMer, width, height);
+                    EmissionTiles.uploadFromMer(albedoTextureId, entry.getValue(), rawMer, width, height);
                 }
                 byte[] derivedGlow = EmissionTiles.derivedGlow(entry.getValue(), specular, width, height);
                 boolean any = stitch(resources, entry.getKey(), entry.getValue(), "_s", specular, width, height);
@@ -179,6 +192,27 @@ public final class PbrAtlases {
         }
 
         return stitchResource(resource.get(), sprite, target, width, height, false, suffix.equals("_n"));
+    }
+
+    /**
+     * Whether a sprite is still vanilla's own: its colour from the game and its specular map, if any, Radiante's
+     * built-in one. The built-in glow is for vanilla's light blocks; a Java pack that redraws one, or gives it a
+     * material of its own, keeps it.
+     */
+    private static boolean coversVanilla(ResourceManager resources, Identifier spriteId) {
+        Optional<Resource> albedo = resources.getResource(Identifier.fromNamespaceAndPath(spriteId.getNamespace(),
+            "textures/" + spriteId.getPath() + ".png"));
+        if (albedo.isEmpty() || !albedo.get().sourcePackId().equals("vanilla")) {
+            return false;
+        }
+        Optional<Resource> specular = resources.getResource(Identifier.fromNamespaceAndPath(spriteId.getNamespace(),
+            "textures/" + spriteId.getPath() + "_s.png"));
+        if (specular.isEmpty()) {
+            return true;
+        }
+        // Radiante's own resources come from its mod's pack, which its icon is in too.
+        Optional<Resource> own = resources.getResource(Identifier.fromNamespaceAndPath("radiante", "icon.png"));
+        return own.isPresent() && own.get().sourcePackId().equals(specular.get().sourcePackId());
     }
 
     /** Where each pack sits in the stack, counted from the bottom, by its id. */
