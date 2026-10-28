@@ -80,6 +80,7 @@ marked **(restart)** and, when you leave the screen, a notice lists the pending 
 | [Sky & Water](settings/sky-fog-water.md) | Atmosphere, clouds, stars, sun, sun path, rain, glass, biome ambiance, volumetric fog, water. |
 | [Performance](settings/performance.md) | Light bounces, mirrors, glass, water texture, portal, rain, cache, checkerboard, parallax, Bedrock pack materials, fog quality, chunk building. |
 | [Other](settings/other.md) | Block outline, other mods' overlays, text backgrounds, parallax edges, debug logging. |
+| *The pack's name* | Only with a shader pack other than Radiante PT: that pack's own settings ([below](#the-packs-own-page)). |
 | [Addons](addons.md) | Only with an addon installed: its own options, under its name. |
 
 A setting only shows when the pipeline, GPU or shader pack supports it: DLSS Mode only with
@@ -92,6 +93,52 @@ with HDR Output. If something in these docs is missing from your screen, that is
 between them with a click, copy one as a code to share, or import a code someone sent you. A
 preset holds lighting, sky, fog, water, tone and camera effects; the upscaler, frame generation
 and HDR stay as they are.
+
+## Shader packs
+
+**Shader Packs**, beside Presets, chooses the path tracer: the built-in **Radiante PT** (the
+default) or a pack you added. Packs go in `radiante/shaderpacks/` inside the game folder (**Open
+Folder** opens it), as a `.zip` or as a folder, with the pack's `configs.json` at the top: a zip
+of a folder that holds the pack (as GitHub's "Download ZIP" makes) is listed with that problem.
+This is Radiante's own folder, not the game's `shaderpacks/`, which Iris and OptiFine use for a
+different kind of pack.
+
+The list shows each pack's icon, name, version, author and licence, where the pack gives them.
+Click a pack and press **Use** (or double-click it, or press Enter) to switch: the shaders compile
+as for any other change. If the pack does not load or a shader does not compile, Radiante goes
+back to Radiante PT and shows what went wrong under the list (the compiler's messages, with file
+and line); **Copy Error** copies it for the pack's author. If the game closes while a pack is
+being tried (a crash, or the GPU stops responding), the next start goes back to Radiante PT and
+says so here. Each pack keeps its own settings in a
+file next to it (`<pack>.zip.txt`), so switching back and forth keeps them. Most of Radiante's
+settings belong to Radiante PT; another pack shows the ones it shares with Radiante PT where they
+always are, and its own on a page of its own.
+
+### The pack's own page
+
+With a pack other than Radiante PT in use, the sidebar gets one more section, named after the pack
+and with its icon. It holds the settings the pack adds:
+
+- **Pack Preset** at the top, when the pack has presets: sets of its settings made by its author.
+  Picking one sets them all; change one afterwards and it shows **Custom**.
+- The settings under headings the pack chooses (Sky, Clouds, Colour Grade...), each heading
+  folding like an addon's. The pack's finer controls show only with **Advanced** on.
+- Some settings only show while another one has a given value (a cloud's amount while the pack's
+  clouds are on, for example).
+- The panel shows the pack's description of each setting and, where the pack says, its
+  **Performance impact**.
+
+Changes are applied with **Apply** or **Done** like the rest: some change at once, others compile
+the pack's shaders again.
+
+A pack kept as a folder reloads by itself when one of its files changes, for pack authors: it is
+checked in the background first, and an edit that does not compile leaves the picture as it was
+and shows the error here. `/radiante pack validate [name]` checks a pack without switching to it,
+and `/radiante debug view <view>` shows the albedo, normals, depth and other frame images instead of
+the picture (`off` goes back). See [Making a shader pack](shader-packs.md#working-on-a-pack-in-game).
+
+Packs made for Radiance (the mod Radiante grew from) use the same format but an older renderer
+interface, and do not work as they are yet.
 
 ## Advanced
 

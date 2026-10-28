@@ -8,6 +8,48 @@
         "update_pass": "world",
         "resolve_comp": "sharc_resolve.comp"
     },
+    "debug_views": [
+        {
+            "name": "albedo",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 1
+        },
+        {
+            "name": "normal",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 2
+        },
+        {
+            "name": "roughness",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 3
+        },
+        {
+            "name": "metallic",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 4
+        },
+        {
+            "name": "emission",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 5
+        },
+        {
+            "name": "depth",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 6
+        },
+        {
+            "name": "motion",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 7
+        },
+        {
+            "name": "flags",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 8
+        }
+    ],
     "attributes": [
         {
             "name": "render_pipeline.module.ray_tracing.attribute.bedrock_original",
@@ -983,6 +1025,18 @@
             "sampled_binding": 47,
             "filter": "linear",
             "address_mode": "clamp_to_edge"
+        },
+        {
+            "name": "radiante_debug_view",
+            "type": "intermediate",
+            "shared": true,
+            "format": "R16G16B16A16_SFLOAT",
+            "width": "if(RADIANTE_DEBUG_VIEW, RENDER_WIDTH, 1)",
+            "height": "if(RADIANTE_DEBUG_VIEW, RENDER_HEIGHT, 1)",
+            "sampled_binding": 120,
+            "storage_binding": 121,
+            "filter": "linear",
+            "address_mode": "clamp_to_edge"
         }
     ],
     "execution": {
@@ -1101,6 +1155,17 @@
                         }
                     ]
                 }
+            },
+            {
+                "if_else": {
+                    "condition": "RADIANTE_DEBUG_VIEW != 0",
+                    "then": [
+                        {
+                            "pass": "debug_view_capture"
+                        }
+                    ],
+                    "else": []
+                }
             }
         ]
     },
@@ -1111,6 +1176,9 @@
             },
             {
                 "VPT_POST_DOF_FOCUS_HISTORY_READY": false
+            },
+            {
+                "RADIANTE_HOOK_POST_GRADE": false
             }
         ],
         "commands": [
@@ -1194,6 +1262,29 @@
                             "assign": {
                                 "VPT_POST_DOF_FOCUS_HISTORY_READY": false
                             }
+                        }
+                    ]
+                }
+            },
+            {
+                "if_else": {
+                    "condition": "RADIANTE_HOOK_POST_GRADE",
+                    "then": [
+                        {
+                            "pass": "post_hook_copy"
+                        },
+                        {
+                            "pass": "post_hook_grade"
+                        }
+                    ]
+                }
+            },
+            {
+                "if_else": {
+                    "condition": "RADIANTE_DEBUG_VIEW != 0",
+                    "then": [
+                        {
+                            "pass": "post_debug_view"
                         }
                     ]
                 }
@@ -1478,6 +1569,28 @@
             "gz": "1"
         },
         {
+            "type": "compute",
+            "name": "debug_view_capture",
+            "inputs": {
+                "images": [
+                    "out:diffuse_albedo_metallic",
+                    "out:normal_roughness",
+                    "out:motion_vector",
+                    "out:linear_depth",
+                    "out:first_hit_base_emission"
+                ]
+            },
+            "outputs": {
+                "images": [
+                    "radiante_debug_view"
+                ]
+            },
+            "compute": "debug/debug_view.comp",
+            "gx": "(RENDER_WIDTH + 7) / 8",
+            "gy": "(RENDER_HEIGHT + 7) / 8",
+            "gz": "1"
+        },
+        {
             "type": "render",
             "stage": "post_render",
             "name": "post_render_star",
@@ -1646,6 +1759,42 @@
                 "VPT_POST_DOF_DIRECTION_X": "0.0",
                 "VPT_POST_DOF_DIRECTION_Y": "1.0"
             }
+        },
+        {
+            "type": "full_screen",
+            "stage": "post_render",
+            "name": "post_hook_copy",
+            "fragment": "post_render/post_copy.frag",
+            "inputs": {
+                "images": [
+                    "out:ldr"
+                ]
+            },
+            "target": "post_motion"
+        },
+        {
+            "type": "full_screen",
+            "stage": "post_render",
+            "name": "post_hook_grade",
+            "fragment": "post_render/post_hook_grade.frag",
+            "inputs": {
+                "images": [
+                    "post_motion"
+                ]
+            },
+            "target": "out:ldr"
+        },
+        {
+            "type": "full_screen",
+            "stage": "post_render",
+            "name": "post_debug_view",
+            "fragment": "post_render/post_debug_view.frag",
+            "inputs": {
+                "images": [
+                    "radiante_debug_view"
+                ]
+            },
+            "target": "out:ldr"
         }
     ]
 }

@@ -395,6 +395,9 @@ std::string RayTracingModule::getAttributes(const std::vector<std::string> &attr
         result["attributes"].push_back(std::move(entry));
     }
     for (const auto &[key, value] : loaded.shaderPack.translations) result["translations"][key] = value;
+    // The views /radiante debug view offers with this pack (Pipeline.availableDebugViews).
+    result["debug_views"] = nlohmann::json::array();
+    for (const auto &view : loaded.shaderPack.debugViews) result["debug_views"].push_back(view.name);
     return result.dump();
 }
 
@@ -443,6 +446,7 @@ ShaderPrewarm::Work RayTracingModule::preparePrewarm(const std::vector<std::stri
     if (config.shaderPackPath != settings_.shaderPackPath || config.shouldUseSharc != settings_.sharc) return {};
     auto definitions =
         ShaderPackLoader::buildAttributeDefinitions(shaderPack_->shaderPack().attributes, config.staticAttributes);
+    ShaderPackLoader::addDebugViewDefinitions(shaderPack_->shaderPack().debugViews, config.debugView, definitions);
 
     // Fresh passes with only their configuration, so collectShaders asks for exactly what the rebuild's own passes
     // will (the hit groups, SHaRC variants and SER flag included) and nothing built for the frames is shared.

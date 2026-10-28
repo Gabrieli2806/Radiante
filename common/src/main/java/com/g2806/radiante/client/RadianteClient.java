@@ -67,6 +67,7 @@ public final class RadianteClient {
 
     public static void onEndClientTick(Minecraft minecraft) {
         logNativeErrors();
+        com.g2806.radiante.client.gui.ShaderPackTrial.tick(minecraft);
 
         // The warning has to wait for a screen to exist, so it goes up on the first menu after startup.
         if (!RadianteRenderer.isActive()
@@ -128,6 +129,7 @@ public final class RadianteClient {
         }
 
         com.g2806.radiante.client.gui.BackgroundRebuild.tick(minecraft);
+        com.g2806.radiante.client.gui.ShaderPackHotReload.tick(minecraft);
         com.g2806.radiante.client.gui.PipelineWarmUp.tick(minecraft);
         com.g2806.radiante.client.compat.distanthorizons.DistantHorizonsCompat.tick();
         DevAutomation.tick(minecraft);
@@ -244,6 +246,7 @@ public final class RadianteClient {
         String info = RendererProxy.drainNativeInfo();
         if (info != null) {
             for (String line : info.split("\n")) {
+                com.g2806.radiante.client.gui.ShaderPackTrial.onNativeLine(line, false);
                 if (!line.isBlank()) {
                     LOGGER.info("[native] {}", line);
                 }
@@ -254,6 +257,8 @@ public final class RadianteClient {
             return;
         }
         for (String line : errors.split("\n")) {
+            // Before repeats are folded: a shader pack's compile report is kept whole.
+            com.g2806.radiante.client.gui.ShaderPackTrial.onNativeLine(line, true);
             if (line.isBlank()) {
                 continue;
             }

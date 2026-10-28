@@ -68,6 +68,7 @@ public class Pipeline {
     public static void initFolderPath(Path folderPath) {
         PIPELINE_CONFIG_PATH = folderPath.resolve("pipeline.yaml");
         migrateRenamedPack(folderPath);
+        ShaderPackLibrary.recoverFromCrashedTrial(folderPath, PIPELINE_CONFIG_PATH);
     }
 
     /**
@@ -711,6 +712,61 @@ public class Pipeline {
         return null;
     }
 
+    /**
+     * The shader pack the pipeline uses, as stored (relative to the mod's folder, or absolute); the built-in pack's
+     * path when none is set. Null without a ray tracing module.
+     */
+    public static String shaderPackPath() {
+        AttributeConfig attribute = findAttribute(getRayTracingModule(), RAY_TRACING_SHADER_PACK_PATH_ATTRIBUTE);
+        if (attribute == null) {
+            return null;
+        }
+        return attribute.value == null || attribute.value.isBlank() ? BUILT_IN_SHADER_PACK_PATH : attribute.value;
+    }
+
+    /** The built-in pack (radiante-pt) as the pipeline stores it. */
+    public static String builtInShaderPackPath() {
+        return BUILT_IN_SHADER_PACK_PATH;
+    }
+
+    /**
+     * The settings page of the pack in use ({@link ShaderPackSettings}): its own attributes with their groups and
+     * the rest, and its presets. {@code NONE} for Radiante PT.
+     */
+    public static ShaderPackSettings shaderPackSettings() {
+        String path = shaderPackPath();
+        return path == null ? ShaderPackSettings.NONE : ShaderPackLibrary.settings(path);
+    }
+
+    /**
+     * A name from the lang files of the pack in use (Radiante PT's lines, then the pack's, in the game's language),
+     * or null when they have no such key. The renderer reads them with the pack's attributes.
+     */
+    public static String shaderPackTranslation(String key) {
+        Module module = getRayTracingModule();
+        return module == null || key == null ? null : module.dynamicTranslations.get(key);
+    }
+
+    /**
+     * Switches the pipeline to another shader pack; true when it changed. That takes a build, which loads the pack's
+     * own attributes and the values it saved in its settings file (the pack's name plus ".txt") instead of these.
+     */
+    public static boolean selectShaderPack(String path) {
+        AttributeConfig attribute = findAttribute(getRayTracingModule(), RAY_TRACING_SHADER_PACK_PATH_ATTRIBUTE);
+        String value = path == null || path.isBlank() ? BUILT_IN_SHADER_PACK_PATH : path;
+        if (attribute == null || Objects.equals(shaderPackPath(), value)) {
+            return false;
+        }
+        logSettingChange(RAY_TRACING_SHADER_PACK_PATH_ATTRIBUTE, attribute.value, value);
+        assign(attribute, value);
+        return true;
+    }
+
+    /** Whether a pack needs chunk emission collection that is switched off, so the build would use the built-in. */
+    public static boolean shaderPackUnavailable(String path) {
+        return !isShaderPackValueSelectable(path);
+    }
+
     private static Path resolveShaderPackPath(String configuredPath) {
         String value = configuredPath == null ? "" : configuredPath.trim();
         Path shaderPackPath = value.isEmpty()
@@ -1016,8 +1072,17 @@ public class Pipeline {
 
         List<List<AttributeConfig>> moduleAttributes = new ArrayList<>();
         for (Module m : sortedModules) {
-            moduleAttributes.add(
-                    m.attributeConfigs != null ? m.attributeConfigs : new ArrayList<>());
+            List<AttributeConfig> attributes = m.attributeConfigs != null ? m.attributeConfigs : new ArrayList<>();
+            // The debug view travels with the build only; it is never part of the module's saved values.
+            if (Objects.equals(m.name, RAY_TRACING_MODULE_NAME) && !DEBUG_VIEW_OFF.equals(debugView)) {
+                attributes = new ArrayList<>(attributes);
+                AttributeConfig view = new AttributeConfig();
+                view.name = DEBUG_VIEW_ATTRIBUTE;
+                view.type = "string";
+                view.value = debugView;
+                attributes.add(view);
+            }
+            moduleAttributes.add(attributes);
         }
 
         if (prewarmOnly) {
@@ -1785,6 +1850,90 @@ public class Pipeline {
     public static native String getAttributes(String name, String[] attributes, String language);
 
     /**
+     * Loads and compiles a shader pack as a build would, without touching the running pipeline: its configs.json,
+     * the pack staged over its base, and every shader of both stages with these ray tracing attributes (name, value,
+     * name, value...). It works in folders of its own, so it may run on any thread while frames are drawn. JSON:
+     * {@code {"ok": bool, "error": text, "errors": [text], "shaders": n, "compiled": n}}.
+     */
+    public static native String validateShaderPackNative(String packPath, String[] attributes, String language);
+
+    /**
+     * The ray tracing module's attributes as {@link #validateShaderPackNative} takes them, with {@code packPath} as the
+     * pack: the values in use when that is the active pack, else the module's own settings (the pack's attributes then
+     * get their defaults). Reads the pipeline, so call it on the client thread.
+     */
+    public static String[] shaderPackValidationAttributes(String packPath) {
+        Module module = getRayTracingModule();
+        boolean active = ShaderPackLibrary.samePack(packPath, shaderPackPath());
+        List<AttributeConfig> source = module == null ? List.of()
+            : active || module.staticAttributeConfigs == null ? module.attributeConfigs : module.staticAttributeConfigs;
+        List<String> values = new ArrayList<>();
+        if (source != null) {
+            for (AttributeConfig attribute : source) {
+                if (attribute == null || attribute.name == null
+                    || attribute.name.equals(RAY_TRACING_SHADER_PACK_PATH_ATTRIBUTE)) {
+                    continue;
+                }
+                values.add(attribute.name);
+                values.add(attribute.value != null ? attribute.value : "");
+            }
+        }
+        values.add(RAY_TRACING_SHADER_PACK_PATH_ATTRIBUTE);
+        values.add(packPath);
+        if (active && !DEBUG_VIEW_OFF.equals(debugView)) {
+            values.add(DEBUG_VIEW_ATTRIBUTE);
+            values.add(debugView);
+        }
+        return values.toArray(String[]::new);
+    }
+
+    /** The language code the renderer reads pack names in, for {@link #validateShaderPackNative}. */
+    public static String languageCode() {
+        return getCurrentLanguageCode();
+    }
+
+    /**
+     * Asks for the pipeline to be built again although no value changed: the active folder pack's files did
+     * ({@code ShaderPackHotReload}). {@link #build()} reads the pack afresh.
+     */
+    public static void requestRebuild() {
+        INSTANCE.structuralChange = true;
+    }
+
+    /**
+     * Shows a debug view as the picture instead of the lit world: one the shader pack lists in its configs.json
+     * ({@code debug_views}), such as Radiante PT's guide images ("albedo", "normal"...), which packs that extend it
+     * inherit. Not saved: a session's debugging never outlives it. The renderer reads it as an attribute of the ray
+     * tracing module that no file lists.
+     */
+    public static final String DEBUG_VIEW_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.debug_view";
+    public static final String DEBUG_VIEW_OFF = "off";
+    private static String debugView = DEBUG_VIEW_OFF;
+    /** The active pack's debug views, as the renderer read them from it at the last build. */
+    private static volatile List<String> shaderPackDebugViews = List.of();
+
+    public static String debugView() {
+        return debugView;
+    }
+
+    /** Sets the debug view; true when it changed, which takes a build. */
+    public static boolean setDebugView(String view) {
+        String value = view == null || view.isBlank() ? DEBUG_VIEW_OFF : view;
+        if (value.equals(debugView)) {
+            return false;
+        }
+        logSettingChange(DEBUG_VIEW_ATTRIBUTE, debugView, value);
+        debugView = value;
+        INSTANCE.structuralChange = true;
+        return true;
+    }
+
+    /** Every view {@link #setDebugView} takes for the active pack, in the pack's order. */
+    public static List<String> availableDebugViews() {
+        return shaderPackDebugViews;
+    }
+
+    /**
      * Sets a runtime attribute in the running renderer, from the next frame. False when it was not applied (no
      * pipeline yet, or the attribute is compiled into the shader pack): the value then needs a full build.
      */
@@ -1861,6 +2010,8 @@ public class Pipeline {
 
         List<AttributeConfig> mergedAttributeConfigs = Module.copyAttributeConfigs(module.staticAttributeConfigs);
         Map<String, String> translations = new HashMap<>();
+        // The shader pack's own attributes and their defaults, to check the values they end up with.
+        Map<String, String> packDefaults = new HashMap<>();
         Path shaderPackAttributeStoragePath = null;
         boolean preserveCurrentDynamicValues = true;
 
@@ -1952,9 +2103,20 @@ public class Pipeline {
                             attributeConfig.value = Objects.toString(defaultValue, "");
                             attributeConfig.runtime =
                                     Boolean.parseBoolean(Objects.toString(attributeMap.get("runtime"), "false"));
+                            packDefaults.put(attributeConfig.name, attributeConfig.value);
                             mergedAttributeConfigs.add(attributeConfig);
                         }
                     }
+
+                    List<String> debugViews = new ArrayList<>();
+                    if (root.get("debug_views") instanceof List<?> viewNodes) {
+                        for (Object viewNode : viewNodes) {
+                            if (viewNode != null) {
+                                debugViews.add(Objects.toString(viewNode));
+                            }
+                        }
+                    }
+                    shaderPackDebugViews = List.copyOf(debugViews);
 
                     Object translationsNode = root.get("translations");
                     if (translationsNode instanceof Map<?, ?> translationMap) {
@@ -2021,6 +2183,19 @@ public class Pipeline {
                     continue;
                 }
                 attributeConfig.value = currentValues.get(attributeConfig.name);
+            }
+            // A value the pack does not offer goes back to the pack's default. Packs share attribute names, and a
+            // value only one of them has (radiante-pt's Bedrock water, kept from radiante-pt by the player) reached
+            // another pack's enum, where the renderer compiled the value's text into the shaders and the build failed.
+            String packDefault = packDefaults.get(attributeConfig.name);
+            String type = attributeConfig.type;
+            if (packDefault != null && attributeConfig.value != null && type != null
+                    && (type.equals("bool") || type.startsWith("enum:") || type.startsWith("int_range:")
+                        || type.startsWith("float_range:"))
+                    && !com.g2806.radiante.client.option.SettingsCode.allowed(type, attributeConfig.value)) {
+                RadianteClient.LOGGER.warn("Shader pack setting {}: \"{}\" is not one of its values; using {}",
+                        attributeConfig.name, attributeConfig.value, packDefault);
+                attributeConfig.value = packDefault;
             }
         }
 

@@ -5,6 +5,7 @@
 #include "prism/render/modules/world/dlss/dlss_module.hpp"
 #include "prism/render/modules/world/ray_tracing/ray_tracing_module.hpp"
 #include "prism/render/modules/world/shader_pack/shader_pack.hpp"
+#include "prism/render/modules/world/shader_pack/shader_pack_check.hpp"
 #include "prism/render/pipeline.hpp"
 #include "prism/render/render_framework.hpp"
 
@@ -166,6 +167,31 @@ JNIEXPORT void JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_prewarmS
 JNIEXPORT jstring JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_gpuStats(JNIEnv *env, jclass) {
     const std::string summary = GpuProfiler::summary();
     return env->NewStringUTF(summary.c_str());
+}
+
+// Loads and compiles a shader pack without using it (shader_pack::checkPack): /radiante pack validate and the hot
+// reload of folder packs. Java calls it on a thread of its own; it may take seconds. JSON for ShaderPackValidation.
+JNIEXPORT jstring JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_validateShaderPackNative(
+    JNIEnv *env, jclass, jstring packPath, jobjectArray attributes, jstring language) {
+    const std::string json = jni::guard("[Radiante] validateShaderPack", std::string(), [&] {
+        std::vector<std::string> values = jni::utf8Array(env, attributes);
+        if (auto path = jni::utf8(env, packPath)) {
+            values.push_back("render_pipeline.module.ray_tracing.attribute.shader_pack_path");
+            values.push_back(*path);
+        }
+        const shader_pack::PackCheck check =
+            shader_pack::checkPack(jni::framework(), values, jni::utf8(env, language).value_or("en_us"));
+        nlohmann::json result = {
+            {"ok", check.ok},
+            {"error", check.error},
+            {"errors", check.errors},
+            {"shaders", check.shaders},
+            {"compiled", check.compiled},
+        };
+        // Compiler messages may quote bytes of the source that are not UTF-8.
+        return result.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
+    });
+    return env->NewStringUTF(json.c_str());
 }
 
 } // extern "C"

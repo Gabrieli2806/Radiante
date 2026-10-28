@@ -413,7 +413,7 @@ When the player changes a setting, Java (`Pipeline.pushRuntimeChanges`) first tr
 
 A value applied live is also written into the blueprint, so the next rebuild keeps it.
 
-**`WorldUBO.packParams`** is an array of `PRISM_PACK_PARAM_COUNT` (64) `vec4`s at the end of the world uniform
+**`WorldUBO.packParams`** is an array of `PRISM_PACK_PARAM_COUNT` (256) `vec4`s at the end of the world uniform
 (`native/src/common/shared.hpp`). For a `"runtime": true` attribute, the shader pack loader does not compile the
 value in: the define becomes a read such as `int(worldUBO.packParams[N].x)` or `vec3(worldUBO.packParams[N].xyz)`.
 The shader text is then the same for every value, nothing recompiles, and the SPIR-V cache stays valid. Bools,

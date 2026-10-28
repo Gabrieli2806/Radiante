@@ -233,6 +233,15 @@ class ShaderPackLoader {
         fs::path resolveCompShaderPath;
     };
 
+    // "debug_views": a view the player can ask for (/radiante debug view <name>). Every view's define is in the
+    // shaders' defines, as 0, and the chosen view's as its value (1 unless the pack says otherwise), so a pack's code
+    // can test it with #if. Radiante PT's views share RADIANTE_DEBUG_VIEW, one value each.
+    struct DebugViewConfig {
+        std::string name;
+        std::string define;
+        std::string value = "1";
+    };
+
     struct ShaderPack {
         fs::path rootPath;
         bool requiresEmission = false;
@@ -245,6 +254,7 @@ class ShaderPackLoader {
         std::optional<SharcConfig> sharc;
         ExecutionConfig rayTracingExecution;
         ExecutionConfig postRenderExecution;
+        std::vector<DebugViewConfig> debugViews;
     };
 
     struct LoadResult {
@@ -325,6 +335,7 @@ class ShaderPackLoader {
     static constexpr char KEY_DEPTH_COMPARE[] = "depth_compare";
     static constexpr char KEY_COLOR_BLEND[] = "color_blend";
     static constexpr char KEY_RAY_TRACING[] = "ray_tracing";
+    static constexpr char KEY_DEBUG_VIEWS[] = "debug_views";
     static constexpr char KEY_POST_RENDER[] = "post_render";
 
     static constexpr char VALUE_FULL_SCREEN[] = "full_screen";
@@ -341,9 +352,25 @@ class ShaderPackLoader {
     static constexpr char VALUE_AABB[] = "aabb";
     static constexpr uint32_t EXECUTION_BINDING = 0;
 
+    struct LoadOptions {
+        // Load the built-in pack when this one cannot be loaded (and say so in the error log).
+        bool fallBack = true;
+        // Under temp/shaders/world/ray_tracing/, where zips are extracted and packs that extend another are staged.
+        // A check (shader_pack_check.cpp) uses a folder of its own, so it never rewrites files a build is reading.
+        std::string tempFolder;
+    };
+
     // Loads the pack at `path` (a relative path is under Renderer::folderPath), or the built-in one when the path is
     // empty or that pack cannot be loaded. On failure `error` says why the last attempt failed.
     static LoadResult load(const fs::path &path, const fs::path &builtInPath, const std::string &language);
+    static LoadResult
+    load(const fs::path &path, const fs::path &builtInPath, const std::string &language, const LoadOptions &options);
+
+    // The defines the debug views give (DebugViewConfig) when `view` is chosen ("" or "off" for none), added to
+    // `definitions`. False when the pack has no such view (every define is then 0).
+    static bool addDebugViewDefinitions(const std::vector<DebugViewConfig> &views,
+                                        const std::string &view,
+                                        std::unordered_map<std::string, std::string> &definitions);
 
     // The defines the attributes write with these values (an attribute missing from them has its default).
     static std::unordered_map<std::string, std::string>
@@ -433,6 +460,8 @@ class ShaderPack {
         bool shouldUseSharc = true;
         std::unordered_map<std::string, std::string> staticAttributes;
         std::string language = "en_us";
+        // The debug view asked for (render_pipeline.module.ray_tracing.attribute.debug_view); empty for none.
+        std::string debugView;
     };
 
     struct RuntimeTexture {
@@ -494,6 +523,23 @@ class ShaderPack {
     // Loads the pack (the built-in one in its place when it needs block emission the chunks do not collect) and
     // works out its defines for these settings. False with the reason in `error` when no pack could be loaded.
     bool initialize(const BuildConfig &config, std::string &error);
+    // As initialize, for a check: never the built-in pack in this one's place, and staged where `options` says.
+    bool initialize(const BuildConfig &config, std::string &error, const ShaderPackLoader::LoadOptions &options);
+    // The defines this pack was built with, attributes and debug views (what createShaders gives the shaders).
+    const std::unordered_map<std::string, std::string> &shaderAttributes() const;
+
+    // What checkShaders found: distinct compiles, those the SPIR-V cache did not have, and one error per shader that
+    // does not compile (its path in the pack, then the compiler's lines).
+    struct CheckResult {
+        size_t shaders = 0;
+        size_t compiled = 0;
+        std::vector<std::string> errors;
+    };
+    // Compiles the requests as createShaders would (the same defines, so the SPIR-V cache serves the build that
+    // follows), without making shader modules, and collects every failure instead of stopping at the first. Compile
+    // errors stay out of the renderer's error log. Thread-safe.
+    CheckResult checkShaders(const std::vector<ShaderCreateInfo> &requests,
+                             const std::unordered_map<std::string, std::string> &attributeDefinitions) const;
     // Makes the pack's textures and buffers for this render size, or only resizes buffers when it has them already.
     void ensureRuntimeResources(uint32_t referenceWidth, uint32_t referenceHeight);
     // Remakes the buffers whose size expression now comes to another size.
@@ -645,6 +691,7 @@ class ShaderPack {
     StageRuntime rayTracingStageRuntime_;
     StageRuntime postRenderStageRuntime_;
     std::unordered_map<std::string, std::string> staticAttributeValues_;
+    std::string debugView_;
     std::array<glm::vec4, PRISM_PACK_PARAM_COUNT> runtimeValues_{};
 
     // The attribute defines the expressions read, as numbers: in attribute order, each name once. When an attribute's

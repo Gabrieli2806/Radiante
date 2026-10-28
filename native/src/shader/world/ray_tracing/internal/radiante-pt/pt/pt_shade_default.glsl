@@ -98,6 +98,11 @@ indexBuffer;
 #include "common/water_medium.glsl"
 #include "common/rain_wetness.glsl"
 #include "common/seamless_glass.glsl"
+// A pack's water waves (hooks/water_waves.glsl); nothing in radiante-pt.
+#include "hooks/water_waves.glsl"
+#ifndef RADIANTE_HOOK_WATER_WAVES_DEFAULT
+#    include "common/fft_water_shaped.glsl"
+#endif
 #include "common/bedrock_water.glsl"
 
 #ifndef VPT_BOUNCE_LIGHT_BOOST
@@ -117,6 +122,42 @@ layout(location = 1) rayPayloadEXT ShadowRay shadowRay;
 #include "pt/pt_material.glsl"
 #include "pt/pt_parallax.glsl"
 #include "pt/pt_deferred_shadow.glsl"
+// What the surface hook may ask about the texel a hit lies in, and the view it may change: set just before
+// hookSurface runs. g_hookViewDir is the direction towards the viewer the surface is shaded with (its reflections and
+// highlights); a hook that moves surface.worldPos can point it at the new position. Unused, they compile away.
+bool g_hookHasTexel;
+vec2 g_hookTexelSize;
+vec2 g_hookPlaneUv;
+vec3 g_hookPlanePos;
+vec3 g_hookDPdu;
+vec3 g_hookDPdv;
+vec3 g_hookViewDir;
+
+// The centre of the texture's texel at uv, on the face's plane, in camera-relative world space; worldPos when the
+// surface has no texture. Follows the texture as it lies on the face: cross plants, vines, rotated or inset quads.
+vec3 hookTexelCentre(vec2 uv, vec3 worldPos) {
+    if (!g_hookHasTexel) { return worldPos; }
+    vec2 centreUv = (floor(uv * g_hookTexelSize) + 0.5) / g_hookTexelSize;
+    return basePlaneWorldPosAtUv(centreUv, g_hookPlaneUv, g_hookPlanePos, g_hookDPdu, g_hookDPdv);
+}
+
+// The surface flags debug view (common/debug_view.glsl, RADIANTE_DEBUG_VIEW 8, chosen with /radiante debug view
+// flags): what kind of surface the camera sees, written here because only the hit shaders read the vertex data.
+// Compiled out unless that view is chosen.
+#ifdef RADIANTE_DEBUG_VIEW
+#    if RADIANTE_DEBUG_VIEW == 8
+#        include "common/debug_view.glsl"
+#        define PT_DEBUG_VIEW_FLAGS 1
+layout(set = 5, binding = RADIANTE_DEBUG_VIEW_STORAGE_BINDING, rgba16f) uniform writeonly image2D radianteDebugViewImage;
+#    endif
+#endif
+
+// Hook points a pack extending radiante-pt replaces (hooks/*.glsl); empty here. surface.glsl before direct_light.glsl,
+// so the direct light hook can read what the surface hook keeps in its own globals.
+#include "hooks/water_surface.glsl"
+#include "hooks/surface.glsl"
+#include "hooks/direct_light.glsl"
+#include "hooks/cloud_shadow.glsl"
 #include "pt/pt_direct.glsl"
 #include "pt/pt_media.glsl"
 #include "pt/pt_glass.glsl"
@@ -358,6 +399,41 @@ void ptShadeDefault(bool viewMark) {
         surface.geometricNormal = plantNormal;
     }
 #endif
+#ifndef RADIANTE_HOOK_WATER_SURFACE_DEFAULT
+    // A pack's water (hooks/water_surface.glsl), with the height of the waves where they bend the surface.
+    if (isWaterMaterial) {
+        vec3 waterPos = surface.worldPos + vec3(worldUBO.cameraPos.xyz);
+        float waveHeight = 0.0;
+        if (hasFftWaterSurface) {
+            vec3 waterUp = planeGeoNormal.y >= 0.0 ? planeGeoNormal : -planeGeoNormal;
+            vec2 waveCoord = fftWaterSurfaceCoord(waterPos, dPduWorld, dPdvWorld, waterUp);
+#    ifdef RADIANTE_HOOK_WATER_WAVES_DEFAULT
+            waveHeight = sampleFftWater(waveCoord, worldUBO.gameTime).height;
+#    else
+            waveHeight = sampleFftWaterShaped(waveCoord, worldUBO.gameTime, fftWaterWaveShape()).height;
+#    endif
+        }
+        hookWaterSurface(surface, waterPos, waveHeight);
+    }
+#endif
+    g_hookHasTexel = useTexture;
+    g_hookTexelSize = useTexture ? vec2(textureSize(textures[nonuniformEXT(textureID)], 0)) : vec2(1.0);
+    g_hookPlaneUv = textureUV;
+    g_hookPlanePos = planeHitWorldPos;
+    g_hookDPdu = dPduWorld;
+    g_hookDPdv = dPdvWorld;
+    g_hookViewDir = viewDir;
+    hookSurface(surface, packedData, bounce);
+#ifdef PT_DEBUG_VIEW_FLAGS
+    if (bounce == 0u) {
+        vec3 flagsColor = radianteDebugFlagsColor(isWaterSurface(packedData), isLavaSurface(packedData),
+                                                  isGlassSurface(packedData), isPaneSurface(packedData),
+                                                  isLeavesSurface(packedData), isPlantSurface(packedData),
+                                                  isHeldSurface(packedData), isUnlitSurface(packedData),
+                                                  isLayerSurface(packedData), isBlendSurface(packedData));
+        imageStore(radianteDebugViewImage, ivec2(gl_LaunchIDEXT.xy), vec4(radianteDebugDisplay(flagsColor), 1.0));
+    }
+#endif
 
     mainRay.normal = surface.shadingNormal;
     ptStoreMaterial(surface.albedoValue, surface.mat.f0, surface.mat.roughness, surface.mat.metallic,
@@ -412,7 +488,7 @@ void ptShadeDefault(bool viewMark) {
     }
 
     SampledSurface currentSurface = surface;
-    vec3 currentViewDir = viewDir;
+    vec3 currentViewDir = g_hookViewDir;
     // What the camera's own hand holds up against a wall is lit from the open side of it (see ptHandLightPos).
     bool handShifted = false;
     // The light held in the hand sits inside the held item, where it is: its own ray to the surface starts from the
@@ -449,11 +525,20 @@ void ptShadeDefault(bool viewMark) {
                 0.0 : 1.0;
         // (The experimental profile desaturates the glow seen as Bedrock does, as much as the light it casts.)
         bool keepGlowColour = bounce == 0u && localBounce == 0 && VPT_BEDROCK_SPECULAR == 0;
+#ifdef RADIANTE_HOOK_BLOCK_LIGHT_DEFAULT
         vec3 emissionRadiance =
             blockEmissionWeight * emissionFactor *
             worldUBO.emissionBrightness *
             (keepGlowColour ? currentSurface.tint : vptEmissiveColour(currentSurface.tint)) *
             seenEmission * mainRay.throughput;
+#else
+        // The glow through a pack's hooks/block_light.glsl, only where there is one: the hook sees the glow's
+        // colour, as it sees a light's.
+        vec3 glowColour = keepGlowColour ? currentSurface.tint : vptEmissiveColour(currentSurface.tint);
+        if (seenEmission > 0.0) { hookBlockLight(glowColour, RADIANTE_BLOCK_LIGHT_GLOW); }
+        vec3 emissionRadiance = blockEmissionWeight * emissionFactor * worldUBO.emissionBrightness * glowColour *
+                                seenEmission * mainRay.throughput;
+#endif
         // A glow given as negative (the beacon beam's core) is seen, not cast (transparent_only.rchit).
         float vertexGlow = albedoEmission;
         if (vertexGlow < 0.0) {

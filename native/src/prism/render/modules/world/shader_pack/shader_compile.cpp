@@ -217,17 +217,25 @@ struct BatchCounts {
     size_t cacheReadFailures = 0;
 };
 
-// Compiles the requests together, each distinct shader once, with `attributeDefinitions` as the attribute defines.
-// Empty when progress.cancel was set before the batch finished.
-std::vector<std::shared_ptr<gpu::Shader>> compileBatch(const ShaderPack &pack,
-                                                       const std::shared_ptr<gpu::Device> &device,
-                                                       const std::vector<ShaderPack::ShaderCreateInfo> &requests,
-                                                       const Definitions &attributeDefinitions,
-                                                       const ShaderPack::CompileProgress &progress,
-                                                       BatchCounts &counts) {
-    counts.requests = requests.size();
-    if (requests.empty()) return {};
-    const auto cancelled = [&] { return progress.cancel != nullptr && progress.cancel->load(); };
+// One distinct compile of a batch: the first request it serves and everything the compile gets.
+struct Compile {
+    size_t request;
+    Definitions definitions;
+    std::string executionSource;
+    uint64_t sourceBytes;
+};
+
+// The distinct compiles a batch of requests comes to, the largest first, and which one serves each request.
+struct BatchPlan {
+    std::vector<Compile> compiles;
+    std::vector<size_t> compileOfRequest;
+    std::vector<size_t> order;
+};
+
+// Works out each request's defines and merges the requests that compile to the same SPIR-V.
+BatchPlan planBatch(const ShaderPack &pack,
+                    const std::vector<ShaderPack::ShaderCreateInfo> &requests,
+                    const Definitions &attributeDefinitions) {
     const std::vector<std::string> &includeDirectories = pack.shaderPack().includeDirectories;
 
     // A shader is given only the attribute defines it names, so that a setting recompiles only the shaders that read
@@ -237,14 +245,10 @@ std::vector<std::shared_ptr<gpu::Shader>> compileBatch(const ShaderPack &pack,
     for (const auto &entry : attributeDefinitions) attributeNames.insert(entry.first);
     SourceScanner scanner(attributeNames, std::vector<fs::path>(includeDirectories.begin(), includeDirectories.end()));
 
-    struct Compile {
-        size_t request; // the first request it serves
-        Definitions definitions;
-        std::string executionSource;
-        uint64_t sourceBytes;
-    };
-    std::vector<Compile> compiles;
-    std::vector<size_t> compileOfRequest(requests.size());
+    BatchPlan plan;
+    std::vector<Compile> &compiles = plan.compiles;
+    std::vector<size_t> &compileOfRequest = plan.compileOfRequest;
+    compileOfRequest.resize(requests.size());
     std::unordered_map<std::string, size_t> compileByKey;
     for (size_t i = 0; i < requests.size(); i++) {
         const ShaderPack::ShaderCreateInfo &request = requests[i];
@@ -264,15 +268,35 @@ std::vector<std::shared_ptr<gpu::Shader>> compileBatch(const ShaderPack &pack,
         if (added) compiles.push_back({i, std::move(definitions), std::move(source), use.bytes});
         compileOfRequest[i] = found->second;
     }
+
+    // The largest first: started last, one long compile would keep a single thread busy after the others had finished.
+    plan.order.resize(compiles.size());
+    std::iota(plan.order.begin(), plan.order.end(), size_t{0});
+    std::stable_sort(plan.order.begin(), plan.order.end(),
+                     [&](size_t a, size_t b) { return compiles[a].sourceBytes > compiles[b].sourceBytes; });
+    return plan;
+}
+
+// Compiles the requests together, each distinct shader once, with `attributeDefinitions` as the attribute defines.
+// Empty when progress.cancel was set before the batch finished.
+std::vector<std::shared_ptr<gpu::Shader>> compileBatch(const ShaderPack &pack,
+                                                       const std::shared_ptr<gpu::Device> &device,
+                                                       const std::vector<ShaderPack::ShaderCreateInfo> &requests,
+                                                       const Definitions &attributeDefinitions,
+                                                       const ShaderPack::CompileProgress &progress,
+                                                       BatchCounts &counts) {
+    counts.requests = requests.size();
+    if (requests.empty()) return {};
+    const auto cancelled = [&] { return progress.cancel != nullptr && progress.cancel->load(); };
+    const std::vector<std::string> &includeDirectories = pack.shaderPack().includeDirectories;
+    BatchPlan plan = planBatch(pack, requests, attributeDefinitions);
+    std::vector<Compile> &compiles = plan.compiles;
+    const std::vector<size_t> &compileOfRequest = plan.compileOfRequest;
+    const std::vector<size_t> &order = plan.order;
     counts.unique = compiles.size();
 
     if (progress.total != nullptr) progress.total->fetch_add(static_cast<uint32_t>(compiles.size()));
     const auto started = std::chrono::steady_clock::now();
-    // The largest first: started last, one long compile would keep a single thread busy after the others had finished.
-    std::vector<size_t> order(compiles.size());
-    std::iota(order.begin(), order.end(), size_t{0});
-    std::stable_sort(order.begin(), order.end(),
-                     [&](size_t a, size_t b) { return compiles[a].sourceBytes > compiles[b].sourceBytes; });
     const fs::path cacheFolder = shaderCacheFolder();
     std::vector<gpu::Shader::CompileResult> results(compiles.size());
     shader_pack::parallelEach(order.size(), [&](size_t k) {
@@ -309,6 +333,41 @@ std::vector<std::shared_ptr<gpu::Shader>> compileBatch(const ShaderPack &pack,
 }
 
 } // namespace
+
+ShaderPack::CheckResult ShaderPack::checkShaders(const std::vector<ShaderCreateInfo> &requests,
+                                                 const std::unordered_map<std::string, std::string> &attributeDefinitions)
+    const {
+    CheckResult result;
+    if (requests.empty()) return result;
+    const std::vector<std::string> &includeDirectories = shaderPack().includeDirectories;
+    BatchPlan plan = planBatch(*this, requests, attributeDefinitions);
+    result.shaders = plan.compiles.size();
+
+    std::vector<std::string> errors(plan.compiles.size());
+    std::vector<char> compiled(plan.compiles.size(), 0);
+    const fs::path cacheFolder = shaderCacheFolder();
+    shader_pack::parallelEach(plan.order.size(), [&](size_t k) {
+        const size_t index = plan.order[k];
+        Compile &compile = plan.compiles[index];
+        const ShaderCreateInfo &request = requests[compile.request];
+        // Its errors are the report's, not the running pack's: kept out of the log ShaderPackTrial reads.
+        gpu::Shader::QuietErrors quiet;
+        try {
+            const gpu::Shader::CompileResult spirv = gpu::Shader::compileGlslToSpv(
+                request.path.string(), request.stage, std::move(compile.definitions), includeDirectories,
+                std::move(compile.executionSource), cacheFolder);
+            compiled[index] = spirv.cacheHit ? 0 : 1;
+        } catch (const std::exception &exception) {
+            const std::string relative = request.path.lexically_relative(shaderPack().rootPath).generic_string();
+            errors[index] = (relative.empty() ? request.path.string() : relative) + ": " + exception.what();
+        }
+    });
+    for (size_t i = 0; i < errors.size(); i++) {
+        result.compiled += compiled[i];
+        if (!errors[i].empty()) result.errors.push_back(std::move(errors[i]));
+    }
+    return result;
+}
 
 std::vector<std::shared_ptr<gpu::Shader>> ShaderPack::createShaders(std::shared_ptr<gpu::Device> device,
                                                                    const std::vector<ShaderCreateInfo> &requests

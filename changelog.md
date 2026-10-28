@@ -13,10 +13,85 @@ All notable changes to this project are documented in this file.
   Realistic or Custom gets the settings those profiles set put back to the defaults once, on the first start; other
   settings are kept. Realistic's values are recorded in
   [docs/dev/realistic-profile-values.md](docs/dev/realistic-profile-values.md) for a shader pack.
-- Without a Bedrock pack, the Bedrock RTX (Enhanced) profile now has built-in defaults for the fog and water of every
-  biome and for the glow and cast light of each light block, laid over the pixels Radiante finds glowing in vanilla's
-  texture. Textures, normal maps and other materials still need a pack. Realistic and Custom are unchanged, and an
-  enabled Bedrock pack replaces all of it. See [docs/dev/bedrock-defaults.md](docs/dev/bedrock-defaults.md).
+- Without a Bedrock pack, Radiante now has built-in defaults for the fog and water of every biome and for the glow and
+  cast light of each light block, laid over the pixels Radiante finds glowing in vanilla's texture. Textures, normal
+  maps and other materials still need a pack, and an enabled Bedrock pack replaces all of it. See
+  [docs/dev/bedrock-defaults.md](docs/dev/bedrock-defaults.md).
+- Shader packs can tell how wet the air is after rain: `radianteWetness()` (Iris's `wetness`, with its default
+  half-lives) and `radianteRainStoppedFor()`, seconds since the rain stopped, in `common/pack_world.glsl`. Radiante PT
+  reads neither. Mellow port 0.8.0: the rainbow now comes after rain and stays for a minute or two while the air is
+  still wet, strongest just after, instead of only the few seconds the rain takes to stop.
+- Shader packs: a new hook, `hooks/sky_emission.glsl` (`hookSkyEmission(direction, seen)`), for light glowing in the
+  sky that every ray reaching it sees, so it lights the world too; `seen` lets a pack give bounced rays a cheap,
+  smooth version. Radiante PT compiles to the same shaders as before. Mellow port 0.7.0 uses it: the aurora now
+  faintly lights snow, water and the ground in its colour and shows in rough reflections (Aurora Light), and a
+  rainbow, primary and secondary, opposite a low sun in light rain, mostly as it stops (Rainbow).
+- Mellow port 0.6.0: a realistic aurora, now the default (Aurora Style; Mellow's own is still there): folded,
+  rippling curtains with a sharp lower edge and rays, green below and red above, drifting and shimmering slowly,
+  fading at the horizon and under the moon and hidden by clouds. Still only in snowy biomes unless Aurora Everywhere.
+- Shader packs get more hook points, each in a file of its own so older packs keep compiling: the sun's and moon's
+  discs (`hooks/celestial.glsl`), radiante-pt's water waves and caustics (`water_waves`, strength, speed and size),
+  any water's surface for a pack's own normals or foam (`water_surface`), the view from under water (`underwater_fog`
+  in the path tracer, `underwater` on the finished picture), the Nether's and the End's sky and fog
+  (`dimension_sky`) and the colour of block light, cast, held and seen (`block_light`). `common/pack_world.glsl` adds
+  the time of day read off the sun (`radianteSunAngle()`, `radianteDayWeights()`, the moon's phase). With its own
+  hooks Radiante PT compiles to the same shaders as before; packs need no change. Wind stays the renderer's: a pack
+  can only turn it on or set its strength by default. The Mellow port (0.5.0) uses them: Mellow's round sun (off, as
+  in Mellow), its water normals and their settings, its warm torch light, its underwater colour and End sky, and
+  Radiante's wind on for its waving plants; the example pack adds a ripple under water and a thicker Nether haze.
+- Shader packs get a settings page of their own: with a pack other than Radiante PT in use, Radiante's settings have
+  a section named after the pack, with its icon, holding the settings the pack adds (Radiante PT's stay where they
+  are, and the pack's no longer land among Radiante's advanced settings). Packs can group and order them, put some
+  behind Advanced, describe them, mark their performance impact, set a slider's step and hide a setting while another
+  has a given value (`group`, `order`, `advanced`, `description`, `performance_impact`, `step`, `visible_when` on an
+  attribute), and offer presets of their settings as a row at the top of the page (`presets`). Packs' setting names
+  from their `lang` files now show everywhere. A pack built on Radiante PT starts Radiante PT's settings at Radiante
+  PT's defaults, or at its own where it gives one a new default. The example packs (Mellow port, Pixel Light, Inkwell,
+  the example pack) use all of it, in English, Spanish and Chinese.
+- Shader pack development: a pack kept as a folder in `radiante/shaderpacks/` reloads by itself when one of its files
+  is saved. It is checked first (loaded and compiled in the background while the game runs); an edit that does not
+  compile is not used, the picture stays as it was, and the error shows in a popup and on the Shader Packs screen.
+  New client commands: `/radiante pack validate [name]` checks a pack without switching to it and prints the report in
+  the chat, `/radiante pack reload` reloads the active folder pack, and `/radiante debug view <view>` shows the
+  albedo, normals, roughness, metallic, emission, depth, motion vectors or kind of surface instead of the picture
+  (`off` goes back; not saved). Packs can declare their own debug views (`debug_views` in `configs.json`).
+- Shader packs get far more live settings: 256 `"runtime": true` slots instead of 64 (Radiante PT used 62 of them), and
+  they now work in post passes and the post grade hook too (`common/pack_post.glsl`). A pack can ask for Radiante's
+  bloom pyramid (`RADIANTE_POST_BLOOM`) and read it there, for bloom, glow and lens flares; it is drawn only for a pack
+  that asks. Radiante PT renders as before. Example packs: Pixel Light's palette and dither and the Mellow port's grade
+  change live; the example pack gains bloom, a lens flare with colour fringes, a live grade strength and a debug view
+  of its own.
+- Shader packs can react to the weather and the biome: `common/pack_world.glsl` in Radiante PT gives hooks the thunder
+  strength, and the temperature, downfall, snowy, dry and rainy weights and id of the biome at the camera, faded over
+  a couple of seconds across a border (`radianteThunder()`, `radianteBiomeSnowy()`, `radianteBiomeIs(...)`), also in
+  the post grade hook. Radiante PT itself is unchanged. The Mellow port uses them: its aurora shows in snowy biomes
+  and is on by default again, as in Mellow, thunder darkens its sky, sun and clouds, and a pale garden fogs up at night.
+- Shader Packs screen (button beside Presets in Radiante's settings): lists the built-in Radiante PT and the packs in
+  `radiante/shaderpacks/` (zip or folder, with icon, name, version, author and licence from the pack's manifest),
+  opens the folder, and switches packs with the usual background rebuild. A pack that does not load or compile is
+  replaced by Radiante PT again, and the renderer's messages (the compiler's, or why `configs.json` was rejected) are
+  shown under the list with a button to copy them; the renderer now logs why a pack's `configs.json` was rejected
+  instead of quietly loading the built-in pack. Zips that wrap the pack in a folder are flagged in the list. Iris and OptiFine packs put in that folder
+  are listed as such, with a note that they belong to Iris. A pack
+  that takes the game down while it is being tried is replaced by Radiante PT
+  at the next start. A setting value a pack does not offer (radiante-pt's Bedrock water carried into another pack
+  with the same setting) goes back to that pack's default instead of breaking its shaders.
+- Shader pack authors: a guide (`docs/en/shader-packs.md`, `docs/es/paquetes-de-shaders.md`), an example pack in
+  `examples/shaderpacks/` that holds only the files it changes and is built on top of Radiante PT with
+  `./gradlew shaderPackExamples`, and the design and roadmap for pack support in `docs/dev/shader-packs/`.
+- Shader packs can build on Radiante PT instead of copying it: `"extends": "radiante-pt@1"` in the manifest, and the
+  pack holds only its own files; Radiante PT's files go under it and `configs.json` and the lang files are merged
+  (attributes, textures, buffers and passes by name, new passes placed with `before`/`after`). Radiante PT gains six
+  hook points a pack replaces (`hooks/surface.glsl`, `direct_light`, `water`, `sky`, `fog`, `post_grade`); with its
+  own empty hooks it compiles to the same shaders as before, so nothing changes in the built-in pack. Three more
+  hooks let a pack bring its own clouds and night sky: a cloud layer drawn after the rain and over the sun and moon
+  (`hooks/clouds.glsl`), the shadow of those clouds on the world (`cloud_shadow`) and stars (`stars`), also empty in
+  Radiante PT. The example
+  pack is rewritten on them, and a second example, Inkwell, gives a comic-book look (banded light, poster colours,
+  ink outlines, flat sky). Packs made for another base, a newer `api_version` or another Radiante version
+  (`requires.radiante`) are listed with the reason. Every pack zip is now extracted entry by entry, refusing paths
+  that leave the pack, symbolic links and more than 20000 files or 512 MB actually written. Packs that copied
+  Radiante PT's files keep working as before.
 - Bedrock `.mcaddon` files (and `.mcpack` files holding several packs) in the resource pack folder are listed and
   converted like a `.mcpack`: the resource packs inside are found (pack folders at any depth, nested `.mcpack`
   files), a pack's first subpack is laid over it, and behavior/script packs are skipped with a line in the log, since

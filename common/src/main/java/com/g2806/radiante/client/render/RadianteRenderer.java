@@ -508,6 +508,8 @@ public final class RadianteRenderer {
             (float) Math.cos(moonSprite), (float) Math.sin(moonSprite));
 
 
+        BiomeClimate.update(minecraft, cameraState.pos);
+
         TextureAtlas celestials = minecraft.getAtlasManager().getAtlasOrThrow(AtlasIds.CELESTIALS);
         int celestialsId = TextureTracker.idOf(celestials.getTexture());
 
@@ -524,7 +526,10 @@ public final class RadianteRenderer {
             BiomeAmbiance.waterAlbedo(), mobEffect,
             RainExposure.update(minecraft, cameraState.pos.x(), cameraState.pos.z()),
             BiomeAmbiance.waterFog(), new Vector4f(moonDirection, 0.0f), new Vector4f(moonAxis, 0.0f),
-            spriteRotation));
+            spriteRotation, BiomeClimate.climate(),
+            BiomeClimate.thunder(minecraft, levelRenderState.worldPartialTicks), BiomeClimate.biomeId(),
+            BiomeClimate.previousBiomeId(), BiomeClimate.idBlend(),
+            PackWeather.update(minecraft, levelRenderState.worldPartialTicks)));
     }
 
     /**

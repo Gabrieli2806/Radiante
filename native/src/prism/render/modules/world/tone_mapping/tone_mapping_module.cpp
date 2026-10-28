@@ -4,6 +4,7 @@
 #include "prism/render/pipeline.hpp"
 #include "prism/render/render_framework.hpp"
 #include "prism/render/renderer.hpp"
+#include "prism/render/modules/world/shader_pack/shader_pack.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -13,6 +14,8 @@
 #include <limits>
 #include <optional>
 #include <span>
+#include <string>
+#include <unordered_map>
 
 namespace {
 
@@ -41,6 +44,9 @@ constexpr VkShaderStageFlags kComputeAndFragment = VK_SHADER_STAGE_COMPUTE_BIT |
 // ---- settings
 
 constexpr std::string_view kAttributePrefix = "render_pipeline.module.tone_mapping.attribute.";
+// The execution_post global a shader pack sets to true to have the bloom pyramid drawn for its post passes
+// (PostRenderModule hands it to them as set 3, binding 5; common/pack_post.glsl reads it).
+constexpr std::string_view kPackBloomVariable = "RADIANTE_POST_BLOOM";
 constexpr float kUnbounded = std::numeric_limits<float>::infinity();
 
 // A number: its name after kAttributePrefix, where it is kept, and the range it is held to.
@@ -325,7 +331,7 @@ bool ToneMappingModule::setRuntimeAttribute(const std::string &key, const std::s
     if (!wasBedrockCurve && pushConstants_.toneMappingMethod == TONE_MAPPING_METHOD_BEDROCK_PROVISIONAL) {
         bedrockCurveNeedsReset_ = true;
     }
-    if (settings_.bloomEnabled) {
+    if (runsBloom()) {
         for (Frame &frame : frames_) {
             for (uint32_t index = 0; index < BLOOM_PASSES; index++) {
                 setBloomPassSettings(frame.bloomPasses[index].constants, index);
@@ -341,6 +347,15 @@ void ToneMappingModule::build() {
 
     pushConstants_ = makePushConstants();
     curvePushConstants_ = makeCurvePushConstants();
+    packBloom_ = false;
+    if (auto shaderPack = worldPipeline != nullptr ? worldPipeline->shaderPack() : nullptr) {
+        std::unordered_map<std::string, ShaderPackLoader::VariableConfig> configs;
+        std::unordered_map<std::string, std::string> globals;
+        shaderPack->copyStageExecutionState(ShaderPackLoader::Stage::PostRender, configs, globals);
+        if (auto wanted = globals.find(std::string(kPackBloomVariable)); wanted != globals.end()) {
+            packBloom_ = wanted->second == "true" || wanted->second == "1" || wanted->second == "1.0";
+        }
+    }
 
     createBuffers(*framework);
     createDescriptorTables(*framework);
@@ -493,7 +508,7 @@ void ToneMappingModule::createPipelines(Framework &framework, const std::shared_
 }
 
 void ToneMappingModule::createBloom(Framework &framework, const std::shared_ptr<gpu::Shader> &vertexShader) {
-    if (!settings_.bloomEnabled) {
+    if (!runsBloom()) {
         // Nothing is drawn and the tone mapping pass adds none of it, but the binding still has to name an image.
         for (Frame &frame : frames_) frame.descriptors->bindSamplerImageForShader(sampler_, frame.hdr, 0, 3);
         return;
@@ -573,6 +588,11 @@ void ToneMappingModule::createBloom(Framework &framework, const std::shared_ptr<
         // The tone mapping pass adds the finest combined level.
         frame.descriptors->bindSamplerImageForShader(bloomSampler_, up[0], 0, 3);
     }
+}
+
+std::shared_ptr<gpu::DeviceLocalImage> ToneMappingModule::bloomImage(uint32_t frameIndex) const {
+    if (!runsBloom() || frameIndex >= frames_.size()) return nullptr;
+    return frames_[frameIndex].bloomPasses[BLOOM_PASSES - 1].target;
 }
 
 void ToneMappingModule::setBloomPassSettings(ToneMappingBloomPushConstant &constants, uint32_t index) const {
@@ -658,9 +678,9 @@ void ToneMappingModule::record(uint32_t frameIndex, gpu::CommandBuffer &commandB
 
     bool bedrockCurve = pushConstants_.toneMappingMethod == TONE_MAPPING_METHOD_BEDROCK_PROVISIONAL;
     if (bedrockCurve) recordBedrockCurve(frame, commandBuffer);
-    if (settings_.bloomEnabled) recordBloom(frame, commandBuffer);
+    if (runsBloom()) recordBloom(frame, commandBuffer);
     // The curve passes pushed constants of their own over these, and the bloom passes bound other layouts.
-    if (bedrockCurve || settings_.bloomEnabled) pushToneMappingConstants();
+    if (bedrockCurve || runsBloom()) pushToneMappingConstants();
 
     commandBuffer.beginRenderPass({
         .renderPass = renderPass_,

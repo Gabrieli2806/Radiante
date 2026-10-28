@@ -19,8 +19,10 @@
 #define INV_TWO_PI 0.15915494309189533
 #define INV_4_PI 0.07957747154594766
 
-// Slots in WorldUBO.packParams: shader pack settings the shaders read live instead of having them compiled in.
-#define PRISM_PACK_PARAM_COUNT 64
+// Slots in WorldUBO.packParams: shader pack settings the shaders read live instead of having them compiled in. Radiante
+// PT takes about 60; 256 leaves a pack that extends it room for its own. 4 KB of the world uniform, well inside the
+// 16 KB every Vulkan device allows a uniform buffer.
+#define PRISM_PACK_PARAM_COUNT 256
 
 #ifdef __cplusplus
 namespace gpu {
@@ -298,7 +300,7 @@ struct WorldUBO {
     T_VEC4 offHandLightPos;
     T_VEC4 offHandLightColor;
 
-    // ---- Shader pack settings (736..1759), never written by Java
+    // ---- Shader pack settings (736..4831), never written by Java
     // The pack's settings marked "runtime" in its configs.json, one slot each in the order the pack lists them: a
     // number in x (an int, a bool as 0 or 1, a choice as its index), a vec3 in xyz. Buffers::setPackParams copies
     // them in every frame, so changing one needs no shader rebuild.
@@ -380,6 +382,27 @@ struct SkyUBO {
     // The Sun/Moon Rotation settings, each sprite turned around its own centre: xy (cos, sin) of the sun's angle,
     // zw the moon's; (1, 0) is vanilla's.
     T_VEC4 spriteRotation;
+
+    // ---- The weather and the biome for shader packs (304..335), read through radiante-pt's common/pack_world.glsl;
+    // radiante-pt itself reads none of it. BiomeClimate on the Java side.
+    // The biome at the camera, eased over a couple of seconds so effects fade across a border. x: its temperature,
+    // y: its downfall, z: how snowy (1 where snow falls at the camera's height), w: how dry (1 where nothing falls).
+    T_VEC4 biomeClimate;
+    // The thunder, 0..1, as the client level's getThunderLevel (already faded in and out by the game).
+    T_FLOAT thunderGradient;
+    // FNV-1a hash of the biome's id ("minecraft:snowy_plains") at the camera, and of the one before it; 0 without a
+    // world. biomeIdBlend: how far the change from the previous biome has come, 0..1, eased like biomeClimate.
+    T_UINT biomeId;
+    T_UINT previousBiomeId;
+    T_FLOAT biomeIdBlend;
+
+    // ---- The air after rain for shader packs (336..351), PackWeather on the Java side; radiante-pt reads none of it.
+    // Iris's wetness: the rain smoothed, rising with a half-life of a minute and falling with one of twenty seconds.
+    T_FLOAT wetness;
+    // Seconds since the rain eased off after wetting the air: 0 while it rains, 1e6 before any rain.
+    T_FLOAT rainStoppedFor;
+    T_FLOAT weatherPad0;
+    T_FLOAT weatherPad1;
 };
 
 // Per-texture lookup from an atlas texture to its PBR companions. specular, normal and rawMer are texture ids,
