@@ -2,12 +2,13 @@
 """Compiles every shader of a staged shader pack offline, the way the renderer would, without the game.
 
     python compile_pack.py <pack folder> [--out <folder for .spv>] [--glslang <glslangValidator>] [--opt]
+                           [--debug-view <name>]
 
 <pack folder> is a whole pack: radiante-pt as the native build stages it (<build>/src/shader/ray_tracing_internal_zip/
 radiante-pt), or a pack that extends it, staged with shader_pack_stage (src/tools/shader_pack_stage.cpp). The defines
 are the ones the loader gives a pack at its default settings (shader_pack/attribute_values.cpp): attributes, a
-runtime attribute as its worldUBO.packParams read, the passes' own defines, the execution variables, and the
-renderer's (no micromaps, no SER; SHaRC variants of the ray generation shader as the ray tracing module asks for
+runtime attribute as its worldUBO.packParams read, the debug views' defines (0, or the view's value with
+--debug-view), the passes' own defines, the execution variables, and the renderer's (no micromaps, no SER; SHaRC variants of the ray generation shader as the ray tracing module asks for
 them). glslangValidator stands in for shaderc: same front end, so a shader that compiles here compiles in game, short
 of driver limits. With --opt the SPIR-V also goes through spirv-opt -O --strip-debug (about shaderc's performance
 level), so two builds can be compared byte for byte.
@@ -61,6 +62,23 @@ def runtime_kind(type_):
     if type_ == "bool" or type_.startswith("int") or type_.startswith("enum:"):
         return "int"
     return "float"
+
+
+def debug_view_defines(config, view):
+    """As ShaderPackLoader::addDebugViewDefinitions: every view's define 0, the chosen one's its value."""
+    defines = {}
+    views = [v for v in config.get("debug_views", []) if isinstance(v, dict) and isinstance(v.get("define"), str)]
+    for entry in views:
+        defines.setdefault(entry["define"], "0")
+    found = view is None
+    for entry in views:
+        if entry.get("name") == view:
+            value = entry.get("value", 1)
+            defines[entry["define"]] = str(int(value)) if isinstance(value, bool) else str(value)
+            found = True
+    if not found:
+        raise SystemExit(f"no debug view named {view}")
+    return defines
 
 
 def attribute_defines(config):
@@ -218,11 +236,16 @@ def main():
     parser.add_argument("--out")
     parser.add_argument("--glslang", default=shutil.which("glslangValidator") or "glslangValidator")
     parser.add_argument("--opt", action="store_true")
+    parser.add_argument("--debug-view")
     args = parser.parse_args()
 
     root = Path(args.pack).resolve()
     config = json.loads((root / "configs.json").read_text(encoding="utf-8"))
     attributes = attribute_defines(config)
+    for name, value in debug_view_defines(config, args.debug_view).items():
+        attributes.setdefault(name, value)
+        if args.debug_view is not None:
+            attributes[name] = value
     sources = {False: execution_source(config, False, 6), True: execution_source(config, True, 5)}
     out = Path(args.out).resolve() if args.out else None
     if out:

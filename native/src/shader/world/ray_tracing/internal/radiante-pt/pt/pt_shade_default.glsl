@@ -136,6 +136,17 @@ vec3 hookTexelCentre(vec2 uv, vec3 worldPos) {
     return basePlaneWorldPosAtUv(centreUv, g_hookPlaneUv, g_hookPlanePos, g_hookDPdu, g_hookDPdv);
 }
 
+// The surface flags debug view (common/debug_view.glsl, RADIANTE_DEBUG_VIEW 8, chosen with /radiante debug view
+// flags): what kind of surface the camera sees, written here because only the hit shaders read the vertex data.
+// Compiled out unless that view is chosen.
+#ifdef RADIANTE_DEBUG_VIEW
+#    if RADIANTE_DEBUG_VIEW == 8
+#        include "common/debug_view.glsl"
+#        define PT_DEBUG_VIEW_FLAGS 1
+layout(set = 5, binding = RADIANTE_DEBUG_VIEW_STORAGE_BINDING, rgba16f) uniform writeonly image2D radianteDebugViewImage;
+#    endif
+#endif
+
 // Hook points a pack extending radiante-pt replaces (hooks/*.glsl); empty here. surface.glsl first, so the
 // direct light hook can read what the surface hook keeps in its own globals.
 #include "hooks/surface.glsl"
@@ -390,6 +401,16 @@ void ptShadeDefault(bool viewMark) {
     g_hookDPdv = dPdvWorld;
     g_hookViewDir = viewDir;
     hookSurface(surface, packedData, bounce);
+#ifdef PT_DEBUG_VIEW_FLAGS
+    if (bounce == 0u) {
+        vec3 flagsColor = radianteDebugFlagsColor(isWaterSurface(packedData), isLavaSurface(packedData),
+                                                  isGlassSurface(packedData), isPaneSurface(packedData),
+                                                  isLeavesSurface(packedData), isPlantSurface(packedData),
+                                                  isHeldSurface(packedData), isUnlitSurface(packedData),
+                                                  isLayerSurface(packedData), isBlendSurface(packedData));
+        imageStore(radianteDebugViewImage, ivec2(gl_LaunchIDEXT.xy), vec4(radianteDebugDisplay(flagsColor), 1.0));
+    }
+#endif
 
     mainRay.normal = surface.shadingNormal;
     ptStoreMaterial(surface.albedoValue, surface.mat.f0, surface.mat.roughness, surface.mat.metallic,

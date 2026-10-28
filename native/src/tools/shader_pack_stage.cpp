@@ -133,6 +133,17 @@ int selfTest() {
                merged["execution_post"]["global_variables"][1]["MINE"] == 1,
            "global variables merged by name");
 
+    // debug views: merged by name like attributes, so a pack keeps radiante-pt's and adds its own
+    const json withViews = mergeConfigs(json::parse(R"({"passes": [], "debug_views": [
+        {"name": "albedo", "define": "RADIANTE_DEBUG_VIEW", "value": 1},
+        {"name": "normal", "define": "RADIANTE_DEBUG_VIEW", "value": 2}]})"),
+                                        json::parse(R"({"debug_views": [{"name": "mine", "define": "MINE_VIEW"},
+        {"name": "normal", "value": 9}]})"));
+    expect(withViews["debug_views"].size() == 3 && withViews["debug_views"][2]["name"] == "mine" &&
+               (*named(withViews["debug_views"], "normal"))["value"] == 9 &&
+               (*named(withViews["debug_views"], "normal"))["define"] == "RADIANTE_DEBUG_VIEW",
+           "debug views merged by name");
+
     // base step
     const json withBase = mergeConfigs(base, json::parse(R"({
         "execution": {"commands": [{"pass": "mine"}, {"base": true}]},

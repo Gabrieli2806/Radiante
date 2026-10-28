@@ -405,7 +405,7 @@ json mergeConfigs(const json &base, const json &derived) {
     merged.erase("radiante");
     merged.erase("radiance");
 
-    for (const char *key : {"attributes", "textures", "buffers"}) mergeNamedList(merged, derived, key);
+    for (const char *key : {"attributes", "textures", "buffers", "debug_views"}) mergeNamedList(merged, derived, key);
     // Scripts before passes: a new pass is placed in the merged script.
     mergeScript(merged, base, derived, false);
     mergeScript(merged, base, derived, true);
@@ -415,7 +415,7 @@ json mergeConfigs(const json &base, const json &derived) {
     for (auto field = derived.begin(); field != derived.end(); ++field) {
         const std::string &key = field.key();
         if (key == "attributes" || key == "textures" || key == "buffers" || key == "passes" || key == "execution" ||
-            key == "execution_post") {
+            key == "execution_post" || key == "debug_views") {
             continue;
         }
         if (key == "sharc" && field->is_object() && merged.contains("sharc") && merged["sharc"].is_object()) {

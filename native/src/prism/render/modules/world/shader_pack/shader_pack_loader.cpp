@@ -221,8 +221,14 @@ std::string extractionFolderName(const fs::path &zipPath) {
     return name.str();
 }
 
+// Where zips are extracted and packs that extend another are staged; a check's folder below it is its own.
+fs::path tempRoot(const std::string &folder) {
+    const fs::path root = Renderer::folderPath / "temp/shaders/world/ray_tracing";
+    return folder.empty() ? root : root / folder;
+}
+
 // The folder the pack's files are in: the pack itself, or where its zip was extracted. Empty on failure.
-fs::path packRoot(const fs::path &path, std::string &error) {
+fs::path packRoot(const fs::path &path, std::string &error, const std::string &tempFolder = {}) {
     if (path.empty()) {
         error = "shader pack path is empty";
         return {};
@@ -237,7 +243,7 @@ fs::path packRoot(const fs::path &path, std::string &error) {
         error = "shader pack must be a directory or zip: " + path.string();
         return {};
     }
-    const fs::path destination = Renderer::folderPath / "temp/shaders/world/ray_tracing" / extractionFolderName(path);
+    const fs::path destination = tempRoot(tempFolder) / extractionFolderName(path);
     if (!shader_pack::extractPackZip(path, destination, error)) return {};
     return destination;
 }
@@ -1094,6 +1100,31 @@ PackConfig parseConfigFile(const fs::path &root, const std::string &language) {
         pack.postRenderExecution = parseExecution(*execution, "root.execution_post");
     }
 
+    if (const json *views = field(config, Loader::KEY_DEBUG_VIEWS)) {
+        const std::string context = at("root", Loader::KEY_DEBUG_VIEWS);
+        if (!views->is_array()) fail(context + " must be an array");
+        std::unordered_set<std::string> names;
+        for (size_t i = 0; i < views->size(); i++) {
+            const json &entry = (*views)[i];
+            const std::string entryContext = at(context, i);
+            if (!entry.is_object()) fail(entryContext + " must be an object");
+            Loader::DebugViewConfig view;
+            view.name = requireString(entry, Loader::KEY_NAME, entryContext);
+            view.define = requireString(entry, Loader::KEY_DEFINE, entryContext);
+            if (const json *value = field(entry, Loader::KEY_VALUE)) {
+                view.value = scalarText(*value, at(entryContext, Loader::KEY_VALUE));
+            }
+            if (view.name.empty() || view.name == "off" || view.name.find_first_of(" \t") != std::string::npos) {
+                fail(at(entryContext, Loader::KEY_NAME) + " must be one word other than off");
+            }
+            if (!ExpressionEvaluator::isValidIdentifier(view.define)) {
+                fail(at(entryContext, Loader::KEY_DEFINE) + " must be a define name");
+            }
+            if (!names.insert(view.name).second) fail(entryContext + ": " + view.name + " is listed twice");
+            pack.debugViews.push_back(std::move(view));
+        }
+    }
+
     // Without a script a stage runs its passes in the order the pack lists them.
     auto addDefaultCommands = [&](Loader::ExecutionConfig &execution, Loader::Stage stage) {
         if (!execution.commands.empty()) return;
@@ -1139,6 +1170,13 @@ std::string ShaderPackLoader::toLower(std::string value) {
 
 ShaderPackLoader::LoadResult
 ShaderPackLoader::load(const fs::path &path, const fs::path &builtInPath, const std::string &language) {
+    return load(path, builtInPath, language, LoadOptions{});
+}
+
+ShaderPackLoader::LoadResult ShaderPackLoader::load(const fs::path &path,
+                                                    const fs::path &builtInPath,
+                                                    const std::string &language,
+                                                    const LoadOptions &options) {
     LoadResult result;
     auto underRendererFolder = [](const fs::path &packPath) {
         return packPath.empty() || packPath.is_absolute() ? packPath : Renderer::folderPath / packPath;
@@ -1160,10 +1198,9 @@ ShaderPackLoader::load(const fs::path &path, const fs::path &builtInPath, const 
             fail("the built-in pack cannot extend itself");
         }
         std::string error;
-        const fs::path baseRoot = packRoot(fallbackPath, error);
+        const fs::path baseRoot = packRoot(fallbackPath, error, options.tempFolder);
         if (baseRoot.empty()) fail("extends: the base pack could not be read: " + error);
-        const fs::path stage = Renderer::folderPath / "temp/shaders/world/ray_tracing" /
-                               (extractionFolderName(packPath) + "_extended");
+        const fs::path stage = tempRoot(options.tempFolder) / (extractionFolderName(packPath) + "_extended");
         shader_pack::stageExtendedPack(baseRoot, root, stage);
         radiante::out() << "[ShaderPack] " << packPath.filename().string() << " extends " << base->id
                         << ", staged in " << stage.string() << std::endl;
@@ -1172,7 +1209,7 @@ ShaderPackLoader::load(const fs::path &path, const fs::path &builtInPath, const 
 
     auto tryLoad = [&](const fs::path &packPath) {
         std::string error;
-        const fs::path root = packRoot(packPath, error);
+        const fs::path root = packRoot(packPath, error, options.tempFolder);
         if (root.empty()) {
             result.error = error;
             return false;
@@ -1188,7 +1225,7 @@ ShaderPackLoader::load(const fs::path &path, const fs::path &builtInPath, const 
     };
     const fs::path requestedPath = underRendererFolder(path.empty() ? builtInPath : path);
     if (tryLoad(requestedPath)) return result;
-    if (!path.empty() && requestedPath != fallbackPath) {
+    if (options.fallBack && !path.empty() && requestedPath != fallbackPath) {
         // Said where Java reads it (RendererProxy.drainNativeErrors): without it a pack whose configs.json is wrong
         // ran as the built-in one without a word, and the shader pack screen could not say why.
         radiante::err() << "[ShaderPack] " << requestedPath.string() << " could not be loaded: " << result.error
@@ -1196,6 +1233,19 @@ ShaderPackLoader::load(const fs::path &path, const fs::path &builtInPath, const 
         tryLoad(fallbackPath);
     }
     return result;
+}
+
+bool ShaderPackLoader::addDebugViewDefinitions(const std::vector<DebugViewConfig> &views,
+                                               const std::string &view,
+                                               std::unordered_map<std::string, std::string> &definitions) {
+    for (const auto &candidate : views) definitions.try_emplace(candidate.define, "0");
+    if (view.empty() || view == "off") return true;
+    for (const auto &candidate : views) {
+        if (candidate.name != view) continue;
+        definitions[candidate.define] = candidate.value;
+        return true;
+    }
+    return false;
 }
 
 std::string ShaderPackLoader::buildExecutionSource(const std::vector<VariableConfig> &variables,

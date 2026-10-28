@@ -32,6 +32,9 @@ std::ostream &shaderOut() {
     return radiante::out() << "[Shader] ";
 }
 
+// Set by Shader::QuietErrors: compile errors on this thread stay out of the error log.
+thread_local bool quietErrors = false;
+
 std::ostream &shaderErr() {
     return radiante::err() << "[Shader] ";
 }
@@ -569,7 +572,7 @@ std::vector<uint32_t> compileSource(const std::string &sourcePath,
                                     std::string_view injectedSource) {
     std::ifstream file(sourcePath, std::ios::binary);
     if (!file) {
-        shaderErr() << "Cannot open source file: " << sourcePath << std::endl;
+        if (!quietErrors) shaderErr() << "Cannot open source file: " << sourcePath << std::endl;
         throw std::runtime_error("cannot open shader source " + sourcePath);
     }
     const std::string source = injectAfterVersion(readAll(file), injectedSource);
@@ -596,9 +599,14 @@ std::vector<uint32_t> compileSource(const std::string &sourcePath,
     const shaderc::SpvCompilationResult result = compiler.CompileGlslToSpv(
         source, shaderKindFromStage(stage), sourcePath.c_str(), options);
     if (result.GetCompilationStatus() != shaderc_compilation_status_success) {
-        shaderErr() << "failed to compile shader source " << sourcePath << "\n"
-                    << result.GetErrorMessage() << std::endl;
-        throw std::runtime_error("shader " + sourcePath + " does not compile");
+        if (!quietErrors) {
+            shaderErr() << "failed to compile shader source " << sourcePath << "\n"
+                        << result.GetErrorMessage() << std::endl;
+            throw std::runtime_error("shader " + sourcePath + " does not compile");
+        }
+        // A check reports the compiler's own lines, which name the file and line.
+        throw std::runtime_error(result.GetErrorMessage().empty() ? "shader " + sourcePath + " does not compile"
+                                                                  : result.GetErrorMessage());
     }
     std::vector<uint32_t> spirv(result.cbegin(), result.cend());
     if (micromaps) { spirv = optimizeUnvalidated(std::move(spirv), sourcePath); }
@@ -727,6 +735,14 @@ Shader::Shader(std::shared_ptr<Device> device, CompileResult compileResult) : de
 
 Shader::~Shader() {
     vkDestroyShaderModule(device_->vkDevice(), module_, nullptr);
+}
+
+Shader::QuietErrors::QuietErrors() : previous_(quietErrors) {
+    quietErrors = true;
+}
+
+Shader::QuietErrors::~QuietErrors() {
+    quietErrors = previous_;
 }
 
 Shader::CompileResult Shader::compileGlslToSpv(std::string sourcePath,
