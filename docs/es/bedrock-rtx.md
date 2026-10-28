@@ -105,6 +105,12 @@ ajuste que gestiona uno de ellos lo convierte en **Personalizado**.
   extras: los bloques de luz con poco brillo en el pack se ven iluminados por su propia luz y los
   portales del End brillan. Funciona con o sin un `.mcpack`; los dos juntos son lo más cercano a
   Bedrock RTX.
+
+  Sin ningún pack Bedrock activado, este perfil usa valores incorporados para la niebla y el agua de cada
+  bioma y para cuánta luz da cada bloque de luz (antorchas, faroles, piedra luminosa, linternas marinas,
+  luces rana, fuego, etc.). Solo se usan números, no texturas: qué píxeles de un bloque brillan, sus
+  mapas de normales y sus demás materiales siguen necesitando un pack. Cualquier pack Bedrock que
+  actives reemplaza todo esto.
 - **Realista** parte del mismo aspecto y pone menos luz de relleno, más contraste, color más
   calmado, olas más finas y agua turquesa más clara, para que nada parezca de plástico. Ver
   [Imagen](opciones/imagen.md) para cada valor.

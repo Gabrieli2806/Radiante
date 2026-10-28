@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Without a Bedrock pack, the Bedrock RTX (Enhanced) profile now has built-in defaults for the fog and water of every
+  biome and for the glow and cast light of each light block, laid over the pixels Radiante finds glowing in vanilla's
+  texture. Textures, normal maps and other materials still need a pack. Realistic and Custom are unchanged, and an
+  enabled Bedrock pack replaces all of it. See [docs/dev/bedrock-defaults.md](docs/dev/bedrock-defaults.md).
 - Bedrock `.mcaddon` files (and `.mcpack` files holding several packs) in the resource pack folder are listed and
   converted like a `.mcpack`: the resource packs inside are found (pack folders at any depth, nested `.mcpack`
   files), a pack's first subpack is laid over it, and behavior/script packs are skipped with a line in the log, since

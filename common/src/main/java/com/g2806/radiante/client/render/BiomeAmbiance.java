@@ -46,7 +46,8 @@ import org.joml.Vector4f;
  * <ol>
  * <li>A Bedrock RTX pack converted by {@link com.g2806.radiante.client.bedrock.BedrockPackConverter} brings its own
  * fog and water per biome. Their hue and how they compare from biome to biome are kept; how strong they are is
- * brought into the same subtle range as the rest (see {@link #styled}).
+ * brought into the same subtle range as the rest (see {@link #styled}). Without one, the Bedrock RTX (Enhanced)
+ * profile takes its own built-in ones ({@link BedrockDefaults}), the same way.
  * <li>Radiante's own values for the vanilla biomes, written with those packs as the reference.
  * <li>Any other biome - a mod's or a data pack's - is worked out from what it says about itself: its tags (the
  * loaders' shared {@code c:} tags too), its climate, and its own fog and water colours. Nothing has to be set up per
@@ -362,6 +363,8 @@ public final class BiomeAmbiance {
     private static final Map<String, float[]> PACK_WATER_BY_BIOME = new HashMap<>();
     private static final Map<String, Integer> PACK_WATER_COLOUR_BY_BIOME = new HashMap<>();
     private static Object packFogLoadedFor;
+    /** Whether that load was made under the profile that uses the built-in fog (BedrockDefaults). */
+    private static boolean packFogDefaults;
 
     // ---- what the shaders are handed
 
@@ -449,10 +452,12 @@ public final class BiomeAmbiance {
     public static void reloadPackFogIfNeeded(Minecraft minecraft) {
         TextureAtlas atlas = minecraft.getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS);
         Object key = TextureTracker.gpuTextureOrNull(atlas);
-        if (key == null || key == packFogLoadedFor) {
+        boolean defaults = BedrockDefaults.active();
+        if (key == null || (key == packFogLoadedFor && defaults == packFogDefaults)) {
             return;
         }
         packFogLoadedFor = key;
+        packFogDefaults = defaults;
         PACK_BY_BIOME.clear();
         PACK_WATER_BY_BIOME.clear();
         PACK_WATER_COLOUR_BY_BIOME.clear();
@@ -460,28 +465,18 @@ public final class BiomeAmbiance {
         hasWater = false;
         Optional<Resource> resource = minecraft.getResourceManager().getResource(PACK_FOG);
         if (resource.isEmpty()) {
+            // No Bedrock pack brings a fog: the Bedrock RTX (Enhanced) profile takes its built-in one, the same file
+            // a converted pack would bring (BedrockDefaults), so the profile reads it the same way.
+            JsonObject builtIn = defaults ? BedrockDefaults.fogBiomes() : null;
+            if (builtIn != null) {
+                readPackFog(builtIn);
+                RadianteRenderer.LOGGER.info("Using the built-in fog and water for {} biomes (no Bedrock pack)",
+                    PACK_BY_BIOME.size());
+            }
             return;
         }
         try (Reader reader = resource.get().openAsReader()) {
-            JsonObject biomes = JsonParser.parseReader(reader).getAsJsonObject().getAsJsonObject("biomes");
-            for (Map.Entry<String, JsonElement> entry : biomes.entrySet()) {
-                JsonObject biome = entry.getValue().getAsJsonObject();
-                if (biome.has("albedo")) {
-                    Identifier id = Identifier.tryParse(entry.getKey());
-                    Haze own = id == null ? null : BY_BIOME.get(ResourceKey.create(Registries.BIOME, id));
-                    PACK_BY_BIOME.put(entry.getKey(), packHaze(biome, own));
-                }
-                if (biome.has("water_color")) {
-                    PACK_WATER_COLOUR_BY_BIOME.put(entry.getKey(), biome.get("water_color").getAsInt());
-                }
-                if (biome.has("water")) {
-                    JsonObject water = biome.getAsJsonObject("water");
-                    float[] extinction = vec3(water.getAsJsonArray("extinction"));
-                    float[] albedo = vec3(water.getAsJsonArray("albedo"));
-                    PACK_WATER_BY_BIOME.put(entry.getKey(), new float[] {extinction[0], extinction[1], extinction[2],
-                        albedo[0], albedo[1], albedo[2]});
-                }
-            }
+            readPackFog(JsonParser.parseReader(reader).getAsJsonObject().getAsJsonObject("biomes"));
             RadianteRenderer.LOGGER.info("Using the Bedrock fog of {} for {} biomes", resource.get().sourcePackId(),
                 PACK_BY_BIOME.size());
         } catch (Exception e) {
@@ -489,6 +484,28 @@ public final class BiomeAmbiance {
             PACK_WATER_BY_BIOME.clear();
             PACK_WATER_COLOUR_BY_BIOME.clear();
             RadianteRenderer.LOGGER.warn("Could not read the Bedrock fog of {}", resource.get().sourcePackId(), e);
+        }
+    }
+
+    /** Fills the pack maps from a bedrock_fog.json's biomes (BedrockFog's format). */
+    private static void readPackFog(JsonObject biomes) {
+        for (Map.Entry<String, JsonElement> entry : biomes.entrySet()) {
+            JsonObject biome = entry.getValue().getAsJsonObject();
+            if (biome.has("albedo")) {
+                Identifier id = Identifier.tryParse(entry.getKey());
+                Haze own = id == null ? null : BY_BIOME.get(ResourceKey.create(Registries.BIOME, id));
+                PACK_BY_BIOME.put(entry.getKey(), packHaze(biome, own));
+            }
+            if (biome.has("water_color")) {
+                PACK_WATER_COLOUR_BY_BIOME.put(entry.getKey(), biome.get("water_color").getAsInt());
+            }
+            if (biome.has("water")) {
+                JsonObject water = biome.getAsJsonObject("water");
+                float[] extinction = vec3(water.getAsJsonArray("extinction"));
+                float[] albedo = vec3(water.getAsJsonArray("albedo"));
+                PACK_WATER_BY_BIOME.put(entry.getKey(), new float[] {extinction[0], extinction[1], extinction[2],
+                    albedo[0], albedo[1], albedo[2]});
+            }
         }
     }
 
