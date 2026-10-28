@@ -106,6 +106,8 @@ public final class EmissionTiles {
     private static boolean registeredWithMer;
     /** Whether the last registration made its cells from the glowing texels alone; toggling it registers again. */
     private static boolean registeredFine;
+    /** Whether the last registration gave light blocks the built-in glow (BedrockDefaults); a change registers again. */
+    private static boolean registeredDefaults;
     /** Light level of each emissive sprite of the last registration, for {@link #uploadFromMer}. */
     private static Map<TextureAtlasSprite, Integer> lightLevels = Map.of();
     /**
@@ -134,7 +136,9 @@ public final class EmissionTiles {
         Object key = TextureTracker.gpuTextureOrNull(atlas);
         boolean withMer = com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow();
         boolean fine = com.g2806.radiante.client.option.Options.glowingPixelLight;
-        if (key == null || (key == registeredFor && withMer == registeredWithMer && fine == registeredFine)) {
+        boolean defaults = BedrockDefaults.emissionActive();
+        if (key == null || (key == registeredFor && withMer == registeredWithMer && fine == registeredFine
+            && defaults == registeredDefaults)) {
             return;
         }
 
@@ -145,6 +149,7 @@ public final class EmissionTiles {
         registeredFor = key;
         registeredWithMer = withMer;
         registeredFine = fine;
+        registeredDefaults = defaults;
 
         Map<TextureAtlasSprite, Integer> emitters = collectEmissiveSprites(minecraft, atlas);
         lightLevels = emitters;
@@ -538,6 +543,85 @@ public final class EmissionTiles {
             TextureProxy.uploadEmissionTile(atlasId, tileKey, address, cells.size());
         } finally {
             MemoryUtil.nmemFree(address);
+        }
+    }
+
+    /** Whether the sprite is one a light block glows with (see collectEmissiveSprites). */
+    static boolean isLightSprite(TextureAtlasSprite sprite) {
+        Integer level = lightLevels.get(sprite);
+        return level != null && level > 0;
+    }
+
+    /**
+     * Writes a MER map for a light block no Bedrock pack covers, with the built-in glow for it
+     * (BedrockDefaults): its MER green squared, summed over the sprite, comes to what the pack's does, so the block
+     * casts the light it would with the pack (uploadFromMer) and its glowing texels show that light. Which texels glow,
+     * and how much more than each other, is what Radiante worked out from vanilla's texture (the derived emission
+     * already in the specular map): the pack's own pattern belongs to its texture. Metalness and roughness on those
+     * texels are the means of the pack's glowing ones; every other texel is left without a Bedrock material (alpha 0)
+     * and keeps Radiante's. Alpha 255 marks a texel without a height map, so it is not bevelled.
+     */
+    static void defaultMer(TextureAtlasSprite sprite, BedrockDefaults.Glow glow, ByteBuffer specular, ByteBuffer mer,
+        int atlasWidth, int atlasHeight) {
+        int width = sprite.contents().width();
+        int height = sprite.contents().height();
+        int originX = Math.round(sprite.getU0() * atlasWidth);
+        int originY = Math.round(sprite.getV0() * atlasHeight);
+        ByteBuffer[] mips = ((SpriteContentsAccess) sprite.contents()).radiante$mipImages();
+        ByteBuffer pixels = mips.length == 0 ? null : mips[0];
+        int rowPixels = Math.max(1, ((SpriteContentsAccess) sprite.contents()).radiante$mipWidth(0));
+        float[] weights = new float[width * height];
+        float total = 0.0f;
+        int opaque = 0;
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int pixel = (y * rowPixels + x) * 4 + 3;
+                // As uploadFromMer: a cut out texel gives no light.
+                if (pixels == null || pixel >= pixels.capacity() || (pixels.get(pixel) & 0xFF) < 128) {
+                    continue;
+                }
+                opaque++;
+                int index = ((originY + y) * atlasWidth + originX + x) * 4 + 3;
+                int value = index < specular.capacity() ? specular.get(index) & 0xFF : 0;
+                // LabPBR's emission: 1 to 254 from faintest to full, 0 and 255 none.
+                float weight = value == 0 || value == 255 ? 0.0f : value / 254.0f;
+                weights[y * width + x] = weight;
+                total += weight;
+            }
+        }
+        if (total <= 0.0f) {
+            // Nothing was worked out to glow: the opaque texels share the glow evenly.
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    int pixel = (y * rowPixels + x) * 4 + 3;
+                    if (pixels != null && pixel < pixels.capacity() && (pixels.get(pixel) & 0xFF) >= 128) {
+                        weights[y * width + x] = 1.0f;
+                    }
+                }
+            }
+            total = opaque;
+        }
+        if (total <= 0.0f || glow.glow() <= 0.0f) {
+            return;
+        }
+        float scale = glow.glow() * width * height / total;
+        byte metal = (byte) Math.round(Math.max(0.0f, Math.min(1.0f, glow.metalness())) * 255.0f);
+        byte rough = (byte) Math.round(Math.max(0.0f, Math.min(1.0f, glow.roughness())) * 255.0f);
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                float weight = weights[y * width + x];
+                int index = ((originY + y) * atlasWidth + originX + x) * 4;
+                if (weight <= 0.0f || index + 3 >= mer.capacity()) {
+                    continue;
+                }
+                // Green squared is the light; a texel takes at most a full green, which no light block's share
+                // reaches but a candle's single flame texel nearly does.
+                float green = (float) Math.sqrt(Math.min(1.0f, scale * weight));
+                mer.put(index, metal);
+                mer.put(index + 1, (byte) Math.max(1, Math.round(green * 255.0f)));
+                mer.put(index + 2, rough);
+                mer.put(index + 3, (byte) 255);
+            }
         }
     }
 

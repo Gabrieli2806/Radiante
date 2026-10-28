@@ -98,6 +98,11 @@ setting one of them manages turns it into **Custom**.
   water. On top of Bedrock it keeps a few extras: light blocks with little glow in the pack look lit
   by their own light, and End portals glow. It works with or without a `.mcpack`; the two together
   are the closest to Bedrock RTX.
+
+  Without any Bedrock pack enabled, this profile uses built-in values for each biome's fog and water and for
+  how much light each light block gives (torches, lanterns, glowstone, sea lanterns, froglights, fire and
+  so on). Only numbers are used, not textures: which pixels of a block glow, its normal maps and
+  its other materials still need a pack. Any Bedrock pack you enable replaces all of this.
 - **Realistic** starts from the same look and sets less fill light, more contrast, calmer colour,
   finer waves and clearer teal water, so that nothing looks like plastic. See
   [Image](settings/image.md) for every value.
