@@ -1,17 +1,12 @@
-#version 460
+#ifndef RADIANTE_HOOK_POST_GRADE_GLSL
+#define RADIANTE_HOOK_POST_GRADE_GLSL
 
-// Example pack: a colour grade over the finished picture (after tone mapping, before the HUD). Warmer highlights,
-// slightly cooler shadows, a gentle S curve for contrast and a touch more saturation. Off, it only copies.
-
-layout(set = 3, binding = 0) uniform sampler2D gradeInput;
-
-layout(location = 0) in vec2 fragTexCoord;
-layout(location = 0) out vec4 outColor;
-
-void main() {
-    vec4 color = texture(gradeInput, fragTexCoord);
+// Radiante Example Pack: a colour grade over the finished picture. Warmer highlights, slightly cooler shadows, a
+// gentle S curve for contrast. Turned on by RADIANTE_HOOK_POST_GRADE in configs.json; with the setting off it changes
+// nothing.
+void hookPostGrade(inout vec3 color, vec2 uv) {
 #if EXAMPLE_GRADE != 0
-    vec3 c = clamp(color.rgb, 0.0, 1.0);
+    vec3 c = clamp(color, 0.0, 1.0);
     float luma = dot(c, vec3(0.2126, 0.7152, 0.0722));
     // Split toning: shadows toward teal, highlights toward amber.
     vec3 shadowTint = vec3(0.95, 1.0, 1.06);
@@ -22,7 +17,8 @@ void main() {
     // Saturation held where it was: the curve already deepens colour, and Minecraft's greens go neon quickly.
     float graded = dot(c, vec3(0.2126, 0.7152, 0.0722));
     c = mix(vec3(graded), c, 0.95);
-    color.rgb = clamp(c, 0.0, 1.0);
+    color = clamp(c, 0.0, 1.0);
 #endif
-    outColor = color;
 }
+
+#endif

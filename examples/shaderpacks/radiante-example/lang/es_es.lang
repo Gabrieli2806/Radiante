@@ -1,11 +1,4 @@
-
-render_pipeline.module.ray_tracing.attribute.bedrock_original=Bedrock RTX (Experimental)
-render_pipeline.module.ray_tracing.attribute.bedrock_enhanced=Bedrock RTX (Mejorado)
-render_pipeline.module.ray_tracing.attribute.face_shading=Sombreado de caras de vanilla
-render_pipeline.module.ray_tracing.attribute.wind=Viento
-render_pipeline.module.ray_tracing.attribute.wind_strength=Fuerza del viento
-render_pipeline.module.ray_tracing.attribute.bedrock_materials=Materiales Bedrock RTX
-render_pipeline.module.ray_tracing.attribute.nrd_signals=Señales de NRD
+# Radiante Example Pack: only its own settings; the rest of the names come from radiante-pt.
 render_pipeline.module.ray_tracing.attribute.example_grade=Ejemplo: Etalonaje
 render_pipeline.module.ray_tracing.attribute.example_foliage_translucency=Ejemplo: Luz a través de las hojas
 render_pipeline.module.ray_tracing.attribute.example_foliage_transmission=Ejemplo: Transmisión de las hojas
