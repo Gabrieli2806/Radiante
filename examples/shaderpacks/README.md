@@ -7,7 +7,8 @@ replaces. The renderer puts radiante-pt under it when it loads it, so the pack f
 
 ## radiante-example
 
-A warm, contrasty look with light through leaves. Each change is a pack setting:
+A warm, contrasty look with light through leaves, a ripple under water and a thicker Nether haze. Each change is a
+pack setting:
 
 | Setting | File | What it does |
 | --- | --- | --- |
@@ -15,6 +16,8 @@ A warm, contrasty look with light through leaves. Each change is a pack setting:
 | Light through leaves, strength | `hooks/surface.glsl`, `hooks/direct_light.glsl` | Sunlight behind leaves and small plants lights them from the back (`isLeavesSurface`, `isPlantSurface`); works with opacity micromaps. The strength changes live |
 | Water tint | `hooks/water.glsl` | Water absorption: deeper, bluer water |
 | Sky tint | `hooks/sky.glsl` | A cooler clear sky |
+| Underwater Ripple (0-1) | `hooks/underwater.glsl` | With the camera under water the picture ripples (read a few pixels aside from `hookPostGradeInput`) and its edges darken; 0 turns it off |
+| Nether Haze (0.5-3) | `hooks/dimension_sky.glsl` | How fast things fade into the Nether's fog (1 is Radiante PT's), warmer as it thickens |
 
 ## inkwell
 
@@ -66,9 +69,17 @@ from there too: the aurora only where snow falls, and the thick fog of a pale ga
 | Cloud Shadows (0-1) | `hooks/cloud_shadow.glsl` | The clouds' shadows on the ground, from the same clouds the sky shows (Mellow has none; this is the port's own) |
 | Stars (0-2), Aurora (0-0.5), Aurora Everywhere | `hooks/stars.glsl` | Mellow's stars (they replace Radiante's) and its aurora, under the clouds. As in Mellow the aurora shows only where snow falls (`radianteBiomePrecipitation()`), fading in as the camera enters a snowy biome; Aurora Everywhere shows it in every biome |
 | Sun Colour (0-1) | `hooks/direct_light.glsl` | Sunlight and moonlight take Mellow's hue; their strength stays Radiante's |
+| Round Sun | `hooks/celestial.glsl` | Mellow's round sun and moon (its ROUND_SUN) in place of vanilla's square sprites, at Radiante's brightness. Off, as in Mellow |
+| Water Normals, Water Normal Strength, Speed, Size | `hooks/water_surface.glsl`, `hooks/water_waves.glsl` | Mellow's water normals (two scrolling layers of its noise image) on the top of water, in place of Radiante's waves; the three settings are Mellow's WATER_NORMAL_* and scale Radiante's waves and caustics too. Strength changes live |
+| Torch Colour (0-1) | `hooks/block_light.glsl` | The light blocks cast and the held light pulled towards Mellow's warm torch colour at their own brightness; 1 is Mellow's single colour for all block light |
+| End Sky (0-1) | `hooks/dimension_sky.glsl` | Mellow's End sky (violet top, slowly turning green and orange lights round the horizon, brighter towards the End flash) at Radiante's brightness, and the End fog in its colour |
 | Atmospheric Fog (0-1) | `hooks/fog.glsl` | Mellow's fog density (thicker at sunrise, at night and in rain, and far thicker in a pale garden at night), with Volumetric Light on |
-| Water Colour (0-1) | `hooks/water.glsl` | Mellow's green-teal water, as the shape of the water's absorption |
+| Water Colour (0-1) | `hooks/water.glsl`, `hooks/underwater_fog.glsl` | Mellow's green-teal water, as the shape of the water's absorption, and the colour the view fades into under water (Mellow's tint_underwater) |
 | Vibrance, Saturation, Contrast, LUT | `hooks/post_grade.glsl` | Mellow's final grade on the tone-mapped picture; LUT picks one of Mellow's (off by default, as in Mellow) |
+
+Mellow's waving plants (WAVY_PLANTS, on in Mellow) become Radiante's own Wind, turned on by default in the port's
+`configs.json`: Radiante moves foliage in a pass of its own, which a pack cannot replace. The time of day (sunrise,
+day, sunset, night) is `radianteDayWeights()` from `common/pack_world.glsl`.
 
 It shows what a port by hand looks like: the effect's function is kept, what it read from Iris (images, uniforms,
 `worldTime`) is mapped to Radiante's, and its colours are scaled to Radiante's exposure. Mellow's exposure and ACES

@@ -4,3 +4,5 @@ render_pipeline.module.ray_tracing.attribute.example_foliage_translucency=Exampl
 render_pipeline.module.ray_tracing.attribute.example_foliage_transmission=Example: Leaf Transmission
 render_pipeline.module.ray_tracing.attribute.example_water_tint=Example: Water Absorption (RGB)
 render_pipeline.module.ray_tracing.attribute.example_sky_tint=Example: Sky Tint (RGB)
+render_pipeline.module.ray_tracing.attribute.example_underwater_ripple=Example: Underwater Ripple
+render_pipeline.module.ray_tracing.attribute.example_nether_haze=Example: Nether Haze

@@ -1,10 +1,10 @@
 {
     "radiante": {
         "display_name": "Mellow (Radiante port)",
-        "version": "0.4.0",
+        "version": "0.5.0",
         "author": "G2806, from Mellow by TheCMK",
         "license": "GPL-3.0 (Mellow parts and images MIT, LICENSE-MELLOW)",
-        "description": "The look of the Iris pack Mellow by TheCMK on Radiante's path-traced light: its sky colours, clouds and their shadows, stars, sun colour, fog, water and grade. Mellow's code and images are MIT-licensed.",
+        "description": "The look of the Iris pack Mellow by TheCMK on Radiante's path-traced light: its sky colours, clouds and their shadows, stars, sun colour and round sun, fog, water and its normals, torch light, End sky and grade, with Radiante's wind for its waving plants. Mellow's code and images are MIT-licensed.",
         "api_version": 0,
         "extends": "radiante-pt@1"
     },
@@ -106,8 +106,55 @@
             "define": "MELLOW_LUT"
         },
         {
+            "name": "render_pipeline.module.ray_tracing.attribute.mellow_round_sun",
+            "type": "bool",
+            "default_value": "render_pipeline.false",
+            "define": "MELLOW_ROUND_SUN"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.mellow_water_normals",
+            "type": "bool",
+            "default_value": "render_pipeline.true",
+            "define": "MELLOW_WATER_NORMALS"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.mellow_water_normal_strength",
+            "type": "float_range:0.25-2.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "MELLOW_WATER_NORMAL_STRENGTH"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.mellow_water_normal_speed",
+            "type": "float_range:0.5-2.0",
+            "default_value": "1.0",
+            "define": "MELLOW_WATER_NORMAL_SPEED"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.mellow_water_normal_size",
+            "type": "float_range:0.2-2.0",
+            "default_value": "1.0",
+            "define": "MELLOW_WATER_NORMAL_SIZE"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.mellow_torch_colour",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "define": "MELLOW_TORCH_COLOUR"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.mellow_end_sky",
+            "type": "float_range:0.0-1.0",
+            "default_value": "1.0",
+            "define": "MELLOW_END_SKY"
+        },
+        {
             "name": "render_pipeline.module.ray_tracing.attribute.cloud_mode",
             "default_value": "render_pipeline.module.ray_tracing.attribute.cloud_mode.off"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.wind",
+            "default_value": "render_pipeline.true"
         }
     ],
     "textures": [

@@ -1,10 +1,10 @@
 {
     "radiante": {
         "display_name": "Radiante Example Pack",
-        "version": "2.0.0",
+        "version": "2.1.0",
         "author": "G2806",
         "license": "GPL-3.0",
-        "description": "Warm grade, light through leaves, teal water, cooler sky.",
+        "description": "Warm grade, light through leaves, teal water, cooler sky, a ripple under water and a thicker Nether haze.",
         "icon": "pack.png",
         "api_version": 0,
         "extends": "radiante-pt@1"
@@ -44,6 +44,18 @@
             "define": {
                 "EXAMPLE_SKY_TINT": "vec3(X)"
             }
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.example_underwater_ripple",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "define": "EXAMPLE_UNDERWATER_RIPPLE"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.example_nether_haze",
+            "type": "float_range:0.5-3.0",
+            "default_value": "1.5",
+            "define": "EXAMPLE_NETHER_HAZE"
         }
     ],
     "execution_post": {

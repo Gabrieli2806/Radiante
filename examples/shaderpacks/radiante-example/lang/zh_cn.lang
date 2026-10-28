@@ -4,3 +4,5 @@ render_pipeline.module.ray_tracing.attribute.example_foliage_translucency=示例
 render_pipeline.module.ray_tracing.attribute.example_foliage_transmission=示例：树叶透光强度
 render_pipeline.module.ray_tracing.attribute.example_water_tint=示例：水体吸收（RGB）
 render_pipeline.module.ray_tracing.attribute.example_sky_tint=示例：天空色调（RGB）
+render_pipeline.module.ray_tracing.attribute.example_underwater_ripple=示例：水下波纹
+render_pipeline.module.ray_tracing.attribute.example_nether_haze=示例：下界薄雾
