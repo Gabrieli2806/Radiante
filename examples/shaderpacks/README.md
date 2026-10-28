@@ -48,20 +48,35 @@ picture keeps its light, only drawn differently.
 It also shows a pack adding passes: `inkwell_copy` (radiante-pt's `post_copy.frag`, the picture into `post_motion`)
 runs at the end of the post script, and `inkwell_ink` says `"after": "inkwell_copy"`.
 
-## pixel-light
+## pixelated-lighting
 
-Path tracing on the texture's grid. Every hit point is moved to the centre of its texture texel and seen from
-there, so shadows, block light, bounces, reflections and highlights land per texel: shadow edges and torch falloff come out in the
-texture's own pixels. A retro palette with an ordered dither goes over the picture.
+**Built in.** Pixelated Lighting comes with Radiante: the native build zips this folder next to radiante-pt.zip
+(`PRISM_BUILT_IN_EXTENDING_PACKS` in `native/CMakeLists.txt`) and the Shader Packs screen lists it as built in
+(`ShaderPackLibrary.BUILT_IN_EXTRAS`). A change here needs the native build to reach the game.
+
+Path tracing on the texture's grid, after BetterRTX's "Pixelated Lighting" preset: every hit point is moved to the
+centre of its texture texel and lit from there, and every pixel of a texel takes the same random samples, so each
+texel gets one shadow, one light, one bounce and one reflection. Shadow edges, torch falloff, bounce light, glossy
+highlights and reflections (water too: near reflections are solid squares, one reflected colour per water texel)
+come out in the texture's own pixels, in natural colours. A retro palette with an ordered dither is there, off.
 
 | Setting | File | What it does |
 | --- | --- | --- |
 | Light Texels per Block (0-16) | `hooks/surface.glsl` | 16: light per texture texel (`hookTexelCentre`); lower merges texels, 0 turns it off |
 | Flat Texels | `hooks/surface.glsl` | Drops normal maps, which would shade inside a texel |
-| Palette Levels (0-32) | `hooks/post_grade.glsl` | Levels per colour channel; 0 or 1 keeps the colours. Changes live |
+| Solid Texels | `hooks/surface.glsl`, `hooks/shading_point.glsl` | Every pixel of a texel takes the same samples: the path's seed from the texel and the frame, and the texel as the key of the low-discrepancy samples (`hookSampleKey`). Off, each pixel samples on its own and the denoiser smooths the texels' edges. Changes live |
+| Retro Palette (0-32) | `hooks/post_grade.glsl` | Levels per colour channel; 0 (the default) or 1 keeps the colours. Changes live |
 | Dither (0-1) | `hooks/post_grade.glsl` | How much 4x4 ordered dither goes between palette levels. Changes live |
 
-It shows a pack changing where light is computed (`SampledSurface.worldPos` in `hookSurface`), not only its colour.
+How the reflections stay per texel: `hookSurface` tilts the shading normal so every pixel of a texel reflects in the
+direction the texel's centre does, and the pack's `hooks/shading_point.glsl` (without radiante-pt's
+`RADIANTE_HOOK_SHADING_POINT_DEFAULT`) has radiante-pt start the camera's reflections off water, glass and mirrors
+from the centre rather than from the pixel's own hit; the offset comes back in a fourth layer of `material_state`,
+which `configs.json` asks for (`"textures": [{"name": "material_state", "depth": 4}]`). What is seen through water
+and glass keeps the pixel's own point.
+
+It shows a pack changing where light is computed (`SampledSurface.worldPos` in `hookSurface`) and how it is sampled,
+not only its colour.
 
 ## mellow-port
 

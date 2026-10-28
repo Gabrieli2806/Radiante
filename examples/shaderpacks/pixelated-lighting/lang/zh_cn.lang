@@ -1,20 +1,22 @@
-# Pixel Light: its own settings, groups, descriptions and presets; the rest of the names come from radiante-pt.
+# Pixelated Lighting: its own settings, groups, descriptions and presets; the rest of the names come from radiante-pt.
 render_pipeline.module.ray_tracing.attribute.pixel_light_texels=每方块光照像素
 render_pipeline.module.ray_tracing.attribute.pixel_light_flat=平面像素
-render_pipeline.module.ray_tracing.attribute.pixel_light_palette=调色板级数
+render_pipeline.module.ray_tracing.attribute.pixel_light_coherent=实心像素
+render_pipeline.module.ray_tracing.attribute.pixel_light_palette=复古调色板
 render_pipeline.module.ray_tracing.attribute.pixel_light_dither=抖动
 
 pixel_light.group.light=光照
-pixel_light.group.palette=调色板
+pixel_light.group.palette=复古调色板
 
 pixel_light.desc.texels=光照、阴影和反射按纹理像素计算，每个方块边最多这么多个。16 为纹理本身的像素；调低更粗犷；0 关闭。
 pixel_light.desc.flat=去掉法线贴图，否则它会在像素内部产生明暗，抹平阶梯感。
-pixel_light.desc.palette=把每个颜色通道限制为这么多级，像老式游戏机。0 保持原色。
+pixel_light.desc.coherent=同一纹理像素内的所有屏幕像素使用相同的光照采样：每个纹理像素只有一个值，边缘清晰。关闭：更平滑，但方块会糊在一起。
+pixel_light.desc.palette=把每个颜色通道限制为这么多级，像老式游戏机。0 保持自然颜色。
 pixel_light.desc.dither=在相邻色阶之间使用棋盘格过渡，而不是色带。0 关闭。
 
-pixel_light.preset.retro=复古
-pixel_light.preset.retro.desc=光影包本身的外观：纹理像素和十二级调色板。
+pixel_light.preset.pixelated=像素化光照
+pixel_light.preset.pixelated.desc=光影包本身的外观：按纹理像素的光照，自然颜色。
 pixel_light.preset.chunky=粗犷
-pixel_light.preset.chunky.desc=更大的光照像素，更少的色阶和更多抖动。
-pixel_light.preset.clean=干净
-pixel_light.preset.clean.desc=按像素光照，颜色保持原样。
+pixel_light.preset.chunky.desc=以两个纹理像素为一格的光照，自然颜色。
+pixel_light.preset.retro=复古
+pixel_light.preset.retro.desc=按纹理像素的光照，加上带抖动的十二级调色板。

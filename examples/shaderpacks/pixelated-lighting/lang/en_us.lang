@@ -1,20 +1,22 @@
-# Pixel Light: its own settings, groups, descriptions and presets; the rest of the names come from radiante-pt.
+# Pixelated Lighting: its own settings, groups, descriptions and presets; the rest of the names come from radiante-pt.
 render_pipeline.module.ray_tracing.attribute.pixel_light_texels=Light Texels per Block
 render_pipeline.module.ray_tracing.attribute.pixel_light_flat=Flat Texels
-render_pipeline.module.ray_tracing.attribute.pixel_light_palette=Palette Levels
+render_pipeline.module.ray_tracing.attribute.pixel_light_coherent=Solid Texels
+render_pipeline.module.ray_tracing.attribute.pixel_light_palette=Retro Palette
 render_pipeline.module.ray_tracing.attribute.pixel_light_dither=Dither
 
 pixel_light.group.light=Light
-pixel_light.group.palette=Palette
+pixel_light.group.palette=Retro Palette
 
 pixel_light.desc.texels=Light, shadow and reflections land per texel, at most this many per block side. 16 is the texture's own pixels; lower is chunkier; 0 turns it off.
 pixel_light.desc.flat=Drops the normal map, which would shade inside a texel and smooth out the steps.
-pixel_light.desc.palette=Snaps each colour channel to this many levels, like an old console. 0 keeps the colours.
+pixel_light.desc.coherent=Every pixel of a texel takes the same light samples: each texel is one solid value, with crisp edges. Off: smoother, but the blocks blur together.
+pixel_light.desc.palette=Snaps each colour channel to this many levels, like an old console. 0 keeps the natural colours.
 pixel_light.desc.dither=Checkered steps between neighbouring palette levels instead of bands. 0 turns it off.
 
-pixel_light.preset.retro=Retro
-pixel_light.preset.retro.desc=The pack's own look: texture pixels and a twelve-level palette.
+pixel_light.preset.pixelated=Pixelated Lighting
+pixel_light.preset.pixelated.desc=The pack's own look: light in the texture's pixels, natural colours.
 pixel_light.preset.chunky=Chunky
-pixel_light.preset.chunky.desc=Bigger light texels and a smaller palette with more dither.
-pixel_light.preset.clean=Clean
-pixel_light.preset.clean.desc=Light per texel with the colours left as they are.
+pixel_light.preset.chunky.desc=Light in squares of two texture pixels, natural colours.
+pixel_light.preset.retro=Retro
+pixel_light.preset.retro.desc=Light in the texture's pixels and a twelve-level palette with dither.

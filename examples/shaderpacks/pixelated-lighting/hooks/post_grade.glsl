@@ -1,13 +1,14 @@
 #ifndef RADIANTE_HOOK_POST_GRADE_GLSL
 #define RADIANTE_HOOK_POST_GRADE_GLSL
 
-// Pixel Light: a retro palette over the finished picture. Each channel is snapped to PIXEL_LIGHT_PALETTE levels (0
-// keeps the colours as they are), with a 4x4 ordered dither between neighbouring levels so gradients become the
-// checkered steps of old games rather than bands. The dither is fixed to the screen's pixels, so it does not crawl;
+// Pixelated Lighting: an optional retro palette over the finished picture, off by default (the pack's own look keeps
+// natural colours). Each channel is snapped to PIXEL_LIGHT_PALETTE levels (0 keeps the colours as they are), with a
+// 4x4 ordered dither between neighbouring levels so gradients become the checkered steps of old games rather than
+// bands. The dither is fixed to the screen's pixels, so it does not crawl;
 // PIXEL_LIGHT_DITHER sets how much of it there is. Both are live settings ("runtime": true): the defines read the
 // world uniform (post_hook_grade.frag declares it), so they are tested with if, not #if.
 #ifndef PIXEL_LIGHT_PALETTE
-#    define PIXEL_LIGHT_PALETTE 12
+#    define PIXEL_LIGHT_PALETTE 0
 #endif
 #ifndef PIXEL_LIGHT_DITHER
 #    define PIXEL_LIGHT_DITHER 0.6
