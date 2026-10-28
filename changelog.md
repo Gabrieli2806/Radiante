@@ -14,6 +14,15 @@ All notable changes to this project are documented in this file.
   can only turn it on or set its strength by default. The Mellow port (0.5.0) uses them: Mellow's round sun (off, as
   in Mellow), its water normals and their settings, its warm torch light, its underwater colour and End sky, and
   Radiante's wind on for its waving plants; the example pack adds a ripple under water and a thicker Nether haze.
+- Shader packs get a settings page of their own: with a pack other than Radiante PT in use, Radiante's settings have
+  a section named after the pack, with its icon, holding the settings the pack adds (Radiante PT's stay where they
+  are, and the pack's no longer land among Radiante's advanced settings). Packs can group and order them, put some
+  behind Advanced, describe them, mark their performance impact, set a slider's step and hide a setting while another
+  has a given value (`group`, `order`, `advanced`, `description`, `performance_impact`, `step`, `visible_when` on an
+  attribute), and offer presets of their settings as a row at the top of the page (`presets`). Packs' setting names
+  from their `lang` files now show everywhere. With such a pack in use, the renderer profiles only write the Radiante
+  PT settings the pack lists in `profile_keys` (`"*"` for all). The example packs (Mellow port, Pixel Light, Inkwell,
+  the example pack) use all of it, in English, Spanish and Chinese.
 - Shader packs can react to the weather and the biome: `common/pack_world.glsl` in Radiante PT gives hooks the thunder
   strength, and the temperature, downfall, snowy, dry and rainy weights and id of the biome at the camera, faded over
   a couple of seconds across a border (`radianteThunder()`, `radianteBiomeSnowy()`, `radianteBiomeIs(...)`), also in

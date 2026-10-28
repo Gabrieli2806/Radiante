@@ -27,7 +27,9 @@ import java.util.Map;
  * extras); a saved choice naming one of them reads as {@link #BEDROCK_RTX_ENHANCED}.
  *
  * Applying a profile writes the attributes it manages (see {@link BedrockRtxProfile#PARAMETERS}) and remembers the
- * choice in {@link Options#rendererProfile}; attributes it does not manage are left as the player set them.
+ * choice in {@link Options#rendererProfile}; attributes it does not manage are left as the player set them. With a
+ * shader pack other than Radiante PT, it writes the pack's attributes only where the pack lists them in
+ * {@code "profile_keys"} ({@link Pipeline#profileMayWrite}).
  */
 public enum RendererProfile {
     BEDROCK_RTX_ENHANCED,
@@ -154,6 +156,9 @@ public enum RendererProfile {
      * of being written over without a word.
      */
     public String managedValue(String attribute) {
+        if (!mayWrite(attribute)) {
+            return null;
+        }
         Override realistic = realisticOverride(attribute);
         if (realistic != null) {
             return realistic.value();
@@ -196,7 +201,20 @@ public enum RendererProfile {
 
     private static boolean writeAttribute(String attribute, String value) {
         return isToneAttribute(attribute) ? Pipeline.setModuleValue(Pipeline.TONE_MAPPING_MODULE_NAME, attribute, value)
-            : Pipeline.setShaderPackValue(attribute, value);
+            : writePackValue(attribute, value);
+    }
+
+    /**
+     * With a shader pack other than Radiante PT, the profile leaves the pack's attributes alone unless the pack
+     * lists them in its {@code "profile_keys"} (Pipeline.profileMayWrite): Radiante PT's values are made for Radiante
+     * PT, and a pack may give the same name another meaning. Attributes of other modules are always the profile's.
+     */
+    private static boolean mayWrite(String attribute) {
+        return !attribute.startsWith(RT) || Pipeline.profileMayWrite(attribute);
+    }
+
+    private static boolean writePackValue(String attribute, String value) {
+        return mayWrite(attribute) && Pipeline.setShaderPackValue(attribute, value);
     }
 
     private static boolean tableHas(String attribute) {
@@ -257,9 +275,9 @@ public enum RendererProfile {
         if (this == CUSTOM) {
             return false;
         }
-        boolean changed = Pipeline.setShaderPackValue(ENHANCED_ATTRIBUTE, TRUE);
+        boolean changed = writePackValue(ENHANCED_ATTRIBUTE, TRUE);
         for (Map.Entry<String, String> value : ORIGINAL_VALUES.entrySet()) {
-            changed |= Pipeline.setShaderPackValue(value.getKey(), value.getValue());
+            changed |= writePackValue(value.getKey(), value.getValue());
         }
         return changed;
     }
@@ -273,7 +291,7 @@ public enum RendererProfile {
         setOriginalToneExtras();
         for (CompatParameter parameter : BedrockRtxProfile.PARAMETERS) {
             if (parameter.module() == null) {
-                Pipeline.setShaderPackValue(parameter.attribute(), valueFor(parameter));
+                writePackValue(parameter.attribute(), valueFor(parameter));
             } else {
                 Pipeline.setModuleValue(parameter.module(), parameter.attribute(), valueFor(parameter));
             }
@@ -299,11 +317,11 @@ public enum RendererProfile {
         for (CompatParameter parameter : BedrockRtxProfile.PARAMETERS) {
             String value = valueFor(parameter);
             boolean shaderPack = parameter.module() == null;
-            boolean written = shaderPack ? Pipeline.setShaderPackValue(parameter.attribute(), value)
+            boolean written = shaderPack ? writePackValue(parameter.attribute(), value)
                 : Pipeline.setModuleValue(parameter.module(), parameter.attribute(), value);
             String present = shaderPack ? Pipeline.getShaderPackValue(parameter.attribute())
                 : Pipeline.getModuleValue(parameter.module(), parameter.attribute());
-            if (!written && present == null) {
+            if (!written && present == null && mayWrite(parameter.attribute())) {
                 RadianteClient.LOGGER.warn("Profile {}: the pipeline has no attribute {} in {}", this,
                     parameter.attribute(), parameter.module());
             }

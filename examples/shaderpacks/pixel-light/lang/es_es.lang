@@ -1,5 +1,20 @@
-# Pixel Light: only its own settings; the rest of the names come from radiante-pt.
-render_pipeline.module.ray_tracing.attribute.pixel_light_texels=Pixel Light: Texeles de luz por bloque
-render_pipeline.module.ray_tracing.attribute.pixel_light_flat=Pixel Light: Texeles planos
-render_pipeline.module.ray_tracing.attribute.pixel_light_palette=Pixel Light: Niveles de paleta
-render_pipeline.module.ray_tracing.attribute.pixel_light_dither=Pixel Light: Tramado
+# Pixel Light: its own settings, groups, descriptions and presets; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.pixel_light_texels=Texeles de luz por bloque
+render_pipeline.module.ray_tracing.attribute.pixel_light_flat=Texeles planos
+render_pipeline.module.ray_tracing.attribute.pixel_light_palette=Niveles de paleta
+render_pipeline.module.ray_tracing.attribute.pixel_light_dither=Tramado
+
+pixel_light.group.light=Luz
+pixel_light.group.palette=Paleta
+
+pixel_light.desc.texels=La luz, las sombras y los reflejos caen por texel, como mucho tantos por lado de bloque. 16 son los píxeles de la textura; menos es más grueso; 0 lo quita.
+pixel_light.desc.flat=Quita el mapa de normales, que sombrearía dentro de un texel y suavizaría los escalones.
+pixel_light.desc.palette=Ajusta cada canal de color a este número de niveles, como una consola antigua. 0 deja los colores.
+pixel_light.desc.dither=Escalones a cuadros entre niveles vecinos de la paleta en lugar de bandas. 0 lo quita.
+
+pixel_light.preset.retro=Retro
+pixel_light.preset.retro.desc=El aspecto del propio paquete: los píxeles de la textura y una paleta de doce niveles.
+pixel_light.preset.chunky=Grueso
+pixel_light.preset.chunky.desc=Texeles de luz más grandes y una paleta más corta con más tramado.
+pixel_light.preset.clean=Limpio
+pixel_light.preset.clean.desc=Luz por texel con los colores como están.

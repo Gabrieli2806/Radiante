@@ -81,6 +81,7 @@ marked **(restart)** and, when you leave the screen, a notice lists the pending 
 | [Sky & Water](settings/sky-fog-water.md) | Atmosphere, clouds, stars, sun, sun path, rain, glass, biome ambiance, volumetric fog, water. |
 | [Performance](settings/performance.md) | Light bounces, mirrors, glass, water texture, portal, rain, cache, checkerboard, parallax, Bedrock pack materials, fog quality, chunk building. |
 | [Other](settings/other.md) | Block outline, other mods' overlays, text backgrounds, parallax edges, debug logging. |
+| *The pack's name* | Only with a shader pack other than Radiante PT: that pack's own settings ([below](#the-packs-own-page)). |
 | [Addons](addons.md) | Only with an addon installed: its own options, under its name. |
 
 A setting only shows when the pipeline, GPU or shader pack supports it: DLSS Mode only with
@@ -111,7 +112,26 @@ and line); **Copy Error** copies it for the pack's author. If the game closes wh
 being tried (a crash, or the GPU stops responding), the next start goes back to Radiante PT and
 says so here. Each pack keeps its own settings in a
 file next to it (`<pack>.zip.txt`), so switching back and forth keeps them. Most of Radiante's
-settings belong to Radiante PT; another pack shows the ones it offers.
+settings belong to Radiante PT; another pack shows the ones it shares with Radiante PT where they
+always are, and its own on a page of its own.
+
+### The pack's own page
+
+With a pack other than Radiante PT in use, the sidebar gets one more section, named after the pack
+and with its icon. It holds the settings the pack adds:
+
+- **Pack Preset** at the top, when the pack has presets: sets of its settings made by its author.
+  Picking one sets them all; change one afterwards and it shows **Custom**.
+- The settings under headings the pack chooses (Sky, Clouds, Colour Grade...), each heading
+  folding like an addon's. The pack's finer controls show only with **Advanced** on.
+- Some settings only show while another one has a given value (a cloud's amount while the pack's
+  clouds are on, for example).
+- The panel shows the pack's description of each setting and, where the pack says, its
+  **Performance impact**.
+
+Changes are applied with **Apply** or **Done** like the rest: some change at once, others compile
+the pack's shaders again. The renderer profile (Bedrock RTX) only sets the pack's settings that the
+pack allows it to; the others stay as the pack and you set them.
 
 Packs made for Radiance (the mod Radiante grew from) use the same format but an older renderer
 interface, and do not work as they are yet.

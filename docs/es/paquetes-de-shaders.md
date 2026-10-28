@@ -96,6 +96,64 @@ de ellos también se funde. Hay un `RADIANTE_BIOME_<NOMBRE>` para cada bioma van
 explica cómo calcular su valor a partir de su id. Por ejemplo, una aurora solo donde nieva:
 `strength *= radianteBiomeSnowy();` (el port de Mellow lo hace así).
 
+## Tu página de ajustes
+
+Los ajustes que añade tu paquete (los atributos que Radiante PT no tiene) tienen una página propia en los ajustes de
+Radiante, con el nombre y el icono del paquete; los ajustes de Radiante PT siguen en las páginas de Radiante. Todas
+las claves de abajo son opcionales, el renderizador las ignora, y una clave con un valor del tipo equivocado se salta
+con una línea en el registro:
+
+```json
+{
+    "name": "render_pipeline.module.ray_tracing.attribute.mellow_cloud_opacity",
+    "type": "float_range:0.0-0.38",
+    "default_value": "0.24",
+    "define": "MELLOW_CLOUD_OPACITY",
+    "group": "mellow.group.clouds",
+    "order": 22,
+    "step": 0.02,
+    "description": "mellow.desc.cloud_opacity",
+    "performance_impact": "low",
+    "advanced": false,
+    "visible_when": {"attribute": "mellow_cloud_style", "not_equals": 0}
+}
+```
+
+| Clave | Qué hace |
+| --- | --- |
+| `group` | El título bajo el que va el ajuste: una clave de tus archivos de idioma (`mellow.group.clouds=Nubes`). Sin ella, el ajuste va arriba de la página |
+| `order` | Los ajustes se ordenan por ella (0 por defecto) y luego por su lugar en el archivo; los títulos salen en el orden de su primer ajuste |
+| `advanced` | `true`: solo se ve con Avanzado activado, bajo los demás ajustes del grupo |
+| `description` | Una clave de idioma para el texto del panel de descripción (o texto tal cual, que se muestra como está) |
+| `performance_impact` | `low`, `medium` o `high`: se muestra bajo la descripción como en los ajustes de Radiante |
+| `step` | El paso del deslizador para `int_range` y `float_range` (`0.05`, `2`...), contado desde el mínimo |
+| `visible_when` | `{"attribute": "...", "equals": valor}`, o `"not_equals"`; el valor puede ser una lista. El ajuste solo se ve mientras el otro coincide. `true`, `"true"` y `"render_pipeline.true"` son el mismo valor, `2` y `"2.0"` también, y un valor de enum puede ser su última parte (`"off"`) |
+
+Los nombres en estas claves (`visible_when`, `presets`, `profile_keys`) pueden omitir
+`render_pipeline.module.ray_tracing.attribute.`. Los ajustes de tipo `vec3` aún no tienen fila.
+
+Los **preajustes** van arriba en `configs.json`, junto a `attributes`: combinaciones con nombre de tus ajustes, que
+salen como una fila **Preajuste del paquete** arriba de la página. Elegir uno pone sus valores (en vivo o
+recompilando, según cada ajuste); la fila muestra el preajuste con el que coinciden los valores, o Personalizado. Un
+preajuste solo cambia tus propios ajustes. Da a todos los preajustes los mismos ajustes, para que nunca haya duda de
+cuál está en uso:
+
+```json
+"presets": [
+    {"name": "mellow.preset.clear", "description": "mellow.preset.clear.desc",
+     "values": {"mellow_cloud_amount": 14, "mellow_cloud_opacity": 0.16, "mellow_fog": 0.1}}
+]
+```
+
+Los **perfiles de render** (Bedrock RTX (Mejorado), Realista) escriben muchos ajustes de Radiante PT en cada
+compilación. Con tu paquete en uso solo escriben los que listes en `"profile_keys"` arriba en `configs.json`
+(`["bedrock_original", "sun_glow"]`), o todos con `["*"]`, lo que conviene a un paquete que mantiene el aspecto de
+Radiante PT y cambia algunas cosas encima (los paquetes de ejemplo lo hacen). Sin `profile_keys` el perfil los deja
+todos como los dejan tu paquete y el jugador; los ajustes de los otros módulos (mapeo de tonos) son del perfil igual.
+
+Los nombres de los grupos, las descripciones y los preajustes van en los mismos archivos `lang/*.lang` que los
+nombres de los ajustes, en cada idioma que incluyas. Los paquetes de ejemplo usan todas estas claves.
+
 ## Comprobar un paquete sin el juego
 
 `examples/shaderpacks/README.md` explica cómo montar un paquete y compilar todos sus shaders sin el juego con las
@@ -107,7 +165,8 @@ herramientas de `native/src/tools/`: los errores salen con archivo y línea, com
 | --- | --- | --- |
 | Manifiesto | `configs.json`, `"radiante"` | Nombre, versión, autor, licencia, descripción, icono: se muestran en la lista |
 | Ajustes | `configs.json`, `"attributes"` | Cada atributo es un ajuste y un define de GLSL; con `"runtime": true` cambia en vivo, sin recompilar |
-| Nombres de los ajustes | `lang/en_us.lang`, `es_es`, `zh_cn` | Por el nombre del atributo |
+| Nombres de los ajustes | `lang/en_us.lang`, `es_es`, `zh_cn` | Por el nombre del atributo; también los nombres de grupos, descripciones y preajustes |
+| Página de ajustes | `configs.json`, claves de los atributos, `"presets"`, `"profile_keys"` | Grupos, orden, descripciones, coste, preajustes ([arriba](#tu-página-de-ajustes)) |
 | Pases | `configs.json`, `"passes"` | Pases de ray tracing, compute y pantalla completa, por ejemplo un gradeo después del tone mapping |
 | Shaders | las carpetas del paquete, `hooks/` | GLSL, se compilan al elegir el paquete |
 | Base | `configs.json`, `"radiante"`, `"extends"` | `radiante-pt@1`: Radiante PT debajo del paquete |

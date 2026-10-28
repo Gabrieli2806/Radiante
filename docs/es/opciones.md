@@ -85,6 +85,7 @@ marca **(reinicio)** y, al salir de la pantalla, un aviso lista los cambios pend
 | [Cielo y Agua](opciones/cielo-niebla-agua.md) | Atmósfera, nubes, estrellas, sol, trayectoria del sol, lluvia, vidrio, ambiente de bioma, niebla volumétrica, agua. |
 | [Rendimiento](opciones/rendimiento.md) | Rebotes de luz, espejos, vidrio, textura del agua, portal, lluvia, caché, tablero, parallax, materiales de packs Bedrock, calidad de niebla, construcción de chunks. |
 | [Otros](opciones/otros.md) | Contorno de bloque, overlays de otros mods, fondo de textos, bordes de parallax, registro de depuración. |
+| *El nombre del paquete* | Solo con un paquete de shaders que no sea Radiante PT: los ajustes propios de ese paquete ([abajo](#la-página-del-paquete)). |
 | [Complementos](complementos.md) | Solo con un complemento instalado: sus propias opciones, bajo su nombre. |
 
 Un ajuste solo aparece si el pipeline, la GPU o el shader pack lo admiten: Modo DLSS solo con
@@ -117,7 +118,26 @@ paquete (un cierre inesperado o la GPU deja de responder), el siguiente inicio v
 PT y lo indica aquí. Cada paquete
 guarda sus ajustes en un archivo a su lado (`<paquete>.zip.txt`), así que cambiar de uno a otro
 los conserva. La mayoría de los ajustes de Radiante son de Radiante PT; otro paquete muestra los
-que ofrece.
+que comparte con Radiante PT donde siempre están, y los suyos en una página propia.
+
+### La página del paquete
+
+Con un paquete que no sea Radiante PT, la barra lateral tiene una sección más, con el nombre y el
+icono del paquete. Contiene los ajustes que añade el paquete:
+
+- **Preajuste del paquete** arriba, si el paquete tiene preajustes: combinaciones de sus ajustes
+  hechas por su autor. Elegir una los cambia todos; si luego cambias uno, pone **Personalizado**.
+- Los ajustes bajo los títulos que elige el paquete (Cielo, Nubes, Etalonaje...), que se pliegan
+  como los de un complemento. Los controles más finos del paquete solo aparecen con **Avanzado**
+  activado.
+- Algunos ajustes solo aparecen mientras otro tiene cierto valor (la cantidad de nubes mientras
+  las nubes del paquete están activadas, por ejemplo).
+- El panel muestra la descripción que da el paquete de cada ajuste y, si el paquete lo indica, su
+  **Impacto en rendimiento**.
+
+Los cambios se aplican con **Aplicar** o **Listo** como el resto: unos cambian al momento y otros
+vuelven a compilar los shaders del paquete. El perfil de render (Bedrock RTX) solo cambia los
+ajustes del paquete que el paquete le permite; los demás quedan como los dejan el paquete y tú.
 
 Los paquetes hechos para Radiance (el mod del que nació Radiante) usan el mismo formato pero una
 interfaz del renderizador más antigua, y de momento no funcionan tal cual.

@@ -9,6 +9,8 @@ How shader packs work in Radiante today, and the contract they are moving to. "T
 | --- | --- | --- |
 | Java | `client/pipeline/ShaderPackLibrary.java` | Finds packs in `radiante/shaderpacks/` (zips and folders), reads their manifest, checks the layout, crash marker (`.trying`) |
 | Java | `client/pipeline/ShaderPackManifest.java` | Manifest checks without loading: `extends`, `api_version`, `requires.radiante` |
+| Java | `client/pipeline/ShaderPackSettings.java` | The settings page keys of a pack's own `configs.json` (section 7), unit tested |
+| Java | `client/gui/PackSettingsPage.java` | The pack's page in Radiante's settings |
 | Java | `client/gui/ShaderPacksScreen.java` | The screen: list, Use, Open Folder, Refresh, Copy Error |
 | Java | `client/gui/ShaderPackTrial.java` | Watches a switch: rejected config, compile errors, failed rebuild, ten seconds of frames before a pack counts as good |
 | Java | `client/pipeline/Pipeline.java` | The selected pack (`shader_pack_path` attribute), per-pack values, `getModuleAttributes` (values checked against the pack's types), runtime attributes |
@@ -245,16 +247,37 @@ Radiante PT moves onto these headers first; a header is only published once Radi
 
 ## 7. Settings
 
-Today every attribute of a pack is a setting, named through its `lang` files; `"runtime": true` attributes change
-live through `worldUBO.packParams` (64 slots), the rest rebuild. Planned (phase 4), as extra attribute keys:
+Every attribute of a pack is a setting, named through its `lang` files; `"runtime": true` attributes change live
+through `worldUBO.packParams` (64 slots), the rest rebuild. Values are checked against the pack's types in
+`Pipeline.getModuleAttributes`.
 
-- `group` (section), `order`, `advanced`, `description` (tooltip), `performance_impact` (`low`/`medium`/`high`),
-  `step`, `visible_when` (another attribute's value), `requires_feature`.
-- `presets` at the top: named sets of values shown as a Quality row.
-- The settings screen builds a page per pack from these, with Radiante's own rows staying for Radiante PT.
-- Renderer profiles (`RendererProfile`, `BedrockRtxProfile`) write Radiante PT's attribute names. With another pack
-  they only touch attributes the pack declares as shared (`"profile_keys"`); today the type check in
-  `Pipeline.getModuleAttributes` is the only guard.
+**The pack's page** (phase 4, built). With a pack other than Radiante PT in use, its own attributes (the names it
+declares that Radiante PT's `configs.json` does not have) are on a section of Radiante's settings named after the
+pack, with its icon (`RadianteOptionsScreen.Category.PACK`, built by `PackSettingsPage`); Radiante PT's attributes
+keep their rows on Radiante's pages, and the pack's own ones leave the Advanced groups (`AdvancedOptions`). The keys
+are read in Java from the pack's own `configs.json`, not the merged one (`ShaderPackLibrary.settings`, cached by file
+time; parsed by `ShaderPackSettings`, unit tested in `ShaderPackSettingsTest`). The native loader ignores them, as it
+ignores any key it does not know, and the `extends` merge carries them like any other field, so no native change was
+needed. All optional; a value of the wrong kind is dropped with a warning in the log, never the pack:
+
+| Key | Where | Meaning |
+| --- | --- | --- |
+| `group` | attribute | Heading (lang key) the row goes under; a folding block per group, open until folded. None: top of the page |
+| `order` | attribute | Sort key (default 0), then the place in the file; groups in the order of their first row |
+| `advanced` | attribute | Shown only with Advanced on, under the group's rows, a step in and dimmer; ungrouped ones in a folding group |
+| `description` | attribute | Lang key (or literal text) for the description panel, above the attribute's name and range |
+| `performance_impact` | attribute | `low`/`medium`/`high`, shown as `OptionImpact` (through `SettingsLayout.Availability.impact`) |
+| `step` | attribute | Slider step from the minimum for `int_range`/`float_range` (`AdvancedOptions.row`) |
+| `visible_when` | attribute | `{"attribute", "equals" or "not_equals"}`, a value or a list; the row is left out while it does not hold. A change to the watched attribute lays the screen out again. Values compare by type (`ShaderPackSettings.sameValue`) |
+| `presets` | top level | `[{"name", "description", "values": {...}}]`: a Pack Preset row first on the page; picking one stages its values (normalized to each type by `ShaderPackSettings.normalize`) with the other pending changes, so Apply builds or pushes them live as usual. The row shows the first preset all of whose values match, or Custom. Only the pack's own attributes |
+| `profile_keys` | top level | Names of Radiante PT's attributes the renderer profiles may write while the pack is in use; `"*"` for all. `RendererProfile.managedValue` and every write of a ray tracing attribute go through `Pipeline.profileMayWrite`; the ray tracing module's own attributes (`ray_tracing.yaml`) and other modules (tone mapping) are not affected, and nothing changes under Radiante PT |
+
+Names in `visible_when`, `presets` and `profile_keys` may leave out `render_pipeline.module.ray_tracing.attribute.`.
+Group, description and preset names come from the pack's `lang/*.lang` files, which the renderer already returns
+with the attributes (`Module.dynamicTranslations`); captions fall back to them when Radiante's lang files lack a key
+(`AdvancedOptions.known`), so a pack's setting names now show on every page.
+
+Not done: `requires_feature`; rows for `vec3` attributes; live settings in post passes.
 
 ## 8. Materials and opacity micromaps
 
