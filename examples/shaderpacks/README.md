@@ -9,7 +9,7 @@ Their settings are on a page of their own in Radiante's settings, named after th
 (`group`), describes them (`description`), marks their cost (`performance_impact`), hides the ones that do nothing as
 things are set (`visible_when`) and offers a few presets (`presets`; not radiante-example)
 ([guide](../../docs/en/shader-packs.md#your-settings-page)). Radiante PT's own settings keep its defaults (the Bedrock
-RTX look) unless a pack gives one a new default in its `configs.json`.
+RTX look) unless a pack gives one a new default in its `configs.json`, as realistic does.
 
 ## radiante-example
 
@@ -100,6 +100,33 @@ It shows what a port by hand looks like: the effect's function is kept, what it 
 curve, its screen-space effects (SSR, SSAO, bloom, TAA) and its shadows are left to Radiante.
 
 The packs are GPL-3.0, as Radiante PT they build on.
+
+## realistic
+
+The Realistic renderer profile of earlier versions, as a pack. It has no shaders of its own but one hook: it gives
+Radiante PT's settings other defaults, by name, and grades the finished picture. The player can change any of them as
+usual; the values are those in [docs/dev/realistic-profile-values.md](../../docs/dev/realistic-profile-values.md).
+
+| Setting | Radiante PT | Realistic | What it does |
+| --- | --- | --- | --- |
+| Bounce Light Boost | 1.5 | 0.8 | Less lift in the shadows from bounced light |
+| Sky Light Boost | 1.8 | 1.0 | The sky's light at its own strength, more shade |
+| Daytime Exposure | 0.48 | 0.42 | A touch darker by day, so skies and snow keep detail |
+| Light Shafts | 0.015 | 0.008 | Half the haze glowing in the sun |
+| Sun Glow | 0.08 | 0.04 | Half the halo round the sun |
+| Mirror Smoothness Limit | 0.03 | 0.02 | Only truly polished metal is a clean mirror |
+| Water Surface Mode | Bedrock | Realistic | Finer, irregular waves instead of Bedrock's water texture |
+| Water Wave Strength | 0.35 | 0.5 | Waves that break the mirror into ripples |
+| Clear Teal Water | 0 | 0.7 | Water that absorbs red first and stays clear in green and blue |
+| Contrast (0.5-1.5) | - | 1.08 | `hooks/post_grade.glsl`: contrast about middle grey over the finished picture. Changes live |
+| Saturation (0-2) | - | 0.92 | `hooks/post_grade.glsl`: a little less colour. Changes live |
+
+The last two are the profile's tone mapping contrast and saturation. A pack cannot change tone mapping's settings, so
+the hook applies them over the picture the way the Bedrock tone mapper, the default, applies its own: with tone
+mapping at its defaults the result is what the profile showed, except in clipped highlights. A Neutral preset turns
+the grade off. Not carried, because only tone mapping has them: the profile's bloom intensity (0.004 instead of 0.01)
+and its slower eye adaptation (exposure speeds 4 up and 6 down instead of 8). The profile also left out the built-in
+Bedrock fog, water and light block glow used without a Bedrock pack; Radiante PT has no setting for that, so they stay.
 
 ## Build and try
 

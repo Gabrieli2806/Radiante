@@ -1,0 +1,13 @@
+# Realistic: its own settings, a group, descriptions and presets; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.realistic_contrast=对比度
+render_pipeline.module.ray_tracing.attribute.realistic_saturation=饱和度
+
+realistic.group.grade=画面
+
+realistic.desc.contrast=在色调映射之上，以中灰为中心拉开明暗。调高更有力度，1 保持画面不变。无需重新编译即可生效。
+realistic.desc.saturation=在色调映射之上，画面的色彩浓度。调低更柔和，1 保持颜色不变。无需重新编译即可生效。
+
+realistic.preset.realistic=写实
+realistic.preset.realistic.desc=光影包自带的调色：对比度略高，色彩略淡。
+realistic.preset.neutral=中性
+realistic.preset.neutral.desc=不在色调映射之上调色；光影包的其余部分保持不变。

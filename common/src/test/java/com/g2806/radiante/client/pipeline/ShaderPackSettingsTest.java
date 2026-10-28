@@ -233,7 +233,7 @@ class ShaderPackSettingsTest {
                 checked++;
             }
         }
-        assertTrue(checked >= 4);
+        assertTrue(checked >= 5);
     }
 
     @Test

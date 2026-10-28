@@ -1,0 +1,96 @@
+{
+    "radiante": {
+        "display_name": "Realistic",
+        "version": "1.0.0",
+        "author": "G2806",
+        "license": "GPL-3.0",
+        "description": "Radiante PT with less lift in the shadows, clear teal water with finer waves, softer haze and glow, and a little more contrast and less colour.",
+        "api_version": 0,
+        "extends": "radiante-pt@1"
+    },
+    "attributes": [
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.bounce_light_boost",
+            "default_value": "0.8"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.sky_light_boost",
+            "default_value": "1.0"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.exposure_day_scale",
+            "default_value": "0.42"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.light_shafts",
+            "default_value": "0.008"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.sun_glow",
+            "default_value": "0.04"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.mirror_max_roughness",
+            "default_value": "0.02"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.water_surface_mode",
+            "default_value": "render_pipeline.module.ray_tracing.attribute.water_surface_mode.realistic"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.water_wave_strength",
+            "default_value": "0.5"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.water_clear_teal",
+            "default_value": "0.7"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.realistic_contrast",
+            "type": "float_range:0.5-1.5",
+            "default_value": "1.08",
+            "runtime": true,
+            "define": "REALISTIC_CONTRAST",
+            "group": "realistic.group.grade",
+            "order": 1,
+            "step": 0.01,
+            "description": "realistic.desc.contrast"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.realistic_saturation",
+            "type": "float_range:0.0-2.0",
+            "default_value": "0.92",
+            "runtime": true,
+            "define": "REALISTIC_SATURATION",
+            "group": "realistic.group.grade",
+            "order": 2,
+            "step": 0.01,
+            "description": "realistic.desc.saturation"
+        }
+    ],
+    "presets": [
+        {
+            "name": "realistic.preset.realistic",
+            "description": "realistic.preset.realistic.desc",
+            "values": {
+                "realistic_contrast": 1.08,
+                "realistic_saturation": 0.92
+            }
+        },
+        {
+            "name": "realistic.preset.neutral",
+            "description": "realistic.preset.neutral.desc",
+            "values": {
+                "realistic_contrast": 1.0,
+                "realistic_saturation": 1.0
+            }
+        }
+    ],
+    "execution_post": {
+        "global_variables": [
+            {
+                "RADIANTE_HOOK_POST_GRADE": true
+            }
+        ]
+    }
+}

@@ -113,6 +113,8 @@ Bedrock que actives reemplaza todo esto.
 Otros aspectos llegan como shader packs. Las versiones anteriores tenían un perfil de render
 **Realista**; si estaba elegido él o **Personalizado**, los ajustes que ponía vuelven a estos valores
 por defecto una vez, en el primer inicio tras la actualización, y el resto de ajustes se conserva.
+El aspecto Realista es ahora el shader pack de ejemplo `realistic` del repositorio
+(`examples/shaderpacks/`).
 
 ## Archivos de una instalación de Bedrock
 

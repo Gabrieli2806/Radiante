@@ -104,7 +104,8 @@ and its other materials still need a pack. Any Bedrock pack you enable replaces 
 
 Other looks come as shader packs. Earlier versions had a **Realistic** renderer profile; if it
 or **Custom** was chosen, the settings it set are put back to these defaults once on the first start
-after the update, and every other setting is kept.
+after the update, and every other setting is kept. Realistic's look is now the `realistic` example
+shader pack in the source repository (`examples/shaderpacks/`).
 
 ## Files from a Bedrock install
 

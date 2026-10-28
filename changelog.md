@@ -11,8 +11,7 @@ All notable changes to this project are documented in this file.
   Bedrock pack provides them. Tone Mapping offers Bedrock RTX's curve, and the Bedrock picture style matches the
   defaults. Low-Light Boost, Glass Reflections and Water Murkiness read 100% at the Bedrock value. A player who had
   Realistic or Custom gets the settings those profiles set put back to the defaults once, on the first start; other
-  settings are kept. Realistic's values are recorded in
-  [docs/dev/realistic-profile-values.md](docs/dev/realistic-profile-values.md) for a shader pack.
+  settings are kept. Realistic's look comes back as an example shader pack (below).
 - Without a Bedrock pack, Radiante now has built-in defaults for the fog and water of every biome and for the glow and
   cast light of each light block, laid over the pixels Radiante finds glowing in vanilla's texture. Textures, normal
   maps and other materials still need a pack, and an enabled Bedrock pack replaces all of it. See
@@ -76,6 +75,12 @@ All notable changes to this project are documented in this file.
   that takes the game down while it is being tried is replaced by Radiante PT
   at the next start. A setting value a pack does not offer (radiante-pt's Bedrock water carried into another pack
   with the same setting) goes back to that pack's default instead of breaking its shaders.
+- A new example shader pack, Realistic (`examples/shaderpacks/realistic`): the old Realistic profile as a pack built
+  on Radiante PT. It gives Radiante PT's settings the profile's values as defaults (less bounce and sky light lift,
+  softer shafts and sun glow, finer teal water) and adds the profile's contrast (1.08) and saturation (0.92) as two
+  live settings over the finished picture, with Realistic and Neutral presets. The profile's bloom intensity and
+  exposure speeds belong to tone mapping, which a pack cannot set, and are not carried; see
+  [docs/dev/realistic-profile-values.md](docs/dev/realistic-profile-values.md).
 - Shader pack authors: a guide (`docs/en/shader-packs.md`, `docs/es/paquetes-de-shaders.md`), an example pack in
   `examples/shaderpacks/` that holds only the files it changes and is built on top of Radiante PT with
   `./gradlew shaderPackExamples`, and the design and roadmap for pack support in `docs/dev/shader-packs/`.

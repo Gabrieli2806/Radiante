@@ -16,7 +16,8 @@ y cómo los paquetes seguirán funcionando entre versiones, está en el [diseño
 Un paquete se construye sobre Radiante PT y solo contiene lo que cambia. Hay dos ejemplos en el repositorio,
 [`examples/shaderpacks/`](../../examples/shaderpacks/): `radiante-example` (un gradeo de color, luz a través de las
 hojas, tonos del agua y del cielo) e `inkwell` (aspecto de cómic: luz en bandas, colores de póster, contornos de
-tinta).
+tinta). `realistic` solo da otros valores por defecto a los ajustes de Radiante PT y corrige la imagen, la forma más
+sencilla de hacer un aspecto propio.
 
 1. Clona el repositorio y copia uno de ellos a una carpeta nueva a su lado.
 2. En `configs.json`, dentro de `"radiante"`, cambia `display_name`, `version`, `author`, `license`, `description` e
@@ -175,7 +176,7 @@ Los **ajustes de Radiante PT** empiezan en los valores por defecto de Radiante P
 paquete hecho sobre él. Para que uno empiece en otro valor, ponlo en tu `configs.json` con el mismo nombre y otro valor
 por defecto; el resto de la entrada viene de Radiante PT
 (`{"name": "render_pipeline.module.ray_tracing.attribute.sun_glow", "default_value": "0.5"}`). El jugador puede
-cambiarlo igual. El mapeo de tonos (exposición,
+cambiarlo igual. El paquete de ejemplo `realistic` está hecho de entradas así. El mapeo de tonos (exposición,
 contraste, saturación, bloom) no es del paquete: cambia la imagen en `hooks/post_grade.glsl`.
 
 Los nombres de los grupos, las descripciones y los preajustes van en los mismos archivos `lang/*.lang` que los

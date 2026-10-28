@@ -26,3 +26,10 @@ Realistic used Radiante's own built-in fog, water and light block glow values wh
 | `TONE bloom_intensity` | 0.004 | 0.01 | bloom almost off |
 | `TONE exposure_up_speed` | 4.0 | 8.0 | opening up in the dark takes a moment, as an eye does |
 | `TONE exposure_down_speed` | 6.0 | 8.0 | closing in the light is quicker than opening in the dark |
+
+These values are now the `realistic` example shader pack
+([examples/shaderpacks/realistic](../../examples/shaderpacks/realistic)): the `RT` rows as new defaults for
+radiante-pt's attributes, `contrast` and `saturation` as two live settings applied in `hooks/post_grade.glsl` the way
+the Bedrock tone mapper applies its own. A pack cannot set tone mapping's settings, so `bloom_intensity` and the two
+exposure speeds are not carried (that would need packs to give module settings defaults too), and radiante-pt has no
+setting to leave out `BedrockDefaults`, so the pack keeps the built-in Bedrock fog, water and glow.

@@ -315,8 +315,10 @@ with the attributes (`Module.dynamicTranslations`); captions fall back to them w
 **Radiante PT's settings under a pack.** Radiante PT's defaults are the Bedrock RTX look (`BedrockRtxValues`), and
 nothing writes other values over a pack's. A pack built on Radiante PT starts its settings at those defaults, and
 gives one of them another default with an entry of the same name in its `configs.json`
-(`{"name": "...", "default_value": "..."}`, merged by name, section 5). Settings of the other modules (tone mapping)
-are not the pack's: they stay as the player set them.
+(`{"name": "...", "default_value": "..."}`, merged by name, section 5); the `realistic` example pack is made of such
+entries. Settings of the other modules (tone mapping) are not the pack's: they stay as the player set them, so a pack
+grades the picture in `hooks/post_grade.glsl` instead; tone mapping's bloom intensity and exposure speeds are out of a
+pack's reach (a pack-level default for module settings would be needed).
 
 Not done: `requires_feature`; rows for `vec3` attributes. (Live settings in post passes: built, section 5.)
 
