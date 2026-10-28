@@ -1,9 +1,0 @@
-# Radiante look: its own settings; the rest of the names come from radiante-pt.
-render_pipeline.module.ray_tracing.attribute.look_saturation=Estilo: Saturación
-render_pipeline.module.ray_tracing.attribute.look_dark_desaturation=Estilo: Desaturación en sombras
-render_pipeline.module.ray_tracing.attribute.look_warmth=Estilo: Calidez
-render_pipeline.module.ray_tracing.attribute.look_contrast=Estilo: Contraste
-render_pipeline.module.ray_tracing.attribute.look_vignette=Estilo: Viñeta
-render_pipeline.module.ray_tracing.attribute.look_fog=Estilo: Fuerza de la niebla
-render_pipeline.module.ray_tracing.attribute.look_sky_saturation=Estilo: Saturación del cielo
-render_pipeline.module.ray_tracing.attribute.look_water_absorption=Estilo: Turbidez del agua

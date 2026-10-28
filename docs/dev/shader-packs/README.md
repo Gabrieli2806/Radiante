@@ -69,7 +69,6 @@ What a pack can do, built (B) or planned (P):
 | --- | --- |
 | [design.md](design.md) | How shader packs work and the contract a pack builds on: anatomy, manifest, versioning, inheritance and hooks, settings, materials, resources, safety |
 | [roadmap.md](roadmap.md) | Phases with deliverables, acceptance criteria and effort |
-| [iris-looks.md](iris-looks.md) | Converting the look of Iris and OptiFine packs onto Radiante's light (experimental) |
 | [../../en/shader-packs.md](../../en/shader-packs.md) | Guide for pack authors, today |
 | [../../../examples/shaderpacks/](../../../examples/shaderpacks/) | The example packs, how they are built and checked offline |
 

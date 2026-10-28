@@ -1,7 +1,6 @@
 package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.RadianteClient;
-import com.g2806.radiante.client.pipeline.IrisLookImport;
 import com.g2806.radiante.client.pipeline.Pipeline;
 import com.g2806.radiante.client.pipeline.ShaderPackLibrary;
 import com.g2806.radiante.client.pipeline.ShaderPackLibrary.Entry;
@@ -62,8 +61,8 @@ public final class ShaderPacksScreen extends Screen {
     private static final int BUTTON = 16;
     /** The side of a pack's icon in its row, and in the panel. */
     private static final int ROW_ICON = 16;
-    /** An Iris or OptiFine pack: named as one in its row rather than marked as broken, and its look convertible. */
-    private static final String IRIS_PROBLEM = ShaderPackLibrary.IRIS_PROBLEM;
+    /** An Iris or OptiFine pack put in Radiante's folder: named as one in its row rather than marked as broken. */
+    private static final String IRIS_PROBLEM = "screen.radiante.shader_packs.problem.iris";
     private static final int PANEL_ICON = 32;
     /** Icons by pack path and content, kept for the session as the addons' are. */
     private static final Map<String, Optional<Identifier>> ICONS = new HashMap<>();
@@ -164,12 +163,8 @@ public final class ShaderPacksScreen extends Screen {
         int buttonY = this.height - 24;
         int x = this.width - margin;
         x = button("gui.done", null, this::onClose, true, x, buttonY, true);
-        x = button("screen.radiante.shader_packs.use", "screen.radiante.shader_packs.use.tooltip",
+        button("screen.radiante.shader_packs.use", "screen.radiante.shader_packs.use.tooltip",
             () -> choose(picked()), picked != null && !active(picked) && picked.problem() == null, x, buttonY, true);
-        if (picked != null && IRIS_PROBLEM.equals(picked.problem())) {
-            button("screen.radiante.shader_packs.convert_look", "screen.radiante.shader_packs.convert_look.tooltip",
-                () -> convertLook(picked()), true, x, buttonY, true);
-        }
         ShaderPackTrial.Failure failure = ShaderPackTrial.lastFailure();
         if (failure != null) {
             button("screen.radiante.shader_packs.copy_error", null,
@@ -246,32 +241,6 @@ public final class ShaderPacksScreen extends Screen {
         this.notice = entry.problem() == null ? null : Component.translatable(entry.problem(), entry.problemDetail());
         showPicked();
         this.rebuildWidgets();
-    }
-
-    /**
-     * Makes a Radiante pack with the look of an Iris pack (IrisLookImport) and switches to it: Radiante's light with
-     * the pack's colour grade, fog, water and clouds.
-     */
-    private void convertLook(Entry entry) {
-        Path file = entry == null ? null : ShaderPackLibrary.file(entry);
-        if (file == null) {
-            return;
-        }
-        try {
-            IrisLookImport.Result result = IrisLookImport.convert(file, entry.displayName());
-            this.selected = result.path();
-            this.notice = null;
-            for (Entry made : ShaderPackLibrary.scan()) {
-                if (ShaderPackLibrary.samePack(made.path(), result.path())) {
-                    choose(made);
-                    return;
-                }
-            }
-            this.minecraft.gui.setScreen(reopened());
-        } catch (IOException | RuntimeException e) {
-            RadianteClient.LOGGER.warn("Could not convert the look of {}", file, e);
-            this.notice = Component.translatable("screen.radiante.shader_packs.convert_look.failed", e.getMessage());
-        }
     }
 
     /** Switches to a pack, or says why it cannot be. */
