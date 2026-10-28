@@ -62,6 +62,24 @@ Mantén la guarda `#ifndef`/`#define` del archivo. Los ajustes de tu paquete son
 hook. Un archivo de hook sigue solo las actualizaciones de Radiante PT, cosa que un archivo de sombreado copiado no
 hace.
 
+### Clima y bioma
+
+`#include "common/pack_world.glsl"` en un hook te da el tiempo y el bioma donde está la cámara, en todos los hooks,
+también en `post_grade.glsl`:
+
+| Función | Valor |
+| --- | --- |
+| `radianteRain()`, `radianteThunder()` | Lluvia y tormenta, de 0 a 1 (`rainStrength` y `thunderStrength` de Iris) |
+| `radianteBiomeTemperature()`, `radianteBiomeDownfall()` | La temperatura y la humedad (downfall) del bioma |
+| `radianteBiomeSnowy()`, `radianteBiomeDry()`, `radianteBiomeRainy()` | De 0 a 1: aquí nieva, aquí no cae nada, aquí llueve |
+| `radianteBiomePrecipitation()` | 0 nada, 1 lluvia, 2 nieve (`biome_precipitation` de Iris) |
+| `radianteBiomeIs(RADIANTE_BIOME_PALE_GARDEN)` | De 0 a 1: cuánto está la cámara en ese bioma |
+
+Los valores del bioma cambian en unos dos segundos cuando la cámara pasa a otro bioma, así que un efecto que dependa
+de ellos también se funde. Hay un `RADIANTE_BIOME_<NOMBRE>` para cada bioma vanilla; para uno de un mod, la cabecera
+explica cómo calcular su valor a partir de su id. Por ejemplo, una aurora solo donde nieva:
+`strength *= radianteBiomeSnowy();` (el port de Mellow lo hace así).
+
 ## Comprobar un paquete sin el juego
 
 `examples/shaderpacks/README.md` explica cómo montar un paquete y compilar todos sus shaders sin el juego con las

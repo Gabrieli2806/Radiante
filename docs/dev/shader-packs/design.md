@@ -142,6 +142,41 @@ they do not read.
 The set grows with requests; within `radiante-pt@1` hooks are only added (section 4). With `extends` and hooks the
 example pack is a manifest with five attributes, five hook files, three lang files and an icon.
 
+### World data for packs
+
+`common/pack_world.glsl` gives hooks the weather and the biome at the camera. A hook includes it
+(`#include "common/pack_world.glsl"`); radiante-pt never does, so it renders the same. It reads `skyUBO`, which every
+hook point sees: the miss shader's sky, stars and clouds, the closest hit's surface, direct light and cloud shadow,
+the fog and the water. `post_render/post_hook_grade.frag` declares the world and sky uniforms (set 1, bindings 0 and 1,
+which the post stage always binds), so `hooks/post_grade.glsl` can use it too. Within `radiante-pt@1` functions are
+only added.
+
+| Function | Value | Iris equivalent | Java source |
+| --- | --- | --- | --- |
+| `float radianteRain()` | Rain, 0 to 1 | `rainStrength` | `1 - SkyRenderState.rainBrightness` (`skyUBO.rainGradient`) |
+| `float radianteThunder()` | Thunder, 0 to 1 | `thunderStrength` | `ClientLevel.getThunderLevel(partialTick)` (`skyUBO.thunderGradient`) |
+| `float radianteBiomeTemperature()` | The biome's base temperature, eased | `temperature` | `Biome.getBaseTemperature()` (`biomeClimate.x`) |
+| `float radianteBiomeDownfall()` | The biome's downfall, eased | `rainfall` | the biome's climate `downfall`, read from `Biome.NETWORK_CODEC` once per biome (`biomeClimate.y`) |
+| `float radianteBiomeSnowy()` | 0 to 1, 1 where snow falls at the camera's height | `biome_precipitation == 2` | `Biome.getPrecipitationAt(pos, seaLevel) == SNOW` (`biomeClimate.z`) |
+| `float radianteBiomeDry()` | 0 to 1, 1 where nothing falls | `biome_precipitation == 0` | `getPrecipitationAt == NONE` (`biomeClimate.w`) |
+| `float radianteBiomeRainy()` | `1 - snowy - dry` | `biome_precipitation == 1` | |
+| `float radianteBiomePrecipitation()` | 0 nothing, 1 rain, 2 snow, eased | `smooth(biome_precipitation, ...)` | |
+| `uint radianteBiomeId()` | Hash of the biome's id, 0 without a world | `biome` | `skyUBO.biomeId` |
+| `float radianteBiomeIs(uint biome)` | How much the camera is in that biome, 0 to 1, crossfading on a change | `biome == BIOME_...` | `biomeId`, `previousBiomeId`, `biomeIdBlend` |
+
+All of it is for the camera's position, not the point shaded. `BiomeClimate` (Java) samples the biome at the camera
+each frame and eases the climate towards it with the biome haze's time constant (most of the way in 2.5 seconds), so
+an effect tied to it fades across a border. A biome's id is the FNV-1a hash (offset basis `0x811C9DC5`, prime
+`0x01000193`) of the UTF-8 bytes of its id, `minecraft:snowy_plains`; `pack_world.glsl` defines
+`RADIANTE_BIOME_<NAME>` for the vanilla biomes, and `radianteBiomeHash` with `RADIANTE_BIOME_HASH_START` works one
+out in GLSL for a modded biome (or by hand: `h = 0x811C9DC5; for b in id.encode(): h = ((h ^ b) * 0x01000193) &
+0xFFFFFFFF`). For example `radianteBiomeIs(RADIANTE_BIOME_PALE_GARDEN)` fades from 0 to 1 as the camera walks into a
+pale garden.
+
+The values sit at the end of `SkyUBO` (`common/shared.hpp`, bytes 304 to 335): `biomeClimate` (vec4), then
+`thunderGradient`, `biomeId`, `previousBiomeId`, `biomeIdBlend`. Radiante PT reads none of them; its optimized SPIR-V
+differs from before only in the uniform block's declaration.
+
 **Post render bindings**, for a pack's own post passes: set 3 holds the frame's images at fixed bindings whatever a
 pass lists as inputs: 0 `out:ldr`, 1 `out:first_hit_depth`, 2 the HDR image, 3 `out:motion_vector`, 4
 `out:normal_roughness`. A pack's textures are in set 4 at their `sampled_binding` (`post_motion`: 4). A pass that

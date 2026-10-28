@@ -58,6 +58,24 @@ that does nothing in Radiante PT; put your own file at the same path:
 Keep the `#ifndef`/`#define` guard of the file. Settings of your pack are GLSL defines, usable in any hook. A hook
 file follows Radiante PT's updates by itself, which a copied shading file does not.
 
+### Weather and biome
+
+`#include "common/pack_world.glsl"` in a hook gives you the weather and the biome at the camera, in every hook
+including `post_grade.glsl`:
+
+| Function | Value |
+| --- | --- |
+| `radianteRain()`, `radianteThunder()` | Rain and thunder, 0 to 1 (Iris's `rainStrength`, `thunderStrength`) |
+| `radianteBiomeTemperature()`, `radianteBiomeDownfall()` | The biome's temperature and downfall |
+| `radianteBiomeSnowy()`, `radianteBiomeDry()`, `radianteBiomeRainy()` | 0 to 1: snow falls here, nothing falls here, rain falls here |
+| `radianteBiomePrecipitation()` | 0 nothing, 1 rain, 2 snow (Iris's `biome_precipitation`) |
+| `radianteBiomeIs(RADIANTE_BIOME_PALE_GARDEN)` | 0 to 1: how much the camera is in that biome |
+
+The biome values fade over about two seconds when the camera crosses into another biome, so an effect tied to them
+fades too. `RADIANTE_BIOME_<NAME>` exists for every vanilla biome; for a modded one, the header explains how to work
+out its value from its id. For example, an aurora only where it snows:
+`strength *= radianteBiomeSnowy();` (the Mellow port does this).
+
 ## Check a pack without the game
 
 `examples/shaderpacks/README.md` shows how to put a pack together and compile all its shaders offline with the tools

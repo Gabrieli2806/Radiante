@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Shader packs can react to the weather and the biome: `common/pack_world.glsl` in Radiante PT gives hooks the thunder
+  strength, and the temperature, downfall, snowy, dry and rainy weights and id of the biome at the camera, faded over
+  a couple of seconds across a border (`radianteThunder()`, `radianteBiomeSnowy()`, `radianteBiomeIs(...)`), also in
+  the post grade hook. Radiante PT itself is unchanged. The Mellow port uses them: its aurora shows in snowy biomes
+  and is on by default again, as in Mellow, thunder darkens its sky, sun and clouds, and a pale garden fogs up at night.
 - Shader Packs screen (button beside Presets in Radiante's settings): lists the built-in Radiante PT and the packs in
   `radiante/shaderpacks/` (zip or folder, with icon, name, version, author and licence from the pack's manifest),
   opens the folder, and switches packs with the usual background rebuild. A pack that does not load or compile is

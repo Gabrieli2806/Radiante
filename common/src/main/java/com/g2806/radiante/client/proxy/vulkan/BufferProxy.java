@@ -21,7 +21,7 @@ public class BufferProxy {
     private static final int OFF_HAND_LIGHT_OFFSET = 704;
     /** Where WorldUBO.windTime starts; windStrength and windWeather follow it, ending at the off hand's light. */
     private static final int WIND_OFFSET = 692;
-    private static final int SKY_UBO_SIZE = 304;
+    private static final int SKY_UBO_SIZE = 336;
     private static final int TEXTURE_MAPPING_ENTRIES = 4096;
 
     private static native void updateWorldUniform(long ptr);
@@ -188,7 +188,12 @@ public class BufferProxy {
                              Vector4fc waterFog,
                              Vector4fc moonDirection,
                              Vector4fc moonAxis,
-                             Vector4fc spriteRotation) {
+                             Vector4fc spriteRotation,
+                             Vector4fc biomeClimate,
+                             float thunderGradient,
+                             int biomeId,
+                             int previousBiomeId,
+                             float biomeIdBlend) {
     }
 
     public static void updateSkyUniform(SkyUniform uniform) {
@@ -286,7 +291,14 @@ public class BufferProxy {
             offset = putVec4(bb, offset, uniform.waterFog());
             offset = putVec4(bb, offset, uniform.moonDirection());
             offset = putVec4(bb, offset, uniform.moonAxis());
-            putVec4(bb, offset, uniform.spriteRotation());
+            offset = putVec4(bb, offset, uniform.spriteRotation());
+
+            // The weather and the biome for shader packs (BiomeClimate).
+            offset = putVec4(bb, offset, uniform.biomeClimate());
+            bb.putFloat(offset, uniform.thunderGradient());
+            bb.putInt(offset + Integer.BYTES, uniform.biomeId());
+            bb.putInt(offset + 2 * Integer.BYTES, uniform.previousBiomeId());
+            bb.putFloat(offset + 3 * Integer.BYTES, uniform.biomeIdBlend());
 
             updateSkyUniform(addr);
         }

@@ -380,6 +380,19 @@ struct SkyUBO {
     // The Sun/Moon Rotation settings, each sprite turned around its own centre: xy (cos, sin) of the sun's angle,
     // zw the moon's; (1, 0) is vanilla's.
     T_VEC4 spriteRotation;
+
+    // ---- The weather and the biome for shader packs (304..335), read through radiante-pt's common/pack_world.glsl;
+    // radiante-pt itself reads none of it. BiomeClimate on the Java side.
+    // The biome at the camera, eased over a couple of seconds so effects fade across a border. x: its temperature,
+    // y: its downfall, z: how snowy (1 where snow falls at the camera's height), w: how dry (1 where nothing falls).
+    T_VEC4 biomeClimate;
+    // The thunder, 0..1, as the client level's getThunderLevel (already faded in and out by the game).
+    T_FLOAT thunderGradient;
+    // FNV-1a hash of the biome's id ("minecraft:snowy_plains") at the camera, and of the one before it; 0 without a
+    // world. biomeIdBlend: how far the change from the previous biome has come, 0..1, eased like biomeClimate.
+    T_UINT biomeId;
+    T_UINT previousBiomeId;
+    T_FLOAT biomeIdBlend;
 };
 
 // Per-texture lookup from an atlas texture to its PBR companions. specular, normal and rawMer are texture ids,
