@@ -79,6 +79,8 @@ class PostRenderModule : public WorldModule, public SharedObject<PostRenderModul
 
     std::shared_ptr<gpu::DescriptorTable> createDescriptorTable(const std::shared_ptr<gpu::Device> &device) const;
     void createFrameResources();
+    void createBlackImage();
+    void bindBloom(Recording &recording);
     void createDepthPass();
     void createStarField();
 
@@ -114,6 +116,8 @@ class PostRenderModule : public WorldModule, public SharedObject<PostRenderModul
     // How the shader pack's passes sample this module's images.
     std::shared_ptr<gpu::Sampler> colorSampler_;
     std::shared_ptr<gpu::Sampler> depthSampler_;
+    // Set 3 binding 5 when the tone mapping module draws no bloom pyramid (common/pack_post.glsl): one black texel.
+    std::shared_ptr<gpu::DeviceLocalImage> blackImage_;
 
     std::shared_ptr<gpu::RenderPass> depthRenderPass_;
     std::shared_ptr<gpu::GraphicsPipeline> depthPipeline_;

@@ -1,5 +1,6 @@
 #include "prism/render/modules/world/post_render/post_render_module.hpp"
 
+#include "prism/render/modules/world/tone_mapping/tone_mapping_module.hpp"
 #include "prism/render/buffers.hpp"
 #include "prism/render/pipeline.hpp"
 #include "prism/render/render_framework.hpp"
@@ -429,13 +430,15 @@ PostRenderModule::createDescriptorTable(const std::shared_ptr<gpu::Device> &devi
     });
     // 2: the texture mapping.
     addSet({{0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, kDrawShaders}});
-    // 3: the frame's images, sampled: output, first-hit distances, hdr, motion vectors, normal and roughness.
+    // 3: the frame's images, sampled: output, first-hit distances, hdr, motion vectors, normal and roughness, and the
+    // tone mapping module's bloom pyramid (black when it draws none) for a pack's post passes.
     addSet({
         {0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT},
         {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT},
         {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT},
         {3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT},
         {4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT},
+        {5, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT},
     });
     if (shaderPack_ != nullptr) {
         shaderPack_->defineRuntimeResourceDescriptorSet(builder, kDrawShaders, kDrawShaders, kDrawShaders);
@@ -452,6 +455,7 @@ void PostRenderModule::createFrameResources() {
                                          VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
     depthSampler_ = gpu::Sampler::create(device, VK_FILTER_NEAREST, VK_SAMPLER_MIPMAP_MODE_NEAREST,
                                          VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+    createBlackImage();
 
     for (FrameResources &frame : frames_) {
         frame.depth =
@@ -469,7 +473,31 @@ void PostRenderModule::createFrameResources() {
         table.bindSamplerImage(colorSampler_, frame.hdr, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 3, 2, 0);
         table.bindSamplerImage(colorSampler_, frame.motionVector, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 3, 3, 0);
         table.bindSamplerImage(colorSampler_, frame.normalRoughness, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 3, 4, 0);
+        table.bindSamplerImage(colorSampler_, blackImage_, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 3, 5, 0);
     }
+}
+
+// One black texel, cleared once and left for sampling.
+void PostRenderModule::createBlackImage() {
+    auto framework = framework_.lock();
+    auto device = framework->device();
+    blackImage_ = gpu::DeviceLocalImage::create(
+        device, framework->vma(),
+        gpu::ImageDesc{.width = 1,
+                       .height = 1,
+                       .format = VK_FORMAT_R16G16B16A16_SFLOAT,
+                       .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT});
+    auto commandBuffer = gpu::CommandBuffer::create(device, framework->mainCommandPool());
+    commandBuffer->begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    commandBuffer->sync({{blackImage_, gpu::ImageUsage::TransferDst, 0, true}});
+    const VkClearColorValue black{};
+    vkCmdClearColorImage(commandBuffer->vkCommandBuffer(), blackImage_->vkImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                         &black, 1, &gpu::wholeColorSubresourceRange);
+    commandBuffer->sync({{blackImage_, gpu::ImageUsage::Sampled, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT}});
+    commandBuffer->end();
+    auto fence = gpu::Fence::create(device);
+    commandBuffer->submitMainQueueIndividual(device, fence);
+    vkWaitForFences(device->vkDevice(), 1, &fence->vkFence(), VK_TRUE, UINT64_MAX);
 }
 
 // The depth pass turns the first-hit distances into the depth buffer the render passes test against.
@@ -956,6 +984,8 @@ void PostRenderModule::recordFrame(FrameworkContext &frameworkContext) {
     table.bindBuffer(buffers->skyUniformBuffer(), 1, 1);
     table.bindBuffer(buffers->textureMappingBuffer(), 2, 0);
 
+    // Before anything is drawn with the table: a set written after a draw used it would invalidate the recording.
+    bindBloom(recording);
     recordFirstHitDepth(recording);
     recordCopyToOutput(recording);
 
@@ -967,6 +997,27 @@ void PostRenderModule::recordFrame(FrameworkContext &frameworkContext) {
     runScript(recording);
 
     recordOutputHandOff(recording);
+}
+
+// The tone mapping module's bloom pyramid, drawn earlier in this frame's command buffer, for set 3 binding 5; black
+// when it draws none. Bound every frame: a rebuild of the tone mapping module makes the pyramid's images again.
+void PostRenderModule::bindBloom(Recording &recording) {
+    std::shared_ptr<gpu::DeviceLocalImage> bloom;
+    if (auto worldPipeline = worldPipeline_.lock()) {
+        for (const auto &module : worldPipeline->worldModules()) {
+            if (auto toneMapping = std::dynamic_pointer_cast<ToneMappingModule>(module)) {
+                bloom = toneMapping->bloomImage(recording.frameIndex);
+                break;
+            }
+        }
+    }
+    if (bloom == nullptr) {
+        bloom = blackImage_;
+    } else {
+        recording.commandBuffer->sync({{bloom, gpu::ImageUsage::Sampled, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT}});
+    }
+    recording.frame.descriptorTable->bindSamplerImage(colorSampler_, bloom, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                      3, 5, 0);
 }
 
 void PostRenderModule::recordFirstHitDepth(Recording &recording) {
