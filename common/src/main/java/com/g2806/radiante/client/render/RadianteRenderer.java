@@ -527,7 +527,8 @@ public final class RadianteRenderer {
             BiomeAmbiance.waterFog(), new Vector4f(moonDirection, 0.0f), new Vector4f(moonAxis, 0.0f),
             spriteRotation, BiomeClimate.climate(),
             BiomeClimate.thunder(minecraft, levelRenderState.worldPartialTicks), BiomeClimate.biomeId(),
-            BiomeClimate.previousBiomeId(), BiomeClimate.idBlend()));
+            BiomeClimate.previousBiomeId(), BiomeClimate.idBlend(),
+            PackWeather.update(minecraft, levelRenderState.worldPartialTicks)));
     }
 
     /**

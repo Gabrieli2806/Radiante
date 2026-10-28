@@ -191,6 +191,8 @@ only added.
 | --- | --- | --- | --- |
 | `float radianteRain()` | Rain, 0 to 1 | `rainStrength` | `1 - SkyRenderState.rainBrightness` (`skyUBO.rainGradient`) |
 | `float radianteThunder()` | Thunder, 0 to 1 | `thunderStrength` | `ClientLevel.getThunderLevel(partialTick)` (`skyUBO.thunderGradient`) |
+| `float radianteWetness()` | The air's wetness, 0 to 1: the rain smoothed, rising with a half-life of 60 s and drying with one of 20 s | `wetness` (default `wetnessHalflife` 600, `drynessHalflife` 200, which Iris reads as deciseconds) | `PackWeather`, `getRainLevel` smoothed per frame, paused with the game (`skyUBO.wetness`) |
+| `float radianteRainStoppedFor()` | Seconds since the rain fell below 0.2 after wetting the air (wetness 0.25); 0 while it rains, 1e6 before any such rain | none | `PackWeather` (`skyUBO.rainStoppedFor`) |
 | `float radianteBiomeTemperature()` | The biome's base temperature, eased | `temperature` | `Biome.getBaseTemperature()` (`biomeClimate.x`) |
 | `float radianteBiomeDownfall()` | The biome's downfall, eased | `rainfall` | the biome's climate `downfall`, read from `Biome.NETWORK_CODEC` once per biome (`biomeClimate.y`) |
 | `float radianteBiomeSnowy()` | 0 to 1, 1 where snow falls at the camera's height | `biome_precipitation == 2` | `Biome.getPrecipitationAt(pos, seaLevel) == SNOW` (`biomeClimate.z`) |

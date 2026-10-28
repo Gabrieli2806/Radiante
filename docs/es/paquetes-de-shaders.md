@@ -83,6 +83,7 @@ todos los hooks, también en `post_grade.glsl`:
 | Función | Valor |
 | --- | --- |
 | `radianteRain()`, `radianteThunder()` | Lluvia y tormenta, de 0 a 1 (`rainStrength` y `thunderStrength` de Iris) |
+| `radianteWetness()`, `radianteRainStoppedFor()` | La humedad del aire, la lluvia suavizada para que dure tras llover (`wetness` de Iris), y los segundos desde que paró la lluvia (0 mientras llueve), para lo que sigue a la lluvia durante minutos |
 | `radianteBiomeTemperature()`, `radianteBiomeDownfall()` | La temperatura y la humedad (downfall) del bioma |
 | `radianteBiomeSnowy()`, `radianteBiomeDry()`, `radianteBiomeRainy()` | De 0 a 1: aquí nieva, aquí no cae nada, aquí llueve |
 | `radianteBiomePrecipitation()` | 0 nada, 1 lluvia, 2 nieve (`biome_precipitation` de Iris) |

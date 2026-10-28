@@ -17,6 +17,13 @@
 float radianteRain() { return skyUBO.rainGradient; }
 // Thunder, 0..1 (Iris's thunderStrength): the game fades it in and out, and it is never above the rain.
 float radianteThunder() { return skyUBO.thunderGradient; }
+// Iris's wetness, 0..1: the rain smoothed with Iris's default half-lives, rising over about a minute and drying with
+// a half-life of twenty seconds, so it stays above the rain for a while after the rain stops.
+float radianteWetness() { return skyUBO.wetness; }
+// Seconds since the rain eased off (below 0.2) after it had wetted the air (wetness 0.25): 0 while it rains, and
+// 1e6 when there has been no such rain since the world was joined. Stands still while the game is paused. For what
+// follows rain for minutes, longer than the wetness lasts: a rainbow, dripping leaves, mist.
+float radianteRainStoppedFor() { return skyUBO.rainStoppedFor; }
 
 // ---- Time of day, in the overworld
 //

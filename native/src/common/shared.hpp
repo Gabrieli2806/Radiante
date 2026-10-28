@@ -395,6 +395,14 @@ struct SkyUBO {
     T_UINT biomeId;
     T_UINT previousBiomeId;
     T_FLOAT biomeIdBlend;
+
+    // ---- The air after rain for shader packs (336..351), PackWeather on the Java side; radiante-pt reads none of it.
+    // Iris's wetness: the rain smoothed, rising with a half-life of a minute and falling with one of twenty seconds.
+    T_FLOAT wetness;
+    // Seconds since the rain eased off after wetting the air: 0 while it rains, 1e6 before any rain.
+    T_FLOAT rainStoppedFor;
+    T_FLOAT weatherPad0;
+    T_FLOAT weatherPad1;
 };
 
 // Per-texture lookup from an atlas texture to its PBR companions. specular, normal and rawMer are texture ids,
