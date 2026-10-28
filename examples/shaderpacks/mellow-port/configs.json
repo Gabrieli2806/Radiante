@@ -13,102 +13,259 @@
             "name": "render_pipeline.module.ray_tracing.attribute.mellow_sky",
             "type": "float_range:0.0-1.0",
             "default_value": "1.0",
-            "define": "MELLOW_SKY"
+            "define": "MELLOW_SKY",
+            "group": "mellow.group.sky",
+            "order": 10,
+            "step": 0.05,
+            "description": "mellow.desc.sky"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.mellow_cloud_style",
             "type": "int_range:0-2",
             "default_value": "1",
-            "define": "MELLOW_CLOUD_STYLE"
+            "define": "MELLOW_CLOUD_STYLE",
+            "group": "mellow.group.clouds",
+            "order": 20,
+            "description": "mellow.desc.cloud_style",
+            "performance_impact": "medium"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.mellow_cloud_amount",
             "type": "int_range:12-26",
             "default_value": "22",
-            "define": "MELLOW_CLOUD_AMOUNT"
+            "define": "MELLOW_CLOUD_AMOUNT",
+            "group": "mellow.group.clouds",
+            "order": 21,
+            "description": "mellow.desc.cloud_amount",
+            "visible_when": {
+                "attribute": "mellow_cloud_style",
+                "not_equals": 0
+            }
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.mellow_cloud_opacity",
             "type": "float_range:0.0-0.38",
             "default_value": "0.24",
-            "define": "MELLOW_CLOUD_OPACITY"
+            "define": "MELLOW_CLOUD_OPACITY",
+            "group": "mellow.group.clouds",
+            "order": 22,
+            "step": 0.02,
+            "description": "mellow.desc.cloud_opacity",
+            "visible_when": {
+                "attribute": "mellow_cloud_style",
+                "not_equals": 0
+            }
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.mellow_cloud_speed",
             "type": "int_range:0-6",
             "default_value": "2",
-            "define": "MELLOW_CLOUD_SPEED"
+            "define": "MELLOW_CLOUD_SPEED",
+            "group": "mellow.group.clouds",
+            "order": 24,
+            "advanced": true,
+            "description": "mellow.desc.cloud_speed",
+            "visible_when": {
+                "attribute": "mellow_cloud_style",
+                "not_equals": 0
+            }
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.mellow_cloud_shadows",
             "type": "float_range:0.0-1.0",
             "default_value": "0.6",
-            "define": "MELLOW_CLOUD_SHADOWS"
+            "define": "MELLOW_CLOUD_SHADOWS",
+            "group": "mellow.group.clouds",
+            "order": 23,
+            "step": 0.05,
+            "description": "mellow.desc.cloud_shadows",
+            "performance_impact": "low",
+            "visible_when": {
+                "attribute": "mellow_cloud_style",
+                "not_equals": 0
+            }
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.mellow_stars",
             "type": "float_range:0.0-2.0",
             "default_value": "0.5",
-            "define": "MELLOW_STARS"
+            "define": "MELLOW_STARS",
+            "group": "mellow.group.sky",
+            "order": 13,
+            "step": 0.1,
+            "description": "mellow.desc.stars"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.mellow_aurora",
             "type": "float_range:0.0-0.5",
             "default_value": "0.2",
-            "define": "MELLOW_AURORA"
+            "define": "MELLOW_AURORA",
+            "group": "mellow.group.sky",
+            "order": 14,
+            "step": 0.05,
+            "description": "mellow.desc.aurora"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.mellow_aurora_everywhere",
             "type": "bool",
             "default_value": "render_pipeline.false",
-            "define": "MELLOW_AURORA_EVERYWHERE"
+            "define": "MELLOW_AURORA_EVERYWHERE",
+            "group": "mellow.group.sky",
+            "order": 15,
+            "advanced": true,
+            "description": "mellow.desc.aurora_everywhere",
+            "visible_when": {
+                "attribute": "mellow_aurora",
+                "not_equals": 0
+            }
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.mellow_sun_tint",
             "type": "float_range:0.0-1.0",
             "default_value": "0.7",
-            "define": "MELLOW_SUN_TINT"
+            "define": "MELLOW_SUN_TINT",
+            "group": "mellow.group.sky",
+            "order": 11,
+            "step": 0.05,
+            "description": "mellow.desc.sun_tint"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.mellow_fog",
             "type": "float_range:0.0-1.0",
             "default_value": "0.25",
-            "define": "MELLOW_FOG"
+            "define": "MELLOW_FOG",
+            "group": "mellow.group.sky",
+            "order": 12,
+            "step": 0.05,
+            "description": "mellow.desc.fog"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.mellow_water",
             "type": "float_range:0.0-1.0",
             "default_value": "0.75",
-            "define": "MELLOW_WATER"
+            "define": "MELLOW_WATER",
+            "group": "mellow.group.water",
+            "order": 30,
+            "step": 0.05,
+            "description": "mellow.desc.water"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.mellow_vibrance",
             "type": "float_range:0.0-2.0",
             "default_value": "1.14",
-            "define": "MELLOW_VIBRANCE"
+            "define": "MELLOW_VIBRANCE",
+            "group": "mellow.group.grade",
+            "order": 40,
+            "step": 0.02,
+            "description": "mellow.desc.vibrance"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.mellow_saturation",
             "type": "float_range:0.0-2.0",
             "default_value": "1.0",
-            "define": "MELLOW_SATURATION"
+            "define": "MELLOW_SATURATION",
+            "group": "mellow.group.grade",
+            "order": 41,
+            "step": 0.02,
+            "description": "mellow.desc.saturation"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.mellow_contrast",
             "type": "float_range:0.5-1.5",
             "default_value": "0.97",
-            "define": "MELLOW_CONTRAST"
+            "define": "MELLOW_CONTRAST",
+            "group": "mellow.group.grade",
+            "order": 43,
+            "step": 0.01,
+            "advanced": true,
+            "description": "mellow.desc.contrast"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.mellow_lut",
             "type": "int_range:0-3",
             "default_value": "0",
-            "define": "MELLOW_LUT"
+            "define": "MELLOW_LUT",
+            "group": "mellow.group.grade",
+            "order": 42,
+            "description": "mellow.desc.lut"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.cloud_mode",
             "default_value": "render_pipeline.module.ray_tracing.attribute.cloud_mode.off"
         }
+    ],
+    "presets": [
+        {
+            "name": "mellow.preset.mellow",
+            "description": "mellow.preset.mellow.desc",
+            "values": {
+                "mellow_sky": 1.0,
+                "mellow_sun_tint": 0.7,
+                "mellow_fog": 0.25,
+                "mellow_water": 0.75,
+                "mellow_cloud_amount": 22,
+                "mellow_cloud_opacity": 0.24,
+                "mellow_cloud_shadows": 0.6,
+                "mellow_vibrance": 1.14,
+                "mellow_saturation": 1.0,
+                "mellow_contrast": 0.97,
+                "mellow_lut": 0
+            }
+        },
+        {
+            "name": "mellow.preset.clear",
+            "description": "mellow.preset.clear.desc",
+            "values": {
+                "mellow_sky": 1.0,
+                "mellow_sun_tint": 0.7,
+                "mellow_fog": 0.1,
+                "mellow_water": 0.75,
+                "mellow_cloud_amount": 14,
+                "mellow_cloud_opacity": 0.16,
+                "mellow_cloud_shadows": 0.35,
+                "mellow_vibrance": 1.14,
+                "mellow_saturation": 1.0,
+                "mellow_contrast": 0.97,
+                "mellow_lut": 0
+            }
+        },
+        {
+            "name": "mellow.preset.vivid",
+            "description": "mellow.preset.vivid.desc",
+            "values": {
+                "mellow_sky": 1.0,
+                "mellow_sun_tint": 0.85,
+                "mellow_fog": 0.2,
+                "mellow_water": 0.9,
+                "mellow_cloud_amount": 22,
+                "mellow_cloud_opacity": 0.24,
+                "mellow_cloud_shadows": 0.7,
+                "mellow_vibrance": 1.3,
+                "mellow_saturation": 1.1,
+                "mellow_contrast": 1.05,
+                "mellow_lut": 3
+            }
+        },
+        {
+            "name": "mellow.preset.subtle",
+            "description": "mellow.preset.subtle.desc",
+            "values": {
+                "mellow_sky": 0.5,
+                "mellow_sun_tint": 0.4,
+                "mellow_fog": 0.25,
+                "mellow_water": 0.5,
+                "mellow_cloud_amount": 22,
+                "mellow_cloud_opacity": 0.24,
+                "mellow_cloud_shadows": 0.5,
+                "mellow_vibrance": 1.0,
+                "mellow_saturation": 1.0,
+                "mellow_contrast": 1.0,
+                "mellow_lut": 0
+            }
+        }
+    ],
+    "profile_keys": [
+        "*"
     ],
     "textures": [
         {

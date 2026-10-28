@@ -1,17 +1,48 @@
-# Mellow port: its own settings; the rest of the names come from radiante-pt.
-render_pipeline.module.ray_tracing.attribute.mellow_sky=Mellow: Sky Colours
-render_pipeline.module.ray_tracing.attribute.mellow_cloud_style=Mellow: Cloud Style (0 Off, 1 Flat, 2 Volumetric)
-render_pipeline.module.ray_tracing.attribute.mellow_cloud_amount=Mellow: Cloud Amount
-render_pipeline.module.ray_tracing.attribute.mellow_cloud_opacity=Mellow: Cloud Opacity
-render_pipeline.module.ray_tracing.attribute.mellow_cloud_speed=Mellow: Cloud Speed
-render_pipeline.module.ray_tracing.attribute.mellow_cloud_shadows=Mellow: Cloud Shadows
-render_pipeline.module.ray_tracing.attribute.mellow_stars=Mellow: Stars
-render_pipeline.module.ray_tracing.attribute.mellow_aurora=Mellow: Aurora
-render_pipeline.module.ray_tracing.attribute.mellow_aurora_everywhere=Mellow: Aurora Everywhere
-render_pipeline.module.ray_tracing.attribute.mellow_sun_tint=Mellow: Sun Colour
-render_pipeline.module.ray_tracing.attribute.mellow_fog=Mellow: Atmospheric Fog
-render_pipeline.module.ray_tracing.attribute.mellow_water=Mellow: Water Colour
-render_pipeline.module.ray_tracing.attribute.mellow_vibrance=Mellow: Vibrance
-render_pipeline.module.ray_tracing.attribute.mellow_saturation=Mellow: Saturation
-render_pipeline.module.ray_tracing.attribute.mellow_contrast=Mellow: Contrast
-render_pipeline.module.ray_tracing.attribute.mellow_lut=Mellow: LUT (0 Off, 1 Vintage, 2 Mellow, 3 Punchy)
+# Mellow port: its own settings, groups, descriptions and presets; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.mellow_sky=Sky Colours
+render_pipeline.module.ray_tracing.attribute.mellow_cloud_style=Cloud Style
+render_pipeline.module.ray_tracing.attribute.mellow_cloud_amount=Cloud Amount
+render_pipeline.module.ray_tracing.attribute.mellow_cloud_opacity=Cloud Opacity
+render_pipeline.module.ray_tracing.attribute.mellow_cloud_speed=Cloud Speed
+render_pipeline.module.ray_tracing.attribute.mellow_cloud_shadows=Cloud Shadows
+render_pipeline.module.ray_tracing.attribute.mellow_stars=Stars
+render_pipeline.module.ray_tracing.attribute.mellow_aurora=Aurora
+render_pipeline.module.ray_tracing.attribute.mellow_aurora_everywhere=Aurora Everywhere
+render_pipeline.module.ray_tracing.attribute.mellow_sun_tint=Sun Colour
+render_pipeline.module.ray_tracing.attribute.mellow_fog=Atmospheric Fog
+render_pipeline.module.ray_tracing.attribute.mellow_water=Water Colour
+render_pipeline.module.ray_tracing.attribute.mellow_vibrance=Vibrance
+render_pipeline.module.ray_tracing.attribute.mellow_saturation=Saturation
+render_pipeline.module.ray_tracing.attribute.mellow_contrast=Contrast
+render_pipeline.module.ray_tracing.attribute.mellow_lut=Colour Look (LUT)
+
+mellow.group.sky=Sky
+mellow.group.clouds=Clouds
+mellow.group.water=Water
+mellow.group.grade=Colour Grade
+
+mellow.desc.sky=How much of Mellow's sky colours replace Radiante PT's. Lower keeps more of the original sky.
+mellow.desc.sun_tint=Warms sunlight towards Mellow's golden tint. Lower keeps the light neutral.
+mellow.desc.fog=Mellow's haze in the air. Shows with Volumetric Light on; higher is thicker.
+mellow.desc.stars=Brightness of Mellow's stars, which take the place of Radiante PT's. 0 hides them.
+mellow.desc.aurora=Strength of the aurora in snowy biomes. 0 turns it off.
+mellow.desc.aurora_everywhere=Shows the aurora in every biome, not only snowy ones.
+mellow.desc.cloud_style=0: no clouds of Mellow's, 1: flat painted clouds, 2: volumetric clouds (costs more).
+mellow.desc.cloud_amount=How much of the sky the clouds cover. Rain and thunder add more.
+mellow.desc.cloud_opacity=How solid the clouds look. Lower lets more sky through.
+mellow.desc.cloud_shadows=How dark the clouds' shadows on the ground are. 0 turns them off.
+mellow.desc.cloud_speed=How fast the clouds drift. 0 stops them.
+mellow.desc.water=How much of Mellow's water colour replaces Radiante PT's.
+mellow.desc.vibrance=Raises dull colours more than strong ones. 1 leaves them as they are.
+mellow.desc.saturation=Strength of every colour. 1 leaves them as they are.
+mellow.desc.contrast=Separation between light and dark. 1 leaves the picture as it is.
+mellow.desc.lut=A colour look over the finished picture: 0 off, 1 Vintage, 2 Mellow, 3 Punchy.
+
+mellow.preset.mellow=Mellow
+mellow.preset.mellow.desc=The pack's own look, as Mellow ships it.
+mellow.preset.clear=Clear Skies
+mellow.preset.clear.desc=Fewer and thinner clouds, lighter haze.
+mellow.preset.vivid=Vivid
+mellow.preset.vivid.desc=Stronger colour, warmer sun and the Punchy look.
+mellow.preset.subtle=Subtle
+mellow.preset.subtle.desc=Half of Mellow's colours over Radiante PT's, no extra colour boost.

@@ -1,6 +1,12 @@
-# Radiante Example Pack: only its own settings; the rest of the names come from radiante-pt.
-render_pipeline.module.ray_tracing.attribute.example_grade=Example: Colour Grade
-render_pipeline.module.ray_tracing.attribute.example_foliage_translucency=Example: Light Through Leaves
-render_pipeline.module.ray_tracing.attribute.example_foliage_transmission=Example: Leaf Transmission
-render_pipeline.module.ray_tracing.attribute.example_water_tint=Example: Water Absorption (RGB)
-render_pipeline.module.ray_tracing.attribute.example_sky_tint=Example: Sky Tint (RGB)
+# Radiante Example Pack: its own settings, a group and descriptions; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.example_grade=Colour Grade
+render_pipeline.module.ray_tracing.attribute.example_foliage_translucency=Light Through Leaves
+render_pipeline.module.ray_tracing.attribute.example_foliage_transmission=Leaf Transmission
+render_pipeline.module.ray_tracing.attribute.example_water_tint=Water Absorption (RGB)
+render_pipeline.module.ray_tracing.attribute.example_sky_tint=Sky Tint (RGB)
+
+example.group.foliage=Foliage
+
+example.desc.grade=Warmer highlights, slightly cooler shadows and a gentle contrast curve over the finished picture.
+example.desc.translucency=The sun behind a leaf or a small plant lights it from the back.
+example.desc.transmission=How much sunlight comes through a leaf. Changes without a rebuild.

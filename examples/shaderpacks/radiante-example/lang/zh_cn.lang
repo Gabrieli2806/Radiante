@@ -1,6 +1,12 @@
-# Radiante Example Pack: only its own settings; the rest of the names come from radiante-pt.
-render_pipeline.module.ray_tracing.attribute.example_grade=示例：调色
-render_pipeline.module.ray_tracing.attribute.example_foliage_translucency=示例：树叶透光
-render_pipeline.module.ray_tracing.attribute.example_foliage_transmission=示例：树叶透光强度
-render_pipeline.module.ray_tracing.attribute.example_water_tint=示例：水体吸收（RGB）
-render_pipeline.module.ray_tracing.attribute.example_sky_tint=示例：天空色调（RGB）
+# Radiante Example Pack: its own settings, a group and descriptions; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.example_grade=调色
+render_pipeline.module.ray_tracing.attribute.example_foliage_translucency=树叶透光
+render_pipeline.module.ray_tracing.attribute.example_foliage_transmission=树叶透光强度
+render_pipeline.module.ray_tracing.attribute.example_water_tint=水体吸收（RGB）
+render_pipeline.module.ray_tracing.attribute.example_sky_tint=天空色调（RGB）
+
+example.group.foliage=树叶
+
+example.desc.grade=在最终画面上让高光更暖、阴影略冷，并加上柔和的对比度曲线。
+example.desc.translucency=树叶或小型植物背后的阳光会从背面照亮它。
+example.desc.transmission=穿过树叶的阳光有多少。无需重新编译即可生效。

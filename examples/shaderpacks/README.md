@@ -5,6 +5,12 @@ Packs built on Radiante PT, to show what a pack can change and to start your own
 replaces. The renderer puts radiante-pt under it when it loads it, so the pack follows Radiante PT's updates
 ([design §5](../../docs/dev/shader-packs/design.md#5-inheritance-and-hook-points)).
 
+Their settings are on a page of their own in Radiante's settings, named after the pack: each pack groups them
+(`group`), describes them (`description`), marks their cost (`performance_impact`), hides the ones that do nothing as
+things are set (`visible_when`) and offers a few presets (`presets`; not radiante-example). They keep the renderer
+profile's values with `"profile_keys": ["*"]`, since they change Radiante PT's look rather than replace it
+([guide](../../docs/en/shader-packs.md#your-settings-page)).
+
 ## radiante-example
 
 A warm, contrasty look with light through leaves. Each change is a pack setting:

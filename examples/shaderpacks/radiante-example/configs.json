@@ -14,20 +14,31 @@
             "name": "render_pipeline.module.ray_tracing.attribute.example_grade",
             "type": "bool",
             "default_value": "render_pipeline.true",
-            "define": "EXAMPLE_GRADE"
+            "define": "EXAMPLE_GRADE",
+            "description": "example.desc.grade"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.example_foliage_translucency",
             "type": "bool",
             "default_value": "render_pipeline.true",
-            "define": "EXAMPLE_FOLIAGE_TRANSLUCENCY"
+            "define": "EXAMPLE_FOLIAGE_TRANSLUCENCY",
+            "group": "example.group.foliage",
+            "description": "example.desc.translucency",
+            "performance_impact": "low"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.example_foliage_transmission",
             "type": "float_range:0.0-2.0",
             "default_value": "1.4",
             "runtime": true,
-            "define": "EXAMPLE_FOLIAGE_TRANSMISSION"
+            "define": "EXAMPLE_FOLIAGE_TRANSMISSION",
+            "group": "example.group.foliage",
+            "step": 0.1,
+            "description": "example.desc.transmission",
+            "visible_when": {
+                "attribute": "example_foliage_translucency",
+                "equals": true
+            }
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.example_water_tint",
@@ -45,6 +56,9 @@
                 "EXAMPLE_SKY_TINT": "vec3(X)"
             }
         }
+    ],
+    "profile_keys": [
+        "*"
     ],
     "execution_post": {
         "global_variables": [
