@@ -15,13 +15,15 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 | Where | What |
 |---|---|
 | `common/src/main/java/com/g2806/radiante/client/pipeline/Pipeline.java` | Settings stored in `pipeline.yaml`, presets, building the pipeline |
-| `common/.../client/profile/` | Renderer profiles (Bedrock RTX (Enhanced), Realistic, Custom) and the Bedrock parameter table |
-| `common/.../client/gui/` | Settings screen (`RadianteOptionsScreen`, `SettingsLayout`, `AdvancedOptions`, `Tunable`), toasts, background rebuild, start-up warm-up |
+| `common/.../client/bedrock/` | Bedrock packs (converter, fog, lighting) and `BedrockRtxValues`, the Bedrock RTX values that are radiante-pt's and tone mapping's defaults (a test checks they agree) |
+| `common/.../client/pipeline/ShaderPack*.java` | Shader packs in `radiante/shaderpacks/`: manifest, library, settings page keys, validation |
+| `common/.../client/gui/` | Settings screen (`RadianteOptionsScreen`, `SettingsLayout`, `AdvancedOptions`, `Tunable`), Shader Packs screen and a pack's settings page (`ShaderPacksScreen`, `PackSettingsPage`), toasts, background rebuild, start-up warm-up |
 | `common/.../client/render/` | Chunk and entity collection, point lights (`BedrockPointLights`), emission (`EmissionTiles`), held light, biome ambiance |
 | `common/.../client/option/Options.java` | Plain options saved in `radiante/options.properties` |
 | `common/src/main/resources/assets/radiante/lang/` | Texts: `en_us`, `es_es`, `zh_cn` |
 | `native/src/prism/` | Renderer: `gpu/`, `render/` (modules, framework, pipeline), `middleware/` (JNI, one file per Java class) |
-| `native/src/shader/world/ray_tracing/internal/radiante-pt/` | The path tracer: `configs.json` (attributes, textures, passes), `world/`, `pt/`, `common/` |
+| `native/src/shader/world/ray_tracing/internal/radiante-pt/` | The path tracer: `configs.json` (attributes, textures, passes), `world/`, `pt/`, `common/`, and `hooks/`, the hook points shader packs replace |
+| `examples/shaderpacks/` | Example packs built on radiante-pt (`./gradlew shaderPackExamples`); the design, roadmap and author guide are in `docs/dev/shader-packs/` and `docs/en/shader-packs.md` |
 | `docs/en`, `docs/es` | Player documentation, one page per settings section |
 | `changelog.md` | What changed per version (open work is in GitHub Issues) |
 
@@ -66,8 +68,11 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 - A new setting usually needs: the attribute in `configs.json` (`"runtime": true` when it can change without a
   rebuild), a `Tunable` or a row in `RadianteOptionsScreen`, `OptionImpact`, the three lang files, the settings page in
   `docs/en` and `docs/es`, and a `changelog.md` line.
-- Profile changes go through `RendererProfile` (and `BedrockRtxProfile`), so switching profiles and turning into
-  Custom keep working.
+- radiante-pt's defaults are the Bedrock RTX look: a change to one of them goes in `configs.json` (or
+  `tone_mapping.yaml`) and in `BedrockRtxValues`. Other looks are shader packs, not settings.
+- The hook files and `common/pack_*.glsl` in radiante-pt are the shader pack interface (`radiante-pt@1`): keep their
+  signatures, and with radiante-pt's own empty hooks it must compile to the same shaders. Check a pack change offline
+  with `shader_pack_stage` and `native/src/tools/compile_pack.py` (`examples/shaderpacks/README.md`).
 
 ## Bugs and ideas
 
