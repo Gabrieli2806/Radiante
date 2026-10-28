@@ -230,6 +230,8 @@ vec3 endSkyRadiance(vec3 dir, bool seen) {
 
 #include "common/water_medium.glsl"
 #include "hooks/sky.glsl"
+#include "hooks/stars.glsl"
+#include "hooks/clouds.glsl"
 
 // The sky a ray reaches while still in water. Hit shaders fog each stretch of water a ray crosses up to the surface it
 // hits; a ray that leaves the loaded world under water (a sea running past the render distance, water held up by
@@ -351,6 +353,23 @@ void main() {
                               (VPT_MOON_RADIANCE * worldUBO.moonBrightness * celestialMoonLitFraction()) * moonHaloTint *
                               celestialHaloFade(moonDirHalo, rayDir) * (1.0 - progress) * celestialSeen;
     }
+
+#ifndef RADIANTE_HOOK_STARS_DEFAULT
+    // A pack's night sky (hooks/stars.glsl), where the camera looks and not under water; it can hide radiante-pt's
+    // own stars where it draws its own.
+    if (worldUBO.skyType == 1 && (rayBounce(mainRay) == 0u || rayCameraPath(mainRay)) &&
+        mainRay.directLightRadiance.x > 0.0) {
+        mainRay.directLightRadiance.x *= clamp(hookStars(backgroundRadiance, rayDir), 0.0, 1.0);
+    }
+#endif
+#ifndef RADIANTE_HOOK_CLOUDS_DEFAULT
+    // A pack's cloud layer (hooks/clouds.glsl), over the rain, the sun and moon and the stars, so it covers them.
+    if (worldUBO.skyType == 1) {
+        vec4 packClouds = hookCloudLayer(rayDir);
+        backgroundRadiance = backgroundRadiance * packClouds.a + packClouds.rgb;
+        mainRay.directLightRadiance.x *= clamp(packClouds.a, 0.0, 1.0);
+    }
+#endif
 
     // Sky seen off water, glass or any bounce sits behind the same biome fog as the sky the camera sees; without it
     // reflections showed the clear, dark blue sky above the fog.

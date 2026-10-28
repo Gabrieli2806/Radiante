@@ -5,8 +5,9 @@
 // stays as it is within radiante-pt@1.
 //
 // Called in the overworld miss shader with the clear sky a ray sees when it leaves the world (the sky cube), before
-// rain greys it and before the sun and moon discs, clouds and stars are added. Rays that bounce off the world and
-// reach the sky go through here too, so the sky's colour also tints the light it casts.
+// rain greys it and before the sun and moon discs, clouds and stars are added (a pack's own clouds and stars go in
+// hooks/clouds.glsl and hooks/stars.glsl, which come after the rain and the discs). Rays that bounce off the world
+// and reach the sky go through here too, so the sky's colour also tints the light it casts.
 //   radiance  the sky's radiance along direction
 //   direction world-space ray direction, unit length (y up)
 void hookSky(inout vec3 radiance, vec3 direction) {}

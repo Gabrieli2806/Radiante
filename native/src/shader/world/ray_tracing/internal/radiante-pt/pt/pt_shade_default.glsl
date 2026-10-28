@@ -140,6 +140,7 @@ vec3 hookTexelCentre(vec2 uv, vec3 worldPos) {
 // direct light hook can read what the surface hook keeps in its own globals.
 #include "hooks/surface.glsl"
 #include "hooks/direct_light.glsl"
+#include "hooks/cloud_shadow.glsl"
 #include "pt/pt_direct.glsl"
 #include "pt/pt_media.glsl"
 #include "pt/pt_glass.glsl"

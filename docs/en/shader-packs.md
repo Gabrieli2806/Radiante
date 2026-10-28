@@ -49,6 +49,9 @@ that does nothing in Radiante PT; put your own file at the same path:
 | `hooks/direct_light.glsl` | `hookDirectLight(SampledSurface surface, vec3 viewDir, vec3 lightDir, float NoL, inout vec3 lightBRDF)` | Change how the sun and moon light a surface (cel bands, light through leaves when `NoL < 0`) |
 | `hooks/water.glsl` | `hookWaterAbsorption(inout vec3 extinction)` | Water colour: how fast each colour is absorbed |
 | `hooks/sky.glsl` | `hookSky(inout vec3 radiance, vec3 direction)` | Sky colour; it also colours the light the sky casts |
+| `hooks/clouds.glsl` | `hookCloudLayer(vec3 direction)` | A cloud layer over the sky: returns its light (rgb) and how much sky shows through (a). Drawn after rain and over the sun and moon |
+| `hooks/cloud_shadow.glsl` | `hookCloudShadow(vec3 worldPos, vec3 lightDir)` | How much sun or moon light your clouds let through to a surface (0 to 1) |
+| `hooks/stars.glsl` | `hookStars(inout vec3 radiance, vec3 direction)` | Stars or aurora in the sky the camera sees; return 0 to hide Radiante's own stars, 1 to keep them |
 | `hooks/fog.glsl` | `hookFog(float cosTheta, inout vec3 scattering, inout vec3 extinction)` | Haze and fog with Volumetric Light on |
 | `hooks/post_grade.glsl` | `hookPostGrade(inout vec3 color, vec2 uv)` | Colour grade of the finished picture. Turn it on with `{"RADIANTE_HOOK_POST_GRADE": true}` in `execution_post.global_variables` |
 

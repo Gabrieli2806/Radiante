@@ -40,6 +40,9 @@ Status:
   reflections per texture texel (`hookTexelCentre`, `g_hookViewDir`); checked zip extraction for every
   pack (path escapes, symbolic links, file count, bytes actually written, CRC); offline tools (`shader_pack_stage`
   with `--self-test` and `--extract`, `compile_pack.py`, `zip_safety_test.py`).
+- Added later in `radiante-pt@1`: `hookCloudLayer` (`hooks/clouds.glsl`), drawn after the rain and over the sun
+  and moon; `hookCloudShadow` (`hooks/cloud_shadow.glsl`) on the sun and moon light; `hookStars` (`hooks/stars.glsl`)
+  for a night sky that can hide Radiante PT's stars. Asked for by the Mellow port, which uses all three.
 - Checked offline: native and Java builds; the merge's self-test; crafted zips; every shader of Radiante PT, the
   example and Inkwell compiles with glslangValidator (Inkwell and the example also with all settings off their
   defaults); Radiante PT's optimized SPIR-V with the default hooks is identical to before for every ray tracing,

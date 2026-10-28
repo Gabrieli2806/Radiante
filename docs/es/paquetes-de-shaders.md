@@ -52,6 +52,9 @@ Radiante PT llama a una pequeña función en los sitios que un paquete suele que
 | `hooks/direct_light.glsl` | `hookDirectLight(SampledSurface surface, vec3 viewDir, vec3 lightDir, float NoL, inout vec3 lightBRDF)` | Cambiar cómo iluminan el sol y la luna una superficie (bandas de cel, luz a través de las hojas cuando `NoL < 0`) |
 | `hooks/water.glsl` | `hookWaterAbsorption(inout vec3 extinction)` | Color del agua: lo rápido que se absorbe cada color |
 | `hooks/sky.glsl` | `hookSky(inout vec3 radiance, vec3 direction)` | Color del cielo; también tiñe la luz que da el cielo |
+| `hooks/clouds.glsl` | `hookCloudLayer(vec3 direction)` | Una capa de nubes sobre el cielo: devuelve su luz (rgb) y cuánto cielo deja ver (a). Se dibuja tras la lluvia y por encima del sol y la luna |
+| `hooks/cloud_shadow.glsl` | `hookCloudShadow(vec3 worldPos, vec3 lightDir)` | Cuánta luz del sol o la luna dejan pasar tus nubes hasta una superficie (de 0 a 1) |
+| `hooks/stars.glsl` | `hookStars(inout vec3 radiance, vec3 direction)` | Estrellas o auroras en el cielo que ve la cámara; devuelve 0 para ocultar las estrellas de Radiante, 1 para mantenerlas |
 | `hooks/fog.glsl` | `hookFog(float cosTheta, inout vec3 scattering, inout vec3 extinction)` | Bruma y niebla con la luz volumétrica activada |
 | `hooks/post_grade.glsl` | `hookPostGrade(inout vec3 color, vec2 uv)` | Gradeo de color de la imagen final. Se activa con `{"RADIANTE_HOOK_POST_GRADE": true}` en `execution_post.global_variables` |
 

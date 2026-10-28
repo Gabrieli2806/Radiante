@@ -21,7 +21,10 @@ All notable changes to this project are documented in this file.
   pack holds only its own files; Radiante PT's files go under it and `configs.json` and the lang files are merged
   (attributes, textures, buffers and passes by name, new passes placed with `before`/`after`). Radiante PT gains six
   hook points a pack replaces (`hooks/surface.glsl`, `direct_light`, `water`, `sky`, `fog`, `post_grade`); with its
-  own empty hooks it compiles to the same shaders as before, so nothing changes in the built-in pack. The example
+  own empty hooks it compiles to the same shaders as before, so nothing changes in the built-in pack. Three more
+  hooks let a pack bring its own clouds and night sky: a cloud layer drawn after the rain and over the sun and moon
+  (`hooks/clouds.glsl`), the shadow of those clouds on the world (`cloud_shadow`) and stars (`stars`), also empty in
+  Radiante PT. The example
   pack is rewritten on them, and a second example, Inkwell, gives a comic-book look (banded light, poster colours,
   ink outlines, flat sky). Packs made for another base, a newer `api_version` or another Radiante version
   (`requires.radiante`) are listed with the reason. Every pack zip is now extracted entry by entry, refusing paths

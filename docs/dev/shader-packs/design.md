@@ -123,6 +123,9 @@ the file, keeping the include guard (`RADIANTE_HOOK_<NAME>_GLSL`). The signature
 | `hooks/direct_light.glsl` | `void hookDirectLight(SampledSurface surface, vec3 viewDir, vec3 lightDir, float NoL, inout vec3 lightBRDF)` | Every sun or moon sample at a surface, before its shadow ray | `lightBRDF` is the BRDF times the cosine. Behind an opaque surface it arrives as zero; left zero, no shadow ray is traced, as before; made non-zero, the surface is lit from behind (light through leaves, keeps opacity micromaps) |
 | `hooks/water.glsl` | `void hookWaterAbsorption(inout vec3 extinction)` | `waterMediumExtinction`, for the water a ray crosses | Extinction per colour channel per block, before the density settings |
 | `hooks/sky.glsl` | `void hookSky(inout vec3 radiance, vec3 direction)` | Overworld miss shader: the clear sky, before rain greys it and before the sun, moon, clouds and stars | Rays that bounce to the sky see it too, so it also colours sky light |
+| `hooks/stars.glsl` | `float hookStars(inout vec3 radiance, vec3 direction)` | Overworld miss shader, sky the camera sees only (also through glass), not under water: after the rain grey, the sun and moon and their halos, before the cloud layer | Add the pack's night sky to `radiance`; return how much of Radiante PT's own stars (drawn after the frame) to keep, 0 to hide them where the pack draws its own |
+| `hooks/clouds.glsl` | `vec4 hookCloudLayer(vec3 direction)` | Overworld miss shader, every ray that reaches the sky: after the rain grey, the sun and moon discs, halos and `hookStars` | Returns in-scattered light (rgb) and transmittance (a): the sky becomes `sky * a + rgb`, so the clouds cover the sun and moon and stay in rain; Radiante PT's stars are dimmed by `a` too |
+| `hooks/cloud_shadow.glsl` | `float hookCloudShadow(vec3 worldPos, vec3 lightDir)` | Every sun or moon sample at a surface, after `hookDirectLight`, before its shadow ray | The light is multiplied by the result (0 to 1); `worldPos` is camera-relative (`worldUBO.cameraPos` makes it absolute). A sample left at zero traces no shadow ray |
 | `hooks/fog.glsl` | `void hookFog(float cosTheta, inout vec3 scattering, inout vec3 extinction)` | `volumetricAirMedium`, the air the volumetric light marches through | Only with Volumetric Light on |
 | `hooks/post_grade.glsl` | `void hookPostGrade(inout vec3 color, vec2 uv)` | Pass `post_hook_grade` (`post_render/post_hook_grade.frag`), after tone mapping, motion blur and depth of field, before the HUD | Runs only when the pack sets the `execution_post` global `RADIANTE_HOOK_POST_GRADE` to true; `post_hook_copy` then puts the picture in `post_motion` first. The picture is the sampler `hookPostGradeInput` |
 
@@ -130,7 +133,10 @@ the file, keeping the include guard (`RADIANTE_HOOK_<NAME>_GLSL`). The signature
 existed (checked offline at its default settings with glslangValidator and `spirv-opt -O`, IDs canonicalized: every
 ray tracing, compute, sky and froxel shader identical). The default `direct_light.glsl` defines
 `RADIANTE_HOOK_DIRECT_LIGHT_DEFAULT`, which keeps `pt_direct.glsl`'s original early exit for light behind a surface;
-a pack's file must not define it. The post shaders differ only by the new execution variable in their buffer, which
+a pack's file must not define it. In the same way the default `stars.glsl`, `clouds.glsl` and `cloud_shadow.glsl`
+define `RADIANTE_HOOK_STARS_DEFAULT`, `RADIANTE_HOOK_CLOUDS_DEFAULT` and `RADIANTE_HOOK_CLOUD_SHADOW_DEFAULT`, and
+their calls are compiled out; checked the same way when they were added (every shader's optimized SPIR-V identical
+with and without them). The post shaders differ only by the new execution variable in their buffer, which
 they do not read.
 
 The set grows with requests; within `radiante-pt@1` hooks are only added (section 4). With `extends` and hooks the

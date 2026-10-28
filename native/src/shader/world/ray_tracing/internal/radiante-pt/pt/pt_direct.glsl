@@ -110,6 +110,11 @@ vec3 sampleSurfaceDirectLight(SampledSurface surface,
 #ifndef RADIANTE_HOOK_DIRECT_LIGHT_DEFAULT
     if (lightBehind && all(equal(lightBRDF, vec3(0.0)))) { return vec3(0.0); }
 #endif
+#ifndef RADIANTE_HOOK_CLOUD_SHADOW_DEFAULT
+    // A pack's clouds shading the light (hooks/cloud_shadow.glsl); the shadow ray still traces the rest.
+    lightBRDF *= clamp(hookCloudShadow(surface.worldPos, sampledLightDir), 0.0, 1.0);
+    if (all(equal(lightBRDF, vec3(0.0)))) { return vec3(0.0); }
+#endif
 
     vec3 shadowOriginPos = surface.worldPos;
     vec3 shadowOriginGeomNormal = surface.geometricNormal;
