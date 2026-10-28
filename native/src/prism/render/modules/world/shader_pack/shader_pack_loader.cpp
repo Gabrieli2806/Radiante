@@ -1,4 +1,5 @@
 #include "prism/render/modules/world/shader_pack/shader_pack_internal.hpp"
+#include "prism/render/modules/world/shader_pack/shader_pack_extends.hpp"
 
 #include "prism/render/renderer.hpp"
 #include "prism/util/logging.hpp"
@@ -247,6 +248,27 @@ bool extractZip(const fs::path &zipPath, const fs::path &destination, std::strin
     if (mz_zip_reader_open_file(reader.get(), zipPath.string().c_str()) != MZ_OK) {
         error = "failed to open zip file";
         return false;
+    }
+    // Every entry checked before anything is written: a name that leaves the pack's folder ("../", "C:\\"), or more
+    // files or bytes than any shader pack needs, and the zip is refused whole.
+    uint64_t entries = 0;
+    uint64_t bytes = 0;
+    for (int32_t entry = mz_zip_reader_goto_first_entry(reader.get()); entry == MZ_OK;
+         entry = mz_zip_reader_goto_next_entry(reader.get())) {
+        mz_zip_file *info = nullptr;
+        if (mz_zip_reader_entry_get_info(reader.get(), &info) != MZ_OK || info == nullptr) continue;
+        const std::string name = info->filename == nullptr ? std::string() : std::string(info->filename);
+        if (!shader_pack::safePackPath(name)) {
+            error = "zip entry leaves the pack's folder: " + name;
+            return false;
+        }
+        entries++;
+        bytes += static_cast<uint64_t>(std::max<int64_t>(info->uncompressed_size, 0));
+        if (entries > shader_pack::MAX_PACK_FILES || bytes > shader_pack::MAX_PACK_BYTES) {
+            error = "zip is larger than a shader pack may be (" + std::to_string(shader_pack::MAX_PACK_FILES) +
+                    " files, " + std::to_string(shader_pack::MAX_PACK_BYTES >> 20) + " MB)";
+            return false;
+        }
     }
     const int32_t extracted = mz_zip_reader_save_all(reader.get(), destination.string().c_str());
     const int32_t closed = mz_zip_reader_close(reader.get());
@@ -1181,6 +1203,36 @@ std::string ShaderPackLoader::toLower(std::string value) {
 ShaderPackLoader::LoadResult
 ShaderPackLoader::load(const fs::path &path, const fs::path &builtInPath, const std::string &language) {
     LoadResult result;
+    auto underRendererFolder = [](const fs::path &packPath) {
+        return packPath.empty() || packPath.is_absolute() ? packPath : Renderer::folderPath / packPath;
+    };
+    const fs::path fallbackPath = underRendererFolder(builtInPath);
+    // A pack that names a base in "extends" is put together in a folder of its own first: the base's files, the
+    // pack's over them, configs.json and the lang files merged (shader_pack_extends.hpp). The folder's name is the
+    // same for the same pack every time, so the SPIR-V cache keeps its shaders.
+    auto stageIfExtending = [&](const fs::path &root, const fs::path &packPath) -> fs::path {
+        const fs::path configPath = root / "configs.json";
+        if (!fs::exists(configPath)) return root;
+        std::ifstream stream(configPath);
+        const json config = json::parse(stream, nullptr, false);
+        if (config.is_discarded() || !config.is_object()) return root; // parseConfigFile says what is wrong
+        const auto base = shader_pack::readExtends(config);
+        if (!base.has_value()) return root;
+        shader_pack::checkExtendsBase(*base);
+        if (fs::weakly_canonical(packPath) == fs::weakly_canonical(fallbackPath)) {
+            fail("the built-in pack cannot extend itself");
+        }
+        std::string error;
+        const fs::path baseRoot = packRoot(fallbackPath, error);
+        if (baseRoot.empty()) fail("extends: the base pack could not be read: " + error);
+        const fs::path stage = Renderer::folderPath / "temp/shaders/world/ray_tracing" /
+                               (extractionFolderName(packPath) + "_extended");
+        shader_pack::stageExtendedPack(baseRoot, root, stage);
+        radiante::out() << "[ShaderPack] " << packPath.filename().string() << " extends " << base->id
+                        << ", staged in " << stage.string() << std::endl;
+        return stage;
+    };
+
     auto tryLoad = [&](const fs::path &packPath) {
         std::string error;
         const fs::path root = packRoot(packPath, error);
@@ -1189,7 +1241,7 @@ ShaderPackLoader::load(const fs::path &path, const fs::path &builtInPath, const 
             return false;
         }
         try {
-            result.shaderPack = parseConfigFile(root, language);
+            result.shaderPack = parseConfigFile(stageIfExtending(root, packPath), language);
         } catch (const std::exception &exception) {
             result.error = exception.what();
             return false;
@@ -1197,11 +1249,6 @@ ShaderPackLoader::load(const fs::path &path, const fs::path &builtInPath, const 
         result.success = true;
         return true;
     };
-    auto underRendererFolder = [](const fs::path &packPath) {
-        return packPath.empty() || packPath.is_absolute() ? packPath : Renderer::folderPath / packPath;
-    };
-
-    const fs::path fallbackPath = underRendererFolder(builtInPath);
     const fs::path requestedPath = underRendererFolder(path.empty() ? builtInPath : path);
     if (tryLoad(requestedPath)) return result;
     if (!path.empty() && requestedPath != fallbackPath) {
