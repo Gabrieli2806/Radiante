@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Shader pack development: a pack kept as a folder in `radiante/shaderpacks/` reloads by itself when one of its files
+  is saved. It is checked first (loaded and compiled in the background while the game runs); an edit that does not
+  compile is not used, the picture stays as it was, and the error shows in a popup and on the Shader Packs screen.
+  New client commands: `/radiante pack validate [name]` checks a pack without switching to it and prints the report in
+  the chat, `/radiante pack reload` reloads the active folder pack, and `/radiante debug view <view>` shows the
+  albedo, normals, roughness, metallic, emission, depth, motion vectors or kind of surface instead of the picture
+  (`off` goes back; not saved). Packs can declare their own debug views (`debug_views` in `configs.json`).
+- Shader packs get far more live settings: 256 `"runtime": true` slots instead of 64 (Radiante PT used 62 of them), and
+  they now work in post passes and the post grade hook too (`common/pack_post.glsl`). A pack can ask for Radiante's
+  bloom pyramid (`RADIANTE_POST_BLOOM`) and read it there, for bloom, glow and lens flares; it is drawn only for a pack
+  that asks. Radiante PT renders as before. Example packs: Pixel Light's palette and dither and the Mellow port's grade
+  change live; the example pack gains bloom, a lens flare with colour fringes, a live grade strength and a debug view
+  of its own.
 - Shader packs can react to the weather and the biome: `common/pack_world.glsl` in Radiante PT gives hooks the thunder
   strength, and the temperature, downfall, snowy, dry and rainy weights and id of the biome at the camera, faded over
   a couple of seconds across a border (`radianteThunder()`, `radianteBiomeSnowy()`, `radianteBiomeIs(...)`), also in

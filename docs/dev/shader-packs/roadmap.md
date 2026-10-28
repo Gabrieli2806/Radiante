@@ -9,7 +9,7 @@ Phases in order; each one is useful on its own. Efforts are rough, for one devel
 | 1 | Small packs: `extends` and hook points | 1 week | Done; example packs being polished |
 | 2 | Stable interface: `radiante/v1` headers, `api_version` | 1-2 weeks | Groundwork: `api_version` and `requires.radiante` checked in the list |
 | 3 | Reference packs, more hooks and the author guide | 1-2 weeks | Guide started |
-| 4 | Settings pages, presets and the development loop | 1-2 weeks | Planned |
+| 4 | Settings pages, presets and the development loop | 1-2 weeks | Development loop, live post settings and bloom built; settings pages planned |
 | 5 | Materials and micromap opt-out | 1-2 weeks | Planned |
 | 6 | Renderer features for every pack | 2-3 weeks | Planned |
 | 7 | Distribution | 2-3 days + platforms | Planned |
@@ -90,6 +90,24 @@ Done when: a person who never read PrismRT's source can make a pack that changes
 
 Done when: editing a shader in a folder pack shows the result in game without a restart, and a failed edit keeps the
 running picture with the error on screen.
+
+Status:
+
+- Built ([design §10](design.md#10-development-loop)): hot reload of folder packs (checked in the background first;
+  a pack that does not compile is not built, the running picture stays, the error shows in a popup and on the Shader
+  Packs screen); `/radiante pack validate [name]` and `/radiante pack reload`; debug views (`/radiante debug view`:
+  albedo, normal, roughness, metallic, emission, depth, motion vectors, surface flags) and `debug_views` for a pack's
+  own.
+- Built: live settings in post passes, and room for them: `worldUBO.packParams` has 256 slots (was 64, of which
+  Radiante PT took 62); `common/pack_post.glsl` for post passes; Pixel Light's palette and the Mellow port's grade are
+  live now.
+- Built: bloom for packs (`RADIANTE_POST_BLOOM`, `radianteBloom`): Radiante's own bloom pyramid, drawn only for a pack
+  that asks; the example pack adds bloom, a lens flare and chromatic aberration with it.
+- Checked offline: native and Java builds; Radiante PT's optimized SPIR-V unchanged with no debug view chosen (the
+  slot count changes only the uniform block's array length); every example pack and every debug view compiles.
+- Not tried in game yet: the hot reload, the commands, the debug views and the bloom.
+- Open: the settings page per pack, attribute metadata, presets, `profile_keys`; a per-file error view; SHaRC heat map
+  and micromap coverage views.
 
 ## Phase 5: materials and micromaps
 

@@ -11,11 +11,14 @@ How shader packs work in Radiante today, and the contract they are moving to. "T
 | Java | `client/pipeline/ShaderPackManifest.java` | Manifest checks without loading: `extends`, `api_version`, `requires.radiante` |
 | Java | `client/gui/ShaderPacksScreen.java` | The screen: list, Use, Open Folder, Refresh, Copy Error |
 | Java | `client/gui/ShaderPackTrial.java` | Watches a switch: rejected config, compile errors, failed rebuild, ten seconds of frames before a pack counts as good |
+| Java | `client/gui/ShaderPackHotReload.java`, `client/pipeline/ShaderPackValidation.java` | Hot reload of folder packs; a pack checked (loaded and compiled) without being used (section 10) |
+| Java | `client/command/RadianteCommands.java` | `/radiante pack validate`, `/radiante pack reload`, `/radiante debug view`; registered by each loader |
 | Java | `client/pipeline/Pipeline.java` | The selected pack (`shader_pack_path` attribute), per-pack values, `getModuleAttributes` (values checked against the pack's types), runtime attributes |
 | Native | `prism/render/modules/world/shader_pack/shader_pack_loader.cpp` | Reads `configs.json` into `ShaderPack`, rejects bad configs (with the reason in the log) |
 | Native | `shader_pack/shader_pack_extends.cpp` | `extends`: stages the base and the pack, merges `configs.json` and `lang` (section 5); path checks for zips |
 | Native | `shader_pack/shader_compile.cpp` | Compiles the pack's GLSL with shaderc; include paths, attribute defines |
 | Native | `shader_pack/shader_pack.cpp`, `execution_script.cpp`, `runtime_resources.cpp` | Passes, execution scripts, textures and buffers, runtime attributes (`packParams`) |
+| Native | `shader_pack/shader_pack_check.cpp` | Loads and compiles a pack apart from the running pipeline (section 10) |
 | Build | `native/src/shader/CMakeLists.txt` | Zips Radiante PT with `shader/util/`, `src/common/` and the SHaRC headers into `radiante-pt.zip` |
 | Build | `build.gradle`, `shaderPackExamples` | Zips the example packs (packs without `extends` are staged on Radiante PT) |
 | Tools | `native/src/tools/` | `shader_pack_stage` (stage a pack offline, `--self-test`), `compile_pack.py` (compile a staged pack's shaders) |
@@ -96,7 +99,7 @@ parses that like any pack. The folder name is stable, so the SPIR-V cache keeps 
 | Part | Rule |
 | --- | --- |
 | Files | radiante-pt's, then the pack's over them; the same relative path is the pack's file. Symbolic links are skipped |
-| `attributes`, `textures`, `buffers`, `passes` | Merged by `name`. A pack entry with a base entry's name is merged into it field by field, the pack's fields winning (`{"name": "...wind", "default_value": "render_pipeline.false"}` changes only the default); a new name is appended. A name listed twice in the pack is an error |
+| `attributes`, `textures`, `buffers`, `passes`, `debug_views` | Merged by `name`. A pack entry with a base entry's name is merged into it field by field, the pack's fields winning (`{"name": "...wind", "default_value": "render_pipeline.false"}` changes only the default); a new name is appended. A name listed twice in the pack is an error |
 | New passes | `"before": "<pass>"` or `"after": "<pass>"` (one of them, only on new passes, same stage as the anchor): placed there in `passes` and next to every run of the anchor in the stage's script, inside `if_else` and `while` too; an anchor the script never runs is an error. Without either: appended to `passes` and run at the end of the stage's script, unless the pack's own script already runs it. The two keys are removed before parsing |
 | `execution`, `execution_post` | `global_variables` merged by variable name (the pack's start value wins). The pack's `commands`, when it gives any, replace the base's; a `{"base": true}` command in them, at any depth, stands for the base's commands. Scripts are merged before new passes are placed |
 | `sharc` | Merged field by field |
@@ -127,7 +130,7 @@ the file, keeping the include guard (`RADIANTE_HOOK_<NAME>_GLSL`). The signature
 | `hooks/clouds.glsl` | `vec4 hookCloudLayer(vec3 direction)` | Overworld miss shader, every ray that reaches the sky: after the rain grey, the sun and moon discs, halos and `hookStars` | Returns in-scattered light (rgb) and transmittance (a): the sky becomes `sky * a + rgb`, so the clouds cover the sun and moon and stay in rain; Radiante PT's stars are dimmed by `a` too |
 | `hooks/cloud_shadow.glsl` | `float hookCloudShadow(vec3 worldPos, vec3 lightDir)` | Every sun or moon sample at a surface, after `hookDirectLight`, before its shadow ray | The light is multiplied by the result (0 to 1); `worldPos` is camera-relative (`worldUBO.cameraPos` makes it absolute). A sample left at zero traces no shadow ray |
 | `hooks/fog.glsl` | `void hookFog(float cosTheta, inout vec3 scattering, inout vec3 extinction)` | `volumetricAirMedium`, the air the volumetric light marches through | Only with Volumetric Light on |
-| `hooks/post_grade.glsl` | `void hookPostGrade(inout vec3 color, vec2 uv)` | Pass `post_hook_grade` (`post_render/post_hook_grade.frag`), after tone mapping, motion blur and depth of field, before the HUD | Runs only when the pack sets the `execution_post` global `RADIANTE_HOOK_POST_GRADE` to true; `post_hook_copy` then puts the picture in `post_motion` first. The picture is the sampler `hookPostGradeInput` |
+| `hooks/post_grade.glsl` | `void hookPostGrade(inout vec3 color, vec2 uv)` | Pass `post_hook_grade` (`post_render/post_hook_grade.frag`), after tone mapping, motion blur and depth of field, before the HUD | Runs only when the pack sets the `execution_post` global `RADIANTE_HOOK_POST_GRADE` to true; `post_hook_copy` then puts the picture in `post_motion` first. The picture is the sampler `hookPostGradeInput`. `common/pack_post.glsl` is included before it: live settings (`worldUBO`), weather (`skyUBO`) and the bloom (`radianteBloom`, below) |
 
 **Radiante PT unchanged.** With its default hooks Radiante PT compiles to the same SPIR-V as before the hooks
 existed (checked offline at its default settings with glslangValidator and `spirv-opt -O`, IDs canonicalized: every
@@ -137,7 +140,9 @@ a pack's file must not define it. In the same way the default `stars.glsl`, `clo
 define `RADIANTE_HOOK_STARS_DEFAULT`, `RADIANTE_HOOK_CLOUDS_DEFAULT` and `RADIANTE_HOOK_CLOUD_SHADOW_DEFAULT`, and
 their calls are compiled out; checked the same way when they were added (every shader's optimized SPIR-V identical
 with and without them). The post shaders differ only by the new execution variable in their buffer, which
-they do not read.
+they do not read. The debug views (section 10) were checked the same way: with no view chosen every shader of
+Radiante PT compiles to the same optimized SPIR-V as before them (the surface flags write in `pt_shade_default.glsl`
+is compiled out); only `post_hook_grade.frag`, which runs for packs alone, gained the bloom sampler's declaration.
 
 The set grows with requests; within `radiante-pt@1` hooks are only added (section 4). With `extends` and hooks the
 example pack is a manifest with five attributes, five hook files, three lang files and an icon.
@@ -177,11 +182,36 @@ The values sit at the end of `SkyUBO` (`common/shared.hpp`, bytes 304 to 335): `
 `thunderGradient`, `biomeId`, `previousBiomeId`, `biomeIdBlend`. Radiante PT reads none of them; its optimized SPIR-V
 differs from before only in the uniform block's declaration.
 
-**Post render bindings**, for a pack's own post passes: set 3 holds the frame's images at fixed bindings whatever a
-pass lists as inputs: 0 `out:ldr`, 1 `out:first_hit_depth`, 2 the HDR image, 3 `out:motion_vector`, 4
-`out:normal_roughness`. A pack's textures are in set 4 at their `sampled_binding` (`post_motion`: 4). A pass that
-writes `out:ldr` must not sample set 3 binding 0: copy the picture to `post_motion` first (`post_render/post_copy.frag`
-reads set 3 binding 0), as `post_hook_copy` and Inkwell's `inkwell_copy` do.
+**Post render bindings**, for a pack's own post passes: set 1 holds the world (0) and sky (1) uniforms; set 3 holds
+the frame's images at fixed bindings whatever a pass lists as inputs: 0 `out:ldr`, 1 `out:first_hit_depth`, 2 the HDR
+image, 3 `out:motion_vector`, 4 `out:normal_roughness`, 5 the bloom. A pack's textures are in set 4 at their
+`sampled_binding` (`post_motion`: 4). A pass that writes `out:ldr` must not sample set 3 binding 0: copy the picture to
+`post_motion` first (`post_render/post_copy.frag` reads set 3 binding 0), as `post_hook_copy` and Inkwell's
+`inkwell_copy` do. Bindings 120 and 121 of the runtime resources' set are Radiante PT's debug view image: a pack that
+extends it must not use them.
+
+### Post passes: live settings and bloom
+
+`common/pack_post.glsl` is for a pack's post passes and `hooks/post_grade.glsl` (which `post_hook_grade.frag`
+includes it for). It declares the world and sky uniforms, unless the pass defined `RADIANTE_POST_UNIFORMS_DECLARED`
+after declaring them itself, so a runtime attribute's define (a read of `worldUBO.packParams`) works in a post pass as
+in the ray tracing shaders. A runtime value is only known when the shader runs: it is tested with `if`, never `#if`.
+
+It also gives the bloom, set 3 binding 5: the tone mapping module's own bloom pyramid (`bloom_down.frag`,
+`bloom_up.frag`: the exposed HDR picture, five levels down to 1/32 and four back up), the finest combined level at
+half the picture's size. The pyramid runs with Radiante's Bloom setting, or for a pack that sets the `execution_post`
+global `RADIANTE_POST_BLOOM` to true (`ToneMappingModule::runsBloom`, read at each build); only the setting adds it
+to the picture itself. Without either, binding 5 holds one black texel and nothing more is drawn, so Radiante PT costs
+nothing extra. Its threshold, scatter and level weights are Radiante's bloom settings.
+
+| Function | Value |
+| --- | --- |
+| `vec3 radianteBloom(vec2 uv)` | The bloom, linear, on the exposed scale before tone mapping, never negative |
+| `vec3 radianteBloomDisplay(vec2 uv, float strength)` | `strength` of it tone mapped (`x / (1 + x)`) and encoded for the screen |
+| `vec3 radianteAddBloom(vec3 color, vec2 uv, float strength)` | A display colour with that bloom added as light |
+
+Lens flares read it at mirrored or stretched positions; chromatic aberration reads the picture
+(`hookPostGradeInput`) per channel. The example pack does both, with live strengths.
 
 ### Checking a pack offline
 
@@ -189,7 +219,8 @@ reads set 3 binding 0), as `post_hook_copy` and Inkwell's `inkwell_copy` do.
 `--self-test` runs the merge rules' checks and `--extract` the zip extraction (`zip_safety_test.py` feeds it crafted
 zips). `native/src/tools/compile_pack.py` compiles a staged pack's shaders with
 glslangValidator and the defines the loader gives at default settings (attributes, runtime attributes as
-`worldUBO.packParams` reads, pass defines, execution variables, SHaRC variants). See
+`worldUBO.packParams` reads, debug view defines, pass defines, execution variables, SHaRC variants; `--debug-view`
+compiles with a view chosen). In game, `/radiante pack validate` does the same with the real settings. See
 [examples](../../../examples/shaderpacks/README.md#check-a-pack-without-the-game).
 
 ## 6. Public headers (planned, phase 2)
@@ -211,7 +242,10 @@ Radiante PT moves onto these headers first; a header is only published once Radi
 ## 7. Settings
 
 Today every attribute of a pack is a setting, named through its `lang` files; `"runtime": true` attributes change
-live through `worldUBO.packParams` (64 slots), the rest rebuild. Planned (phase 4), as extra attribute keys:
+live through `worldUBO.packParams` (256 slots, `PRISM_PACK_PARAM_COUNT` in `common/shared.hpp`; Radiante PT takes
+about 60, in the order it lists them, then a pack's own), the rest rebuild. They work in every stage: ray tracing,
+compute and full-screen passes, the post passes included (section 5, post passes). Planned (phase 4), as extra
+attribute keys:
 
 - `group` (section), `order`, `advanced`, `description` (tooltip), `performance_impact` (`low`/`medium`/`high`),
   `step`, `visible_when` (another attribute's value), `requires_feature`.
@@ -245,13 +279,49 @@ live through `worldUBO.packParams` (64 slots), the rest rebuild. Planned (phase 
 
 ## 10. Development loop
 
-Today: Shader Packs screen, errors with file and line under the list, Copy Error. Planned (phase 4):
+The Shader Packs screen shows a failed pack's errors with file and line under the list (Copy Error). Besides:
 
-- Hot reload of folder packs: on change, compile in the background and swap on success, keeping the running pipeline
-  on failure.
-- `/radiante pack validate`: load and compile a pack without switching, print the report.
-- Debug views: normals, albedo, roughness, surface flags, motion vectors, SHaRC heat map, micromap coverage, plus the
-  pack's own (`debug_views` in the manifest).
+**Checking a pack** (`shader_pack_check.cpp`, `Pipeline.validateShaderPackNative`, `ShaderPackValidation`): the pack
+is loaded and every shader a build of it would compile is compiled, for both stages, with the ray tracing module's
+current attributes and this device's features (micromaps, SER, SHaRC), on a Java thread of its own while frames are
+drawn. It never touches the running pipeline: no fallback to Radiante PT, zips extracted and packs staged under
+`temp/shaders/world/ray_tracing/check/` (a build's folders are never rewritten under it), no shader modules, and
+compile errors are not written to the error log (`gpu::Shader::QuietErrors`), where `ShaderPackTrial` would take them
+for the running pack's. The SPIR-V goes to the shared cache: a folder pack that does not extend another reads its
+files in place, so the build that follows finds them all; one that extends Radiante PT is staged elsewhere for the
+check, so the build compiles again what changed. The report: the loader's reason, or each failing shader's path and
+compiler lines.
+
+**Hot reload** (`ShaderPackHotReload`): the active pack, when it is a folder in `radiante/shaderpacks/`, is looked at
+once a second (names, sizes and modification times; folders starting with a dot skipped; at most 20000 files). A
+change that has settled for a second is checked; a pack that passes is built through the background rebuild
+(`Pipeline.requestRebuild`, `BackgroundRebuild.apply`: prewarm while drawing, then a short build), so the picture
+changes without a wait screen. A pack that fails is not built: the running pipeline stays, a popup gives the first
+error, and the report goes to the Shader Packs screen (`ShaderPackTrial.reportCheckFailure`) and the game log.
+
+**Commands** (`RadianteCommands`, registered as client commands by each loader): `/radiante pack validate [name]`
+checks a pack in the folder (the active one without a name) without switching and prints the report in the chat;
+`/radiante pack reload` checks and reloads the active folder pack now; `/radiante debug view [view|off]`.
+
+**Debug views**: a pack lists them in `configs.json`:
+
+```json
+"debug_views": [{"name": "wetness", "define": "MY_DEBUG_WET", "value": 1}]
+```
+
+Every view's define is in the shaders' defines as 0, and the chosen view's as its `value` (1 when left out), and in
+the numbers the execution scripts and texture sizes read, so a pack can run passes or size images only while a view
+is chosen. The view is an attribute of the ray tracing module that Java adds to the build only
+(`render_pipeline.module.ray_tracing.attribute.debug_view`), never saved. `debug_views` merge by name under
+`extends`, so a pack keeps Radiante PT's views and adds its own.
+
+Radiante PT's views share `RADIANTE_DEBUG_VIEW` (`common/debug_view.glsl`): `albedo` 1, `normal` 2, `roughness` 3,
+`metallic` 4, `emission` 5, `depth` 6, `motion` 7, `flags` 8. While one is chosen, the compute pass
+`debug_view_capture` (after the world pass) turns the guide images the ray generation shader wrote into display
+colours in `radiante_debug_view` (render resolution; one texel while no view is chosen, sized by
+`if(RADIANTE_DEBUG_VIEW, RENDER_WIDTH, 1)`), the closest-hit shader writes the surface flags there itself, and
+`post_debug_view` draws it last in the post stage, after any grade. Planned: SHaRC heat map (SHaRC's own
+`sharc_debug_mode` meanwhile) and micromap coverage.
 
 ## 11. Safety
 

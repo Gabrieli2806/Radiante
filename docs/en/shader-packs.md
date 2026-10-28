@@ -76,10 +76,53 @@ fades too. `RADIANTE_BIOME_<NAME>` exists for every vanilla biome; for a modded 
 out its value from its id. For example, an aurora only where it snows:
 `strength *= radianteBiomeSnowy();` (the Mellow port does this).
 
+### Live settings, bloom and lens effects in the grade
+
+An attribute with `"runtime": true` changes without a rebuild, in the ray tracing shaders and in the post passes
+alike: its define reads the world uniform (`worldUBO.packParams`, 256 slots, Radiante PT uses about 60). Because the
+value is read while the shader runs, test it with `if`, not `#if`: `if (int(MY_PALETTE) > 1) { ... }`. Pixel Light's
+palette and dither and the Mellow port's grade work this way.
+
+`hooks/post_grade.glsl` sees `common/pack_post.glsl`, which a pack's own post passes can include too. It declares
+`worldUBO` and `skyUBO` (define `RADIANTE_POST_UNIFORMS_DECLARED` first if your pass declares them itself) and the
+bloom:
+
+| Function | Value |
+| --- | --- |
+| `radianteBloom(uv)` | The picture before tone mapping, blurred: Radiante's bloom pyramid, half the screen's size, on the exposed scale (1 is about white) |
+| `radianteBloomDisplay(uv, strength)` | The same tone mapped and encoded for the screen, to add to the grade's colour |
+| `radianteAddBloom(color, uv, strength)` | `color` with the bloom added as light; 0.05 to 0.3 is a usual glow |
+
+The pyramid is only drawn for a pack that asks: `{"RADIANTE_POST_BLOOM": true}` in
+`execution_post.global_variables`, next to `RADIANTE_HOOK_POST_GRADE` (otherwise `radianteBloom` is black, and with
+Radiante's own Bloom setting on, the picture already has it). Its threshold and spread are Radiante's bloom settings.
+Sample it at other places for lens effects: mirrored through the centre for flares, stretched for streaks. For
+chromatic aberration, read `hookPostGradeInput` (the picture) at a slightly different `uv` per channel. The example
+pack does all three, each strength a live setting.
+
+## Working on a pack in game
+
+Put the pack in `radiante/shaderpacks/` as a folder, not a zip, and choose it.
+
+- **Hot reload**: save a file of the pack and the game picks it up within about two seconds. The pack is checked
+  first (loaded and compiled in the background, while you keep playing); if it compiles, the pipeline is built again
+  with it, the same way a settings change is applied. If it does not, the picture you had stays, a popup shows the
+  first error, and the whole report is on the Shader Packs screen (**Copy Error**) and in the game log.
+- `/radiante pack reload` does the same now; `/radiante pack validate [name]` checks any pack in the folder (the
+  active one without a name) without switching to it, and prints the report in the chat.
+- **Debug views**: `/radiante debug view <view>` shows one of the frame's images instead of the picture: `albedo`,
+  `normal`, `roughness`, `metallic`, `emission`, `depth`, `motion` (motion vectors) or `flags` (the kind of surface:
+  water, lava, glass, leaves, plants...). `/radiante debug view off` goes back; without a view it lists them. The view
+  is not saved.
+- Your own debug views: list them in `configs.json`, `"debug_views": [{"name": "wetness", "define": "MY_DEBUG_WET"}]`.
+  The define is 0, and 1 (or `"value"`) while that view is chosen, so `#if MY_DEBUG_WET` in any shader shows what you
+  want, for example in `hookPostGrade`. A pack that extends Radiante PT keeps its views and adds its own.
+
 ## Check a pack without the game
 
 `examples/shaderpacks/README.md` shows how to put a pack together and compile all its shaders offline with the tools
-in `native/src/tools/`: errors show with file and line, as they do under the list in game.
+in `native/src/tools/`: errors show with file and line, as they do under the list in game. `compile_pack.py
+--debug-view <view>` compiles a debug view too.
 
 ## What a pack has
 
@@ -98,7 +141,8 @@ and the other surface tests in `util/vertex.glsl`; the sun, moon and weather in 
 ## When something goes wrong
 
 - A pack that does not load or compile is replaced by Radiante PT, and the compiler's messages (file and line) show
-  under the list. **Copy Error** copies them.
+  under the list. **Copy Error** copies them. An edit to a folder pack that does not compile is not built at all: the
+  running pack stays.
 - If the game closes while trying a pack, the next start goes back to Radiante PT and names the pack.
 - Settings are kept per pack, so a pack starts from its own defaults, not from Radiante PT's.
 - A pack made for another Radiante (`extends` of another base or hook version, a newer `api_version`, or

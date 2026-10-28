@@ -119,6 +119,13 @@ guarda sus ajustes en un archivo a su lado (`<paquete>.zip.txt`), así que cambi
 los conserva. La mayoría de los ajustes de Radiante son de Radiante PT; otro paquete muestra los
 que ofrece.
 
+Un paquete guardado como carpeta se recarga solo cuando cambia uno de sus archivos, para quien
+hace paquetes: antes se comprueba en segundo plano, y un cambio que no compila deja la imagen como
+estaba y muestra el error aquí. `/radiante pack validate [nombre]` comprueba un paquete sin cambiar
+a él, y `/radiante debug view <vista>` muestra el albedo, las normales, la profundidad y otras
+imágenes del fotograma en lugar de la imagen final (`off` vuelve). Mira
+[Hacer un paquete de shaders](paquetes-de-shaders.md#trabajar-en-un-paquete-dentro-del-juego).
+
 Los paquetes hechos para Radiance (el mod del que nació Radiante) usan el mismo formato pero una
 interfaz del renderizador más antigua, y de momento no funcionan tal cual.
 

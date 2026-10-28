@@ -80,10 +80,55 @@ de ellos también se funde. Hay un `RADIANTE_BIOME_<NOMBRE>` para cada bioma van
 explica cómo calcular su valor a partir de su id. Por ejemplo, una aurora solo donde nieva:
 `strength *= radianteBiomeSnowy();` (el port de Mellow lo hace así).
 
+### Ajustes en vivo, bloom y efectos de lente en el gradeo
+
+Un atributo con `"runtime": true` cambia sin recompilar, tanto en los shaders de ray tracing como en los pases de
+post: su define lee el uniform del mundo (`worldUBO.packParams`, 256 huecos; Radiante PT usa unos 60). Como el valor
+se lee mientras corre el shader, se prueba con `if`, no con `#if`: `if (int(MY_PALETTE) > 1) { ... }`. La paleta y el
+tramado de Pixel Light y el gradeo del port de Mellow funcionan así.
+
+`hooks/post_grade.glsl` ve `common/pack_post.glsl`, que los pases de post propios de un paquete también pueden
+incluir. Declara `worldUBO` y `skyUBO` (define antes `RADIANTE_POST_UNIFORMS_DECLARED` si tu pase ya los declara) y el
+bloom:
+
+| Función | Valor |
+| --- | --- |
+| `radianteBloom(uv)` | La imagen antes del tone mapping, desenfocada: la pirámide de bloom de Radiante, a la mitad del tamaño de la pantalla, en la escala expuesta (1 es más o menos blanco) |
+| `radianteBloomDisplay(uv, strength)` | Lo mismo con tone mapping y codificado para la pantalla, para sumarlo al color del gradeo |
+| `radianteAddBloom(color, uv, strength)` | `color` con el bloom sumado como luz; entre 0.05 y 0.3 es un resplandor normal |
+
+La pirámide solo se dibuja para un paquete que la pide: `{"RADIANTE_POST_BLOOM": true}` en
+`execution_post.global_variables`, junto a `RADIANTE_HOOK_POST_GRADE` (si no, `radianteBloom` es negro; con el ajuste
+Bloom de Radiante activado, la imagen ya lo lleva). Su umbral y su extensión son los ajustes de bloom de Radiante.
+Léela en otros puntos para efectos de lente: reflejada por el centro para destellos, estirada para rayas. Para la
+aberración cromática, lee `hookPostGradeInput` (la imagen) con un `uv` un poco distinto por canal. El paquete de
+ejemplo hace las tres cosas, cada intensidad como ajuste en vivo.
+
+## Trabajar en un paquete dentro del juego
+
+Pon el paquete en `radiante/shaderpacks/` como carpeta, no como zip, y elígelo.
+
+- **Recarga en caliente**: guarda un archivo del paquete y el juego lo recoge en unos dos segundos. Primero se
+  comprueba (se carga y se compila en segundo plano mientras sigues jugando); si compila, la pipeline se vuelve a
+  construir con él, igual que al aplicar un ajuste. Si no compila, se queda la imagen que tenías, un aviso muestra el
+  primer error, y el informe completo está en la pantalla de paquetes de shaders (**Copiar error**) y en el registro
+  del juego.
+- `/radiante pack reload` hace lo mismo al momento; `/radiante pack validate [nombre]` comprueba cualquier paquete de
+  la carpeta (el activo si no das nombre) sin cambiar a él, y escribe el informe en el chat.
+- **Vistas de depuración**: `/radiante debug view <vista>` muestra una de las imágenes del fotograma en lugar de la
+  imagen final: `albedo`, `normal`, `roughness`, `metallic`, `emission`, `depth`, `motion` (vectores de movimiento) o
+  `flags` (el tipo de superficie: agua, lava, cristal, hojas, plantas...). `/radiante debug view off` vuelve a la
+  normal; sin vista, las lista. La vista no se guarda.
+- Tus propias vistas: lístalas en `configs.json`,
+  `"debug_views": [{"name": "wetness", "define": "MY_DEBUG_WET"}]`. El define vale 0, y 1 (o `"value"`) mientras esa
+  vista está elegida, así que `#if MY_DEBUG_WET` en cualquier shader muestra lo que quieras, por ejemplo en
+  `hookPostGrade`. Un paquete que extiende Radiante PT conserva sus vistas y añade las suyas.
+
 ## Comprobar un paquete sin el juego
 
 `examples/shaderpacks/README.md` explica cómo montar un paquete y compilar todos sus shaders sin el juego con las
 herramientas de `native/src/tools/`: los errores salen con archivo y línea, como bajo la lista en el juego.
+`compile_pack.py --debug-view <vista>` compila también una vista de depuración.
 
 ## Qué tiene un paquete
 
@@ -103,7 +148,8 @@ Ayudas útiles de las cabeceras de Radiante PT: `isLeavesSurface`, `isPlantSurfa
 ## Si algo falla
 
 - Un paquete que no carga o no compila se cambia por Radiante PT, y los mensajes del compilador (archivo y línea)
-  aparecen bajo la lista. **Copiar error** los copia.
+  aparecen bajo la lista. **Copiar error** los copia. Un cambio en un paquete de carpeta que no compila no se llega a
+  construir: el paquete que estaba en marcha se queda.
 - Si el juego se cierra probando un paquete, el siguiente inicio vuelve a Radiante PT y dice qué paquete era.
 - Los ajustes se guardan por paquete, así que un paquete empieza con sus propios valores, no con los de Radiante PT.
 - Un paquete hecho para otro Radiante (`extends` de otra base o versión de hooks, un `api_version` más nuevo, o

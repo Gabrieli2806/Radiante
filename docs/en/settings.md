@@ -113,6 +113,12 @@ says so here. Each pack keeps its own settings in a
 file next to it (`<pack>.zip.txt`), so switching back and forth keeps them. Most of Radiante's
 settings belong to Radiante PT; another pack shows the ones it offers.
 
+A pack kept as a folder reloads by itself when one of its files changes, for pack authors: it is
+checked in the background first, and an edit that does not compile leaves the picture as it was
+and shows the error here. `/radiante pack validate [name]` checks a pack without switching to it,
+and `/radiante debug view <view>` shows the albedo, normals, depth and other frame images instead of
+the picture (`off` goes back). See [Making a shader pack](shader-packs.md#working-on-a-pack-in-game).
+
 Packs made for Radiance (the mod Radiante grew from) use the same format but an older renderer
 interface, and do not work as they are yet.
 
