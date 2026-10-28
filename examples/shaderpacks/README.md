@@ -40,8 +40,8 @@ picture keeps its light, only drawn differently.
 | --- | --- | --- |
 | Light Bands (2-8) | `hooks/direct_light.glsl` | How many flat steps the sunlight on a surface has; fewer is bolder |
 | Cel Shading (0-1) | `hooks/direct_light.glsl` | Blend from Radiante PT's own sun shading (0) to the bands (1), with a hard highlight on smooth surfaces. Changes live |
-| Poster Colours (0-16) | `hooks/surface.glsl` | Levels per colour channel of the textures; 0 or 1 keeps them as they are. Glowing texels are left alone |
-| Ink Outlines (0-3) | `post_render/inkwell_ink.frag`, own passes | Outline width in pixels, from depth jumps and normal turns; fades out past about 100 blocks. 0 turns them off |
+| Poster Colours (0-16) | `hooks/surface.glsl` | Brightness levels of the textures, each texel keeping its hue; 0 or 1 keeps them as they are. Glowing texels are left alone |
+| Ink Outlines (0-3) | `post_render/inkwell_ink.frag`, own passes | Outline width in pixels, from silhouettes (a depth jump of a fifth or more) and near right-angle creases, so leaf holes and texture bumps stay clean; fades out past about 100 blocks. 0 turns them off |
 | Flat Sky | `hooks/sky.glsl` | A two-tone sky at the sky's own brightness, so day, dusk and night still light the world as before |
 | Paper (0-1) | `post_render/inkwell_ink.frag` | Cream whites, lifted blacks and a fine grain |
 

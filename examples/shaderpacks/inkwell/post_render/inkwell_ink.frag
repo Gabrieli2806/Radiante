@@ -56,13 +56,17 @@ void main() {
         for (int i = 0; i < 4; i++) {
             InkSample other = fetchSample(fragTexCoord + offsets[i] * texel);
             if (centre.sky && other.sky) { continue; }
-            // Silhouettes: a relative jump in depth, so near and far edges need the same contrast.
+            // Silhouettes: a relative jump in depth, so near and far edges need the same contrast. Tried in the test
+            // world: at 6-12% every hole in a leaf's texture (the leaf behind it is a fraction of a block further)
+            // was outlined and trees turned into black blots, so only a jump of a fifth or more inks.
             float nearer = min(centre.depth, other.depth);
             float jump = abs(centre.depth - other.depth) / nearer;
-            edge = max(edge, smoothstep(0.06, 0.12, jump));
-            // Creases: the normal turns (only between two surfaces).
+            edge = max(edge, smoothstep(0.2, 0.35, jump));
+            // Creases: the normal turns (only between two surfaces). The guide holds the shading normal, normal maps
+            // and water ripples included: at a 50 degree turn the ripples and the bumps of stone drew ink dashes, so
+            // only a turn close to a block's right angle does.
             if (!centre.sky && !other.sky) {
-                edge = max(edge, smoothstep(0.35, 0.6, 1.0 - dot(centre.normal, other.normal)));
+                edge = max(edge, smoothstep(0.7, 0.9, 1.0 - dot(centre.normal, other.normal)));
             }
         }
         // Lighter, then gone, in the distance.

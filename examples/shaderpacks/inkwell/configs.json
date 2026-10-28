@@ -1,7 +1,7 @@
 {
     "radiante": {
         "display_name": "Inkwell",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "author": "G2806",
         "license": "GPL-3.0",
         "description": "Path-traced comic look: banded sunlight, poster colours, ink outlines, a flat two-tone sky, warm paper.",
