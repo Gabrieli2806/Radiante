@@ -435,6 +435,14 @@ void ptShadeDefault(bool viewMark) {
     }
 #endif
 
+#ifndef RADIANTE_HOOK_SHADING_POINT_DEFAULT
+    // Where the pack's surface hook moved the point it is shaded at, for the surface the camera sees: handed to the
+    // ray generation (pt_primary.glsl) in the material image's fourth layer, as an offset from the camera ray's hit,
+    // small enough for half floats wherever the surface is (hooks/shading_point.glsl).
+    if (bounce == 0u || rayCameraPath(mainRay)) {
+        imageStore(rayMaterialStateImage, rayMaterialStateCoord(3), vec4(surface.worldPos - hitWorldPos, 0.0));
+    }
+#endif
     mainRay.normal = surface.shadingNormal;
     ptStoreMaterial(surface.albedoValue, surface.mat.f0, surface.mat.roughness, surface.mat.metallic,
                     surface.mat.transmission, surface.mat.ior, surface.mat.emission);
@@ -474,7 +482,12 @@ void ptShadeDefault(bool viewMark) {
         mainRay.throughput *= clamp(fresnel, vec3(0.0), vec3(1.0));
         mainRay.hitT = actualHitT;
         mainRay.coneWidth += mainRay.hitT * mainRay.coneSpread;
+#ifdef RADIANTE_HOOK_SHADING_POINT_DEFAULT
         mainRay.origin = hitWorldPos + mirrorNormal * 0.002;
+#else
+        // From where the pack's surface hook shades the surface (hooks/shading_point.glsl).
+        mainRay.origin = surface.worldPos + mirrorNormal * 0.002;
+#endif
         mainRay.direction = reflect(incident, mirrorNormal);
         // A pass-through that carries on along the reflection itself: no separate reflection is asked for.
         ptClearReflectionRequest();

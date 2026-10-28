@@ -584,7 +584,14 @@ void main() {
                     MainRay transparentReflectionRay;
                     if (traceReflection &&
                         initTransparent(firstHitRay, firstHitMat, firstHitIncomingDirection, firstHitNormal,
-                                        firstHitWorldPos, 0x9E3779B9u, true, transparentReflectionRay)) {
+#ifdef RADIANTE_HOOK_SHADING_POINT_DEFAULT
+                                        firstHitWorldPos,
+#else
+                                        // From where the pack's surface hook shaded the surface; the refraction
+                                        // below keeps the camera ray's point (hooks/shading_point.glsl).
+                                        selectedFirstHit.shadingPos,
+#endif
+                                        0x9E3779B9u, true, transparentReflectionRay)) {
                         transparentReflectionRay.throughput *= branchWeight;
                         traceTransparent(transparentReflectionRay, startBounce, isHand,
 #    if SHARC_QUERY && USE_SHARC

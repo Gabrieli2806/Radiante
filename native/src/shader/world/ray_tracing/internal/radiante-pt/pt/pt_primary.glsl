@@ -5,6 +5,9 @@
 // water sides and mirrors up to the first surface that scatters (tracePrimary). prepareSecondary sits here too,
 // beside preparePrimary, as it did in world.rgen. Moved verbatim out of world.rgen.
 
+// Whether a pack's surface hook moves the point a surface is shaded at (hooks/shading_point.glsl).
+#include "hooks/shading_point.glsl"
+
 struct FirstHitPayload {
     bool hitSky;
     float surfaceDepth;
@@ -19,6 +22,10 @@ struct FirstHitPayload {
     vec3 outgoingDirection;
     vec3 normal;
     vec3 worldPos;
+#ifndef RADIANTE_HOOK_SHADING_POINT_DEFAULT
+    // Where the pack's surface hook shaded that surface (worldPos when it did not move it).
+    vec3 shadingPos;
+#endif
 };
 
 void initMainRay(vec3 origin, vec3 direction, uint seed, float coneSpread, out MainRay ray) {
@@ -169,6 +176,9 @@ void tracePrimary(vec3 eyePos,
     firstHit.outgoingDirection = vec3(0.0);
     firstHit.normal = vec3(0.0);
     firstHit.worldPos = vec3(0.0);
+#ifndef RADIANTE_HOOK_SHADING_POINT_DEFAULT
+    firstHit.shadingPos = vec3(0.0);
+#endif
 
     bool surfaceDepthSampled = false;
     bool cameraPath = true;
@@ -251,6 +261,15 @@ void tracePrimary(vec3 eyePos,
         firstHit.outgoingDirection = rayState.direction;
         firstHit.normal = rayState.normal;
         firstHit.worldPos = tracedOrigin + tracedDirection * rayState.hitT;
+#ifndef RADIANTE_HOOK_SHADING_POINT_DEFAULT
+        // The offset the hit shader left in the material image's fourth layer (pt_shade_default.glsl). Only the
+        // default shading writes it: a hit of another group (clouds, the End portal) leaves an older one there,
+        // which is never more than a block away for a texel; anything further is not a shading point and is dropped.
+        memoryBarrierImage();
+        vec3 shadingOffset = imageLoad(rayMaterialStateImage, rayMaterialStateCoord(3)).xyz;
+        if (!(dot(shadingOffset, shadingOffset) <= 1.0)) { shadingOffset = vec3(0.0); }
+        firstHit.shadingPos = firstHit.worldPos + shadingOffset;
+#endif
         break;
     }
 
