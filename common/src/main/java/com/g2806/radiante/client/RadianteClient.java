@@ -129,6 +129,7 @@ public final class RadianteClient {
         }
 
         com.g2806.radiante.client.gui.BackgroundRebuild.tick(minecraft);
+        com.g2806.radiante.client.gui.ShaderPackHotReload.tick(minecraft);
         com.g2806.radiante.client.gui.PipelineWarmUp.tick(minecraft);
         com.g2806.radiante.client.compat.distanthorizons.DistantHorizonsCompat.tick();
         DevAutomation.tick(minecraft);

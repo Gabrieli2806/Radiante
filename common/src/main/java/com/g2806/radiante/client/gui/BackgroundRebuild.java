@@ -66,6 +66,22 @@ public final class BackgroundRebuild {
     }
 
     /**
+     * Applies a pending build without changing screens when it can: in the background, else built at once outside a
+     * world, else behind the wait screen over whatever is open. For changes that come from no screen (a folder pack's
+     * files, a command).
+     */
+    public static void apply(Minecraft minecraft) {
+        if (start()) {
+            return;
+        }
+        if (minecraft.level == null) {
+            buildNow(minecraft);
+        } else {
+            minecraft.gui.setScreen(new ApplyingSettingsScreen(minecraft.gui.screen()));
+        }
+    }
+
+    /**
      * The build outside a world: it only hands the description to the renderer (the compile waits for a frame, which
      * only a world draws), so it is quick and needs no screen. The popup tells how it went.
      */

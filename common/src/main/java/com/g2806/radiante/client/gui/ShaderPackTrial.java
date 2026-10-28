@@ -88,6 +88,16 @@ public final class ShaderPackTrial {
         return lastFailure;
     }
 
+    /**
+     * A check that found the pack broken without the pack being swapped out: an edited folder pack that did not reload
+     * ({@link ShaderPackHotReload}) or {@code /radiante pack validate}. The Shader Packs screen shows it and its Copy
+     * Error copies it, as for a pack that failed when chosen.
+     */
+    public static void reportCheckFailure(String packName, String packPath, List<String> report) {
+        List<String> kept = report.size() > KEPT_LINES ? report.subList(0, KEPT_LINES) : report;
+        lastFailure = new Failure(packName, packPath, List.copyOf(kept));
+    }
+
     /** Every line the renderer logs, before RadianteClient folds repeats together. */
     public static void onNativeLine(String line, boolean error) {
         if (trialPath == null || line == null || line.isBlank()) {
