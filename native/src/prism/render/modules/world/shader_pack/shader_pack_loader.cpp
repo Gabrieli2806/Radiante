@@ -4,10 +4,6 @@
 #include "prism/render/renderer.hpp"
 #include "prism/util/logging.hpp"
 
-#include "mz.h"
-#include "mz_strm.h"
-#include "mz_zip.h"
-#include "mz_zip_rw.h"
 
 #include <algorithm>
 #include <cctype>
@@ -16,6 +12,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <unordered_set>
+#include <vector>
 
 using json = nlohmann::json;
 
@@ -224,66 +221,6 @@ std::string extractionFolderName(const fs::path &zipPath) {
     return name.str();
 }
 
-struct ZipReaderDeleter {
-    void operator()(void *reader) const {
-        mz_zip_reader_delete(&reader);
-    }
-};
-
-bool extractZip(const fs::path &zipPath, const fs::path &destination, std::string &error) {
-    // Extracted afresh every time: what an earlier extraction left could be from another version of the zip.
-    std::error_code fileError;
-    fs::remove_all(destination, fileError);
-    fs::create_directories(destination, fileError);
-    if (fileError) {
-        error = "failed to prepare temp dir: " + destination.string();
-        return false;
-    }
-
-    std::unique_ptr<void, ZipReaderDeleter> reader(mz_zip_reader_create());
-    if (reader == nullptr) {
-        error = "failed to create zip reader";
-        return false;
-    }
-    if (mz_zip_reader_open_file(reader.get(), zipPath.string().c_str()) != MZ_OK) {
-        error = "failed to open zip file";
-        return false;
-    }
-    // Every entry checked before anything is written: a name that leaves the pack's folder ("../", "C:\\"), or more
-    // files or bytes than any shader pack needs, and the zip is refused whole.
-    uint64_t entries = 0;
-    uint64_t bytes = 0;
-    for (int32_t entry = mz_zip_reader_goto_first_entry(reader.get()); entry == MZ_OK;
-         entry = mz_zip_reader_goto_next_entry(reader.get())) {
-        mz_zip_file *info = nullptr;
-        if (mz_zip_reader_entry_get_info(reader.get(), &info) != MZ_OK || info == nullptr) continue;
-        const std::string name = info->filename == nullptr ? std::string() : std::string(info->filename);
-        if (!shader_pack::safePackPath(name)) {
-            error = "zip entry leaves the pack's folder: " + name;
-            return false;
-        }
-        entries++;
-        bytes += static_cast<uint64_t>(std::max<int64_t>(info->uncompressed_size, 0));
-        if (entries > shader_pack::MAX_PACK_FILES || bytes > shader_pack::MAX_PACK_BYTES) {
-            error = "zip is larger than a shader pack may be (" + std::to_string(shader_pack::MAX_PACK_FILES) +
-                    " files, " + std::to_string(shader_pack::MAX_PACK_BYTES >> 20) + " MB)";
-            return false;
-        }
-    }
-    const int32_t extracted = mz_zip_reader_save_all(reader.get(), destination.string().c_str());
-    const int32_t closed = mz_zip_reader_close(reader.get());
-    if (extracted != MZ_OK) {
-        error = "failed to extract zip file " + zipPath.string() + " (minizip error " + std::to_string(extracted) +
-                (extracted == MZ_SUPPORT_ERROR ? ", compression method not built in" : "") + ")";
-        return false;
-    }
-    if (closed != MZ_OK) {
-        error = "failed to close zip file";
-        return false;
-    }
-    return true;
-}
-
 // The folder the pack's files are in: the pack itself, or where its zip was extracted. Empty on failure.
 fs::path packRoot(const fs::path &path, std::string &error) {
     if (path.empty()) {
@@ -301,7 +238,7 @@ fs::path packRoot(const fs::path &path, std::string &error) {
         return {};
     }
     const fs::path destination = Renderer::folderPath / "temp/shaders/world/ray_tracing" / extractionFolderName(path);
-    if (!extractZip(path, destination, error)) return {};
+    if (!shader_pack::extractPackZip(path, destination, error)) return {};
     return destination;
 }
 

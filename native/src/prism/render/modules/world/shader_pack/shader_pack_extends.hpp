@@ -1,8 +1,9 @@
 #pragma once
 
 // Packs that build on another one ("extends" in the manifest): the base pack's files staged first, the pack's own
-// over them, configs.json and the lang files merged. Kept free of the renderer (no Vulkan, no Renderer folder) so
-// the offline tool in src/tools compiles it on its own; the loader calls stageExtendedPack before parsing.
+// over them, configs.json and the lang files merged; and the checked extraction of every pack's zip. Kept free of the
+// renderer (no Vulkan, no Renderer folder; minizip and nlohmann json only) so the offline tool in src/tools compiles
+// it on its own; the loader calls extractPackZip and stageExtendedPack before parsing.
 //
 // The rules (docs/dev/shader-packs/design.md, section 5, says the same for pack authors):
 // - files: the base's, then the pack's over them, same relative path = the pack's file.
@@ -61,5 +62,11 @@ bool safePackPath(std::string_view path);
 void stageExtendedPack(const std::filesystem::path &baseRoot,
                        const std::filesystem::path &packRoot,
                        const std::filesystem::path &stage);
+
+// Extracts a pack's zip into `destination` (removed first), entry by entry: an entry whose header cannot be read, a
+// name that leaves the folder, a symbolic link, more than MAX_PACK_FILES entries, more than MAX_PACK_BYTES actually
+// written, an entry longer than its header says or failing its CRC, and the zip is refused, `destination` removed and
+// `error` set. Every pack's zip goes through here, not only packs that extend another.
+bool extractPackZip(const std::filesystem::path &zipPath, const std::filesystem::path &destination, std::string &error);
 
 } // namespace shader_pack

@@ -3,6 +3,7 @@
 //
 //   shader_pack_stage <base pack folder> <pack folder> <output folder>
 //   shader_pack_stage --self-test
+//   shader_pack_stage --extract <zip> <output folder>   (the loader's checked zip extraction; exit 1 when refused)
 //
 // The base pack folder is radiante-pt as the native build stages it (build/.../ray_tracing_internal_zip/radiante-pt)
 // or an extracted radiante-pt.zip.
@@ -167,6 +168,15 @@ int selfTest() {
 
 int main(int argc, char **argv) {
     if (argc == 2 && std::string(argv[1]) == "--self-test") return selfTest();
+    if (argc == 4 && std::string(argv[1]) == "--extract") {
+        std::string error;
+        if (!shader_pack::extractPackZip(argv[2], argv[3], error)) {
+            std::cout << "refused: " << error << "\n";
+            return 1;
+        }
+        std::cout << "extracted " << argv[2] << "\n";
+        return 0;
+    }
     if (argc != 4) {
         std::cerr << "usage: shader_pack_stage <base pack folder> <pack folder> <output folder>\n"
                      "       shader_pack_stage --self-test\n";

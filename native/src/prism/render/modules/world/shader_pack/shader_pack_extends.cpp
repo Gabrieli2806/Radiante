@@ -1,5 +1,10 @@
 #include "prism/render/modules/world/shader_pack/shader_pack_extends.hpp"
 
+#include "mz.h"
+#include "mz_strm.h"
+#include "mz_zip.h"
+#include "mz_zip_rw.h"
+
 #include <algorithm>
 #include <cctype>
 #include <fstream>
@@ -340,6 +345,12 @@ std::vector<fs::path> packFiles(const fs::path &root, bool checkLimits) {
     return files;
 }
 
+struct ZipReaderDeleter {
+    void operator()(void *reader) const {
+        mz_zip_reader_delete(&reader);
+    }
+};
+
 json readConfig(const fs::path &root, const char *which) {
     const fs::path path = root / "configs.json";
     if (!fs::exists(path)) fail(std::string("the ") + which + " has no configs.json");
@@ -464,5 +475,141 @@ void stageExtendedPack(const fs::path &baseRoot, const fs::path &packRoot, const
     for (const auto &[key, file] : languages) writeFile(stage / file.first, file.second);
     writeFile(stage / "configs.json", merged.dump(4));
 }
+
+bool extractPackZip(const fs::path &zipPath, const fs::path &destination, std::string &error) {
+    // Extracted afresh every time: what an earlier extraction left could be from another version of the zip.
+    std::error_code fileError;
+    fs::remove_all(destination, fileError);
+    fs::create_directories(destination, fileError);
+    if (fileError) {
+        error = "failed to prepare temp dir: " + destination.string();
+        return false;
+    }
+    const fs::path root = fs::weakly_canonical(destination, fileError);
+    if (fileError) {
+        error = "failed to prepare temp dir: " + destination.string();
+        return false;
+    }
+
+    std::unique_ptr<void, ZipReaderDeleter> reader(mz_zip_reader_create());
+    if (reader == nullptr) {
+        error = "failed to create zip reader";
+        return false;
+    }
+    if (mz_zip_reader_open_file(reader.get(), zipPath.string().c_str()) != MZ_OK) {
+        error = "failed to open zip file";
+        return false;
+    }
+
+    // Entry by entry, each file written here: a name that leaves the pack's folder, a symbolic link, an entry whose
+    // header cannot be read, more files than a shader pack needs, or more bytes than it needs (counted as they are
+    // written, not as the headers claim, so a zip that lies about its sizes stops there too), and the zip is refused
+    // and what was written is removed. minizip's save_all was not used for this: it trusts the headers' sizes and
+    // recreates symbolic links, and a later entry under a link's path would be written outside the folder.
+    auto refuse = [&](const std::string &reason) {
+        mz_zip_reader_close(reader.get());
+        std::error_code ignored;
+        fs::remove_all(destination, ignored);
+        error = "zip refused (" + zipPath.filename().string() + "): " + reason;
+        return false;
+    };
+    uint64_t entries = 0;
+    uint64_t written = 0;
+    std::vector<char> buffer(64 * 1024);
+    int32_t status = mz_zip_reader_goto_first_entry(reader.get());
+    if (status == MZ_END_OF_LIST) return refuse("it is empty");
+    for (; status == MZ_OK; status = mz_zip_reader_goto_next_entry(reader.get())) {
+        mz_zip_file *info = nullptr;
+        if (mz_zip_reader_entry_get_info(reader.get(), &info) != MZ_OK || info == nullptr ||
+            info->filename == nullptr) {
+            return refuse("an entry's header cannot be read");
+        }
+        const std::string name(info->filename);
+        if (!shader_pack::safePackPath(name)) return refuse("entry leaves the pack's folder: " + name);
+        if (mz_zip_attrib_is_symlink(info->external_fa, info->version_madeby) == MZ_OK) {
+            return refuse("entry is a symbolic link: " + name);
+        }
+        if (++entries > shader_pack::MAX_PACK_FILES) {
+            return refuse("more than " + std::to_string(shader_pack::MAX_PACK_FILES) + " files");
+        }
+
+        // The path built here, and checked to stay under the folder once resolved (a folder entry of the same name
+        // as a link, a junction left behind: nothing written may land outside).
+        const fs::path target = fs::weakly_canonical(root / fs::path(name).lexically_normal(), fileError);
+        if (fileError || std::mismatch(root.begin(), root.end(), target.begin(), target.end()).first != root.end()) {
+            return refuse("entry leaves the pack's folder: " + name);
+        }
+        const bool directory = mz_zip_reader_entry_is_dir(reader.get()) == MZ_OK || name.back() == '/' ||
+                               name.back() == '\\';
+        if (directory) {
+            fs::create_directories(target, fileError);
+            if (fileError) return refuse("cannot create " + name);
+            continue;
+        }
+        fs::create_directories(target.parent_path(), fileError);
+        if (fileError) return refuse("cannot create the folder of " + name);
+        // The resolved parent must still be inside: a link planted under the folder by another process would move it.
+        const fs::path parent = fs::weakly_canonical(target.parent_path(), fileError);
+        if (fileError || std::mismatch(root.begin(), root.end(), parent.begin(), parent.end()).first != root.end()) {
+            return refuse("entry leaves the pack's folder: " + name);
+        }
+
+        // Refused before writing when the header already says it is too much; an entry longer than its header is
+        // refused as it is read, so the bytes written never pass the limit either way.
+        const uint64_t declared = static_cast<uint64_t>(std::max<int64_t>(info->uncompressed_size, 0));
+        if (declared > shader_pack::MAX_PACK_BYTES - written) {
+            return refuse("more than " + std::to_string(shader_pack::MAX_PACK_BYTES >> 20) + " MB");
+        }
+        if (mz_zip_reader_entry_open(reader.get()) != MZ_OK) return refuse("cannot read " + name);
+        std::ofstream out(target, std::ios::binary | std::ios::trunc);
+        if (!out.is_open()) {
+            mz_zip_reader_entry_close(reader.get());
+            return refuse("cannot write " + name);
+        }
+        // Any stop leaves through the end of the loop, so the file is closed before the folder is removed (an open
+        // file cannot be deleted on Windows).
+        uint64_t entryBytes = 0;
+        std::string problem;
+        for (;;) {
+            const int32_t read =
+                mz_zip_reader_entry_read(reader.get(), buffer.data(), static_cast<int32_t>(buffer.size()));
+            if (read < 0) {
+                problem = "cannot read " + name + " (minizip error " + std::to_string(read) +
+                          (read == MZ_SUPPORT_ERROR ? ", compression method not built in" : "") + ")";
+                break;
+            }
+            if (read == 0) break;
+            entryBytes += static_cast<uint64_t>(read);
+            written += static_cast<uint64_t>(read);
+            if (entryBytes > declared) {
+                problem = name + " is larger than its header says";
+                break;
+            }
+            if (written > shader_pack::MAX_PACK_BYTES) {
+                problem = "more than " + std::to_string(shader_pack::MAX_PACK_BYTES >> 20) + " MB";
+                break;
+            }
+            out.write(buffer.data(), read);
+            if (!out) {
+                problem = "cannot write " + name;
+                break;
+            }
+        }
+        out.close();
+        // Closing checks the entry's CRC: a damaged or tampered entry is refused here.
+        const int32_t closed = mz_zip_reader_entry_close(reader.get());
+        if (!problem.empty()) return refuse(problem);
+        if (closed != MZ_OK) return refuse(name + " is damaged (CRC)");
+    }
+    if (status != MZ_END_OF_LIST) {
+        return refuse("its directory cannot be read (minizip error " + std::to_string(status) + ")");
+    }
+    if (mz_zip_reader_close(reader.get()) != MZ_OK) {
+        error = "failed to close zip file";
+        return false;
+    }
+    return true;
+}
+
 
 } // namespace shader_pack
