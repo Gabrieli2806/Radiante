@@ -1527,7 +1527,7 @@
             "type": "full_screen",
             "stage": "post_render",
             "name": "post_copy_post_motion_to_ldr",
-            "fragment": "post_render/post_copy.frag",
+            "fragment": "post_render/post_copy_from_post_motion.frag",
             "inputs": {
                 "images": [
                     "post_motion"
