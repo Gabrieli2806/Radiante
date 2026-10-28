@@ -101,7 +101,10 @@ la generación de fotogramas y el HDR no cambian.
 ## Paquetes de shaders
 
 **Paquetes de shaders**, junto a Presets, elige el trazador de rayos: el **Radiante PT** incluido
-(el predeterminado) o un paquete que hayas añadido. Los paquetes van en `radiante/shaderpacks/`
+(el predeterminado), el **Pixelated Lighting** incluido (Radiante PT con la luz, las sombras y
+los reflejos en los píxeles de la textura, como el preset de BetterRTX con ese nombre) o un
+paquete que hayas añadido. Los paquetes incluidos aparecen marcados como tales y vuelven en cada
+inicio, así que no se pueden quitar. Los paquetes van en `radiante/shaderpacks/`
 dentro de la carpeta del juego (**Abrir carpeta** la abre), como `.zip` o como carpeta, con el
 `configs.json` del paquete arriba del todo: un zip de una carpeta que contiene el paquete (como el
 "Download ZIP" de GitHub) aparece con ese problema. Es la carpeta propia de Radiante, no la

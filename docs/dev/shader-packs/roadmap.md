@@ -36,8 +36,9 @@ Status:
 
 - Done: `extends` in the loader (`shader_pack_extends.cpp`, merge rules in [design §5](design.md#extends)); the six
   hooks; radiante-example rewritten (10 files: manifest, five hook files, three lang files, icon; none copied);
-  Inkwell, a second example built only on `extends`, hooks and passes of its own; Pixel Light, lighting and
-  reflections per texture texel (`hookTexelCentre`, `g_hookViewDir`); checked zip extraction for every
+  Inkwell, a second example built only on `extends`, hooks and passes of its own; Pixel Light (now the built-in
+  Pixelated Lighting), lighting and reflections per texture texel (`hookTexelCentre`, `g_hookViewDir`,
+  `hooks/shading_point.glsl`); checked zip extraction for every
   pack (path escapes, symbolic links, file count, bytes actually written, CRC); offline tools (`shader_pack_stage`
   with `--self-test` and `--extract`, `compile_pack.py`, `zip_safety_test.py`).
 - Added later in `radiante-pt@1`: `hookCloudLayer` (`hooks/clouds.glsl`), drawn after the rain and over the sun
@@ -49,7 +50,8 @@ Status:
   compute and sky shader.
 - Tried in game: the Shader Packs screen, switching packs, Inkwell, Pixel Light.
 - Open: Inkwell's outlines shimmer (drawn after the upscaler on a jittered picture; draw them before it, from depth
-  and normals); Pixel Light reflections are per texel in direction but still start from the pixel; side-by-side
+  and normals); Pixelated Lighting's per-texel samples and reflection origins (`hooks/shading_point.glsl`) not yet
+  compared in game against BetterRTX's preset; side-by-side
   screenshots of Radiante PT before and after the hooks.
 - Not done: `"extends"` of a pack other than radiante-pt.
 

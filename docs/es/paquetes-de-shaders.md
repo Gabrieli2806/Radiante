@@ -2,8 +2,8 @@
 
 Idiomas: **ES** · [EN](../en/shader-packs.md)
 
-Un paquete de shaders es el path tracer que usa Radiante: un zip con shaders GLSL y un `configs.json`. Radiante trae uno,
-Radiante PT; los jugadores añaden otros en `radiante/shaderpacks/` y los eligen en **Paquetes de shaders** dentro de los
+Un paquete de shaders es el path tracer que usa Radiante: un zip con shaders GLSL y un `configs.json`. Radiante trae
+Radiante PT y un paquete construido sobre él, Pixelated Lighting; los jugadores añaden otros en `radiante/shaderpacks/` y los eligen en **Paquetes de shaders** dentro de los
 ajustes de Radiante ([opciones](opciones.md#paquetes-de-shaders)).
 
 Esta página es para quien hace paquetes, tal como está hoy. El soporte de paquetes es nuevo: la interfaz sobre la que se
@@ -17,7 +17,8 @@ Un paquete se construye sobre Radiante PT y solo contiene lo que cambia. Hay dos
 [`examples/shaderpacks/`](../../examples/shaderpacks/): `radiante-example` (un gradeo de color, luz a través de las
 hojas, tonos del agua y del cielo) e `inkwell` (aspecto de cómic: luz en bandas, colores de póster, contornos de
 tinta). `realistic` solo da otros valores por defecto a los ajustes de Radiante PT y corrige la imagen, la forma más
-sencilla de hacer un aspecto propio.
+sencilla de hacer un aspecto propio. `pixelated-lighting`, que viene con Radiante como paquete incluido, cambia dónde
+se calcula la luz (abajo).
 
 1. Clona el repositorio y copia uno de ellos a una carpeta nueva a su lado.
 2. En `configs.json`, dentro de `"radiante"`, cambia `display_name`, `version`, `author`, `license`, `description` e
@@ -49,7 +50,8 @@ Radiante PT llama a una pequeña función en los sitios que un paquete suele que
 
 | Archivo | Función | Qué puedes hacer ahí |
 | --- | --- | --- |
-| `hooks/surface.glsl` | `hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce)` | Cambiar el color, la rugosidad, la normal o el brillo de una superficie tras leer sus texturas. `isLeavesSurface(surfaceFlags)` y las demás pruebas de `util/vertex.glsl` dicen qué se golpeó `hookTexelCentre(surface.uv, surface.worldPos)` da el centro del texel golpeado; mover `surface.worldPos` ahí y ajustar `g_hookViewDir` ilumina y refleja por texel (mira el ejemplo Pixel Light) |
+| `hooks/surface.glsl` | `hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce)` | Cambiar el color, la rugosidad, la normal o el brillo de una superficie tras leer sus texturas. `isLeavesSurface(surfaceFlags)` y las demás pruebas de `util/vertex.glsl` dicen qué se golpeó `hookTexelCentre(surface.uv, surface.worldPos)` da el centro del texel golpeado; mover `surface.worldPos` ahí y ajustar `g_hookViewDir` ilumina y refleja por texel (mira el paquete Pixelated Lighting) |
+| `hooks/shading_point.glsl` | `uint hookSampleKey(MainRay ray, uint pixelKey)` | Para un paquete cuyo `hookSurface` mueve `surface.worldPos`: los reflejos de la cámara en el agua, el cristal y los espejos salen también del punto movido (da a `material_state` `"depth": 4` en tus `textures`), y la clave devuelta elige el muestreo del impacto en lugar del píxel, así que los píxeles con la misma clave toman las mismas muestras. Devuelve `pixelKey` para quedarte con el de Radiante PT. Mira Pixelated Lighting |
 | `hooks/direct_light.glsl` | `hookDirectLight(SampledSurface surface, vec3 viewDir, vec3 lightDir, float NoL, inout vec3 lightBRDF)` | Cambiar cómo iluminan el sol y la luna una superficie (bandas de cel, luz a través de las hojas cuando `NoL < 0`) |
 | `hooks/water.glsl` | `hookWaterAbsorption(inout vec3 extinction)` | Color del agua: lo rápido que se absorbe cada color |
 | `hooks/sky.glsl` | `hookSky(inout vec3 radiance, vec3 direction)` | Color del cielo; también tiñe la luz que da el cielo |
@@ -104,7 +106,7 @@ explica cómo calcular su valor a partir de su id. Por ejemplo, una aurora solo 
 Un atributo con `"runtime": true` cambia sin recompilar, tanto en los shaders de ray tracing como en los pases de
 post: su define lee el uniform del mundo (`worldUBO.packParams`, 256 huecos; Radiante PT usa unos 60). Como el valor
 se lee mientras corre el shader, se prueba con `if`, no con `#if`: `if (int(MY_PALETTE) > 1) { ... }`. La paleta y el
-tramado de Pixel Light y el gradeo del port de Mellow funcionan así.
+tramado de Pixelated Lighting y el gradeo del port de Mellow funcionan así.
 
 `hooks/post_grade.glsl` ve `common/pack_post.glsl`, que los pases de post propios de un paquete también pueden
 incluir. Declara `worldUBO` y `skyUBO` (define antes `RADIANTE_POST_UNIFORMS_DECLARED` si tu pase ya los declara) y el

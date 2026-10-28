@@ -97,7 +97,9 @@ and HDR stay as they are.
 ## Shader packs
 
 **Shader Packs**, beside Presets, chooses the path tracer: the built-in **Radiante PT** (the
-default) or a pack you added. Packs go in `radiante/shaderpacks/` inside the game folder (**Open
+default), the built-in **Pixelated Lighting** (Radiante PT with light, shadows and reflections
+in the texture's pixels, like BetterRTX's preset of that name), or a pack you added. Built-in
+packs are marked as such and come back with every start, so they cannot be removed. Packs go in `radiante/shaderpacks/` inside the game folder (**Open
 Folder** opens it), as a `.zip` or as a folder, with the pack's `configs.json` at the top: a zip
 of a folder that holds the pack (as GitHub's "Download ZIP" makes) is listed with that problem.
 This is Radiante's own folder, not the game's `shaderpacks/`, which Iris and OptiFine use for a

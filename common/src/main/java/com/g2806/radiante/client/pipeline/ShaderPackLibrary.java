@@ -21,7 +21,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 /**
- * The shader packs a player can choose: the built-in Radiante PT and every pack in {@code radiante/shaderpacks/}, a
+ * The shader packs a player can choose: the built-in Radiante PT, the other packs that come with Radiante
+ * ({@link #BUILT_IN_EXTRAS}), and every pack in {@code radiante/shaderpacks/}, a
  * zip or a folder with {@code configs.json} at its top. Radiante's own folder rather than the game's
  * {@code shaderpacks/}: Iris and OptiFine read that one, and their packs are a different format that would only show
  * up here as broken entries (and ours as broken entries there).
@@ -53,6 +54,14 @@ public final class ShaderPackLibrary {
                         String description, String license, String apiVersion, byte[] icon, String problem,
                         String problemDetail, boolean builtIn) {
     }
+
+    /**
+     * The packs besides Radiante PT that come with Radiante, as the pipeline stores them: the native build zips them
+     * from {@code examples/shaderpacks/} next to radiante-pt.zip (PRISM_BUILT_IN_EXTENDING_PACKS), and the mod
+     * copies them out with it at every start, so they cannot be deleted or left stale. They extend radiante-pt and
+     * are otherwise ordinary packs: their own settings page, presets and settings file.
+     */
+    public static final List<String> BUILT_IN_EXTRAS = List.of("shaders/world/ray_tracing/pixelated-lighting.zip");
 
     /** Marks a pack being tried, so a crash while it runs does not bring the game back into it (see below). */
     private static final String TRIAL_MARKER = ".trying";
@@ -135,10 +144,19 @@ public final class ShaderPackLibrary {
         return folder;
     }
 
-    /** The built-in pack first, then the folder's packs by name. Reads every pack's manifest: call it sparingly. */
+    /**
+     * The built-in packs first (Radiante PT, then the others that come with Radiante), then the folder's packs by
+     * name. Reads every pack's manifest: call it sparingly.
+     */
     public static List<Entry> scan() {
         List<Entry> entries = new ArrayList<>();
         entries.add(builtIn());
+        for (String extra : BUILT_IN_EXTRAS) {
+            Entry entry = builtInExtra(extra);
+            if (entry != null) {
+                entries.add(entry);
+            }
+        }
         Path folder = folder();
         if (folder == null || !Files.isDirectory(folder)) {
             return entries;
@@ -173,6 +191,25 @@ public final class ShaderPackLibrary {
         }
         return new Entry(stored, "radiante-pt.zip", "Radiante PT", null, "Radiante", null, "GPL-3.0", null, null,
             null, null, true);
+    }
+
+    /** One of {@link #BUILT_IN_EXTRAS}, read from where the native library installed it; null when it is missing. */
+    private static Entry builtInExtra(String stored) {
+        Path zip = RadianteClient.radianceDir == null ? null : RadianteClient.radianceDir.resolve(stored);
+        return zip != null && Files.isRegularFile(zip) ? read(zip, stored, true) : null;
+    }
+
+    /** Whether a stored path names a pack that comes with Radiante: Radiante PT or one of {@link #BUILT_IN_EXTRAS}. */
+    public static boolean isBuiltIn(String stored) {
+        if (samePack(stored, Pipeline.builtInShaderPackPath())) {
+            return true;
+        }
+        for (String extra : BUILT_IN_EXTRAS) {
+            if (samePack(stored, extra)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Whether two stored paths name the same pack (the built-in one may be stored as an empty path too). */
@@ -234,7 +271,8 @@ public final class ShaderPackLibrary {
         if (stored == null || RadianteClient.radianceDir == null) {
             return null;
         }
-        return samePack(stored, Pipeline.builtInShaderPackPath()) ? builtIn() : read(resolve(stored), stored, false);
+        return samePack(stored, Pipeline.builtInShaderPackPath()) ? builtIn()
+            : read(resolve(stored), stored, isBuiltIn(stored));
     }
 
     private static Path resolve(String stored) {

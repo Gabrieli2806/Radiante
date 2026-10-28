@@ -25,8 +25,8 @@ What a pack can do, built (B) or planned (P):
   Radiante PT's updates.
 - **Hook points** (B): change surfaces, direct light, water (its colour, waves, surface and the view from under
   it), the sky, the sun and moon discs, clouds, stars, the Nether's and the End's sky and fog, fog, block light colour
-  and the final grade with one small GLSL file each; `hookTexelCentre` and `g_hookViewDir` let a pack move where light
-  is computed (Pixel Light). `common/pack_world.glsl` gives the weather, the biome and the time of day
+  and the final grade with one small GLSL file each; `hookTexelCentre`, `g_hookViewDir` and `hooks/shading_point.glsl` let a pack
+  move where light is computed and how it is sampled (Pixelated Lighting). `common/pack_world.glsl` gives the weather, the biome and the time of day
 - **Own passes and images** (B): add full-screen, compute or ray tracing passes, placed with `before`/`after`.
 - **Own settings** (B): every attribute is a setting with its own names in three languages; `"runtime": true` ones
   change live in the ray tracing shaders.
@@ -67,7 +67,8 @@ What a pack can do, built (B) or planned (P):
 | Per-pack settings (`<pack>.zip.txt`), values checked against the pack's types | Done |
 | Example pack built as an overlay on Radiante PT (`examples/shaderpacks/`) | Done, replaced by `extends` |
 | Pack inheritance (`extends`) and hook points in Radiante PT | Done, [roadmap](roadmap.md) phase 1 |
-| Example packs on `extends` and hooks (radiante-example, Inkwell, Pixel Light) | Done; Inkwell's outlines shimmer, Pixel Light in progress |
+| Example packs on `extends` and hooks (radiante-example, Inkwell, Pixelated Lighting) | Done; Inkwell's outlines shimmer |
+| A pack built on radiante-pt that comes with Radiante (Pixelated Lighting) | Done: zipped by the native build (`PRISM_BUILT_IN_EXTENDING_PACKS`), listed as built in (`ShaderPackLibrary.BUILT_IN_EXTRAS`) |
 | Versioned public headers (`radiante/v1`) | Planned, phase 2 |
 | `api_version` and `requires.radiante` checked in the list | Done (groundwork for phase 2) |
 

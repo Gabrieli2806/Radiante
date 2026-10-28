@@ -68,6 +68,7 @@ public class Pipeline {
     public static void initFolderPath(Path folderPath) {
         PIPELINE_CONFIG_PATH = folderPath.resolve("pipeline.yaml");
         migrateRenamedPack(folderPath);
+        migrateBuiltInPixelLight();
         ShaderPackLibrary.recoverFromCrashedTrial(folderPath, PIPELINE_CONFIG_PATH);
     }
 
@@ -98,6 +99,30 @@ public class Pipeline {
             }
         } catch (IOException | RuntimeException e) {
             RadianteClient.LOGGER.warn("Could not move the stored settings of the renamed shader pack", e);
+        }
+    }
+
+    /**
+     * The Pixel Light example pack became the built-in Pixelated Lighting. A pipeline that pointed at the example's
+     * zip or folder in shaderpacks/ points at the built-in one instead. Its settings file is not carried over: the
+     * example's defaults had the retro palette on, and the file holds every value, so the palette would have stayed.
+     * The player's own copy is left where it is, listed as before.
+     */
+    private static void migrateBuiltInPixelLight() {
+        try {
+            if (PIPELINE_CONFIG_PATH == null || !Files.isRegularFile(PIPELINE_CONFIG_PATH)) {
+                return;
+            }
+            String stored = Files.readString(PIPELINE_CONFIG_PATH);
+            // The value line of the pack path, quoted or not, the zip or the folder.
+            String moved = stored.replaceAll("(?m)^([ \\t]*value: )['\"]?" + ShaderPackLibrary.FOLDER
+                + "/pixel-light(\\.zip)?['\"]?[ \\t]*$", "$1" + ShaderPackLibrary.BUILT_IN_EXTRAS.get(0));
+            if (!moved.equals(stored)) {
+                Files.writeString(PIPELINE_CONFIG_PATH, moved);
+                RadianteClient.LOGGER.info("The Pixel Light pack is built in now, as Pixelated Lighting; using it");
+            }
+        } catch (IOException | RuntimeException e) {
+            RadianteClient.LOGGER.warn("Could not point the pipeline at the built-in Pixelated Lighting pack", e);
         }
     }
 
