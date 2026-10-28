@@ -56,19 +56,36 @@ MellowTime mellowTime(vec3 sunDir) {
     return t;
 }
 
-// SKY_TOP and SKY_GROUND (get_sky_color), the default scheme's values.
+// Mellow's apply_saturation (shaders/lib/tonemap.glsl).
+vec3 mellowSaturation(vec3 c, float amount) {
+    return mix(vec3(mellowLuminance(c)), c, amount);
+}
+
+// Mellow's weather on its sky (get_sky_color): RAIN_SKY_DESATURATION 0.5 and RAIN_SKY_DARKENING 0.33 at full rain.
+// Mellow also darkens further in thunder; Radiante gives the shaders no thunder strength, so only the rain is taken.
+const float MELLOW_RAIN_SKY_DESATURATION = 0.5;
+const float MELLOW_RAIN_SKY_DARKENING = 0.33;
+
+float mellowRainSkyDarken() {
+    return 1.0 - skyUBO.rainGradient * MELLOW_RAIN_SKY_DARKENING;
+}
+
+// SKY_TOP and SKY_GROUND (get_sky_color), the default scheme's values, greyed and darkened by the rain as Mellow does.
 vec3 mellowSkyTop(MellowTime t) {
-    return mellowToLinear(vec3(0.0, 0.3, 0.5)) * t.sunrise + mellowToLinear(vec3(0.17, 0.35, 0.7)) * t.day +
-           mellowToLinear(vec3(0.0, 0.15, 0.25)) * t.sunset + mellowToLinear(vec3(0.0, 0.025, 0.075)) * t.night;
+    vec3 top = mellowToLinear(vec3(0.0, 0.3, 0.5)) * t.sunrise + mellowToLinear(vec3(0.17, 0.35, 0.7)) * t.day +
+               mellowToLinear(vec3(0.0, 0.15, 0.25)) * t.sunset + mellowToLinear(vec3(0.0, 0.025, 0.075)) * t.night;
+    return mellowSaturation(top, 1.0 - skyUBO.rainGradient * MELLOW_RAIN_SKY_DESATURATION) * mellowRainSkyDarken();
 }
 
 vec3 mellowSkyGround(MellowTime t) {
-    return mellowToLinear(vec3(0.5, 0.4, 0.38)) * t.sunrise + mellowToLinear(vec3(0.5, 0.55, 0.6)) * t.day +
-           mellowToLinear(vec3(0.3, 0.25, 0.25)) * t.sunset + mellowToLinear(vec3(0.15, 0.2, 0.25)) * t.night;
+    return (mellowToLinear(vec3(0.5, 0.4, 0.38)) * t.sunrise + mellowToLinear(vec3(0.5, 0.55, 0.6)) * t.day +
+            mellowToLinear(vec3(0.3, 0.25, 0.25)) * t.sunset + mellowToLinear(vec3(0.15, 0.2, 0.25)) * t.night) *
+           mellowRainSkyDarken();
 }
 
 // SUN_DIRECT (get_sun_color): the sun's colour by day, the moon's (dimmed by its phase) by night, faded out round
-// the horizon. Mellow's rain desaturation is left to Radiante, which dims the sun in rain itself.
+// the horizon, and greyed and halved in rain as Mellow does. Used for the clouds; the world's own sunlight is
+// Radiante's, which dims the sun in rain itself (hooks/direct_light.glsl takes only the hue).
 vec3 mellowSunDirect(MellowTime t, vec3 sunDir) {
     vec3 direct;
     if (sunDir.y > 0.0) {
@@ -79,7 +96,8 @@ vec3 mellowSunDirect(MellowTime t, vec3 sunDir) {
         // MOON_PHASE_INFLUENCE 0.3: a new moon at 70% of a full one.
         direct *= cos(float(skyUBO.moonPhase % 8u) / 8.0 * 2.0 * MELLOW_PI) * 0.15 + 0.85;
     }
-    return direct * smoothstep(0.0, 0.2, abs(sunDir.y));
+    direct *= smoothstep(0.0, 0.2, abs(sunDir.y));
+    return mellowSaturation(direct, 1.0 - skyUBO.rainGradient * 0.5) * (1.0 - skyUBO.rainGradient * 0.5);
 }
 
 // The sun's colour alone, for tinting: SUN_DIRECT before the fade round the horizon (which only dims it).
@@ -96,7 +114,7 @@ vec3 mellowSunGlare(MellowTime t, float cosSun) {
     float visibility = t.sunset + t.sunrise;
     visibility *= visibility;
     float side = cosSun * 0.5 + 0.5;
-    return mellowToLinear(vec3(0.8, 0.45, 0.0)) * side * side * visibility;
+    return mellowToLinear(vec3(0.8, 0.45, 0.0)) * side * side * visibility * mellowRainSkyDarken();
 }
 
 // get_sky: SKY_TOP overhead, SKY_GROUND (and the glare) at and below the horizon, with Mellow's fogify falloff.
@@ -106,6 +124,29 @@ vec3 mellowSky(MellowTime t, vec3 dir, vec3 sunDir) {
     float fogify = 0.03 / (x * x + 0.03);
     vec3 glare = mellowSunGlare(t, dot(dir, sunDir));
     return mix(mellowSkyTop(t), mellowSkyGround(t) + glare, fogify);
+}
+
+// How much brighter Radiante's sky is than Mellow's, from the zenith and the horizon a quarter turn from the sun (away
+// from its glow): Mellow's colours times this keep Radiante's sky brightness and exposure through the day and night,
+// with Mellow's hue and its gradient from the horizon up. rainy measures Radiante's sky as it is after the rain has
+// greyed it (world_miss_eval_impl.glsl), for what is drawn over that: the clouds and the stars.
+float mellowSkyScale(MellowTime t, vec3 sunDir, bool rainy) {
+    vec3 up = vec3(0.0, 1.0, 0.0);
+    vec3 side = cross(up, sunDir);
+    side = dot(side.xz, side.xz) > 1e-6 ? normalize(vec3(side.x, 0.05, side.z)) : vec3(1.0, 0.05, 0.0);
+    float radiante = mellowLuminance(textureLod(skyFull, up, 0.0).rgb) +
+                     mellowLuminance(textureLod(skyFull, side, 0.0).rgb);
+    if (rainy) {
+        float rainyGrey = 0.1 * smoothstep(-0.3, 0.3, sunDir.y);
+        radiante = mix(radiante, 2.0 * rainyGrey, skyUBO.rainGradient);
+    }
+    float mellow = mellowLuminance(mellowSky(t, up, sunDir)) + mellowLuminance(mellowSky(t, side, sunDir));
+    return radiante / max(mellow, 1e-6);
+}
+
+// Mellow's random (shaders/lib/util.glsl).
+float mellowRandom(vec2 coords) {
+    return fract(sin(dot(coords, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
 #endif
