@@ -5,8 +5,8 @@
 // water sides and mirrors up to the first surface that scatters (tracePrimary). prepareSecondary sits here too,
 // beside preparePrimary, as it did in world.rgen. Moved verbatim out of world.rgen.
 
-// Whether a pack's surface hook moves the point a surface is shaded at (hooks/shading_point.glsl).
-#include "hooks/shading_point.glsl"
+// Whether a pack moves where the reflections of the surface the camera sees start (hooks/ray_origins.glsl).
+#include "hooks/ray_origins.glsl"
 
 struct FirstHitPayload {
     bool hitSky;
@@ -22,9 +22,11 @@ struct FirstHitPayload {
     vec3 outgoingDirection;
     vec3 normal;
     vec3 worldPos;
-#ifndef RADIANTE_HOOK_SHADING_POINT_DEFAULT
-    // Where the pack's surface hook shaded that surface (worldPos when it did not move it).
-    vec3 shadingPos;
+#ifndef RADIANTE_HOOK_RAY_ORIGINS_DEFAULT
+    // Where the pack starts that surface's reflection (worldPos when it does not move it), and the view of that
+    // point from where the ray that met the surface came from.
+    vec3 reflectionPos;
+    vec3 reflectionIncoming;
 #endif
 };
 
@@ -176,8 +178,9 @@ void tracePrimary(vec3 eyePos,
     firstHit.outgoingDirection = vec3(0.0);
     firstHit.normal = vec3(0.0);
     firstHit.worldPos = vec3(0.0);
-#ifndef RADIANTE_HOOK_SHADING_POINT_DEFAULT
-    firstHit.shadingPos = vec3(0.0);
+#ifndef RADIANTE_HOOK_RAY_ORIGINS_DEFAULT
+    firstHit.reflectionPos = vec3(0.0);
+    firstHit.reflectionIncoming = vec3(0.0);
 #endif
 
     bool surfaceDepthSampled = false;
@@ -261,14 +264,18 @@ void tracePrimary(vec3 eyePos,
         firstHit.outgoingDirection = rayState.direction;
         firstHit.normal = rayState.normal;
         firstHit.worldPos = tracedOrigin + tracedDirection * rayState.hitT;
-#ifndef RADIANTE_HOOK_SHADING_POINT_DEFAULT
+#ifndef RADIANTE_HOOK_RAY_ORIGINS_DEFAULT
         // The offset the hit shader left in the material image's fourth layer (pt_shade_default.glsl). Only the
         // default shading writes it: a hit of another group (clouds, the End portal) leaves an older one there,
-        // which is never more than a block away for a texel; anything further is not a shading point and is dropped.
+        // which is never more than a block away for a texel; anything further is not a reflection origin and is
+        // dropped.
         memoryBarrierImage();
-        vec3 shadingOffset = imageLoad(rayMaterialStateImage, rayMaterialStateCoord(3)).xyz;
-        if (!(dot(shadingOffset, shadingOffset) <= 1.0)) { shadingOffset = vec3(0.0); }
-        firstHit.shadingPos = firstHit.worldPos + shadingOffset;
+        vec3 reflectionOffset = imageLoad(rayMaterialStateImage, rayMaterialStateCoord(3)).xyz;
+        if (!(dot(reflectionOffset, reflectionOffset) <= 1.0)) { reflectionOffset = vec3(0.0); }
+        firstHit.reflectionPos = firstHit.worldPos + reflectionOffset;
+        vec3 toReflectionPos = firstHit.reflectionPos - tracedOrigin;
+        firstHit.reflectionIncoming =
+            dot(toReflectionPos, toReflectionPos) > 1e-12 ? normalize(toReflectionPos) : tracedDirection;
 #endif
         break;
     }

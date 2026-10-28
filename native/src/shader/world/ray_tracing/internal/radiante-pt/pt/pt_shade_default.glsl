@@ -182,6 +182,23 @@ const float BEDROCK_MIRROR_ROUGHNESS = 0.01;
 layout(set = 3, binding = 12, rgba16f) uniform image2D nrdRecordEmissionImage; // first_hit_base_emission
 #endif
 
+#ifndef RADIANTE_HOOK_RAY_ORIGINS_DEFAULT
+// A pack's reflection origin (hooks/ray_origins.glsl): a reflection leaving the point `shadedPos` towards `direction`
+// starts hookReflectionOffset() away instead, turned by as much as the view of the moved point reflects off `normal`
+// differently from the view of the hit, so every pixel given the same offset reflects the same way (a glossy lobe's
+// spread around that direction is kept). Left as it is when the turn would take it to the other side of the surface.
+void ptHookMoveReflection(inout vec3 origin, inout vec3 direction, vec3 shadedPos, vec3 normal) {
+    vec3 offset = hookReflectionOffset();
+    if (!(dot(offset, offset) > 0.0)) { return; }
+    vec3 incident = normalize(g_hit.rayDir);
+    vec3 movedIncident = normalize(shadedPos + offset - g_hit.rayOrigin);
+    vec3 moved = direction + reflect(movedIncident, normal) - reflect(incident, normal);
+    if (dot(moved, moved) < 1e-8 || dot(moved, normal) * dot(direction, normal) <= 0.0) { return; }
+    origin += offset;
+    direction = normalize(moved);
+}
+#endif
+
 // The old closest-hit main(), unchanged in order, reading the hit through g_hit and handing its results back
 // through pt_side_channels.glsl. viewMark: the ray belongs to a view chain (traced with RAY_VIEW_BOUNCE_MARK).
 void ptShadeDefault(bool viewMark) {
@@ -435,12 +452,13 @@ void ptShadeDefault(bool viewMark) {
     }
 #endif
 
-#ifndef RADIANTE_HOOK_SHADING_POINT_DEFAULT
-    // Where the pack's surface hook moved the point it is shaded at, for the surface the camera sees: handed to the
-    // ray generation (pt_primary.glsl) in the material image's fourth layer, as an offset from the camera ray's hit,
-    // small enough for half floats wherever the surface is (hooks/shading_point.glsl).
+#ifndef RADIANTE_HOOK_RAY_ORIGINS_DEFAULT
+    // Where the pack's reflections of the surface the camera sees start (hooks/ray_origins.glsl): handed to the ray
+    // generation (pt_primary.glsl), which traces the reflection of water and glass, in the material image's fourth
+    // layer, as an offset from the camera ray's hit, small enough for half floats wherever the surface is.
     if (bounce == 0u || rayCameraPath(mainRay)) {
-        imageStore(rayMaterialStateImage, rayMaterialStateCoord(3), vec4(surface.worldPos - hitWorldPos, 0.0));
+        imageStore(rayMaterialStateImage, rayMaterialStateCoord(3),
+                   vec4(surface.worldPos + hookReflectionOffset() - hitWorldPos, 0.0));
     }
 #endif
     mainRay.normal = surface.shadingNormal;
@@ -482,13 +500,11 @@ void ptShadeDefault(bool viewMark) {
         mainRay.throughput *= clamp(fresnel, vec3(0.0), vec3(1.0));
         mainRay.hitT = actualHitT;
         mainRay.coneWidth += mainRay.hitT * mainRay.coneSpread;
-#ifdef RADIANTE_HOOK_SHADING_POINT_DEFAULT
         mainRay.origin = hitWorldPos + mirrorNormal * 0.002;
-#else
-        // From where the pack's surface hook shades the surface (hooks/shading_point.glsl).
-        mainRay.origin = surface.worldPos + mirrorNormal * 0.002;
-#endif
         mainRay.direction = reflect(incident, mirrorNormal);
+#ifndef RADIANTE_HOOK_RAY_ORIGINS_DEFAULT
+        ptHookMoveReflection(mainRay.origin, mainRay.direction, surface.worldPos, mirrorNormal);
+#endif
         // A pass-through that carries on along the reflection itself: no separate reflection is asked for.
         ptClearReflectionRequest();
         mainRay.hasPrevScenePos = 0u;
@@ -770,6 +786,12 @@ void ptShadeDefault(bool viewMark) {
                                                                                            -currentSurface.geometricNormal;
                 mainRay.origin = currentSurface.worldPos + exitNormal * 0.0002;
             }
+#ifndef RADIANTE_HOOK_RAY_ORIGINS_DEFAULT
+            // The reflection lobe only: diffuse bounces and refraction leave from the shaded point.
+            if (lobeType == 1u && !handShifted) {
+                ptHookMoveReflection(mainRay.origin, sampleDir, currentSurface.worldPos, currentSurface.shadingNormal);
+            }
+#endif
             mainRay.direction = sampleDir;
             raySetStop(mainRay, false);
             return;

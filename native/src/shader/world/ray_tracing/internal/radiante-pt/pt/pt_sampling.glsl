@@ -9,8 +9,6 @@
 // VPT_LOW_DISCREPANCY 0 (the renderer sets it from RADIANTE_NO_SOBOL, for comparisons) draws these from the seed too.
 
 #include "util/sobol.glsl"
-// A pack's sampling key (hooks/shading_point.glsl); radiante-pt's compiles out.
-#include "hooks/shading_point.glsl"
 
 #ifndef VPT_LOW_DISCREPANCY
 #    define VPT_LOW_DISCREPANCY 1
@@ -23,9 +21,6 @@ const uint PT_SAMPLE_CELESTIAL = 1u;
 // the radiance cache pick the scramble; the frame picks the point.
 vec3 ptSamplePoint(MainRay ray, uint decision) {
     uint pixel = gl_LaunchIDEXT.x | (gl_LaunchIDEXT.y << 16u);
-#ifndef RADIANTE_HOOK_SHADING_POINT_DEFAULT
-    pixel = hookSampleKey(ray, pixel);
-#endif
     uint stream = rayCacheUpdate(ray) ? 0x51633e2du : 0x2545f491u;
     uint scramble = xxhash32(uvec3(pixel, (rayBounce(ray) << 4u) | decision, stream));
     return owenSobol3(worldUBO.frameCounter, scramble);

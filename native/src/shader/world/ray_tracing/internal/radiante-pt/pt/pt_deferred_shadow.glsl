@@ -13,6 +13,9 @@
 // The shading turns this on (g_deferShadowRays) only around the one light sampling whose rays its main traces: the
 // other callers (a blended face's own light, pt_direct.glsl) trace theirs at once, as before.
 
+// A pack's shadow and reflection ray origins (hooks/ray_origins.glsl); radiante-pt's compiles out.
+#include "hooks/ray_origins.glsl"
+
 const uint PT_SHADOW_CELESTIAL = 0u; // the sun or the moon (sampleSurfaceDirectLight)
 const uint PT_SHADOW_BLOCK = 1u;     // the block light picked (sampleBlockLight, sampleBlockLightRestir)
 const uint PT_SHADOW_HELD = 2u;      // the main hand's light (sampleOneHeldLight)
@@ -47,6 +50,26 @@ uint g_shadowRestirHalf = 0u;
 bool g_deferredToDirect = false;
 
 void ptDeferShadowRay(uint slot, vec3 origin, vec3 direction, float rayLength, uint mask, uint query, vec3 scale) {
+#ifndef RADIANTE_HOOK_RAY_ORIGINS_DEFAULT
+    // A pack's shadow origin (hooks/ray_origins.glsl): the ray starts that far away, aimed at the same point of a
+    // block or held light; the sun's and moon's keep their direction. The open sky of a stretch of water is not the
+    // surface's shadow and stays.
+    if (slot != PT_SHADOW_SKY) {
+        vec3 offset = hookShadowOffset();
+        if (dot(offset, offset) > 0.0) {
+            vec3 moved = origin + offset;
+            if (slot != PT_SHADOW_CELESTIAL) {
+                vec3 toLight = origin + direction * rayLength - moved;
+                float distanceToLight = length(toLight);
+                if (distanceToLight > 1e-4) {
+                    direction = toLight / distanceToLight;
+                    rayLength = distanceToLight;
+                }
+            }
+            origin = moved;
+        }
+    }
+#endif
     g_shadowPending[slot] = true;
     g_shadowOrigin[slot] = origin;
     g_shadowDirection[slot] = direction;
