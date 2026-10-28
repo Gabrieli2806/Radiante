@@ -356,9 +356,9 @@ void main() {
 
 #ifndef RADIANTE_HOOK_STARS_DEFAULT
     // A pack's night sky (hooks/stars.glsl), where the camera looks and not under water; it can hide radiante-pt's
-    // own stars where it draws its own.
-    if (worldUBO.skyType == 1 && (rayBounce(mainRay) == 0u || rayCameraPath(mainRay)) &&
-        mainRay.directLightRadiance.x > 0.0) {
+    // own stars where it draws its own. Called whatever radiante-pt's own star mask says: with that mask at 0 (its
+    // stars off, or hidden), a pack's night sky - Mellow's aurora - was never drawn at all.
+    if (worldUBO.skyType == 1 && (rayBounce(mainRay) == 0u || rayCameraPath(mainRay))) {
         mainRay.directLightRadiance.x *= clamp(hookStars(backgroundRadiance, rayDir), 0.0, 1.0);
     }
 #endif
