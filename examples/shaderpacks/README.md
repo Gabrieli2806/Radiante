@@ -34,7 +34,22 @@ picture keeps its light, only drawn differently.
 It also shows a pack adding passes: `inkwell_copy` (radiante-pt's `post_copy.frag`, the picture into `post_motion`)
 runs at the end of the post script, and `inkwell_ink` says `"after": "inkwell_copy"`.
 
-Both packs are GPL-3.0, as Radiante PT they build on.
+## pixel-light
+
+Path tracing on the texture's grid. Every hit point is moved to the centre of its texel before it is lit, so
+shadows, block light, bounces and reflections land per texel: shadow edges and torch falloff come out in the
+texture's own pixels. A retro palette with an ordered dither goes over the picture.
+
+| Setting | File | What it does |
+| --- | --- | --- |
+| Light Texels per Block (0-64) | `hooks/surface.glsl` | The lighting grid per block; 16 matches vanilla textures, 0 turns it off |
+| Flat Texels | `hooks/surface.glsl` | Drops normal maps, which would shade inside a texel |
+| Palette Levels (0-32) | `hooks/post_grade.glsl` | Levels per colour channel; 0 or 1 keeps the colours |
+| Dither (0-1) | `hooks/post_grade.glsl` | How much 4x4 ordered dither goes between palette levels |
+
+It shows a pack changing where light is computed (`SampledSurface.worldPos` in `hookSurface`), not only its colour.
+
+The packs are GPL-3.0, as Radiante PT they build on.
 
 ## Build and try
 

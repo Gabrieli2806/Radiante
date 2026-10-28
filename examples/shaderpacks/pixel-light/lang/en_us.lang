@@ -1,0 +1,5 @@
+# Pixel Light: only its own settings; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.pixel_light_texels=Pixel Light: Light Texels per Block
+render_pipeline.module.ray_tracing.attribute.pixel_light_flat=Pixel Light: Flat Texels
+render_pipeline.module.ray_tracing.attribute.pixel_light_palette=Pixel Light: Palette Levels
+render_pipeline.module.ray_tracing.attribute.pixel_light_dither=Pixel Light: Dither

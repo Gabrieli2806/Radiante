@@ -1,0 +1,5 @@
+# Pixel Light: only its own settings; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.pixel_light_texels=Pixel Light：每方块光照像素
+render_pipeline.module.ray_tracing.attribute.pixel_light_flat=Pixel Light：平面像素
+render_pipeline.module.ray_tracing.attribute.pixel_light_palette=Pixel Light：调色板级数
+render_pipeline.module.ray_tracing.attribute.pixel_light_dither=Pixel Light：抖动

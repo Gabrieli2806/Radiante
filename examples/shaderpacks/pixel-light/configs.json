@@ -1,0 +1,45 @@
+{
+    "radiante": {
+        "display_name": "Pixel Light",
+        "version": "1.0.0",
+        "author": "G2806",
+        "license": "GPL-3.0",
+        "description": "Path tracing on the texture's grid: shadows, block light, bounces and reflections land per texel, with a retro palette.",
+        "icon": "pack.png",
+        "api_version": 0,
+        "extends": "radiante-pt@1"
+    },
+    "attributes": [
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.pixel_light_texels",
+            "type": "int_range:0-64",
+            "default_value": "16",
+            "define": "PIXEL_LIGHT_TEXELS"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.pixel_light_flat",
+            "type": "bool",
+            "default_value": "render_pipeline.true",
+            "define": "PIXEL_LIGHT_FLAT"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.pixel_light_palette",
+            "type": "int_range:0-32",
+            "default_value": "12",
+            "define": "PIXEL_LIGHT_PALETTE"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.pixel_light_dither",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.6",
+            "define": "PIXEL_LIGHT_DITHER"
+        }
+    ],
+    "execution_post": {
+        "global_variables": [
+            {
+                "RADIANTE_HOOK_POST_GRADE": true
+            }
+        ]
+    }
+}
