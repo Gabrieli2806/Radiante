@@ -18,6 +18,64 @@ float radianteRain() { return skyUBO.rainGradient; }
 // Thunder, 0..1 (Iris's thunderStrength): the game fades it in and out, and it is never above the rain.
 float radianteThunder() { return skyUBO.thunderGradient; }
 
+// ---- Time of day, in the overworld
+//
+// Read off where the sun is, not off the clock: radiante-pt's sun follows the Sun Path settings (tilt, turn), and
+// these follow the sun the player sees. In the End the sun's direction is the End flash's, so they mean nothing there.
+
+// Towards the sun and the moon, unit length (y up). The moon keeps the hour opposite the sun's but its path can lean
+// apart from the sun's (the Moon Path settings).
+vec3 radianteSunDirection() {
+    vec3 sun = skyUBO.sunDirection;
+    float lengthSquared = dot(sun, sun);
+    return lengthSquared > 1e-8 ? sun * inversesqrt(lengthSquared) : vec3(0.0, 1.0, 0.0);
+}
+vec3 radianteMoonDirection() {
+    vec3 moon = skyUBO.moonDirection.xyz;
+    float lengthSquared = dot(moon, moon);
+    return lengthSquared > 1e-8 ? moon * inversesqrt(lengthSquared) : -radianteSunDirection();
+}
+
+// The sun's height: the sine of its angle above the horizon, 1 straight overhead, negative at night.
+float radianteSunHeight() { return radianteSunDirection().y; }
+
+// Iris's sunAngle, 0..1 round the day: 0 sunrise, 0.25 noon, 0.5 sunset, 0.75 midnight. Measured along the sun's own
+// path (it turns round skyUBO.celestialAxis), so it reads the same with a tilted or turned path.
+float radianteSunAngle() {
+    vec3 sun = radianteSunDirection();
+    vec3 axis = skyUBO.celestialAxis.xyz;
+    axis = dot(axis, axis) > 1e-8 ? normalize(axis) : vec3(0.0, 0.0, 1.0);
+    // The path's highest point (noon), and a quarter turn on from it (sunset).
+    vec3 noon = vec3(0.0, 1.0, 0.0) - axis * axis.y;
+    noon = dot(noon, noon) > 1e-6 ? normalize(noon) : vec3(0.0, 1.0, 0.0);
+    vec3 evening = cross(axis, noon);
+    float turn = atan(dot(sun, evening), dot(sun, noon)) * (0.5 / 3.14159265);
+    return fract(turn + 0.25);
+}
+
+// How much it is sunrise, day, sunset and night, each 0..1 and adding up to 1: day and night full once the sun is
+// 30 degrees above or below the horizon (a height of 0.5), sunrise and sunset in between, sunrise in the morning half
+// of the day and sunset in the evening one. Mellow's and many Iris packs' dayStrength, sunriseStrength and so on.
+// x sunrise, y day, z sunset, w night.
+vec4 radianteDayWeights() {
+    float height = radianteSunHeight();
+    float day = clamp(height * 2.0, 0.0, 1.0);
+    float night = clamp(-height * 2.0, 0.0, 1.0);
+    float twilight = max(1.0 - day - night, 0.0);
+    float angle = radianteSunAngle();
+    float evening = angle >= 0.25 && angle < 0.75 ? 1.0 : 0.0;
+    return vec4(twilight * (1.0 - evening), day, twilight * evening, night);
+}
+float radianteSunrise() { return radianteDayWeights().x; }
+float radianteDay() { return radianteDayWeights().y; }
+float radianteSunset() { return radianteDayWeights().z; }
+float radianteNight() { return radianteDayWeights().w; }
+
+// The moon's phase, 0..7 as Iris's moonPhase: 0 full, 4 new.
+int radianteMoonPhase() { return int(skyUBO.moonPhase % 8u); }
+// How much of the moon's face is lit, 1 full to 0 new.
+float radianteMoonLit() { return 0.5 + 0.5 * cos(float(skyUBO.moonPhase % 8u) * 0.78539816); }
+
 // ---- Climate of the biome at the camera, eased
 
 // The biome's base temperature (Iris's temperature): about -0.7 (frozen peaks) to 2 (desert, badlands, Nether).

@@ -55,17 +55,29 @@ Radiante PT llama a una pequeña función en los sitios que un paquete suele que
 | `hooks/clouds.glsl` | `hookCloudLayer(vec3 direction)` | Una capa de nubes sobre el cielo: devuelve su luz (rgb) y cuánto cielo deja ver (a). Se dibuja tras la lluvia y por encima del sol y la luna |
 | `hooks/cloud_shadow.glsl` | `hookCloudShadow(vec3 worldPos, vec3 lightDir)` | Cuánta luz del sol o la luna dejan pasar tus nubes hasta una superficie (de 0 a 1) |
 | `hooks/stars.glsl` | `hookStars(inout vec3 radiance, vec3 direction)` | Estrellas o auroras en el cielo que ve la cámara; devuelve 0 para ocultar las estrellas de Radiante, 1 para mantenerlas |
+| `hooks/celestial.glsl` | `hookSunDisc(inout vec3 radiance, vec3 direction, vec3 sunDirection, vec3 sunLight)`, `hookMoonDisc(...)` | Los discos del sol y la luna: forma, tamaño, color. `sunLight * coverage` brilla como el disco de Radiante; la luz del sol sobre el mundo no cambia |
+| `hooks/water_waves.glsl` | `hookWaterWaves(inout float strength, inout float speed, inout float size)` | Lo empinadas, rápidas y largas que son las olas de Radiante (agua realista y Bedrock), cáusticas incluidas |
+| `hooks/water_surface.glsl` | `hookWaterSurface(inout SampledSurface surface, vec3 position, float waveHeight)` | Tus propias normales del agua, tinte o espuma en cualquier agua (`waveHeight` es alto en las crestas); `mat.transmission = 0` vuelve opaco un punto |
+| `hooks/underwater_fog.glsl` | `hookUnderwaterFog(inout vec3 colour, inout float visibility)` | El color en que se pierde la vista bajo el agua y hasta dónde se ve |
+| `hooks/underwater.glsl` | `hookUnderwater(inout vec3 color, vec2 uv)` | La imagen bajo el agua: ondulaciones, un tinte. Va con el pase del gradeo final (`RADIANTE_HOOK_POST_GRADE`) |
+| `hooks/dimension_sky.glsl` | `hookNetherSky`, `hookEndSky(inout vec3 radiance, vec3 direction, bool seen)`, `hookNetherFog`, `hookEndFog(inout vec3 colour, inout float density)` | El cielo y la niebla del Nether y del End (el cielo del mundo normal es `hooks/sky.glsl`) |
+| `hooks/block_light.glsl` | `hookBlockLight(inout vec3 radiance, uint kind)` | El color y la fuerza de la luz de los bloques: la que dan antorchas, lava o fuego de almas, la que llevas en la mano y el brillo que se ve. No hay id de bloque: las luces se distinguen por su color |
 | `hooks/fog.glsl` | `hookFog(float cosTheta, inout vec3 scattering, inout vec3 extinction)` | Bruma y niebla con la luz volumétrica activada |
 | `hooks/post_grade.glsl` | `hookPostGrade(inout vec3 color, vec2 uv)` | Gradeo de color de la imagen final. Se activa con `{"RADIANTE_HOOK_POST_GRADE": true}` en `execution_post.global_variables` |
 
-Mantén la guarda `#ifndef`/`#define` del archivo. Los ajustes de tu paquete son defines de GLSL, usables en cualquier
-hook. Un archivo de hook sigue solo las actualizaciones de Radiante PT, cosa que un archivo de sombreado copiado no
-hace.
+Mantén la guarda `#ifndef`/`#define` del archivo y no copies el define `RADIANTE_HOOK_..._DEFAULT` que tiene el archivo
+por defecto. Los ajustes de tu paquete son defines de GLSL, usables en cualquier hook. Déjalos fijos al compilar salvo
+que deban cambiar en vivo: Radiante PT solo deja a un paquete dos ajustes `"runtime": true`. Un archivo de hook sigue
+solo las actualizaciones de Radiante PT, cosa que un archivo de sombreado copiado no hace.
 
-### Clima y bioma
+Las hojas y plantas que se mecen con el viento se mueven fuera del paquete, así que no hay hook para ello; un paquete
+puede activar el Viento de Radiante PT por defecto (`{"name": "render_pipeline.module.ray_tracing.attribute.wind",
+"default_value": "render_pipeline.true"}` en sus atributos) y ajustar `wind_strength` igual.
 
-`#include "common/pack_world.glsl"` en un hook te da el tiempo y el bioma donde está la cámara, en todos los hooks,
-también en `post_grade.glsl`:
+### Clima, bioma y hora del día
+
+`#include "common/pack_world.glsl"` en un hook te da el tiempo, el bioma donde está la cámara y la hora del día, en
+todos los hooks, también en `post_grade.glsl`:
 
 | Función | Valor |
 | --- | --- |
@@ -74,6 +86,10 @@ también en `post_grade.glsl`:
 | `radianteBiomeSnowy()`, `radianteBiomeDry()`, `radianteBiomeRainy()` | De 0 a 1: aquí nieva, aquí no cae nada, aquí llueve |
 | `radianteBiomePrecipitation()` | 0 nada, 1 lluvia, 2 nieve (`biome_precipitation` de Iris) |
 | `radianteBiomeIs(RADIANTE_BIOME_PALE_GARDEN)` | De 0 a 1: cuánto está la cámara en ese bioma |
+| `radianteSunDirection()`, `radianteMoonDirection()`, `radianteSunHeight()` | Dónde están el sol y la luna; la altura del sol, de -1 a 1 |
+| `radianteSunAngle()` | 0 amanecer, 0.25 mediodía, 0.5 atardecer, 0.75 medianoche (`sunAngle` de Iris) |
+| `radianteDayWeights()`, `radianteSunrise()`, `radianteDay()`, `radianteSunset()`, `radianteNight()` | Cuánto es amanecer, día, atardecer y noche; suman 1 |
+| `radianteMoonPhase()`, `radianteMoonLit()` | La fase de la luna, de 0 llena a 7, y cuánto de ella está iluminado |
 
 Los valores del bioma cambian en unos dos segundos cuando la cámara pasa a otro bioma, así que un efecto que dependa
 de ellos también se funde. Hay un `RADIANTE_BIOME_<NOMBRE>` para cada bioma vanilla; para uno de un mod, la cabecera

@@ -52,16 +52,29 @@ that does nothing in Radiante PT; put your own file at the same path:
 | `hooks/clouds.glsl` | `hookCloudLayer(vec3 direction)` | A cloud layer over the sky: returns its light (rgb) and how much sky shows through (a). Drawn after rain and over the sun and moon |
 | `hooks/cloud_shadow.glsl` | `hookCloudShadow(vec3 worldPos, vec3 lightDir)` | How much sun or moon light your clouds let through to a surface (0 to 1) |
 | `hooks/stars.glsl` | `hookStars(inout vec3 radiance, vec3 direction)` | Stars or aurora in the sky the camera sees; return 0 to hide Radiante's own stars, 1 to keep them |
+| `hooks/celestial.glsl` | `hookSunDisc(inout vec3 radiance, vec3 direction, vec3 sunDirection, vec3 sunLight)`, `hookMoonDisc(...)` | The sun's and moon's discs: shape, size, colour. `sunLight * coverage` is as bright as Radiante's own disc; the sunlight on the world does not change |
+| `hooks/water_waves.glsl` | `hookWaterWaves(inout float strength, inout float speed, inout float size)` | How steep, fast and long Radiante's waves are (Realistic and Bedrock water), caustics included |
+| `hooks/water_surface.glsl` | `hookWaterSurface(inout SampledSurface surface, vec3 position, float waveHeight)` | Your own water normals, tint or foam on any water (`waveHeight` is high on the crests); `mat.transmission = 0` makes a point opaque |
+| `hooks/underwater_fog.glsl` | `hookUnderwaterFog(inout vec3 colour, inout float visibility)` | The colour the view fades into under water, and how far you see |
+| `hooks/underwater.glsl` | `hookUnderwater(inout vec3 color, vec2 uv)` | The picture under water: ripples, a tint. Runs with the post grade pass (`RADIANTE_HOOK_POST_GRADE`) |
+| `hooks/dimension_sky.glsl` | `hookNetherSky`, `hookEndSky(inout vec3 radiance, vec3 direction, bool seen)`, `hookNetherFog`, `hookEndFog(inout vec3 colour, inout float density)` | The Nether's and the End's sky and fog (the overworld's sky is `hooks/sky.glsl`) |
+| `hooks/block_light.glsl` | `hookBlockLight(inout vec3 radiance, uint kind)` | The colour and strength of block light: what torches, lava or soul fire cast, what you hold, and the glow you see. No block id: tell lights apart by colour |
 | `hooks/fog.glsl` | `hookFog(float cosTheta, inout vec3 scattering, inout vec3 extinction)` | Haze and fog with Volumetric Light on |
 | `hooks/post_grade.glsl` | `hookPostGrade(inout vec3 color, vec2 uv)` | Colour grade of the finished picture. Turn it on with `{"RADIANTE_HOOK_POST_GRADE": true}` in `execution_post.global_variables` |
 
-Keep the `#ifndef`/`#define` guard of the file. Settings of your pack are GLSL defines, usable in any hook. A hook
-file follows Radiante PT's updates by itself, which a copied shading file does not.
+Keep the `#ifndef`/`#define` guard of the file, and leave out the `RADIANTE_HOOK_..._DEFAULT` define the default
+file has. Settings of your pack are GLSL defines, usable in any hook. Keep them compile-time unless they must change
+live: Radiante PT leaves a pack only two `"runtime": true` settings. A hook file follows Radiante PT's updates by
+itself, which a copied shading file does not.
 
-### Weather and biome
+Leaves and plants swaying in the wind are moved outside the pack, so there is no hook for it; a pack can turn
+Radiante PT's Wind on by default (`{"name": "render_pipeline.module.ray_tracing.attribute.wind", "default_value":
+"render_pipeline.true"}` in its attributes) and set `wind_strength` the same way.
 
-`#include "common/pack_world.glsl"` in a hook gives you the weather and the biome at the camera, in every hook
-including `post_grade.glsl`:
+### Weather, biome and time of day
+
+`#include "common/pack_world.glsl"` in a hook gives you the weather, the biome at the camera and the time of day, in
+every hook including `post_grade.glsl`:
 
 | Function | Value |
 | --- | --- |
@@ -70,6 +83,10 @@ including `post_grade.glsl`:
 | `radianteBiomeSnowy()`, `radianteBiomeDry()`, `radianteBiomeRainy()` | 0 to 1: snow falls here, nothing falls here, rain falls here |
 | `radianteBiomePrecipitation()` | 0 nothing, 1 rain, 2 snow (Iris's `biome_precipitation`) |
 | `radianteBiomeIs(RADIANTE_BIOME_PALE_GARDEN)` | 0 to 1: how much the camera is in that biome |
+| `radianteSunDirection()`, `radianteMoonDirection()`, `radianteSunHeight()` | Where the sun and moon are; the sun's height, -1 to 1 |
+| `radianteSunAngle()` | 0 sunrise, 0.25 noon, 0.5 sunset, 0.75 midnight (Iris's `sunAngle`) |
+| `radianteDayWeights()`, `radianteSunrise()`, `radianteDay()`, `radianteSunset()`, `radianteNight()` | How much it is sunrise, day, sunset and night, adding up to 1 |
+| `radianteMoonPhase()`, `radianteMoonLit()` | The moon's phase, 0 full to 7, and how much of it is lit |
 
 The biome values fade over about two seconds when the camera crosses into another biome, so an effect tied to them
 fades too. `RADIANTE_BIOME_<NAME>` exists for every vanilla biome; for a modded one, the header explains how to work

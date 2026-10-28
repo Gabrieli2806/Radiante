@@ -72,7 +72,10 @@ the v1 accessors needs no pack change.
 - Reference packs written only on v1 (Pixel Light, a reworked Inkwell), proving the interface is enough for looks
   far from Radiante PT's.
 - More hook points: clouds (shape, density, colour), water waves (height, speed, foam), weather and time of day, so a
-  pack changes them with one small file instead of replacing Radiante PT's own.
+  pack changes them with one small file instead of replacing Radiante PT's own. Done: a pack's cloud layer and its
+  shadow, stars, the sun and moon discs, water waves and surface (foam), the view under water, the Nether's and the
+  End's sky and fog, block light colour, and the weather, biome and time of day in `common/pack_world.glsl`. Open:
+  the shape of radiante-pt's own clouds, and wind per kind of plant (its pass is the renderer's, design §5).
 - Pack author guide in `docs/en` and `docs/es`: quick start from the example, manifest, attributes, hooks, headers,
   debugging, publishing.
 

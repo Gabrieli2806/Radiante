@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Shader packs get more hook points, each in a file of its own so older packs keep compiling: the sun's and moon's
+  discs (`hooks/celestial.glsl`), radiante-pt's water waves and caustics (`water_waves`, strength, speed and size),
+  any water's surface for a pack's own normals or foam (`water_surface`), the view from under water (`underwater_fog`
+  in the path tracer, `underwater` on the finished picture), the Nether's and the End's sky and fog
+  (`dimension_sky`) and the colour of block light, cast, held and seen (`block_light`). `common/pack_world.glsl` adds
+  the time of day read off the sun (`radianteSunAngle()`, `radianteDayWeights()`, the moon's phase). With its own
+  hooks Radiante PT compiles to the same shaders as before; packs need no change. Wind stays the renderer's: a pack
+  can only turn it on or set its strength by default. The Mellow port (0.5.0) uses them: Mellow's round sun (off, as
+  in Mellow), its water normals and their settings, its warm torch light, its underwater colour and End sky, and
+  Radiante's wind on for its waving plants; the example pack adds a ripple under water and a thicker Nether haze.
 - Shader packs can react to the weather and the biome: `common/pack_world.glsl` in Radiante PT gives hooks the thunder
   strength, and the temperature, downfall, snowy, dry and rainy weights and id of the biome at the camera, faded over
   a couple of seconds across a border (`radianteThunder()`, `radianteBiomeSnowy()`, `radianteBiomeIs(...)`), also in
