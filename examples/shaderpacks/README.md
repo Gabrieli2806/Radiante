@@ -51,12 +51,23 @@ It shows a pack changing where light is computed (`SampledSurface.worldPos` in `
 
 ## mellow-port
 
-A port of two effects of [Mellow](https://modrinth.com/shader/mellow), an Iris pack by TheCMK under the MIT licence
-(`LICENSE-MELLOW`), onto Radiante's light: its volumetric clouds (`hooks/sky.glsl`, drawn into the sky every ray that
-leaves the world sees, so they show in reflections and light the world) and its atmospheric fog (`hooks/fog.glsl`,
-with Volumetric Light on). Mellow's noise images are replaced by procedural noise at the same scales, and its sun and
-sky colours by Radiante's. Settings: Clouds, Cloud Amount, Cloud Speed, Atmospheric Fog. It shows what a port by hand
-looks like: the effect's function is kept, what it read from Iris (images, uniforms) is mapped to Radiante's.
+The look of [Mellow](https://modrinth.com/shader/mellow), an Iris pack by TheCMK under the MIT licence
+(`LICENSE-MELLOW`), on Radiante's light: Radiante still traces the shadows, bounces and reflections, Mellow gives the
+colours. Mellow's own noise images and LUTs are in `textures/` (MIT, from Mellow's `img/`), and its time of day and
+colour scheme in `mellow/mellow_common.glsl`.
+
+| Setting | File | What it does |
+| --- | --- | --- |
+| Sky Colours (0-1) | `hooks/sky.glsl` | Mellow's sky gradient for sunrise, day, sunset and night, with its sunset glare, at Radiante's sky brightness |
+| Cloud Style (0-2), Amount, Opacity, Speed | `hooks/sky.glsl` | Mellow's flat clouds (its default) or its volumetric ones, from its noise images, lit with its sun and sky colours. They show in reflections and light the world |
+| Sun Colour (0-1) | `hooks/direct_light.glsl` | Sunlight and moonlight take Mellow's hue; their strength stays Radiante's |
+| Atmospheric Fog (0-1) | `hooks/fog.glsl` | Mellow's fog density (thicker at sunrise, at night and in rain), with Volumetric Light on |
+| Water Colour (0-1) | `hooks/water.glsl` | Mellow's green-teal water, as the shape of the water's absorption |
+| Vibrance, Saturation, Contrast, LUT | `hooks/post_grade.glsl` | Mellow's final grade on the tone-mapped picture; LUT picks one of Mellow's (off by default, as in Mellow) |
+
+It shows what a port by hand looks like: the effect's function is kept, what it read from Iris (images, uniforms,
+`worldTime`) is mapped to Radiante's, and its colours are scaled to Radiante's exposure. Mellow's exposure and ACES
+curve, its screen-space effects (SSR, SSAO, bloom, TAA) and its shadows are left to Radiante.
 
 The packs are GPL-3.0, as Radiante PT they build on.
 

@@ -1,5 +1,13 @@
 # Mellow port: its own settings; the rest of the names come from radiante-pt.
-render_pipeline.module.ray_tracing.attribute.mellow_clouds=Mellow: Nubes
+render_pipeline.module.ray_tracing.attribute.mellow_sky=Mellow: Colores del cielo
+render_pipeline.module.ray_tracing.attribute.mellow_cloud_style=Mellow: Estilo de nubes (0 No, 1 Planas, 2 Volumétricas)
 render_pipeline.module.ray_tracing.attribute.mellow_cloud_amount=Mellow: Cantidad de nubes
+render_pipeline.module.ray_tracing.attribute.mellow_cloud_opacity=Mellow: Opacidad de nubes
 render_pipeline.module.ray_tracing.attribute.mellow_cloud_speed=Mellow: Velocidad de nubes
+render_pipeline.module.ray_tracing.attribute.mellow_sun_tint=Mellow: Color del sol
 render_pipeline.module.ray_tracing.attribute.mellow_fog=Mellow: Niebla atmosférica
+render_pipeline.module.ray_tracing.attribute.mellow_water=Mellow: Color del agua
+render_pipeline.module.ray_tracing.attribute.mellow_vibrance=Mellow: Intensidad
+render_pipeline.module.ray_tracing.attribute.mellow_saturation=Mellow: Saturación
+render_pipeline.module.ray_tracing.attribute.mellow_contrast=Mellow: Contraste
+render_pipeline.module.ray_tracing.attribute.mellow_lut=Mellow: LUT (0 No, 1 Vintage, 2 Mellow, 3 Punchy)
