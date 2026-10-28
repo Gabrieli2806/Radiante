@@ -1,0 +1,7 @@
+# Inkwell: only its own settings; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.inkwell_bands=Inkwell: Bandas de luz
+render_pipeline.module.ray_tracing.attribute.inkwell_cel=Inkwell: Sombreado cel
+render_pipeline.module.ray_tracing.attribute.inkwell_poster_levels=Inkwell: Colores de póster
+render_pipeline.module.ray_tracing.attribute.inkwell_outline=Inkwell: Contornos de tinta
+render_pipeline.module.ray_tracing.attribute.inkwell_flat_sky=Inkwell: Cielo plano
+render_pipeline.module.ray_tracing.attribute.inkwell_paper=Inkwell: Papel

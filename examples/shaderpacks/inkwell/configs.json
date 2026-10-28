@@ -1,0 +1,80 @@
+{
+    "radiante": {
+        "display_name": "Inkwell",
+        "version": "1.0.0",
+        "author": "G2806",
+        "license": "GPL-3.0",
+        "description": "Path-traced comic look: banded sunlight, poster colours, ink outlines, a flat two-tone sky, warm paper.",
+        "icon": "pack.png",
+        "api_version": 0,
+        "extends": "radiante-pt@1"
+    },
+    "attributes": [
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.inkwell_bands",
+            "type": "int_range:2-8",
+            "default_value": "3",
+            "define": "INKWELL_BANDS"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.inkwell_cel",
+            "type": "float_range:0.0-1.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "INKWELL_CEL"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.inkwell_poster_levels",
+            "type": "int_range:0-16",
+            "default_value": "6",
+            "define": "INKWELL_POSTER_LEVELS"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.inkwell_outline",
+            "type": "float_range:0.0-3.0",
+            "default_value": "1.0",
+            "define": "INKWELL_OUTLINE"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.inkwell_flat_sky",
+            "type": "bool",
+            "default_value": "render_pipeline.true",
+            "define": "INKWELL_FLAT_SKY"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.inkwell_paper",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.35",
+            "define": "INKWELL_PAPER"
+        }
+    ],
+    "passes": [
+        {
+            "type": "full_screen",
+            "stage": "post_render",
+            "name": "inkwell_copy",
+            "fragment": "post_render/post_copy.frag",
+            "inputs": {
+                "images": [
+                    "out:ldr"
+                ]
+            },
+            "target": "post_motion"
+        },
+        {
+            "type": "full_screen",
+            "stage": "post_render",
+            "name": "inkwell_ink",
+            "after": "inkwell_copy",
+            "fragment": "post_render/inkwell_ink.frag",
+            "inputs": {
+                "images": [
+                    "post_motion",
+                    "out:first_hit_depth",
+                    "out:normal_roughness"
+                ]
+            },
+            "target": "out:ldr"
+        }
+    ]
+}
