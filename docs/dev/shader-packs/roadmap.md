@@ -9,7 +9,7 @@ Phases in order; each one is useful on its own. Efforts are rough, for one devel
 | 1 | Small packs: `extends` and hook points | 1 week | Done; example packs being polished |
 | 2 | Stable interface: `radiante/v1` headers, `api_version` | 1-2 weeks | Groundwork: `api_version` and `requires.radiante` checked in the list |
 | 3 | Reference packs, more hooks and the author guide | 1-2 weeks | Guide started |
-| 4 | Settings pages, presets and the development loop | 1-2 weeks | Planned |
+| 4 | Settings pages, presets and the development loop | 1-2 weeks | Settings pages, presets and `profile_keys` done; development loop planned |
 | 5 | Materials and micromap opt-out | 1-2 weeks | Planned |
 | 6 | Renderer features for every pack | 2-3 weeks | Planned |
 | 7 | Distribution | 2-3 days + platforms | Planned |
@@ -90,6 +90,16 @@ Done when: a person who never read PrismRT's source can make a pack that changes
 
 Done when: editing a shader in a folder pack shows the result in game without a restart, and a failed edit keeps the
 running picture with the error on screen.
+
+Status:
+
+- Done: the pack's page in Radiante's settings, named after the pack with its icon, with its own attributes grouped
+  and ordered, advanced ones behind Advanced, `visible_when`, descriptions and cost; `presets` as a Pack Preset row;
+  renderer profiles write only the `profile_keys` a pack lists ([design §7](design.md#7-settings)). The example packs
+  use the keys, with names in three languages. Unit tested (`ShaderPackSettingsTest`, the example packs included).
+- Not tried in game yet: the page, presets, `visible_when` and the profile gate were built and unit tested only.
+- Open: live settings in post passes, hot reload, `/radiante pack validate`, per-file errors, debug views,
+  `requires_feature`, rows for `vec3` attributes.
 
 ## Phase 5: materials and micromaps
 

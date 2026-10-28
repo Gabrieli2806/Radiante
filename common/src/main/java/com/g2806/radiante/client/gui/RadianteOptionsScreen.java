@@ -86,6 +86,8 @@ public class RadianteOptionsScreen extends Screen {
     /** The part of the settings shown; kept while the game runs, so the screen reopens where it was left. */
     enum Category {
         QUALITY, IMAGE, LIGHTING, SKY_AND_WATER, PERFORMANCE, OTHER,
+        /** The settings of the shader pack in use (PackSettingsPage), named after it; only with a pack other than Radiante PT. */
+        PACK,
         /** Other mods' options (RadianteAddons); only there when one registered. */
         ADDONS;
 
@@ -110,6 +112,8 @@ public class RadianteOptionsScreen extends Screen {
     private final java.util.Map<AddonImpl.SettingImpl<?>, Object> pendingAddons = new java.util.LinkedHashMap<>();
     /** The caption keys of the addon options on this screen: nothing of Radiante's own greys them out. */
     private final java.util.Set<String> addonCaptionKeys = new java.util.HashSet<>();
+    /** The cost the shader pack declares for its rows on the pack's page (performance_impact). */
+    private final java.util.Map<OptionInstance<?>, OptionImpact> packImpacts = new java.util.IdentityHashMap<>();
 
     @SuppressWarnings("unchecked")
     private <T> T staged(String field, T current) {
@@ -1067,8 +1071,22 @@ public class RadianteOptionsScreen extends Screen {
             });
         this.sections.clear();
         this.addonCaptionKeys.clear();
+        this.packImpacts.clear();
         for (Category section : Category.values()) {
             this.page.clear();
+            if (section == Category.PACK) {
+                // A pack whose settings cannot be laid out loses its page, not the screen.
+                try {
+                    PackSettingsPage.Page pack = PackSettingsPage.build(this.pendingAdvanced, this::refreshQualityLater);
+                    if (pack != null) {
+                        this.sections.add(pack.section());
+                        this.packImpacts.putAll(pack.impacts());
+                    }
+                } catch (RuntimeException e) {
+                    RadianteClient.LOGGER.warn("The shader pack's settings could not be shown", e);
+                }
+                continue;
+            }
             if (section == Category.ADDONS) {
                 List<SettingsLayout.Block> blocks = addonBlocks();
                 if (!blocks.isEmpty()) {
@@ -1087,7 +1105,7 @@ public class RadianteOptionsScreen extends Screen {
                 case SKY_AND_WATER -> addSkyAndWaterOptions(clouds);
                 case PERFORMANCE -> addPerformanceOptions();
                 case OTHER -> addOtherOptions();
-                case ADDONS -> {
+                case PACK, ADDONS -> {
                 }
             }
             List<SettingsLayout.Group> groups = new ArrayList<>(AdvancedOptions.groups(section, this.pendingAdvanced));
@@ -1691,6 +1709,11 @@ public class RadianteOptionsScreen extends Screen {
                     return Component.translatable("options.radiante.notice.custom_profile");
                 }
                 return null;
+            }
+
+            @Override
+            public OptionImpact impact(OptionInstance<?> option) {
+                return packImpacts.get(option);
             }
 
             @Override

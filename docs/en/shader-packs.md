@@ -76,6 +76,62 @@ fades too. `RADIANTE_BIOME_<NAME>` exists for every vanilla biome; for a modded 
 out its value from its id. For example, an aurora only where it snows:
 `strength *= radianteBiomeSnowy();` (the Mellow port does this).
 
+## Your settings page
+
+The settings your pack adds (the attributes Radiante PT does not have) get a page of their own in Radiante's
+settings, named after the pack and with its icon; Radiante PT's settings stay on Radiante's pages. Every key below is
+optional, the renderer ignores them, and a key with the wrong kind of value is skipped with a line in the log:
+
+```json
+{
+    "name": "render_pipeline.module.ray_tracing.attribute.mellow_cloud_opacity",
+    "type": "float_range:0.0-0.38",
+    "default_value": "0.24",
+    "define": "MELLOW_CLOUD_OPACITY",
+    "group": "mellow.group.clouds",
+    "order": 22,
+    "step": 0.02,
+    "description": "mellow.desc.cloud_opacity",
+    "performance_impact": "low",
+    "advanced": false,
+    "visible_when": {"attribute": "mellow_cloud_style", "not_equals": 0}
+}
+```
+
+| Key | What it does |
+| --- | --- |
+| `group` | The heading the setting goes under: a key of your lang files (`mellow.group.clouds=Clouds`). Without it the setting sits at the top of the page |
+| `order` | Settings are sorted by it (default 0), then by their place in the file; headings come in the order of their first setting |
+| `advanced` | `true`: shown only with Advanced on, under the group's other settings |
+| `description` | A lang key for the text in the description panel (or plain text, shown as written) |
+| `performance_impact` | `low`, `medium` or `high`: shown under the description as for Radiante's own settings |
+| `step` | The slider's step for `int_range` and `float_range` (`0.05`, `2`...), counted from the minimum |
+| `visible_when` | `{"attribute": "...", "equals": value}`, or `"not_equals"`; the value can be a list. The setting shows only while that one matches. `true`, `"true"` and `"render_pipeline.true"` are the same value, `2` and `"2.0"` too, and an enum value can be its last part (`"off"`) |
+
+Names in these keys (`visible_when`, `presets`, `profile_keys`) may leave out
+`render_pipeline.module.ray_tracing.attribute.`. Settings of type `vec3` have no row yet.
+
+**Presets** go at the top of `configs.json`, next to `attributes`: named sets of your settings, shown as a **Pack
+Preset** row at the top of the page. Picking one sets its values (live or with a rebuild, as each setting does); the
+row shows the preset the values match, or Custom. A preset sets only your own settings. Give every preset the same
+settings, so the one in use is never ambiguous:
+
+```json
+"presets": [
+    {"name": "mellow.preset.clear", "description": "mellow.preset.clear.desc",
+     "values": {"mellow_cloud_amount": 14, "mellow_cloud_opacity": 0.16, "mellow_fog": 0.1}}
+]
+```
+
+**Renderer profiles** (Bedrock RTX (Enhanced), Realistic) write many of Radiante PT's settings on every build. With
+your pack in use they write only the ones you list in `"profile_keys"` at the top of `configs.json`
+(`["bedrock_original", "sun_glow"]`), or all of them with `["*"]`, which suits a pack that keeps Radiante PT's look
+and changes a few things on top (the example packs do). Without `profile_keys` the profile leaves them all as your
+pack and the player set them; settings of the other modules (tone mapping) are the profile's either way.
+
+The names of groups, descriptions and presets go in the same `lang/*.lang` files as the settings' names, in every
+language you ship. The example packs use all of these keys.
+
 ## Check a pack without the game
 
 `examples/shaderpacks/README.md` shows how to put a pack together and compile all its shaders offline with the tools
@@ -87,7 +143,8 @@ in `native/src/tools/`: errors show with file and line, as they do under the lis
 | --- | --- | --- |
 | Manifest | `configs.json`, `"radiante"` | Name, version, author, licence, description, icon: shown in the list |
 | Settings | `configs.json`, `"attributes"` | Each attribute is a setting and a GLSL define; `"runtime": true` changes it live without rebuilding |
-| Setting names | `lang/en_us.lang`, `es_es`, `zh_cn` | Keyed by the attribute name |
+| Setting names | `lang/en_us.lang`, `es_es`, `zh_cn` | Keyed by the attribute name; also the names of groups, descriptions and presets |
+| Settings page | `configs.json`, attribute keys, `"presets"`, `"profile_keys"` | Groups, order, descriptions, cost, presets ([above](#your-settings-page)) |
 | Passes | `configs.json`, `"passes"` | Ray tracing, compute and full-screen passes, e.g. a colour grade after tone mapping |
 | Shaders | the pack's folders, `hooks/` | GLSL, compiled when the pack is chosen |
 | Base | `configs.json`, `"radiante"`, `"extends"` | `radiante-pt@1`: Radiante PT under the pack |

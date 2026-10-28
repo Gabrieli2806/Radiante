@@ -180,6 +180,106 @@ public final class ShaderPackLibrary {
         return left.equals(right);
     }
 
+    /** The settings page of a pack, with the file times it was read at; see {@link #settings}. */
+    private record CachedSettings(String path, long packTime, long baseTime, ShaderPackSettings settings,
+                                  long checkedAt) {
+    }
+
+    private static CachedSettings cachedSettings;
+
+    /**
+     * What the pack at a stored path says about its settings page ({@link ShaderPackSettings}); {@code NONE} for the
+     * built-in pack and for a pack that cannot be read. Read again only when the pack or Radiante PT changes on disk:
+     * the renderer profile asks on every build and every live change.
+     */
+    public static synchronized ShaderPackSettings settings(String stored) {
+        if (stored == null || RadianteClient.radianceDir == null || samePack(stored, Pipeline.builtInShaderPackPath())) {
+            return ShaderPackSettings.NONE;
+        }
+        // The settings screen asks several times a frame: the files are looked at again at most once a second.
+        long now = System.currentTimeMillis();
+        CachedSettings cached = cachedSettings;
+        if (cached != null && cached.path().equals(stored) && now - cached.checkedAt() < 1000L) {
+            return cached.settings();
+        }
+        Path pack = resolve(stored);
+        Path base = RadianteClient.radianceDir.resolve(Pipeline.builtInShaderPackPath());
+        long packTime = modified(Files.isDirectory(pack) ? pack.resolve(CONFIG) : pack);
+        long baseTime = modified(base);
+        if (cached != null && cached.path().equals(stored) && cached.packTime() == packTime
+            && cached.baseTime() == baseTime) {
+            cachedSettings = new CachedSettings(stored, packTime, baseTime, cached.settings(), now);
+            return cached.settings();
+        }
+        ShaderPackSettings settings = ShaderPackSettings.NONE;
+        try {
+            JsonObject root = readConfig(pack);
+            if (root != null) {
+                settings = ShaderPackSettings.parse(root, attributeNames(readConfig(base)));
+                for (String warning : settings.warnings()) {
+                    RadianteClient.LOGGER.warn("Shader pack {}: {}", stored, warning);
+                }
+            }
+        } catch (IOException | RuntimeException e) {
+            RadianteClient.LOGGER.warn("Shader pack {}: its settings page could not be read", stored, e);
+        }
+        cachedSettings = new CachedSettings(stored, packTime, baseTime, settings, now);
+        return settings;
+    }
+
+    /** One pack's list entry (name, icon...) by its stored path; null before the mod's folder is known. */
+    public static Entry entry(String stored) {
+        if (stored == null || RadianteClient.radianceDir == null) {
+            return null;
+        }
+        return samePack(stored, Pipeline.builtInShaderPackPath()) ? builtIn() : read(resolve(stored), stored, false);
+    }
+
+    private static Path resolve(String stored) {
+        Path path = Path.of(stored);
+        return (path.isAbsolute() ? path : RadianteClient.radianceDir.resolve(path)).toAbsolutePath().normalize();
+    }
+
+    private static long modified(Path file) {
+        try {
+            return Files.getLastModifiedTime(file).toMillis();
+        } catch (IOException | RuntimeException e) {
+            return -1L;
+        }
+    }
+
+    /** A pack's own {@code configs.json}, zipped or in a folder; null when it has none or it is not an object. */
+    private static JsonObject readConfig(Path pack) throws IOException {
+        if (pack == null || !Files.exists(pack)) {
+            return null;
+        }
+        try (PackFiles files = PackFiles.open(pack)) {
+            byte[] config = files.read(CONFIG);
+            if (config == null) {
+                return null;
+            }
+            JsonElement parsed = JsonParser.parseString(new String(config, StandardCharsets.UTF_8));
+            return parsed.isJsonObject() ? parsed.getAsJsonObject() : null;
+        }
+    }
+
+    /** The names of the attributes a {@code configs.json} declares. */
+    private static java.util.Set<String> attributeNames(JsonObject root) {
+        java.util.Set<String> names = new java.util.HashSet<>();
+        JsonElement attributes = root == null ? null : root.get("attributes");
+        if (attributes != null && attributes.isJsonArray()) {
+            for (JsonElement attribute : attributes.getAsJsonArray()) {
+                if (attribute.isJsonObject()) {
+                    String name = text(attribute.getAsJsonObject(), "name");
+                    if (name != null) {
+                        names.add(name);
+                    }
+                }
+            }
+        }
+        return names;
+    }
+
     private static Entry read(Path pack, String stored, boolean builtIn) {
         String fileName = pack.getFileName().toString();
         String fallbackName = fileName.toLowerCase(Locale.ROOT).endsWith(".zip")
