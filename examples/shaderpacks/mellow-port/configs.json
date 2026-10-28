@@ -1,7 +1,7 @@
 {
     "radiante": {
         "display_name": "Mellow (Radiante port)",
-        "version": "0.5.0",
+        "version": "0.6.0",
         "author": "G2806, from Mellow by TheCMK",
         "license": "GPL-3.0 (Mellow parts and images MIT, LICENSE-MELLOW)",
         "description": "The look of the Iris pack Mellow by TheCMK on Radiante's path-traced light: its sky colours, clouds and their shadows, stars, sun colour and round sun, fog, water and its normals, torch light, End sky and grade, with Radiante's wind for its waving plants. Mellow's code and images are MIT-licensed.",
@@ -104,6 +104,20 @@
             "order": 14,
             "step": 0.05,
             "description": "mellow.desc.aurora"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.mellow_aurora_style",
+            "type": "int_range:0-1",
+            "default_value": "1",
+            "define": "MELLOW_AURORA_STYLE",
+            "group": "mellow.group.sky",
+            "order": 14,
+            "description": "mellow.desc.aurora_style",
+            "performance_impact": "low",
+            "visible_when": {
+                "attribute": "mellow_aurora",
+                "not_equals": 0
+            }
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.mellow_aurora_everywhere",

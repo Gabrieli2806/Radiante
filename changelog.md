@@ -4,6 +4,9 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Mellow port 0.6.0: a realistic aurora, now the default (Aurora Style; Mellow's own is still there): folded,
+  rippling curtains with a sharp lower edge and rays, green below and red above, drifting and shimmering slowly,
+  fading at the horizon and under the moon and hidden by clouds. Still only in snowy biomes unless Aurora Everywhere.
 - Shader packs get more hook points, each in a file of its own so older packs keep compiling: the sun's and moon's
   discs (`hooks/celestial.glsl`), radiante-pt's water waves and caustics (`water_waves`, strength, speed and size),
   any water's surface for a pack's own normals or foam (`water_surface`), the view from under water (`underwater_fog`
