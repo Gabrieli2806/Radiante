@@ -24,6 +24,16 @@ bool vptLodCovered(uint addressLo, uint addressHi, uint instance, vec3 cameraRel
     return (coverage.words[8u + (bit >> 5u)] & (1u << (bit & 31u))) != 0u;
 }
 
+bool vptLodInstance(uint addressLo, uint addressHi, uint instance) {
+    if ((addressLo | addressHi) == 0u) return false;
+    VptLodCoverage coverage = VptLodCoverage(packUint2x32(uvec2(addressLo, addressHi)));
+    return instance >= coverage.words[3] && instance < coverage.words[4];
+}
+
+// For an any-hit shader: true when this hit is far terrain.
+#define VPT_LOD_HIT(uboRef)                                                                                           \
+    vptLodInstance((uboRef).lodCoverageAddressLo, (uboRef).lodCoverageAddressHi, uint(gl_InstanceCustomIndexEXT))
+
 // For an any-hit shader: true when this hit is far terrain standing where the near terrain is built.
 #define VPT_LOD_COVERED(uboRef)                                                                                       \
     vptLodCovered((uboRef).lodCoverageAddressLo, (uboRef).lodCoverageAddressHi, uint(gl_InstanceCustomIndexEXT),           \
