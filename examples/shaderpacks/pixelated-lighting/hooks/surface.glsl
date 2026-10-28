@@ -35,6 +35,23 @@ void hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce) {
         centre = snapped - cell;
     }
     g_pixelLightOffset = centre - surface.worldPos;
+    // Water: its ripples are a normal map finer than its texture, so even from one texel's centre every pixel
+    // reflected a little differently and the squares smeared back into a smooth reflection. With pixelated
+    // reflections the ripples are read at the texel's centre, so a texel of water is one flat facet and reflects one
+    // thing, as in BetterRTX's Pixelated Lighting.
+    if (int(PIXEL_LIGHT_REFLECTIONS) != 0 && isWaterSurface(surfaceFlags) && abs(surface.geometricNormal.y) > 0.75) {
+        vec3 viewDir = -normalize(g_hit.rayDir);
+        float footprint = mainRay.coneWidth + g_hit.hitT * mainRay.coneSpread;
+#ifdef RADIANTE_HOOK_WATER_WAVES_DEFAULT
+        if (VPT_WATER_SURFACE_MODE == 2u && bedrockWaterAvailable()) {
+            vec3 rippled = bedrockWaterNormal(centre + vec3(worldUBO.cameraPos.xyz), surface.geometricNormal,
+                                              viewDir, footprint, surface.geometricNormal.y < 0.0);
+            // Half the ripples' tilt: at full strength neighbouring facets pointed so differently that the
+            // reflection broke into unrelated squares instead of a picture made of squares.
+            surface.shadingNormal = normalize(mix(surface.geometricNormal, rippled, 0.5));
+        }
+#endif
+    }
 #endif
 }
 

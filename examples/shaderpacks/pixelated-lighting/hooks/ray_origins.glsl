@@ -27,4 +27,14 @@ vec3 hookReflectionOffset() {
     return int(PIXEL_LIGHT_REFLECTIONS) != 0 ? g_pixelLightOffset : vec3(0.0);
 }
 
+// Sun and moon shadows: radiante-pt's spread a penumbra of about a degree, wider than a texel a few blocks from what
+// casts them, so the squares melted into a gradient. PIXEL_LIGHT_SHADOW_SOFTNESS narrows it (0 hard, 1 radiante-pt's).
+#ifndef PIXEL_LIGHT_SHADOW_SOFTNESS
+#    define PIXEL_LIGHT_SHADOW_SOFTNESS 0.15
+#endif
+
+float hookShadowSoftness() {
+    return int(PIXEL_LIGHT_SHADOWS) != 0 ? float(PIXEL_LIGHT_SHADOW_SOFTNESS) : 1.0;
+}
+
 #endif

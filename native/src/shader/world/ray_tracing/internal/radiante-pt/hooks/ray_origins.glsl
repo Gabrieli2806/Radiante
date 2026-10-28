@@ -10,13 +10,15 @@
 // and with it everything below is compiled out. A pack's file leaves that define out and gives
 //   vec3 hookShadowOffset()      how far to move the shadow rays of the hit being shaded
 //   vec3 hookReflectionOffset()  how far to move its reflection rays
-// both camera-relative offsets from the shaded point (surface.worldPos as hookSurface leaves it), zero to keep it;
+//   float hookShadowSoftness()   how soft the sun's and moon's shadows are, 1 for radiante-pt's, 0 for hard ones
+// the offsets camera-relative from the shaded point (surface.worldPos as hookSurface leaves it), zero to keep it;
 // hookSurface, which runs first, can work them out and keep them in globals this file declares.
 //
 // With an offset, radiante-pt:
 // - starts every shadow ray of the hit (the sun or moon, the block light, the held lights: pt_deferred_shadow.glsl)
 //   that far away, still aimed at the same point of a block or held light (the sun and moon keep their direction).
-//   Only the visibility moves: the light, its angle and its falloff stay the shaded point's.
+//   Only the visibility moves: the light, its angle and its falloff stay the shaded point's. The sun's and moon's
+//   ray is also turned towards the body's centre by 1 - hookShadowSoftness(), which narrows their penumbra.
 // - starts the reflection the shading picks (the specular lobe, water's reflection, a mirror looked into) from the
 //   moved point, turned by as much as the view of the moved point reflects differently from the view of the hit, so
 //   every pixel that gets the same offset reflects the same way.

@@ -1,6 +1,7 @@
 # Pixelated Lighting: its own settings, groups, descriptions and presets; the rest of the names come from radiante-pt.
 render_pipeline.module.ray_tracing.attribute.pixel_light_texels=每方块像素数
 render_pipeline.module.ray_tracing.attribute.pixel_light_shadows=像素化阴影
+render_pipeline.module.ray_tracing.attribute.pixel_light_shadow_softness=阴影柔和度
 render_pipeline.module.ray_tracing.attribute.pixel_light_reflections=像素化反射
 render_pipeline.module.ray_tracing.attribute.pixel_light_palette=复古调色板
 render_pipeline.module.ray_tracing.attribute.pixel_light_dither=抖动
@@ -10,6 +11,7 @@ pixel_light.group.palette=复古调色板
 
 pixel_light.desc.texels=阴影和反射按纹理像素计算，每个方块边最多这么多个。16 为纹理本身的像素；调低更粗犷；0 关闭。
 pixel_light.desc.shadows=阴影边缘沿纹理像素分布：每个纹理像素要么在阴影中，要么不在。光照本身保持平滑。
+pixel_light.desc.shadow_softness=太阳和月亮阴影的柔和程度。越低阴影越硬，纹理像素方块越明显；1 为 Radiante PT 的柔和度。
 pixel_light.desc.reflections=反射（包括水面反射）呈现为实心方块，每个纹理像素一个。透过水和玻璃看到的内容保持清晰。
 pixel_light.desc.palette=把每个颜色通道限制为这么多级，像老式游戏机。0 保持自然颜色。
 pixel_light.desc.dither=在相邻色阶之间使用棋盘格过渡，而不是色带。0 关闭。

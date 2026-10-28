@@ -69,6 +69,17 @@ void ptDeferShadowRay(uint slot, vec3 origin, vec3 direction, float rayLength, u
             origin = moved;
         }
     }
+    // How soft the sun's and moon's shadows are (1 keeps radiante-pt's): the ray is turned from its jittered
+    // direction towards the body's centre. Sharp shadows show a pack's moved shadow origins as solid squares; at
+    // radiante-pt's softness the penumbra spreads over several texels and the steps blur away.
+    if (slot == PT_SHADOW_CELESTIAL && worldUBO.skyType == 1) {
+        float softness = clamp(hookShadowSoftness(), 0.0, 1.0);
+        if (softness < 1.0) {
+            vec3 body = celestialSunDirection();
+            if (body.y < 0.0) { body = celestialMoonDirection(); }
+            direction = normalize(mix(body, direction, softness));
+        }
+    }
 #endif
     g_shadowPending[slot] = true;
     g_shadowOrigin[slot] = origin;
