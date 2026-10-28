@@ -1,9 +1,21 @@
-# Radiante Example Pack: only its own settings; the rest of the names come from radiante-pt.
-render_pipeline.module.ray_tracing.attribute.example_grade=示例：调色
-render_pipeline.module.ray_tracing.attribute.example_foliage_translucency=示例：树叶透光
-render_pipeline.module.ray_tracing.attribute.example_foliage_transmission=示例：树叶透光强度
-render_pipeline.module.ray_tracing.attribute.example_water_tint=示例：水体吸收（RGB）
-render_pipeline.module.ray_tracing.attribute.example_sky_tint=示例：天空色调（RGB）
-render_pipeline.module.ray_tracing.attribute.example_grade_strength=示例：调色强度
-render_pipeline.module.ray_tracing.attribute.example_bloom=示例：泛光
-render_pipeline.module.ray_tracing.attribute.example_lens=示例：镜头光晕与色散
+# Radiante Example Pack: its own settings, a group and descriptions; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.example_grade=调色
+render_pipeline.module.ray_tracing.attribute.example_foliage_translucency=树叶透光
+render_pipeline.module.ray_tracing.attribute.example_foliage_transmission=树叶透光强度
+render_pipeline.module.ray_tracing.attribute.example_water_tint=水体吸收（RGB）
+render_pipeline.module.ray_tracing.attribute.example_sky_tint=天空色调（RGB）
+render_pipeline.module.ray_tracing.attribute.example_underwater_ripple=水下波纹
+render_pipeline.module.ray_tracing.attribute.example_nether_haze=下界薄雾
+render_pipeline.module.ray_tracing.attribute.example_grade_strength=调色强度
+render_pipeline.module.ray_tracing.attribute.example_bloom=泛光
+render_pipeline.module.ray_tracing.attribute.example_lens=镜头光晕与色散
+
+example.group.foliage=树叶
+example.group.lens=泛光与镜头
+
+example.desc.grade=在最终画面上让高光更暖、阴影略冷，并加上柔和的对比度曲线。
+example.desc.translucency=树叶或小型植物背后的阳光会从背面照亮它。
+example.desc.transmission=穿过树叶的阳光有多少。无需重新编译即可生效。
+example.desc.grade_strength=调色应用的程度。无需重新编译即可生效。
+example.desc.bloom=来自 Radiante 泛光金字塔的明亮物体周围的光晕。数值越高光晕越强。无需重新编译即可生效。
+example.desc.lens=明亮光源经画面中心镜像形成的光斑，以及靠近边缘的色散。无需重新编译即可生效。

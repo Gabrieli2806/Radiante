@@ -232,6 +232,8 @@ vec3 endSkyRadiance(vec3 dir, bool seen) {
 #include "hooks/sky.glsl"
 #include "hooks/stars.glsl"
 #include "hooks/clouds.glsl"
+#include "hooks/celestial.glsl"
+#include "hooks/dimension_sky.glsl"
 
 // The sky a ray reaches while still in water. Hit shaders fog each stretch of water a ray crosses up to the surface it
 // hits; a ray that leaves the loaded world under water (a sea running past the render distance, water held up by
@@ -273,13 +275,32 @@ void main() {
             // The End: a deep violet void, its own fog colour at the horizon darkening overhead, with faint stars
             // where the camera looks. Rays bouncing off the islands gather it as a dim, cool ambient light, so the
             // end stone is softly lit from above instead of flat.
+#ifdef RADIANTE_HOOK_DIMENSION_SKY_DEFAULT
             mainRay.radiance += waterMissRadiance(endSkyRadiance(normalize(gl_WorldRayDirectionEXT),
                                                rayBounce(mainRay) == 0u || rayCameraPath(mainRay))) *
                                 mainRay.throughput;
+#else
+        {
+            // A pack's End sky (hooks/dimension_sky.glsl), over radiante-pt's.
+            vec3 endDir = normalize(gl_WorldRayDirectionEXT);
+            bool endSeen = rayBounce(mainRay) == 0u || rayCameraPath(mainRay);
+            vec3 endSky = endSkyRadiance(endDir, endSeen);
+            hookEndSky(endSky, endDir, endSeen);
+            mainRay.radiance += waterMissRadiance(endSky) * mainRay.throughput;
+        }
+#endif
             raySetStop(mainRay, true);
             mainRay.hitT = INF_DISTANCE;
             return;
         case 0:
+#ifndef RADIANTE_HOOK_DIMENSION_SKY_DEFAULT
+        {
+            // The Nether has no sky of its own; a pack can give it one (hooks/dimension_sky.glsl).
+            vec3 netherSky = vec3(0.0);
+            hookNetherSky(netherSky, normalize(gl_WorldRayDirectionEXT));
+            mainRay.radiance += waterMissRadiance(netherSky) * mainRay.throughput;
+        }
+#endif
             raySetStop(mainRay, true);
             mainRay.hitT = INF_DISTANCE;
             return;
@@ -305,6 +326,7 @@ void main() {
         float mu = clamp(dot(up, rayDir), -1.0, 1.0);
         vec3 transmittance = sampleCloudAtmosphereTransmittance(r, mu);
 
+#ifdef RADIANTE_HOOK_CELESTIAL_DEFAULT
         vec4 sunSample = evalSunBillboard(rayDir);
         if (sunSample.a > 1e-4) {
             float tG0, tG1;
@@ -333,6 +355,25 @@ void main() {
                 backgroundRadiance += mix(moonRadiance, vec3(0.0), progress) * celestialSeen;
             }
         }
+#else
+        {
+            // The discs through a pack's hooks/celestial.glsl, for every ray: sunLight and moonLight are what
+            // radiante-pt's own discs are drawn with above, zero where the ground hides the body.
+            float tG0, tG1;
+            bool blocked = missIntersectSphere(pPlanet, rayDir, VPT_ATMOSPHERE_RG, tG0, tG1) && (tG1 > 1e-3);
+            float cut = blocked ? 0.0 : celestialHorizonCut(rayDir);
+            vec3 sunLight = (VPT_SUN_RADIANCE * worldUBO.sunBrightness) * transmittance * cut;
+            vec3 moonLight = (VPT_MOON_RADIANCE * worldUBO.moonBrightness) * MOON_DISC_SEEN *
+                             mix(vec3(1.0), transmittance, 0.5) * cut;
+            vec4 sunSample = evalSunBillboard(rayDir);
+            vec3 sunRadiance = sunSample.a > 1e-4 ? sunSample.rgb * sunSample.a * sunLight : vec3(0.0);
+            hookSunDisc(sunRadiance, rayDir, sunDir, sunLight);
+            vec4 moonSample = evalMoonBillboard(rayDir);
+            vec3 moonRadiance = moonSample.a > 1e-4 ? moonSample.rgb * moonLight : vec3(0.0);
+            hookMoonDisc(moonRadiance, rayDir, celestialMoonDirection(), moonLight);
+            backgroundRadiance += mix(sunRadiance + moonRadiance, vec3(0.0), progress) * celestialSeen;
+        }
+#endif
     }
 
     // A soft halo around the sun and moon, as Bedrock RTX draws: faint, and only where the camera looks, so it
@@ -356,9 +397,9 @@ void main() {
 
 #ifndef RADIANTE_HOOK_STARS_DEFAULT
     // A pack's night sky (hooks/stars.glsl), where the camera looks and not under water; it can hide radiante-pt's
-    // own stars where it draws its own.
-    if (worldUBO.skyType == 1 && (rayBounce(mainRay) == 0u || rayCameraPath(mainRay)) &&
-        mainRay.directLightRadiance.x > 0.0) {
+    // own stars where it draws its own. Called whatever radiante-pt's own star mask says: with that mask at 0 (its
+    // stars off, or hidden), a pack's night sky - Mellow's aurora - was never drawn at all.
+    if (worldUBO.skyType == 1 && (rayBounce(mainRay) == 0u || rayCameraPath(mainRay))) {
         mainRay.directLightRadiance.x *= clamp(hookStars(backgroundRadiance, rayDir), 0.0, 1.0);
     }
 #endif

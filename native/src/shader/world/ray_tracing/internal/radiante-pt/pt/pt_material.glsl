@@ -376,7 +376,11 @@ void sampleSurfaceState(bool useTexture,
             vec3 absWorldPos = worldPos + vec3(worldUBO.cameraPos.xyz);
             vec3 waterCoordNormal = baseGeoNormal.y >= 0.0 ? baseGeoNormal : -baseGeoNormal;
             vec2 waterCoord = fftWaterSurfaceCoord(absWorldPos, dPduWorld, dPdvWorld, waterCoordNormal);
+#ifdef RADIANTE_HOOK_WATER_WAVES_DEFAULT
             FftWaterSample waterSample = sampleFftWater(waterCoord, worldUBO.gameTime);
+#else
+            FftWaterSample waterSample = sampleFftWaterShaped(waterCoord, worldUBO.gameTime, fftWaterWaveShape());
+#endif
             vec3 tangent, bitangent;
             fftWaterStableBasis(baseGeoNormal, tangent, bitangent);
             vec3 localWaterNormal =
@@ -385,8 +389,13 @@ void sampleSurfaceState(bool useTexture,
             shadingNormal = applyNormalMapToBasis(localWaterNormal, tangent, bitangent, baseGeoNormal, viewDir);
         } else if (VPT_WATER_SURFACE_MODE == 2u && bedrockWaterAvailable() && abs(baseGeoNormal.y) > 0.75) {
             float footprint = mainRay.coneWidth + g_hit.hitT * mainRay.coneSpread;
+#ifdef RADIANTE_HOOK_WATER_WAVES_DEFAULT
             shadingNormal = bedrockWaterNormal(worldPos + vec3(worldUBO.cameraPos.xyz), baseGeoNormal, viewDir,
                                                footprint, baseGeoNormal.y < 0.0);
+#else
+            shadingNormal = bedrockWaterNormalShaped(worldPos + vec3(worldUBO.cameraPos.xyz), baseGeoNormal, viewDir,
+                                                     footprint, baseGeoNormal.y < 0.0, fftWaterWaveShape());
+#endif
         }
     }
 

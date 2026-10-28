@@ -621,7 +621,7 @@ public final class ShaderPacksScreen extends Screen {
         this.minecraft.gui.setScreen(this.back.get());
     }
 
-    private static Identifier icon(Entry entry) {
+    static Identifier icon(Entry entry) {
         if (entry.icon() == null) {
             return entry.builtIn() ? RADIANTE_ICON : null;
         }

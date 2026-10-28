@@ -69,6 +69,9 @@ vec3 froxelBlockLight(vec3 position, inout uint seed) {
         // Kept from growing without bound right next to a light, where one cell would flare.
         vec3 radiance = pointLight ? light.radiance.rgb * vptPointLightScale() :
                         (light.radiance.w > 0.5 ? light.radiance.rgb * vptExactLightScale() : light.radiance.rgb);
+#ifndef RADIANTE_HOOK_BLOCK_LIGHT_DEFAULT
+        hookBlockLight(radiance, uint(clamp(light.radiance.w + 0.5, 0.0, 2.0))); // hooks/block_light.glsl
+#endif
         vec3 contribution = radiance * (cosLight / max(distance2, 0.5));
         float target = dot(contribution, vec3(0.2126, 0.7152, 0.0722));
         if (target <= 1e-10) { continue; }

@@ -46,18 +46,18 @@ struct MellowTime {
     float sunset;
 };
 
-// Mellow's four weights from the sun's height. Mellow takes them from worldTime: |sin(timeAngle * 2 pi)| is the sun's
-// height, day below 12000 ticks and night above, and the twilight is a sunset from 8000 to 16000 ticks, a sunrise
-// otherwise. Here the height is the sun direction's y and the sunset is the twilight with the sun in the west (-x),
-// the same split, so it follows Radiante's sun whatever the clock says.
+// Mellow's four weights (its dayStrength, nightStrength, sunriseStrength and sunsetStrength). Mellow takes them from
+// worldTime: |sin(timeAngle * 2 pi)| is the sun's height, day below 12000 ticks and night above, and the twilight is
+// a sunset from 8000 to 16000 ticks, a sunrise otherwise. radiante-pt's radianteDayWeights (common/pack_world.glsl)
+// is the same split read off the sun the player sees, so it follows Radiante's sun path whatever the clock says.
+// sunDir is kept for the callers; the weights come from the sky's own sun.
 MellowTime mellowTime(vec3 sunDir) {
+    vec4 weights = radianteDayWeights();
     MellowTime t;
-    float height = sunDir.y;
-    t.day = height > 0.0 ? min(height * 2.0, 1.0) : 0.0;
-    t.night = height < 0.0 ? min(-height * 2.0, 1.0) : 0.0;
-    float twilight = max(1.0 - t.day - t.night, 0.0);
-    t.sunset = sunDir.x < 0.0 ? twilight : 0.0;
-    t.sunrise = twilight - t.sunset;
+    t.sunrise = weights.x;
+    t.day = weights.y;
+    t.sunset = weights.z;
+    t.night = weights.w;
     return t;
 }
 

@@ -1,10 +1,10 @@
 {
     "radiante": {
         "display_name": "Radiante Example Pack",
-        "version": "2.0.0",
+        "version": "2.1.0",
         "author": "G2806",
         "license": "GPL-3.0",
-        "description": "Warm grade, light through leaves, teal water, cooler sky.",
+        "description": "Warm grade, light through leaves, teal water, cooler sky, a ripple under water and a thicker Nether haze.",
         "icon": "pack.png",
         "api_version": 0,
         "extends": "radiante-pt@1"
@@ -14,41 +14,65 @@
             "name": "render_pipeline.module.ray_tracing.attribute.example_grade",
             "type": "bool",
             "default_value": "render_pipeline.true",
-            "define": "EXAMPLE_GRADE"
+            "define": "EXAMPLE_GRADE",
+            "description": "example.desc.grade"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.example_grade_strength",
             "type": "float_range:0.0-1.0",
             "default_value": "1.0",
             "runtime": true,
-            "define": "EXAMPLE_GRADE_STRENGTH"
+            "define": "EXAMPLE_GRADE_STRENGTH",
+            "step": 0.05,
+            "description": "example.desc.grade_strength",
+            "visible_when": {
+                "attribute": "example_grade",
+                "equals": true
+            }
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.example_bloom",
             "type": "float_range:0.0-1.0",
             "default_value": "0.15",
             "runtime": true,
-            "define": "EXAMPLE_BLOOM"
+            "define": "EXAMPLE_BLOOM",
+            "group": "example.group.lens",
+            "step": 0.05,
+            "description": "example.desc.bloom",
+            "performance_impact": "low"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.example_lens",
             "type": "float_range:0.0-1.0",
             "default_value": "0.0",
             "runtime": true,
-            "define": "EXAMPLE_LENS"
+            "define": "EXAMPLE_LENS",
+            "group": "example.group.lens",
+            "step": 0.05,
+            "description": "example.desc.lens"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.example_foliage_translucency",
             "type": "bool",
             "default_value": "render_pipeline.true",
-            "define": "EXAMPLE_FOLIAGE_TRANSLUCENCY"
+            "define": "EXAMPLE_FOLIAGE_TRANSLUCENCY",
+            "group": "example.group.foliage",
+            "description": "example.desc.translucency",
+            "performance_impact": "low"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.example_foliage_transmission",
             "type": "float_range:0.0-2.0",
             "default_value": "1.4",
             "runtime": true,
-            "define": "EXAMPLE_FOLIAGE_TRANSMISSION"
+            "define": "EXAMPLE_FOLIAGE_TRANSMISSION",
+            "group": "example.group.foliage",
+            "step": 0.1,
+            "description": "example.desc.transmission",
+            "visible_when": {
+                "attribute": "example_foliage_translucency",
+                "equals": true
+            }
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.example_water_tint",
@@ -65,7 +89,22 @@
             "define": {
                 "EXAMPLE_SKY_TINT": "vec3(X)"
             }
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.example_underwater_ripple",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "define": "EXAMPLE_UNDERWATER_RIPPLE"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.example_nether_haze",
+            "type": "float_range:0.5-3.0",
+            "default_value": "1.5",
+            "define": "EXAMPLE_NETHER_HAZE"
         }
+    ],
+    "profile_keys": [
+        "*"
     ],
     "execution_post": {
         "global_variables": [

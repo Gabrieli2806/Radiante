@@ -23,18 +23,22 @@ What a pack can do, built (B) or planned (P):
   with icon, name, version, author, licence and description, and switches with the background rebuild.
 - **Small packs on Radiante PT** (B): `"extends": "radiante-pt@1"`; the pack holds only its own files and follows
   Radiante PT's updates.
-- **Hook points** (B): change surfaces, direct light, water, sky, fog and the final grade with one small GLSL file
-  each; `hookTexelCentre` and `g_hookViewDir` let a pack move where light is computed (Pixel Light).
+- **Hook points** (B): change surfaces, direct light, water (its colour, waves, surface and the view from under
+  it), the sky, the sun and moon discs, clouds, stars, the Nether's and the End's sky and fog, fog, block light colour
+  and the final grade with one small GLSL file each; `hookTexelCentre` and `g_hookViewDir` let a pack move where light
+  is computed (Pixel Light). `common/pack_world.glsl` gives the weather, the biome and the time of day
 - **Own passes and images** (B): add full-screen, compute or ray tracing passes, placed with `before`/`after`.
 - **Own settings** (B): every attribute is a setting with its own names in three languages; `"runtime": true` ones
   change live in the ray tracing shaders.
 - **Safe failures** (B): a pack that does not load, compile or crashes the GPU is replaced by Radiante PT with the
   reason; zips are checked entry by entry.
+- **Settings page per pack** (B): groups, order, descriptions, performance impact, steps, conditional rows and
+  presets; renderer profiles touch only the `profile_keys` a pack lists.
 - **Live settings in post passes** (B): `"runtime": true` attributes in post passes and the post grade hook; 256
   live slots.
 - **Bloom and lens effects** (B): a pack asks for Radiante's bloom pyramid and reads it in its grade or own passes.
-- **Settings page per pack** (P): groups, descriptions, performance impact, presets.
-- **More hooks** (P): clouds (shape, density), waves (height, speed), foam, weather and time.
+- **More hooks** (P): cloud shape and density in radiante-pt's own clouds; wind per kind of plant (the wind is moved
+  by a pass outside the packs: design §5).
 - **Stable headers `radiante/v1`** (P): packs that keep compiling when Radiante's internals change.
 - **Materials** (P): per-block material ids, micromap opt-out for leaves, LabPBR and Bedrock RTX materials in one call.
 - **Renderer features for every pack** (P): DLSS-RR / NRD, SHaRC, ReSTIR, Distant Horizons through public helpers.

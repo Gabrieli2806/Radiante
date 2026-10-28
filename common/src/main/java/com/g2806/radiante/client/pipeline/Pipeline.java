@@ -731,6 +731,46 @@ public class Pipeline {
     }
 
     /**
+     * The settings page of the pack in use ({@link ShaderPackSettings}): its own attributes with their groups and
+     * the rest, its presets and profile keys. {@code NONE} for Radiante PT.
+     */
+    public static ShaderPackSettings shaderPackSettings() {
+        String path = shaderPackPath();
+        return path == null ? ShaderPackSettings.NONE : ShaderPackLibrary.settings(path);
+    }
+
+    /**
+     * A name from the lang files of the pack in use (Radiante PT's lines, then the pack's, in the game's language),
+     * or null when they have no such key. The renderer reads them with the pack's attributes.
+     */
+    public static String shaderPackTranslation(String key) {
+        Module module = getRayTracingModule();
+        return module == null || key == null ? null : module.dynamicTranslations.get(key);
+    }
+
+    /**
+     * Whether a renderer profile may write a ray tracing attribute. With a pack other than Radiante PT, an attribute
+     * that comes from the pack (Radiante PT's names, which a pack built on it has too) is the pack's to decide: the
+     * profile writes only those the pack lists in {@code "profile_keys"}. The ray tracing module's own attributes
+     * and every attribute under Radiante PT are written as before.
+     */
+    public static boolean profileMayWrite(String attribute) {
+        String path = shaderPackPath();
+        if (path == null || ShaderPackLibrary.samePack(path, BUILT_IN_SHADER_PACK_PATH)) {
+            return true;
+        }
+        Module module = getRayTracingModule();
+        if (module != null && module.staticAttributeConfigs != null) {
+            for (AttributeConfig declared : module.staticAttributeConfigs) {
+                if (declared != null && Objects.equals(declared.name, attribute)) {
+                    return true;
+                }
+            }
+        }
+        return ShaderPackLibrary.settings(path).profileKey(attribute);
+    }
+
+    /**
      * Switches the pipeline to another shader pack; true when it changed. That takes a build, which loads the pack's
      * own attributes and the values it saved in its settings file (the pack's name plus ".txt") instead of these.
      */

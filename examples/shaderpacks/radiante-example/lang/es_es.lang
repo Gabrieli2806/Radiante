@@ -1,9 +1,21 @@
-# Radiante Example Pack: only its own settings; the rest of the names come from radiante-pt.
-render_pipeline.module.ray_tracing.attribute.example_grade=Ejemplo: Etalonaje
-render_pipeline.module.ray_tracing.attribute.example_foliage_translucency=Ejemplo: Luz a través de las hojas
-render_pipeline.module.ray_tracing.attribute.example_foliage_transmission=Ejemplo: Transmisión de las hojas
-render_pipeline.module.ray_tracing.attribute.example_water_tint=Ejemplo: Absorción del agua (RGB)
-render_pipeline.module.ray_tracing.attribute.example_sky_tint=Ejemplo: Tinte del cielo (RGB)
-render_pipeline.module.ray_tracing.attribute.example_grade_strength=Ejemplo: Intensidad del etalonaje
-render_pipeline.module.ray_tracing.attribute.example_bloom=Ejemplo: Resplandor
-render_pipeline.module.ray_tracing.attribute.example_lens=Ejemplo: Destellos y franjas de lente
+# Radiante Example Pack: its own settings, a group and descriptions; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.example_grade=Etalonaje
+render_pipeline.module.ray_tracing.attribute.example_foliage_translucency=Luz a través de las hojas
+render_pipeline.module.ray_tracing.attribute.example_foliage_transmission=Transmisión de las hojas
+render_pipeline.module.ray_tracing.attribute.example_water_tint=Absorción del agua (RGB)
+render_pipeline.module.ray_tracing.attribute.example_sky_tint=Tinte del cielo (RGB)
+render_pipeline.module.ray_tracing.attribute.example_underwater_ripple=Ondulación bajo el agua
+render_pipeline.module.ray_tracing.attribute.example_nether_haze=Bruma del Nether
+render_pipeline.module.ray_tracing.attribute.example_grade_strength=Intensidad del etalonaje
+render_pipeline.module.ray_tracing.attribute.example_bloom=Resplandor
+render_pipeline.module.ray_tracing.attribute.example_lens=Destellos y franjas de lente
+
+example.group.foliage=Follaje
+example.group.lens=Resplandor y lente
+
+example.desc.grade=Luces más cálidas, sombras algo más frías y una curva de contraste suave sobre la imagen final.
+example.desc.translucency=El sol detrás de una hoja o de una planta pequeña la ilumina por detrás.
+example.desc.transmission=Cuánta luz del sol atraviesa una hoja. Cambia sin recompilar.
+example.desc.grade_strength=Cuánto etalonaje se aplica. Cambia sin recompilar.
+example.desc.bloom=Un resplandor alrededor de lo brillante, de la pirámide de bloom de Radiante. Más alto, más resplandor. Cambia sin recompilar.
+example.desc.lens=Reflejos de luces brillantes reflejados por el centro y franjas de color hacia los bordes. Cambia sin recompilar.

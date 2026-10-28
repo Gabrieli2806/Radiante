@@ -4,6 +4,25 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Shader packs get more hook points, each in a file of its own so older packs keep compiling: the sun's and moon's
+  discs (`hooks/celestial.glsl`), radiante-pt's water waves and caustics (`water_waves`, strength, speed and size),
+  any water's surface for a pack's own normals or foam (`water_surface`), the view from under water (`underwater_fog`
+  in the path tracer, `underwater` on the finished picture), the Nether's and the End's sky and fog
+  (`dimension_sky`) and the colour of block light, cast, held and seen (`block_light`). `common/pack_world.glsl` adds
+  the time of day read off the sun (`radianteSunAngle()`, `radianteDayWeights()`, the moon's phase). With its own
+  hooks Radiante PT compiles to the same shaders as before; packs need no change. Wind stays the renderer's: a pack
+  can only turn it on or set its strength by default. The Mellow port (0.5.0) uses them: Mellow's round sun (off, as
+  in Mellow), its water normals and their settings, its warm torch light, its underwater colour and End sky, and
+  Radiante's wind on for its waving plants; the example pack adds a ripple under water and a thicker Nether haze.
+- Shader packs get a settings page of their own: with a pack other than Radiante PT in use, Radiante's settings have
+  a section named after the pack, with its icon, holding the settings the pack adds (Radiante PT's stay where they
+  are, and the pack's no longer land among Radiante's advanced settings). Packs can group and order them, put some
+  behind Advanced, describe them, mark their performance impact, set a slider's step and hide a setting while another
+  has a given value (`group`, `order`, `advanced`, `description`, `performance_impact`, `step`, `visible_when` on an
+  attribute), and offer presets of their settings as a row at the top of the page (`presets`). Packs' setting names
+  from their `lang` files now show everywhere. With such a pack in use, the renderer profiles only write the Radiante
+  PT settings the pack lists in `profile_keys` (`"*"` for all). The example packs (Mellow port, Pixel Light, Inkwell,
+  the example pack) use all of it, in English, Spanish and Chinese.
 - Shader pack development: a pack kept as a folder in `radiante/shaderpacks/` reloads by itself when one of its files
   is saved. It is checked first (loaded and compiled in the background while the game runs); an edit that does not
   compile is not used, the picture stays as it was, and the error shows in a popup and on the Shader Packs screen.

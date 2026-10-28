@@ -1,9 +1,21 @@
-# Radiante Example Pack: only its own settings; the rest of the names come from radiante-pt.
-render_pipeline.module.ray_tracing.attribute.example_grade=Example: Colour Grade
-render_pipeline.module.ray_tracing.attribute.example_foliage_translucency=Example: Light Through Leaves
-render_pipeline.module.ray_tracing.attribute.example_foliage_transmission=Example: Leaf Transmission
-render_pipeline.module.ray_tracing.attribute.example_water_tint=Example: Water Absorption (RGB)
-render_pipeline.module.ray_tracing.attribute.example_sky_tint=Example: Sky Tint (RGB)
-render_pipeline.module.ray_tracing.attribute.example_grade_strength=Example: Grade Strength
-render_pipeline.module.ray_tracing.attribute.example_bloom=Example: Bloom
-render_pipeline.module.ray_tracing.attribute.example_lens=Example: Lens Flare and Fringes
+# Radiante Example Pack: its own settings, a group and descriptions; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.example_grade=Colour Grade
+render_pipeline.module.ray_tracing.attribute.example_foliage_translucency=Light Through Leaves
+render_pipeline.module.ray_tracing.attribute.example_foliage_transmission=Leaf Transmission
+render_pipeline.module.ray_tracing.attribute.example_water_tint=Water Absorption (RGB)
+render_pipeline.module.ray_tracing.attribute.example_sky_tint=Sky Tint (RGB)
+render_pipeline.module.ray_tracing.attribute.example_underwater_ripple=Underwater Ripple
+render_pipeline.module.ray_tracing.attribute.example_nether_haze=Nether Haze
+render_pipeline.module.ray_tracing.attribute.example_grade_strength=Grade Strength
+render_pipeline.module.ray_tracing.attribute.example_bloom=Bloom
+render_pipeline.module.ray_tracing.attribute.example_lens=Lens Flare and Fringes
+
+example.group.foliage=Foliage
+example.group.lens=Glow and Lens
+
+example.desc.grade=Warmer highlights, slightly cooler shadows and a gentle contrast curve over the finished picture.
+example.desc.translucency=The sun behind a leaf or a small plant lights it from the back.
+example.desc.transmission=How much sunlight comes through a leaf. Changes without a rebuild.
+example.desc.grade_strength=How much of the grade is applied. Changes without a rebuild.
+example.desc.bloom=A glow round bright things, from Radiante's bloom pyramid. Higher is a stronger glow. Changes without a rebuild.
+example.desc.lens=Ghosts of bright lights mirrored through the centre and colour fringes towards the edges. Changes without a rebuild.

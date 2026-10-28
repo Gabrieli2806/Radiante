@@ -120,6 +120,11 @@
 #include "pt/pt_sharc.glsl"
 #include "pt/pt_primary.glsl"
 #include "pt/pt_bounce.glsl"
+// Hook points a pack extending radiante-pt replaces; empty here. The ray generation shader names its uniforms as the
+// hit shaders do, so they read the same worldUBO and skyUBO.
+#include "hooks/underwater_fog.glsl"
+#include "hooks/dimension_sky.glsl"
+#include "common/block_light_hook.glsl"
 #include "pt/pt_sharc_update.glsl"
 #include "pt/pt_outputs.glsl"
 
@@ -527,6 +532,10 @@ void main() {
             firstHitEmission = firstHitMat.albedoValue.rgb * firstHitMat.emission *
                                worldUBO.emissionBrightness * 16.0 * VPT_DIRECT_LIGHT_STRENGTH;
 #endif
+#ifndef RADIANTE_HOOK_BLOCK_LIGHT_DEFAULT
+            // The same glow the closest hit added, through a pack's hooks/block_light.glsl.
+            if (firstHitMat.emission > 0.0) { hookBlockLight(firstHitEmission, RADIANTE_BLOCK_LIGHT_GLOW); }
+#endif
 #if VPT_NRD_SIGNALS
             nrdFirstHitDirect = mainRay.directLightRadiance;
 #endif
@@ -732,6 +741,14 @@ void main() {
             float clearness = exp(-seen / visibility);
             // a clear sea blue for plain water (vanilla's water fog is nearly navy)
             vec3 fogTint = biomeWater ? max(skyUBO.waterFog.rgb, vec3(0.0)) : UNDERWATER_FOG_TINT;
+#ifndef RADIANTE_HOOK_UNDERWATER_FOG_DEFAULT
+            // A pack's water seen from inside (hooks/underwater_fog.glsl).
+            hookUnderwaterFog(fogTint, visibility);
+            fogTint = max(fogTint, vec3(0.0));
+            visibility = max(visibility, 0.01);
+            seen = surfaceDepth == INF_DISTANCE || surfaceDepth <= 0.0 ? visibility * 4.0 : surfaceDepth;
+            clearness = exp(-seen / visibility);
+#endif
             // How much of the sky lights the water around the camera. With a biome's water it is the sky light over
             // the water's surface there (skyUBO.waterAlbedo.a, eased by BiomeAmbiance); one ray straight up from the
             // eye went black under a lily pad or a branch and lit again a step on, and a swamp was mostly black.
@@ -790,6 +807,7 @@ void main() {
             }
         } else {
             if (worldUBO.skyType == 0) {
+#ifdef RADIANTE_HOOK_DIMENSION_SKY_DEFAULT
                 if (useTransparentSplit) {
                     applyFog(mainRay.radiance, surfaceDepth, worldUBO.fogStart, densityAir, densityFog,
                              worldUBO.fogColor.rgb * NETHER_FOG_SCALE, mainRay.radiance, transparentFogTransmittance,
@@ -801,6 +819,20 @@ void main() {
                              worldUBO.fogColor.rgb * NETHER_FOG_SCALE, mainRay.radiance, composeFogTransmittance,
                              composeFogAdditive);
                 }
+#else
+                vec3 netherFog = worldUBO.fogColor.rgb * NETHER_FOG_SCALE;
+                float netherFogDensity = densityFog;
+                hookNetherFog(netherFog, netherFogDensity); // a pack's Nether fog (hooks/dimension_sky.glsl)
+                if (useTransparentSplit) {
+                    applyFog(mainRay.radiance, surfaceDepth, worldUBO.fogStart, densityAir, netherFogDensity,
+                             netherFog, mainRay.radiance, transparentFogTransmittance, transparentFogAdditive);
+                    transparentReflectionRadiance *= transparentFogTransmittance;
+                    transparentRefractionRadiance *= transparentFogTransmittance;
+                } else {
+                    applyFog(mainRay.radiance, surfaceDepth, worldUBO.fogStart, densityAir, netherFogDensity,
+                             netherFog, mainRay.radiance, composeFogTransmittance, composeFogAdditive);
+                }
+#endif
             } else if (worldUBO.skyType == 1) {
                 if (!useVolumetricFog && !psrHitSky) {
                     vec3 eyeToPSRHitPosition = psrHitPosition - eyePos;
@@ -829,14 +861,18 @@ void main() {
                 // stars and gradient out to a flat sheet. The islands fade into the same violet.
                 vec3 endFog = dot(max(worldUBO.fogColor.rgb, vec3(0.0)), vec3(0.2126, 0.7152, 0.0722)) *
                               vec3(1.3, 0.8, 1.85) * 0.15;
+                float endFogDensity = densityFog;
+#ifndef RADIANTE_HOOK_DIMENSION_SKY_DEFAULT
+                hookEndFog(endFog, endFogDensity); // a pack's End fog (hooks/dimension_sky.glsl)
+#endif
                 if (useTransparentSplit) {
-                    applyFog(mainRay.radiance, surfaceDepth, worldUBO.fogStart, densityAir, densityFog,
+                    applyFog(mainRay.radiance, surfaceDepth, worldUBO.fogStart, densityAir, endFogDensity,
                              endFog, mainRay.radiance, transparentFogTransmittance,
                              transparentFogAdditive);
                     transparentReflectionRadiance *= transparentFogTransmittance;
                     transparentRefractionRadiance *= transparentFogTransmittance;
                 } else {
-                    applyFog(mainRay.radiance, surfaceDepth, worldUBO.fogStart, densityAir, densityFog,
+                    applyFog(mainRay.radiance, surfaceDepth, worldUBO.fogStart, densityAir, endFogDensity,
                              endFog, mainRay.radiance, composeFogTransmittance, composeFogAdditive);
                 }
             }

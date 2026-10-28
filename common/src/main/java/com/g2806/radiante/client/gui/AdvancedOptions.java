@@ -86,11 +86,14 @@ final class AdvancedOptions {
      */
     static List<SettingsLayout.Group> groups(RadianteOptionsScreen.Category category, Map<String, String> staged) {
         Map<String, List<OptionInstance<?>>> byGroup = new LinkedHashMap<>();
+        com.g2806.radiante.client.pipeline.ShaderPackSettings packOwn = Pipeline.shaderPackSettings();
         for (String module : MODULES) {
             String prefix = module.substring(0, module.length() - "name".length()) + "attribute.";
             for (Map.Entry<String, String> attribute : Pipeline.moduleValues(module).entrySet()) {
                 String name = attribute.getKey();
-                if (!name.startsWith(prefix) || covered().contains(name)) {
+                if (!name.startsWith(prefix) || covered().contains(name)
+                    || (module.equals(Pipeline.RAY_TRACING_MODULE_NAME) && packOwn.isOwn(name))) {
+                    // A shader pack's own settings are on the pack's page (PackSettingsPage).
                     continue;
                 }
                 String shortName = name.substring(prefix.length());
@@ -160,26 +163,40 @@ final class AdvancedOptions {
 
     private static OptionInstance<?> row(String module, String name, String shortName, String type, String value,
         Map<String, String> staged) {
+        return row(module, name, shortName, type, value, staged, null, null, () -> { });
+    }
+
+    /**
+     * A row for an attribute from its type. {@code step} (null for the default) is the slider's step for a range,
+     * as a shader pack declares it; {@code description} (null for the translation of the name's
+     * {@code .tooltip} key) goes above the attribute's name in the description; {@code changed} runs after every
+     * change is staged.
+     */
+    static OptionInstance<?> row(String module, String name, String shortName, String type, String value,
+        Map<String, String> staged, Double step, Component description, Runnable changed) {
         if (type == null || value == null) {
             return null;
         }
         Component caption = caption(name);
         String key = key(module, name);
+        java.util.function.Consumer<String> stage = v -> {
+            staged.put(key, v);
+            changed.run();
+        };
         try {
             if (type.equals("bool")) {
-                return OptionInstance.createBoolean(name, tooltip(name, shortName, null),
+                return OptionInstance.createBoolean(name, tooltip(name, shortName, null, description),
                     value.equals("render_pipeline.true"),
-                    on -> staged.put(key, on ? "render_pipeline.true" : "render_pipeline.false"));
+                    on -> stage.accept(on ? "render_pipeline.true" : "render_pipeline.false"));
             }
             if (type.startsWith("enum:")) {
                 List<String> values = List.of(type.substring(5).split("-"));
                 if (!values.contains(value)) {
                     return null;
                 }
-                return new OptionInstance<>(name, tooltip(name, shortName, null),
-                    (c, v) -> Component.empty().append(caption).append(": ").append(exists(v)
-                        ? Component.translatable(v) : Component.literal(pretty(v.substring(v.lastIndexOf('.') + 1)))),
-                    new OptionInstance.Enum<>(values, Codec.STRING), value, v -> staged.put(key, v));
+                return new OptionInstance<>(name, tooltip(name, shortName, null, description),
+                    (c, v) -> Component.empty().append(caption).append(": ").append(valueName(v)),
+                    new OptionInstance.Enum<>(values, Codec.STRING), value, stage::accept);
             }
             boolean whole = type.startsWith("int_range:");
             if (!whole && !type.startsWith("float_range:")) {
@@ -192,27 +209,47 @@ final class AdvancedOptions {
             double min = Double.parseDouble(range.group(1));
             double max = Double.parseDouble(range.group(2));
             String rangeText = range.group(1) + " – " + range.group(2);
+            OptionInstance.TooltipSupplier<Integer> tooltip = tooltip(name, shortName, rangeText, description);
+            // A declared step: the slider moves from the minimum in steps of that size, up to the last one in range.
+            int stepCount = step == null || !(max > min) ? -1 : (int) Math.floor((max - min) / step + 1.0e-6);
+            if (stepCount >= 1 && stepCount <= 10_000 && (!whole || step >= 1.0)) {
+                double size = whole ? Math.rint(step) : step;
+                int count = whole ? (int) Math.floor((max - min) / size + 1.0e-6) : stepCount;
+                double now = Math.max(min, Math.min(max, Double.parseDouble(value)));
+                int index = (int) Math.max(0, Math.min(count, Math.round((now - min) / size)));
+                java.util.function.IntFunction<String> text = i -> whole
+                    ? String.valueOf(Math.round(min + i * size)) : number(Math.min(max, min + i * size));
+                return new OptionInstance<Integer>(name, tooltip,
+                    (c, v) -> Component.empty().append(caption).append(": " + text.apply(v)),
+                    new OptionInstance.IntRange(0, count, false), index, v -> stage.accept(text.apply(v)));
+            }
             if (whole) {
                 int current = (int) Math.max(min, Math.min(max, Math.round(Double.parseDouble(value))));
-                return new OptionInstance<Integer>(name, tooltip(name, shortName, rangeText),
+                return new OptionInstance<Integer>(name, tooltip,
                     (c, v) -> Component.empty().append(caption).append(": " + v),
                     new OptionInstance.IntRange((int) min, (int) max, false), current,
-                    v -> staged.put(key, String.valueOf(v)));
+                    v -> stage.accept(String.valueOf(v)));
             }
             // A wide range starting at zero is finer near zero, where such settings are used: the step grows with
             // the value.
             boolean curved = min >= 0.0 && max >= 4.0;
             double now = Math.max(min, Math.min(max, Double.parseDouble(value)));
             double t = (now - min) / (max - min);
-            int step = (int) Math.round((curved ? Math.sqrt(t) : t) * FLOAT_STEPS);
-            return new OptionInstance<Integer>(name, tooltip(name, shortName, rangeText),
+            int position = (int) Math.round((curved ? Math.sqrt(t) : t) * FLOAT_STEPS);
+            return new OptionInstance<Integer>(name, tooltip,
                 (c, v) -> Component.empty().append(caption).append(": "
-                    + (v == step ? number(now) : number(fromStep(v, min, max, curved)))),
-                new OptionInstance.IntRange(0, FLOAT_STEPS, false), step,
-                v -> staged.put(key, number(fromStep(v, min, max, curved))));
+                    + (v == position ? number(now) : number(fromStep(v, min, max, curved)))),
+                new OptionInstance.IntRange(0, FLOAT_STEPS, false), position,
+                v -> stage.accept(number(fromStep(v, min, max, curved))));
         } catch (NumberFormatException notANumber) {
             return null;
         }
+    }
+
+    /** An enum value's name: its translation (Radiante's or the shader pack's), or its last part made readable. */
+    static Component valueName(String value) {
+        Component known = known(value);
+        return known != null ? known : Component.literal(pretty(value.substring(value.lastIndexOf('.') + 1)));
     }
 
     private static double fromStep(int step, double min, double max, boolean curved) {
@@ -236,15 +273,31 @@ final class AdvancedOptions {
      */
     static Component caption(String key) {
         int at = key.indexOf(".attribute.");
-        if (at < 0 || exists(key)) {
+        if (at < 0) {
             return Component.translatable(key);
         }
-        return Component.literal(pretty(key.substring(at + ".attribute.".length())));
+        Component known = known(key);
+        return known != null ? known : Component.literal(pretty(key.substring(at + ".attribute.".length())));
     }
 
-    private static <T> OptionInstance.TooltipSupplier<T> tooltip(String name, String shortName, String range) {
+    /**
+     * A key's text: the game's translation (Radiante's own lang files), or else the line the shader pack in use gives
+     * it in its {@code lang} files; null when neither has it.
+     */
+    static Component known(String key) {
+        if (exists(key)) {
+            return Component.translatable(key);
+        }
+        String pack = Pipeline.shaderPackTranslation(key);
+        return pack != null ? Component.literal(pack) : null;
+    }
+
+    private static <T> OptionInstance.TooltipSupplier<T> tooltip(String name, String shortName, String range,
+        Component description) {
         Component text = Component.empty();
-        if (exists(name + ".tooltip")) {
+        if (description != null) {
+            text = Component.empty().append(description).append("\n\n");
+        } else if (exists(name + ".tooltip")) {
             text = Component.empty().append(Component.translatable(name + ".tooltip")).append("\n\n");
         }
         Component full = Component.empty().append(text).append(Component.literal(shortName

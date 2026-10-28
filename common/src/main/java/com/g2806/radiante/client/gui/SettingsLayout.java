@@ -37,11 +37,24 @@ import net.minecraft.util.FormattedCharSequence;
  */
 final class SettingsLayout {
 
-    /** A section and its options, in order; then its blocks, each under a heading of its own (the addons). */
+    /**
+     * A section and its options, in order; then its blocks, each under a heading of its own (the addons). {@code title}
+     * and {@code icon} name a section that is not one of Radiante's own (a shader pack's page, named after the pack);
+     * null for the category's name and picture.
+     */
     record Section(RadianteOptionsScreen.Category category, List<OptionInstance<?>> options, List<Group> groups,
-                   List<Block> blocks) {
+                   List<Block> blocks, Component title, AddonIcons.Icon icon) {
+        Section(RadianteOptionsScreen.Category category, List<OptionInstance<?>> options, List<Group> groups,
+                List<Block> blocks) {
+            this(category, options, groups, blocks, null, null);
+        }
+
         Section(RadianteOptionsScreen.Category category, List<OptionInstance<?>> options, List<Group> groups) {
             this(category, options, groups, List.of());
+        }
+
+        Component name() {
+            return this.title != null ? this.title : Component.translatable(this.category.key());
         }
     }
 
@@ -49,14 +62,29 @@ final class SettingsLayout {
      * Options under a heading that folds them away, as each addon's are in the Addons section; {@code key} (the
      * addon's id) is what its open or folded state is remembered by. {@code empty} is shown under the heading when
      * there are no options; a search that finds the heading shows all of them. {@code icon} (the addon's, null for
-     * none) is drawn left of the heading.
+     * none) is drawn left of the heading. {@code advanced} are shown under the others, a step in and dimmer, only while
+     * Advanced is on (a shader pack's advanced settings in their group); {@code openByDefault} keeps a block open until
+     * the player folds it, where several blocks would otherwise start folded.
      */
     record Block(String key, Component heading, AddonIcons.Icon icon, List<OptionInstance<?>> options,
-                 Component empty) {
+                 Component empty, List<OptionInstance<?>> advanced, boolean openByDefault) {
+        Block(String key, Component heading, AddonIcons.Icon icon, List<OptionInstance<?>> options, Component empty) {
+            this(key, heading, icon, options, empty, List.of(), false);
+        }
     }
 
-    /** Advanced options about one thing, under a heading that folds them away. */
-    record Group(String key, List<OptionInstance<?>> options) {
+    /**
+     * Advanced options about one thing, under a heading that folds them away. {@code title} names a group whose key
+     * is not a translation key (a shader pack's); null for the key's translation.
+     */
+    record Group(String key, List<OptionInstance<?>> options, Component title) {
+        Group(String key, List<OptionInstance<?>> options) {
+            this(key, options, null);
+        }
+
+        Component name() {
+            return this.title != null ? this.title : Component.translatable(this.key);
+        }
     }
 
     /**
@@ -111,7 +139,7 @@ final class SettingsLayout {
 
     private static boolean blockOpen(Section section, Block block) {
         Boolean state = blockStates().get(block.key());
-        return state != null ? state : section.blocks().size() == 1;
+        return state != null ? state : block.openByDefault() || section.blocks().size() == 1;
     }
 
     private static void setBlockOpen(String key, boolean open) {
@@ -264,6 +292,14 @@ final class SettingsLayout {
 
         /** Something to know before changing the option, or null. */
         default Component notice(String optionKey) {
+            return null;
+        }
+
+        /**
+         * The cost of an option that is not one of Radiante's own (a shader pack's, as the pack declares it), or null
+         * to go by {@link OptionImpact#of} its caption key.
+         */
+        default OptionImpact impact(OptionInstance<?> option) {
             return null;
         }
     }
@@ -450,7 +486,7 @@ final class SettingsLayout {
                     continue;
                 }
                 if (this.actions.advanced()) {
-                    groups.add(new Group(group.key(), matches));
+                    groups.add(new Group(group.key(), matches, group.title()));
                 } else if (!filter.isEmpty()) {
                     hidden += matches.size();
                 }
@@ -460,8 +496,20 @@ final class SettingsLayout {
                 boolean named = !filter.isEmpty()
                     && block.heading().getString().toLowerCase(Locale.ROOT).contains(filter);
                 List<OptionInstance<?>> matches = named ? block.options() : matching(block.options(), filter);
-                if (filter.isEmpty() || named || !matches.isEmpty()) {
-                    blocks.add(new Block(block.key(), block.heading(), block.icon(), matches, block.empty()));
+                List<OptionInstance<?>> advancedMatches = named ? block.advanced() : matching(block.advanced(), filter);
+                if (!this.actions.advanced()) {
+                    if (!filter.isEmpty()) {
+                        hidden += advancedMatches.size();
+                    }
+                    advancedMatches = List.of();
+                    // A block of advanced options only is left out while they are hidden.
+                    if (block.options().isEmpty() && !block.advanced().isEmpty()) {
+                        continue;
+                    }
+                }
+                if (filter.isEmpty() || named || !matches.isEmpty() || !advancedMatches.isEmpty()) {
+                    blocks.add(new Block(block.key(), block.heading(), block.icon(), matches, block.empty(),
+                        advancedMatches, block.openByDefault()));
                 }
             }
             if (shown.isEmpty() && groups.isEmpty() && hidden == 0 && blocks.isEmpty()) {
@@ -485,7 +533,11 @@ final class SettingsLayout {
                     this.lines.add(new Line(section, option, null, null, false, y, ROW));
                     y += ROW;
                 }
-                if (block.options().isEmpty() && block.empty() != null) {
+                for (OptionInstance<?> option : block.advanced()) {
+                    this.lines.add(new Line(section, option, null, null, true, y, ROW));
+                    y += ROW;
+                }
+                if (block.options().isEmpty() && block.advanced().isEmpty() && block.empty() != null) {
                     this.lines.add(new Line(section, null, null, block.empty(), false, y, ROW));
                     y += ROW;
                 }
@@ -559,13 +611,23 @@ final class SettingsLayout {
                 g.fill(this.sidebarX, entryY, this.sidebarX + this.sidebarW, entryY + 18, ROW_HOVER);
             }
             int textX = this.sidebarX + PAD;
-            Identifier sectionIcon = texture(section.category().name().toLowerCase(Locale.ROOT));
-            if (sectionIcon != null) {
+            Identifier sectionIcon = section.icon() != null ? null
+                : texture(section.category().name().toLowerCase(Locale.ROOT));
+            if (section.icon() != null) {
+                drawIcon(g, section.icon(), textX, entryY + 1);
+                textX += 20;
+            } else if (sectionIcon != null) {
                 g.blit(RenderPipelines.GUI_TEXTURED, sectionIcon, textX, entryY + 1, 0.0f, 0.0f, 16, 16, 16, 16);
                 textX += 20;
             }
-            g.text(this.font, Component.translatable(section.category().key()), textX, entryY + 5,
-                selected ? TEXT : ACCENT);
+            // A pack's name can be longer than the sidebar is wide.
+            Component name = section.name();
+            int room = this.sidebarX + this.sidebarW - 6 - textX;
+            if (this.font.width(name) > room) {
+                name = Component.literal(this.font.plainSubstrByWidth(name.getString(),
+                    Math.max(0, room - this.font.width("…"))) + "…");
+            }
+            g.text(this.font, name, textX, entryY + 5, selected ? TEXT : ACCENT);
             entryY += 20;
         }
         // With a controller in use: the bumpers that move between the sections, under them.
@@ -591,8 +653,8 @@ final class SettingsLayout {
                     g.fill(this.listX, Math.max(y, this.top), this.listX + this.listW, Math.min(y + HEADER, this.bottom),
                         PANEL_DARK);
                 }
-                g.text(this.font, Component.literal("◆ ").append(Component.translatable(line.section().category().key())),
-                    this.listX + PAD, y + 7, ACCENT);
+                g.text(this.font, Component.literal("◆ ").append(line.section().name()), this.listX + PAD, y + 7,
+                    ACCENT);
                 continue;
             }
         }
@@ -632,16 +694,12 @@ final class SettingsLayout {
                 textX += this.font.width(arrow);
                 AddonIcons.Icon addonIcon = line.block().icon();
                 if (addonIcon != null) {
-                    int iw = addonIcon.width();
-                    int ih = addonIcon.height();
-                    int w = iw >= ih ? ICON : Math.max(1, ICON * iw / ih);
-                    int h = ih >= iw ? ICON : Math.max(1, ICON * ih / iw);
-                    g.blit(RenderPipelines.GUI_TEXTURED, addonIcon.texture(), textX + (ICON - w) / 2,
-                        y + 1 + (ICON - h) / 2, 0.0f, 0.0f, w, h, iw, ih, iw, ih);
+                    drawIcon(g, addonIcon, textX, y + 1);
                     textX += ICON + 4;
                 }
                 g.text(this.font, line.block().heading(), textX, y + 6, hover ? ACCENT : TEXT);
-                Component count = Component.literal(String.valueOf(line.block().options().size()));
+                Component count = Component.literal(String.valueOf(line.block().options().size()
+                    + line.block().advanced().size()));
                 g.text(this.font, count, this.listX + this.listW - PAD - 4 - this.font.width(count), y + 6, TEXT_DIM);
                 g.fill(this.listX + PAD + 4, y + ROW - 2, this.listX + this.listW - PAD - 4, y + ROW - 1, 0x60FFFFFF);
                 continue;
@@ -659,8 +717,8 @@ final class SettingsLayout {
                 if (keyboardFocus && focusedButton < 0 && navKey(line).equals(focusedKey)) {
                     g.outline(this.listX + 4, y, this.listW - 8, ROW, ACCENT);
                 }
-                g.text(this.font, Component.literal(open ? "▾ " : "▸ ").append(Component.translatable(
-                    line.group().key())), this.listX + PAD + 4, y + 6, hover ? TEXT : ACCENT);
+                g.text(this.font, Component.literal(open ? "▾ " : "▸ ").append(line.group().name()),
+                    this.listX + PAD + 4, y + 6, hover ? TEXT : ACCENT);
                 Component count = Component.literal(String.valueOf(line.group().options().size()));
                 g.text(this.font, count, this.listX + this.listW - PAD - 4 - this.font.width(count), y + 6, TEXT_DIM);
                 continue;
@@ -706,6 +764,16 @@ final class SettingsLayout {
                 g.setTooltipForNextFrame(this.font.split(button.shownTooltip(), 200), mouseX, mouseY);
             }
         }
+    }
+
+    /** An icon fitted into a square of {@link #ICON} at its own proportions. */
+    private static void drawIcon(GuiGraphicsExtractor g, AddonIcons.Icon icon, int x, int y) {
+        int iw = icon.width();
+        int ih = icon.height();
+        int w = iw >= ih ? ICON : Math.max(1, ICON * iw / ih);
+        int h = ih >= iw ? ICON : Math.max(1, ICON * ih / iw);
+        g.blit(RenderPipelines.GUI_TEXTURED, icon.texture(), x + (ICON - w) / 2, y + (ICON - h) / 2, 0.0f, 0.0f, w, h,
+            iw, ih, iw, ih);
     }
 
     private void drawRow(GuiGraphicsExtractor g, OptionInstance<?> option, int y, boolean hover, boolean advanced) {
@@ -786,7 +854,8 @@ final class SettingsLayout {
             lines.addAll(tooltip.toCharSequence(Minecraft.getInstance()));
         }
         String optionKey = keyOf(caption(option));
-        OptionImpact impact = OptionImpact.of(optionKey);
+        OptionImpact declared = this.availability.impact(option);
+        OptionImpact impact = declared != null ? declared : OptionImpact.of(optionKey);
         if (this.restart.needsRestart(option)) {
             lines.addAll(this.font.split(Component.translatable("options.radiante.restart.hint")
                 .withColor(NOTICE), wrap));
@@ -1389,7 +1458,7 @@ final class SettingsLayout {
             return line.block().heading();
         }
         if (line.option() == null) {
-            return Component.translatable(line.group().key());
+            return line.group().name();
         }
         return caption(line.option()).copy().append(": ").append(valueText(line.option()));
     }

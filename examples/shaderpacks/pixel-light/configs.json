@@ -14,28 +14,89 @@
             "name": "render_pipeline.module.ray_tracing.attribute.pixel_light_texels",
             "type": "int_range:0-16",
             "default_value": "16",
-            "define": "PIXEL_LIGHT_TEXELS"
+            "define": "PIXEL_LIGHT_TEXELS",
+            "group": "pixel_light.group.light",
+            "order": 10,
+            "step": 2,
+            "description": "pixel_light.desc.texels",
+            "performance_impact": "low"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.pixel_light_flat",
             "type": "bool",
             "default_value": "render_pipeline.true",
-            "define": "PIXEL_LIGHT_FLAT"
+            "define": "PIXEL_LIGHT_FLAT",
+            "group": "pixel_light.group.light",
+            "order": 11,
+            "description": "pixel_light.desc.flat",
+            "visible_when": {
+                "attribute": "pixel_light_texels",
+                "not_equals": 0
+            }
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.pixel_light_palette",
             "type": "int_range:0-32",
             "default_value": "12",
             "runtime": true,
-            "define": "PIXEL_LIGHT_PALETTE"
+            "define": "PIXEL_LIGHT_PALETTE",
+            "group": "pixel_light.group.palette",
+            "order": 20,
+            "description": "pixel_light.desc.palette"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.pixel_light_dither",
             "type": "float_range:0.0-1.0",
             "default_value": "0.6",
             "runtime": true,
-            "define": "PIXEL_LIGHT_DITHER"
+            "define": "PIXEL_LIGHT_DITHER",
+            "group": "pixel_light.group.palette",
+            "order": 21,
+            "step": 0.05,
+            "description": "pixel_light.desc.dither",
+            "visible_when": {
+                "attribute": "pixel_light_palette",
+                "not_equals": [
+                    0,
+                    1
+                ]
+            }
         }
+    ],
+    "presets": [
+        {
+            "name": "pixel_light.preset.retro",
+            "description": "pixel_light.preset.retro.desc",
+            "values": {
+                "pixel_light_texels": 16,
+                "pixel_light_flat": true,
+                "pixel_light_palette": 12,
+                "pixel_light_dither": 0.6
+            }
+        },
+        {
+            "name": "pixel_light.preset.chunky",
+            "description": "pixel_light.preset.chunky.desc",
+            "values": {
+                "pixel_light_texels": 8,
+                "pixel_light_flat": true,
+                "pixel_light_palette": 6,
+                "pixel_light_dither": 0.8
+            }
+        },
+        {
+            "name": "pixel_light.preset.clean",
+            "description": "pixel_light.preset.clean.desc",
+            "values": {
+                "pixel_light_texels": 16,
+                "pixel_light_flat": true,
+                "pixel_light_palette": 0,
+                "pixel_light_dither": 0.0
+            }
+        }
+    ],
+    "profile_keys": [
+        "*"
     ],
     "execution_post": {
         "global_variables": [

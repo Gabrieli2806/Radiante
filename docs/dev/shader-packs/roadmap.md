@@ -9,7 +9,7 @@ Phases in order; each one is useful on its own. Efforts are rough, for one devel
 | 1 | Small packs: `extends` and hook points | 1 week | Done; example packs being polished |
 | 2 | Stable interface: `radiante/v1` headers, `api_version` | 1-2 weeks | Groundwork: `api_version` and `requires.radiante` checked in the list |
 | 3 | Reference packs, more hooks and the author guide | 1-2 weeks | Guide started |
-| 4 | Settings pages, presets and the development loop | 1-2 weeks | Development loop, live post settings and bloom built; settings pages planned |
+| 4 | Settings pages, presets and the development loop | 1-2 weeks | Built: settings pages, presets, `profile_keys`, the development loop, live post settings and bloom; a few items open |
 | 5 | Materials and micromap opt-out | 1-2 weeks | Planned |
 | 6 | Renderer features for every pack | 2-3 weeks | Planned |
 | 7 | Distribution | 2-3 days + platforms | Planned |
@@ -72,7 +72,10 @@ the v1 accessors needs no pack change.
 - Reference packs written only on v1 (Pixel Light, a reworked Inkwell), proving the interface is enough for looks
   far from Radiante PT's.
 - More hook points: clouds (shape, density, colour), water waves (height, speed, foam), weather and time of day, so a
-  pack changes them with one small file instead of replacing Radiante PT's own.
+  pack changes them with one small file instead of replacing Radiante PT's own. Done: a pack's cloud layer and its
+  shadow, stars, the sun and moon discs, water waves and surface (foam), the view under water, the Nether's and the
+  End's sky and fog, block light colour, and the weather, biome and time of day in `common/pack_world.glsl`. Open:
+  the shape of radiante-pt's own clouds, and wind per kind of plant (its pass is the renderer's, design §5).
 - Pack author guide in `docs/en` and `docs/es`: quick start from the example, manifest, attributes, hooks, headers,
   debugging, publishing.
 
@@ -93,21 +96,26 @@ running picture with the error on screen.
 
 Status:
 
-- Built ([design §10](design.md#10-development-loop)): hot reload of folder packs (checked in the background first;
+- Done: the pack's page in Radiante's settings, named after the pack with its icon, with its own attributes grouped
+  and ordered, advanced ones behind Advanced, `visible_when`, descriptions and cost; `presets` as a Pack Preset row;
+  renderer profiles write only the `profile_keys` a pack lists ([design §7](design.md#7-settings)). The example packs
+  use the keys, with names in three languages. Unit tested (`ShaderPackSettingsTest`, the example packs included).
+- Done ([design §10](design.md#10-development-loop)): hot reload of folder packs (checked in the background first;
   a pack that does not compile is not built, the running picture stays, the error shows in a popup and on the Shader
   Packs screen); `/radiante pack validate [name]` and `/radiante pack reload`; debug views (`/radiante debug view`:
   albedo, normal, roughness, metallic, emission, depth, motion vectors, surface flags) and `debug_views` for a pack's
   own.
-- Built: live settings in post passes, and room for them: `worldUBO.packParams` has 256 slots (was 64, of which
+- Done: live settings in post passes, and room for them: `worldUBO.packParams` has 256 slots (was 64, of which
   Radiante PT took 62); `common/pack_post.glsl` for post passes; Pixel Light's palette and the Mellow port's grade are
   live now.
-- Built: bloom for packs (`RADIANTE_POST_BLOOM`, `radianteBloom`): Radiante's own bloom pyramid, drawn only for a pack
+- Done: bloom for packs (`RADIANTE_POST_BLOOM`, `radianteBloom`): Radiante's own bloom pyramid, drawn only for a pack
   that asks; the example pack adds bloom, a lens flare and chromatic aberration with it.
 - Checked offline: native and Java builds; Radiante PT's optimized SPIR-V unchanged with no debug view chosen (the
   slot count changes only the uniform block's array length); every example pack and every debug view compiles.
-- Not tried in game yet: the hot reload, the commands, the debug views and the bloom.
-- Open: the settings page per pack, attribute metadata, presets, `profile_keys`; a per-file error view; SHaRC heat map
-  and micromap coverage views.
+- Not tried in game yet: the page, presets, `visible_when` and the profile gate (built and unit tested only); the
+  hot reload, the commands, the debug views and the bloom.
+- Open: `requires_feature`, rows for `vec3` attributes, a per-file error view, SHaRC heat map and micromap coverage
+  debug views.
 
 ## Phase 5: materials and micromaps
 
