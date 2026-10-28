@@ -154,9 +154,42 @@ public final class ShaderPackLibrary {
         } catch (IOException e) {
             RadianteClient.LOGGER.warn("Could not list the shader pack folder {}", folder, e);
         }
+        // Iris's own packs, from the game's shaderpacks folder: listed so their look can be converted, never run.
+        Path iris = IrisLookImport.irisFolder();
+        if (iris != null && Files.isDirectory(iris)) {
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(iris)) {
+                for (Path candidate : stream) {
+                    String name = candidate.getFileName().toString();
+                    boolean zip = Files.isRegularFile(candidate) && name.toLowerCase(Locale.ROOT).endsWith(".zip");
+                    if (!zip && !Files.isDirectory(candidate)) {
+                        continue;
+                    }
+                    Entry entry = read(candidate, IRIS_PREFIX + name, false);
+                    if (IRIS_PROBLEM.equals(entry.problem())) {
+                        found.add(entry);
+                    }
+                }
+            } catch (IOException e) {
+                RadianteClient.LOGGER.warn("Could not list Iris's shader pack folder {}", iris, e);
+            }
+        }
         found.sort(Comparator.comparing(entry -> entry.fileName().toLowerCase(Locale.ROOT)));
         entries.addAll(found);
         return entries;
+    }
+
+    /** The problem key of an Iris or OptiFine pack. */
+    public static final String IRIS_PROBLEM = "screen.radiante.shader_packs.problem.iris";
+    /** The path of a pack listed from Iris's folder rather than Radiante's. */
+    public static final String IRIS_PREFIX = "iris:";
+
+    /** Where a listed pack is on disk: in Radiante's folder, or Iris's for {@link #IRIS_PREFIX} paths. */
+    public static Path file(Entry entry) {
+        if (entry.path().startsWith(IRIS_PREFIX)) {
+            Path iris = IrisLookImport.irisFolder();
+            return iris == null ? null : iris.resolve(entry.path().substring(IRIS_PREFIX.length()));
+        }
+        return RadianteClient.radianceDir == null ? null : RadianteClient.radianceDir.resolve(entry.path());
     }
 
     /** The built-in pack, read from where the native library installed it. */
@@ -191,7 +224,7 @@ public final class ShaderPackLibrary {
                 // An Iris or OptiFine pack put in Radiante's folder: said as such, since "not a Radiante pack" leaves
                 // the player wondering what is wrong with a pack that works elsewhere.
                 String problem = nested != null ? "screen.radiante.shader_packs.problem.nested"
-                    : files.rasterShaderPack() ? "screen.radiante.shader_packs.problem.iris"
+                    : files.rasterShaderPack() ? IRIS_PROBLEM
                     : "screen.radiante.shader_packs.problem.no_config";
                 return new Entry(stored, fileName, fallbackName, null, null, null, null, null, null, problem, nested,
                     builtIn);

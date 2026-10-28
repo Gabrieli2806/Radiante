@@ -1,0 +1,9 @@
+# Radiante look: its own settings; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.look_saturation=风格：饱和度
+render_pipeline.module.ray_tracing.attribute.look_dark_desaturation=风格：暗部去饱和
+render_pipeline.module.ray_tracing.attribute.look_warmth=风格：色温
+render_pipeline.module.ray_tracing.attribute.look_contrast=风格：对比度
+render_pipeline.module.ray_tracing.attribute.look_vignette=风格：暗角
+render_pipeline.module.ray_tracing.attribute.look_fog=风格：雾强度
+render_pipeline.module.ray_tracing.attribute.look_sky_saturation=风格：天空饱和度
+render_pipeline.module.ray_tracing.attribute.look_water_absorption=风格：水体浑浊度
