@@ -87,8 +87,3 @@ and the other surface tests in `util/vertex.glsl`; the sun, moon and weather in 
 
 Radiante PT is GPL-3.0, so a pack built from its files is GPL-3.0 too. Whether the future public headers get a more
 permissive licence is still open.
-
-## Radiance packs
-
-Packs made for Radiance, the project Radiante's renderer comes from, do not run as they are: the renderer's data
-changed since. See [what happened when they were tried](../dev/shader-packs/radiance-packs.md).

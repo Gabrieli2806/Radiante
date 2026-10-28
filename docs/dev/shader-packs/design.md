@@ -43,7 +43,7 @@ headers (`common/shared.hpp`, `util/vertex.glsl`, SHaRC): this is the coupling [
 
 ## 3. Manifest
 
-In `configs.json`, under `"radiante"` (Radiance's `"radiance"` is read too):
+In `configs.json`, under `"radiante"`:
 
 | Field | Today | Meaning |
 | --- | --- | --- |
@@ -75,7 +75,6 @@ fails like any other bad pack. A required feature the GPU lacks: planned.
   minor release after `v2` ships, and the changelog says what packs must change.
 - **`api_version: 0`** (today's packs, built on copies of the internals) is best effort: it works until the internals
   change. The Shader Packs screen says so.
-- **Radiance packs** have no `api_version` and are ported, not emulated ([decisions](decisions.md#d-002)).
 
 ## 5. Inheritance and hook points
 
@@ -171,8 +170,7 @@ Radiante PT moves onto these headers first; a header is only published once Radi
 ## 7. Settings
 
 Today every attribute of a pack is a setting, named through its `lang` files; `"runtime": true` attributes change
-live through `worldUBO.packParams` (64 slots), the rest rebuild. Planned (phase 4), as extra attribute keys
-(Radiance Advanced already uses some of these names):
+live through `worldUBO.packParams` (64 slots), the rest rebuild. Planned (phase 4), as extra attribute keys:
 
 - `group` (section), `order`, `advanced`, `description` (tooltip), `performance_impact` (`low`/`medium`/`high`),
   `step`, `visible_when` (another attribute's value), `requires_feature`.
@@ -198,7 +196,7 @@ live through `worldUBO.packParams` (64 slots), the rest rebuild. Planned (phase 
 ## 9. Resources, passes and renderer features
 
 - Today: `textures`, `buffers`, `passes` (`ray_tracing`, `compute`, `full_screen`, `render`) and `execution`
-  scripts as Radiance defined them; SHaRC through `sharc.update_pass`/`resolve_comp`.
+  scripts; SHaRC through `sharc.update_pass`/`resolve_comp`.
 - Planned (phase 6): built-in resources by name; custom resources with generated declarations
   (`radiante/pack_resources.glsl`); declared outputs for the denoiser (the pack states which guide images it writes,
   Radiante picks NRD or DLSS-RR); ReSTIR reservoir helpers; optional extra outputs (segmentation, separate
@@ -222,6 +220,6 @@ Packs are code that runs on the GPU. Radiante does not sandbox shaders; it limit
 - A pack that hangs or crashes the GPU (`VK_ERROR_DEVICE_LOST`) ends the game, so a marker file
   (`radiante/shaderpacks/.trying`) makes the next start go back to Radiante PT and say which pack it was.
 - Packs are read from `radiante/shaderpacks/` only. Zips are extracted entry by entry with their own checks (section
-  5, [D-011](decisions.md#d-011)); a folder pack that extends another has the same limits and its symbolic links are
+  5); a folder pack that extends another has the same limits and its symbolic links are
   skipped. Shaders get no file or network access (GLSL has none).
 - Players should get packs from places they trust, as with any mod; the screen shows author and licence.

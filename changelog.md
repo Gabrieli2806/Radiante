@@ -10,12 +10,12 @@ All notable changes to this project are documented in this file.
   replaced by Radiante PT again, and the renderer's messages (the compiler's, or why `configs.json` was rejected) are
   shown under the list with a button to copy them; the renderer now logs why a pack's `configs.json` was rejected
   instead of quietly loading the built-in pack. Zips that wrap the pack in a folder are flagged in the list. A pack
-  that takes the game down while it is being tried (Radiance's Vanilla PT loses the GPU) is replaced by Radiante PT
+  that takes the game down while it is being tried is replaced by Radiante PT
   at the next start. A setting value a pack does not offer (radiante-pt's Bedrock water carried into another pack
   with the same setting) goes back to that pack's default instead of breaking its shaders.
 - Shader pack authors: a guide (`docs/en/shader-packs.md`, `docs/es/paquetes-de-shaders.md`), an example pack in
   `examples/shaderpacks/` that holds only the files it changes and is built on top of Radiante PT with
-  `./gradlew shaderPackExamples`, and the design, roadmap and decisions for pack support in `docs/dev/shader-packs/`.
+  `./gradlew shaderPackExamples`, and the design and roadmap for pack support in `docs/dev/shader-packs/`.
 - Shader packs can build on Radiante PT instead of copying it: `"extends": "radiante-pt@1"` in the manifest, and the
   pack holds only its own files; Radiante PT's files go under it and `configs.json` and the lang files are merged
   (attributes, textures, buffers and passes by name, new passes placed with `before`/`after`). Radiante PT gains six

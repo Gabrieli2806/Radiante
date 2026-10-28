@@ -92,8 +92,3 @@ Ayudas útiles de las cabeceras de Radiante PT: `isLeavesSurface`, `isPlantSurfa
 
 Radiante PT es GPL-3.0, así que un paquete hecho con sus archivos también es GPL-3.0. Si las futuras cabeceras públicas
 tendrán una licencia más permisiva está por decidir.
-
-## Paquetes de Radiance
-
-Los paquetes hechos para Radiance, el proyecto del que viene el renderer de Radiante, no funcionan tal cual: los datos del
-renderer cambiaron desde entonces. Ver [qué pasó al probarlos](../dev/shader-packs/radiance-packs.md) (en inglés).

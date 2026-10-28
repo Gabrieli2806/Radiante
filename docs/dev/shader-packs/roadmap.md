@@ -5,10 +5,10 @@ Phases in order; each one is useful on its own. Efforts are rough, for one devel
 
 | Phase | Goal | Effort | Status |
 | --- | --- | --- | --- |
-| 0 | Choose packs in game, survive bad packs | — | Done (`feature/shaderpacks`) |
-| 1 | Small packs: `extends` and hook points | 1 week | Built, not yet tried in game (`feature/shaderpacks-api`) |
+| 0 | Choose packs in game, survive bad packs | — | Done |
+| 1 | Small packs: `extends` and hook points | 1 week | Done; example packs being polished |
 | 2 | Stable interface: `radiante/v1` headers, `api_version` | 1-2 weeks | Groundwork: `api_version` and `requires.radiante` checked in the list |
-| 3 | Reference packs and the author guide | 3-5 days | Planned |
+| 3 | Reference packs, more hooks and the author guide | 1-2 weeks | Guide started |
 | 4 | Settings pages, presets and the development loop | 1-2 weeks | Planned |
 | 5 | Materials and micromap opt-out | 1-2 weeks | Planned |
 | 6 | Renderer features for every pack | 2-3 weeks | Planned |
@@ -20,7 +20,7 @@ Shader Packs screen, `radiante/shaderpacks/`, metadata, switch through the backg
 with the compiler's errors, crash recovery marker, per-pack values checked against the pack's types, native log of
 why a pack was rejected, example pack built as an overlay (`./gradlew shaderPackExamples`).
 
-## Phase 1: small packs (built, not yet tried in game)
+## Phase 1: small packs (done)
 
 - Loader: `"extends"` in the manifest; stage the base, then the pack's files; merge `configs.json` (attributes,
   passes with `before`/`after`, textures, buffers, execution) and `lang` files ([design §5](design.md#5-inheritance-and-hook-points)).
@@ -32,19 +32,22 @@ why a pack was rejected, example pack built as an overlay (`./gradlew shaderPack
 Done when: the example pack is under 10 files with no copied Radiante PT shader, loads through `extends` with the same
 picture as today's (side-by-side screenshots), and Radiante PT renders identically with its default hooks.
 
-Status (`feature/shaderpacks-api`):
+Status:
 
 - Done: `extends` in the loader (`shader_pack_extends.cpp`, merge rules in [design §5](design.md#extends)); the six
   hooks; radiante-example rewritten (10 files: manifest, five hook files, three lang files, icon; none copied);
-  Inkwell, a second example built only on `extends`, hooks and passes of its own; checked zip extraction for every
+  Inkwell, a second example built only on `extends`, hooks and passes of its own; Pixel Light, lighting and
+  reflections per texture texel (`hookTexelCentre`, `g_hookViewDir`); checked zip extraction for every
   pack (path escapes, symbolic links, file count, bytes actually written, CRC); offline tools (`shader_pack_stage`
   with `--self-test` and `--extract`, `compile_pack.py`, `zip_safety_test.py`).
 - Checked offline: native and Java builds; the merge's self-test; crafted zips; every shader of Radiante PT, the
   example and Inkwell compiles with glslangValidator (Inkwell and the example also with all settings off their
   defaults); Radiante PT's optimized SPIR-V with the default hooks is identical to before for every ray tracing,
   compute and sky shader.
-- Not yet checked: in game. The side-by-side screenshots of the example (old overlay build against the `extends`
-  build) and of Radiante PT, Inkwell's look, and loading a pack through the Shader Packs screen.
+- Tried in game: the Shader Packs screen, switching packs, Inkwell, Pixel Light.
+- Open: Inkwell's outlines shimmer (drawn after the upscaler on a jittered picture; draw them before it, from depth
+  and normals); Pixel Light reflections are per texel in direction but still start from the pixel; side-by-side
+  screenshots of Radiante PT before and after the hooks.
 - Not done: `"extends"` of a pack other than radiante-pt.
 
 ## Phase 2: stable interface
@@ -63,8 +66,10 @@ the v1 accessors needs no pack change.
 
 ## Phase 3: reference packs and guide
 
-- Port Radiance Vanilla PT onto v1 as a second reference pack (GPL-3.0, credited), proving the interface fits a pack
-  Radiante did not write ([findings](radiance-packs.md)).
+- Reference packs written only on v1 (Pixel Light, a reworked Inkwell), proving the interface is enough for looks
+  far from Radiante PT's.
+- More hook points: clouds (shape, density, colour), water waves (height, speed, foam), weather and time of day, so a
+  pack changes them with one small file instead of replacing Radiante PT's own.
 - Pack author guide in `docs/en` and `docs/es`: quick start from the example, manifest, attributes, hooks, headers,
   debugging, publishing.
 
@@ -72,6 +77,9 @@ Done when: a person who never read PrismRT's source can make a pack that changes
 
 ## Phase 4: settings and development loop
 
+- A page per pack in the settings, with the pack's settings grouped, instead of rows among Radiante's own.
+- Live settings in post passes too (pack parameters reach full-screen passes), so a strength slider in a grade or
+  palette moves without a rebuild.
 - Attribute metadata (`group`, `order`, `advanced`, `description`, `performance_impact`, `step`, `visible_when`) and
   `presets`; a generated settings page per pack.
 - Renderer profiles touch only `profile_keys` a pack declares.
@@ -105,5 +113,6 @@ Done when: a pack other than Radiante PT runs with DLSS-RR, SHaRC and Distant Ho
 
 ## Open questions
 
-- Licence of the `radiante/v1` headers: [decisions D-005](decisions.md#d-005) (owner's call, blocks phase 2's release).
+- Licence of the `radiante/v1` headers (owner's call, blocks phase 2's release): GPL-3.0 like Radiante PT, or a
+  permissive licence for the headers alone so packs of any licence can include them.
 - Whether packs may ship native-side resources (custom images in formats the renderer does not know): not planned.
