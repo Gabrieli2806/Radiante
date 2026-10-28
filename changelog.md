@@ -4,16 +4,16 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
-- A second built-in shader pack, **Pixelated Lighting**, listed next to Radiante PT under Shader Packs: Radiante PT with
-  every texel of every surface lit as one flat value, after BetterRTX's preset of that name. Shadows, torch light,
-  bounce light, glossy highlights and reflections come out in the texture's pixels; water reflections are solid
-  squares, one reflected colour per water texel, near objects included. Natural colours by default; the old example's
-  retro palette is an option (Retro Palette, off). Settings: Light Texels per Block, Flat Texels, Solid Texels (every
-  pixel of a texel takes the same light samples, for crisp blocks) and the palette. It replaces the Pixel Light
+- A second built-in shader pack, **Pixelated Lighting**, listed next to Radiante PT under Shader Packs: pixelated
+  shadows and reflections, after BetterRTX's preset of that name. Shadow edges from the sun, torches and held lights
+  follow the texture's pixels, and reflections, water's included, are solid squares, one per texel, near objects too;
+  the light itself (its angle, a torch's falloff, bounce light, glow) stays smooth, and what is seen through water and
+  glass stays sharp. Natural colours by default; the old example's retro palette is an option (Retro Palette, off).
+  Settings: Texels per Block, Pixelated Shadows, Pixelated Reflections and the palette. It replaces the Pixel Light
   example: a pipeline that used `shaderpacks/pixel-light.zip` switches to the built-in pack, at its new defaults.
-- Shader packs: a new hook, `hooks/shading_point.glsl` (`hookSampleKey`), for a pack that moves where a surface is
-  shaded: the camera's reflections off water, glass and mirrors start from the moved point, and the pack can give
-  pixels a shared sampling key. Radiante PT compiles to the same shaders as before.
+- Shader packs: a new hook, `hooks/ray_origins.glsl` (`hookShadowOffset`, `hookReflectionOffset`), to start a hit's
+  shadow rays and reflection rays somewhere else than where it is lit; the camera's reflections off water, glass and
+  mirrors follow. Radiante PT compiles to the same shaders as before.
 - Renderer profiles are gone: radiante-pt's defaults are now the Bedrock RTX (Enhanced) look, all in one, so the
   Renderer Profile selector, the Realistic and Custom profiles and the "set by the profile" notes are removed. Every
   setting the profile used to hold (exposure, Bedrock's tone curve, glass, water, fog, low-light boost...) is a plain

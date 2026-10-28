@@ -1,10 +1,10 @@
 {
     "radiante": {
         "display_name": "Pixelated Lighting",
-        "version": "1.1.0",
+        "version": "1.2.0",
         "author": "G2806",
         "license": "GPL-3.0",
-        "description": "Light on the texture's pixel grid: every texel takes one shadow, one light, one bounce and one reflection, so shadows, torch light, reflections and glossy highlights come out in solid squares. Natural colours; an optional retro palette.",
+        "description": "Shadows and reflections on the texture's pixel grid: shadow edges and reflections, water's too, come out in solid squares while the light itself stays smooth. Natural colours; an optional retro palette.",
         "icon": "pack.png",
         "api_version": 0,
         "extends": "radiante-pt@1"
@@ -22,27 +22,28 @@
             "performance_impact": "low"
         },
         {
-            "name": "render_pipeline.module.ray_tracing.attribute.pixel_light_flat",
+            "name": "render_pipeline.module.ray_tracing.attribute.pixel_light_shadows",
             "type": "bool",
             "default_value": "render_pipeline.true",
-            "define": "PIXEL_LIGHT_FLAT",
+            "runtime": true,
+            "define": "PIXEL_LIGHT_SHADOWS",
             "group": "pixel_light.group.light",
             "order": 11,
-            "description": "pixel_light.desc.flat",
+            "description": "pixel_light.desc.shadows",
             "visible_when": {
                 "attribute": "pixel_light_texels",
                 "not_equals": 0
             }
         },
         {
-            "name": "render_pipeline.module.ray_tracing.attribute.pixel_light_coherent",
+            "name": "render_pipeline.module.ray_tracing.attribute.pixel_light_reflections",
             "type": "bool",
             "default_value": "render_pipeline.true",
             "runtime": true,
-            "define": "PIXEL_LIGHT_COHERENT",
+            "define": "PIXEL_LIGHT_REFLECTIONS",
             "group": "pixel_light.group.light",
             "order": 12,
-            "description": "pixel_light.desc.coherent",
+            "description": "pixel_light.desc.reflections",
             "visible_when": {
                 "attribute": "pixel_light_texels",
                 "not_equals": 0
@@ -89,8 +90,8 @@
             "description": "pixel_light.preset.pixelated.desc",
             "values": {
                 "pixel_light_texels": 16,
-                "pixel_light_flat": true,
-                "pixel_light_coherent": true,
+                "pixel_light_shadows": true,
+                "pixel_light_reflections": true,
                 "pixel_light_palette": 0,
                 "pixel_light_dither": 0.6
             }
@@ -100,8 +101,8 @@
             "description": "pixel_light.preset.chunky.desc",
             "values": {
                 "pixel_light_texels": 8,
-                "pixel_light_flat": true,
-                "pixel_light_coherent": true,
+                "pixel_light_shadows": true,
+                "pixel_light_reflections": true,
                 "pixel_light_palette": 0,
                 "pixel_light_dither": 0.6
             }
@@ -111,8 +112,8 @@
             "description": "pixel_light.preset.retro.desc",
             "values": {
                 "pixel_light_texels": 16,
-                "pixel_light_flat": true,
-                "pixel_light_coherent": true,
+                "pixel_light_shadows": true,
+                "pixel_light_reflections": true,
                 "pixel_light_palette": 12,
                 "pixel_light_dither": 0.6
             }

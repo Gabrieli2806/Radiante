@@ -25,8 +25,8 @@ What a pack can do, built (B) or planned (P):
   Radiante PT's updates.
 - **Hook points** (B): change surfaces, direct light, water (its colour, waves, surface and the view from under
   it), the sky, the sun and moon discs, clouds, stars, the Nether's and the End's sky and fog, fog, block light colour
-  and the final grade with one small GLSL file each; `hookTexelCentre`, `g_hookViewDir` and `hooks/shading_point.glsl` let a pack
-  move where light is computed and how it is sampled (Pixelated Lighting). `common/pack_world.glsl` gives the weather, the biome and the time of day
+  and the final grade with one small GLSL file each; `hookTexelCentre`, `g_hookViewDir` and `hooks/ray_origins.glsl` let a pack
+  move where light is computed or where shadow and reflection rays start (Pixelated Lighting). `common/pack_world.glsl` gives the weather, the biome and the time of day
 - **Own passes and images** (B): add full-screen, compute or ray tracing passes, placed with `before`/`after`.
 - **Own settings** (B): every attribute is a setting with its own names in three languages; `"runtime": true` ones
   change live in the ray tracing shaders.

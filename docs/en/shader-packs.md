@@ -16,7 +16,7 @@ A pack builds on Radiante PT and holds only what it changes. Two examples are in
 [`examples/shaderpacks/`](../../examples/shaderpacks/): `radiante-example` (a colour grade, light through leaves,
 water and sky tints) and `inkwell` (a comic-book look: banded light, poster colours, ink outlines). `realistic`
 only gives Radiante PT's settings other defaults and grades the picture, the smallest way to make a look of your own.
-`pixelated-lighting`, which comes with Radiante as a built-in pack, moves where light is computed (below).
+`pixelated-lighting`, which comes with Radiante as a built-in pack, moves where shadow and reflection rays start (below).
 
 1. Clone the repository and copy one of them to a new folder next to it.
 2. In `configs.json`, under `"radiante"`, set `display_name`, `version`, `author`, `license`, `description` and
@@ -48,7 +48,7 @@ that does nothing in Radiante PT; put your own file at the same path:
 | File | Function | What you can do there |
 | --- | --- | --- |
 | `hooks/surface.glsl` | `hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce)` | Change a surface's colour, roughness, normal or glow after its textures are read. `isLeavesSurface(surfaceFlags)` and the other tests in `util/vertex.glsl` say what was hit `hookTexelCentre(surface.uv, surface.worldPos)` gives the centre of the texel hit; moving `surface.worldPos` there and setting `g_hookViewDir` lights and reflects per texel (see the Pixelated Lighting pack) |
-| `hooks/shading_point.glsl` | `uint hookSampleKey(MainRay ray, uint pixelKey)` | For a pack whose `hookSurface` moves `surface.worldPos`: the camera's reflections off water, glass and mirrors start from the moved point too (give `material_state` `"depth": 4` in your `textures`), and the key returned picks the hit's sampling instead of the pixel, so pixels sharing a key take the same samples. Return `pixelKey` to keep Radiante PT's. See Pixelated Lighting |
+| `hooks/ray_origins.glsl` | `vec3 hookShadowOffset()`, `vec3 hookReflectionOffset()` | Move where a hit's shadow rays and reflection rays start, apart from where it is lit: the sun's, block lights' and held lights' shadow rays (still aimed at the same light), the reflection lobe, water's and glass's reflection and mirrors (turned to the view of the moved point; give `material_state` `"depth": 4` in your `textures`). Return offsets from the hit, set in `hookSurface`; zero keeps Radiante PT's. See Pixelated Lighting |
 | `hooks/direct_light.glsl` | `hookDirectLight(SampledSurface surface, vec3 viewDir, vec3 lightDir, float NoL, inout vec3 lightBRDF)` | Change how the sun and moon light a surface (cel bands, light through leaves when `NoL < 0`) |
 | `hooks/water.glsl` | `hookWaterAbsorption(inout vec3 extinction)` | Water colour: how fast each colour is absorbed |
 | `hooks/sky.glsl` | `hookSky(inout vec3 radiance, vec3 direction)` | Sky colour; it also colours the light the sky casts |

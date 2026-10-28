@@ -17,8 +17,8 @@ Un paquete se construye sobre Radiante PT y solo contiene lo que cambia. Hay dos
 [`examples/shaderpacks/`](../../examples/shaderpacks/): `radiante-example` (un gradeo de color, luz a través de las
 hojas, tonos del agua y del cielo) e `inkwell` (aspecto de cómic: luz en bandas, colores de póster, contornos de
 tinta). `realistic` solo da otros valores por defecto a los ajustes de Radiante PT y corrige la imagen, la forma más
-sencilla de hacer un aspecto propio. `pixelated-lighting`, que viene con Radiante como paquete incluido, cambia dónde
-se calcula la luz (abajo).
+sencilla de hacer un aspecto propio. `pixelated-lighting`, que viene con Radiante como paquete incluido, cambia de dónde
+salen los rayos de sombra y de reflejo (abajo).
 
 1. Clona el repositorio y copia uno de ellos a una carpeta nueva a su lado.
 2. En `configs.json`, dentro de `"radiante"`, cambia `display_name`, `version`, `author`, `license`, `description` e
@@ -51,7 +51,7 @@ Radiante PT llama a una pequeña función en los sitios que un paquete suele que
 | Archivo | Función | Qué puedes hacer ahí |
 | --- | --- | --- |
 | `hooks/surface.glsl` | `hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce)` | Cambiar el color, la rugosidad, la normal o el brillo de una superficie tras leer sus texturas. `isLeavesSurface(surfaceFlags)` y las demás pruebas de `util/vertex.glsl` dicen qué se golpeó `hookTexelCentre(surface.uv, surface.worldPos)` da el centro del texel golpeado; mover `surface.worldPos` ahí y ajustar `g_hookViewDir` ilumina y refleja por texel (mira el paquete Pixelated Lighting) |
-| `hooks/shading_point.glsl` | `uint hookSampleKey(MainRay ray, uint pixelKey)` | Para un paquete cuyo `hookSurface` mueve `surface.worldPos`: los reflejos de la cámara en el agua, el cristal y los espejos salen también del punto movido (da a `material_state` `"depth": 4` en tus `textures`), y la clave devuelta elige el muestreo del impacto en lugar del píxel, así que los píxeles con la misma clave toman las mismas muestras. Devuelve `pixelKey` para quedarte con el de Radiante PT. Mira Pixelated Lighting |
+| `hooks/ray_origins.glsl` | `vec3 hookShadowOffset()`, `vec3 hookReflectionOffset()` | Mover de dónde salen los rayos de sombra y de reflejo de un impacto, aparte de dónde se ilumina: los rayos de sombra del sol, de las luces de bloque y de las luces en la mano (apuntando a la misma luz), el lóbulo de reflejo, el reflejo del agua y del cristal y los espejos (girados a la vista del punto movido; da a `material_state` `"depth": 4` en tus `textures`). Devuelve desplazamientos desde el impacto, calculados en `hookSurface`; cero deja los de Radiante PT. Mira Pixelated Lighting |
 | `hooks/direct_light.glsl` | `hookDirectLight(SampledSurface surface, vec3 viewDir, vec3 lightDir, float NoL, inout vec3 lightBRDF)` | Cambiar cómo iluminan el sol y la luna una superficie (bandas de cel, luz a través de las hojas cuando `NoL < 0`) |
 | `hooks/water.glsl` | `hookWaterAbsorption(inout vec3 extinction)` | Color del agua: lo rápido que se absorbe cada color |
 | `hooks/sky.glsl` | `hookSky(inout vec3 radiance, vec3 direction)` | Color del cielo; también tiñe la luz que da el cielo |

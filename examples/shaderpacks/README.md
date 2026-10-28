@@ -54,29 +54,29 @@ runs at the end of the post script, and `inkwell_ink` says `"after": "inkwell_co
 (`PRISM_BUILT_IN_EXTENDING_PACKS` in `native/CMakeLists.txt`) and the Shader Packs screen lists it as built in
 (`ShaderPackLibrary.BUILT_IN_EXTRAS`). A change here needs the native build to reach the game.
 
-Path tracing on the texture's grid, after BetterRTX's "Pixelated Lighting" preset: every hit point is moved to the
-centre of its texture texel and lit from there, and every pixel of a texel takes the same random samples, so each
-texel gets one shadow, one light, one bounce and one reflection. Shadow edges, torch falloff, bounce light, glossy
-highlights and reflections (water too: near reflections are solid squares, one reflected colour per water texel)
-come out in the texture's own pixels, in natural colours. A retro palette with an ordered dither is there, off.
+Pixelated shadows and reflections, after BetterRTX's "Pixelated Lighting" preset. Surfaces are lit where they are,
+with their own normals, so the light itself (its angle, a torch's falloff, bounce light, glow) stays smooth; only the
+shadow rays and the reflection rays of a hit start from the centre of its texture texel. Each texel is then in
+shadow or not, and every pixel of it reflects the same thing: shadow edges and reflections (water's too, near
+objects included) come out in the texture's own pixels, in natural colours. What is seen through water and glass
+keeps each pixel's own view. A retro palette with an ordered dither is there, off.
 
 | Setting | File | What it does |
 | --- | --- | --- |
-| Light Texels per Block (0-16) | `hooks/surface.glsl` | 16: light per texture texel (`hookTexelCentre`); lower merges texels, 0 turns it off |
-| Flat Texels | `hooks/surface.glsl` | Drops normal maps, which would shade inside a texel |
-| Solid Texels | `hooks/surface.glsl`, `hooks/shading_point.glsl` | Every pixel of a texel takes the same samples: the path's seed from the texel and the frame, and the texel as the key of the low-discrepancy samples (`hookSampleKey`). Off, each pixel samples on its own and the denoiser smooths the texels' edges. Changes live |
+| Texels per Block (0-16) | `hooks/surface.glsl` | 16: the texture's own texels (`hookTexelCentre`); lower merges texels, 0 turns it off |
+| Pixelated Shadows | `hooks/ray_origins.glsl` | Shadow rays of the sun or moon, block lights and held lights start from the texel centre (`hookShadowOffset`), aimed at the same light. Changes live |
+| Pixelated Reflections | `hooks/ray_origins.glsl` | Reflection rays start from the texel centre, turned to its view (`hookReflectionOffset`): glossy and mirror reflections and the reflection of water and glass. Changes live |
 | Retro Palette (0-32) | `hooks/post_grade.glsl` | Levels per colour channel; 0 (the default) or 1 keeps the colours. Changes live |
 | Dither (0-1) | `hooks/post_grade.glsl` | How much 4x4 ordered dither goes between palette levels. Changes live |
 
-How the reflections stay per texel: `hookSurface` tilts the shading normal so every pixel of a texel reflects in the
-direction the texel's centre does, and the pack's `hooks/shading_point.glsl` (without radiante-pt's
-`RADIANTE_HOOK_SHADING_POINT_DEFAULT`) has radiante-pt start the camera's reflections off water, glass and mirrors
-from the centre rather than from the pixel's own hit; the offset comes back in a fourth layer of `material_state`,
-which `configs.json` asks for (`"textures": [{"name": "material_state", "depth": 4}]`). What is seen through water
-and glass keeps the pixel's own point.
+`hookSurface` only works out the offset from the hit to the texel centre; the pack's `hooks/ray_origins.glsl`
+(without radiante-pt's `RADIANTE_HOOK_RAY_ORIGINS_DEFAULT`) hands it to radiante-pt, which moves the shadow and
+reflection rays. The reflection of water and glass the camera sees is traced by the ray generation, which gets the
+offset back in a fourth layer of `material_state`; `configs.json` asks for it
+(`"textures": [{"name": "material_state", "depth": 4}]`). The random numbers stay each pixel's own, so the
+denoiser cleans the noise as for Radiante PT.
 
-It shows a pack changing where light is computed (`SampledSurface.worldPos` in `hookSurface`) and how it is sampled,
-not only its colour.
+It shows a pack changing where rays start without changing where light is computed.
 
 ## mellow-port
 
