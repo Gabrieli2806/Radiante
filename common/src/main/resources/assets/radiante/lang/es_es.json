@@ -734,7 +734,7 @@
   "screen.radiante.shader_packs.built_in": "Incluido",
   "screen.radiante.shader_packs.trying": "Cargando... vuelve a Radiante PT si falla.",
   "screen.radiante.shader_packs.failed": "%s no funcionó; se vuelve a usar Radiante PT:",
-  "screen.radiante.shader_packs.failed.short": "No funcionó la última vez. Mira abajo.",
+  "screen.radiante.shader_packs.failed.short": "No funcionó la última vez.",
   "screen.radiante.shader_packs.failed.no_detail": "El renderizador no dio motivo. Revisa el registro del juego.",
   "screen.radiante.shader_packs.needs_emission": "Este paquete necesita Emisión de Bloques, que está apagada.",
   "screen.radiante.shader_packs.problem.nested": "configs.json está dentro de la carpeta \"%s\": comprime los archivos del paquete, no la carpeta.",
@@ -748,5 +748,8 @@
   "screen.radiante.shader_packs.problem.requires": "Necesita Radiante %s. Actualiza Radiante.",
   "toast.radiante.shader_pack_failed": "Radiante: falló el paquete de shaders",
   "toast.radiante.shader_pack_failed.detail": "%s: se vuelve a Radiante PT.",
+  "screen.radiante.shader_packs.hint.pick": "Elige un paquete para verlo aquí.",
+  "screen.radiante.shader_packs.hint.use": "Pulsa Usar, o haz clic otra vez, para cambiar a él. Los shaders se compilan de nuevo.",
+  "screen.radiante.shader_packs.hint.in_use": "Este es el paquete que usa el juego ahora.",
   "screen.radiante.shader_packs.crashed": "El juego se cerró mientras se probaba este paquete (un cierre inesperado o la GPU dejó de responder). Se volvió a poner Radiante PT. Revisa el registro o el informe de error del juego."
 }

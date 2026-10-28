@@ -117,6 +117,25 @@ layout(location = 1) rayPayloadEXT ShadowRay shadowRay;
 #include "pt/pt_material.glsl"
 #include "pt/pt_parallax.glsl"
 #include "pt/pt_deferred_shadow.glsl"
+// What the surface hook may ask about the texel a hit lies in, and the view it may change: set just before
+// hookSurface runs. g_hookViewDir is the direction towards the viewer the surface is shaded with (its reflections and
+// highlights); a hook that moves surface.worldPos can point it at the new position. Unused, they compile away.
+bool g_hookHasTexel;
+vec2 g_hookTexelSize;
+vec2 g_hookPlaneUv;
+vec3 g_hookPlanePos;
+vec3 g_hookDPdu;
+vec3 g_hookDPdv;
+vec3 g_hookViewDir;
+
+// The centre of the texture's texel at uv, on the face's plane, in camera-relative world space; worldPos when the
+// surface has no texture. Follows the texture as it lies on the face: cross plants, vines, rotated or inset quads.
+vec3 hookTexelCentre(vec2 uv, vec3 worldPos) {
+    if (!g_hookHasTexel) { return worldPos; }
+    vec2 centreUv = (floor(uv * g_hookTexelSize) + 0.5) / g_hookTexelSize;
+    return basePlaneWorldPosAtUv(centreUv, g_hookPlaneUv, g_hookPlanePos, g_hookDPdu, g_hookDPdv);
+}
+
 // Hook points a pack extending radiante-pt replaces (hooks/*.glsl); empty here. surface.glsl first, so the
 // direct light hook can read what the surface hook keeps in its own globals.
 #include "hooks/surface.glsl"
@@ -362,6 +381,13 @@ void ptShadeDefault(bool viewMark) {
         surface.geometricNormal = plantNormal;
     }
 #endif
+    g_hookHasTexel = useTexture;
+    g_hookTexelSize = useTexture ? vec2(textureSize(textures[nonuniformEXT(textureID)], 0)) : vec2(1.0);
+    g_hookPlaneUv = textureUV;
+    g_hookPlanePos = planeHitWorldPos;
+    g_hookDPdu = dPduWorld;
+    g_hookDPdv = dPdvWorld;
+    g_hookViewDir = viewDir;
     hookSurface(surface, packedData, bounce);
 
     mainRay.normal = surface.shadingNormal;
@@ -417,7 +443,7 @@ void ptShadeDefault(bool viewMark) {
     }
 
     SampledSurface currentSurface = surface;
-    vec3 currentViewDir = viewDir;
+    vec3 currentViewDir = g_hookViewDir;
     // What the camera's own hand holds up against a wall is lit from the open side of it (see ptHandLightPos).
     bool handShifted = false;
     // The light held in the hand sits inside the held item, where it is: its own ray to the surface starts from the

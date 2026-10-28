@@ -734,7 +734,7 @@
   "screen.radiante.shader_packs.built_in": "内置",
   "screen.radiante.shader_packs.trying": "加载中……失败时将回到 Radiante PT。",
   "screen.radiante.shader_packs.failed": "%s 无法使用，已恢复 Radiante PT：",
-  "screen.radiante.shader_packs.failed.short": "上次无法使用，详见下方。",
+  "screen.radiante.shader_packs.failed.short": "上次无法使用。",
   "screen.radiante.shader_packs.failed.no_detail": "渲染器未给出原因，请查看游戏日志。",
   "screen.radiante.shader_packs.needs_emission": "此光影包需要开启方块发光，目前已关闭。",
   "screen.radiante.shader_packs.problem.nested": "configs.json 位于文件夹“%s”内：请压缩光影包的文件，而不是文件夹。",
@@ -748,5 +748,8 @@
   "screen.radiante.shader_packs.problem.requires": "需要 Radiante %s。请更新 Radiante。",
   "toast.radiante.shader_pack_failed": "Radiante：光影包失败",
   "toast.radiante.shader_pack_failed.detail": "%s：已回到 Radiante PT。",
+  "screen.radiante.shader_packs.hint.pick": "选择一个光影包，在这里查看。",
+  "screen.radiante.shader_packs.hint.use": "点击“使用”或再次点击它以切换。着色器会重新编译。",
+  "screen.radiante.shader_packs.hint.in_use": "这是游戏当前使用的光影包。",
   "screen.radiante.shader_packs.crashed": "试用此光影包时游戏关闭了（崩溃或 GPU 停止响应），已恢复 Radiante PT。请查看游戏日志或崩溃报告。"
 }

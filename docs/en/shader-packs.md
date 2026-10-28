@@ -45,7 +45,7 @@ that does nothing in Radiante PT; put your own file at the same path:
 
 | File | Function | What you can do there |
 | --- | --- | --- |
-| `hooks/surface.glsl` | `hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce)` | Change a surface's colour, roughness, normal or glow after its textures are read. `isLeavesSurface(surfaceFlags)` and the other tests in `util/vertex.glsl` say what was hit |
+| `hooks/surface.glsl` | `hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce)` | Change a surface's colour, roughness, normal or glow after its textures are read. `isLeavesSurface(surfaceFlags)` and the other tests in `util/vertex.glsl` say what was hit `hookTexelCentre(surface.uv, surface.worldPos)` gives the centre of the texel hit; moving `surface.worldPos` there and setting `g_hookViewDir` lights and reflects per texel (see the Pixel Light example) |
 | `hooks/direct_light.glsl` | `hookDirectLight(SampledSurface surface, vec3 viewDir, vec3 lightDir, float NoL, inout vec3 lightBRDF)` | Change how the sun and moon light a surface (cel bands, light through leaves when `NoL < 0`) |
 | `hooks/water.glsl` | `hookWaterAbsorption(inout vec3 extinction)` | Water colour: how fast each colour is absorbed |
 | `hooks/sky.glsl` | `hookSky(inout vec3 radiance, vec3 direction)` | Sky colour; it also colours the light the sky casts |

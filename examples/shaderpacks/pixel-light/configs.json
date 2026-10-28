@@ -12,7 +12,7 @@
     "attributes": [
         {
             "name": "render_pipeline.module.ray_tracing.attribute.pixel_light_texels",
-            "type": "int_range:0-64",
+            "type": "int_range:0-16",
             "default_value": "16",
             "define": "PIXEL_LIGHT_TEXELS"
         },

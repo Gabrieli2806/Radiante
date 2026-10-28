@@ -734,7 +734,7 @@
   "screen.radiante.shader_packs.built_in": "Built in",
   "screen.radiante.shader_packs.trying": "Loading... back to Radiante PT if it fails.",
   "screen.radiante.shader_packs.failed": "%s did not work; Radiante PT is back in use:",
-  "screen.radiante.shader_packs.failed.short": "Did not work last time. See below.",
+  "screen.radiante.shader_packs.failed.short": "Did not work last time.",
   "screen.radiante.shader_packs.failed.no_detail": "The renderer gave no reason. Check the game log.",
   "screen.radiante.shader_packs.needs_emission": "This pack needs Block Emission, which is off.",
   "screen.radiante.shader_packs.problem.nested": "configs.json is inside the folder \"%s\": zip the pack's files, not the folder.",
@@ -748,5 +748,8 @@
   "screen.radiante.shader_packs.problem.requires": "Needs Radiante %s. Update Radiante.",
   "toast.radiante.shader_pack_failed": "Radiante: shader pack failed",
   "toast.radiante.shader_pack_failed.detail": "%s: back to Radiante PT.",
+  "screen.radiante.shader_packs.hint.pick": "Pick a pack to see it here.",
+  "screen.radiante.shader_packs.hint.use": "Pick Use, or click it again, to switch to it. The shaders are compiled again.",
+  "screen.radiante.shader_packs.hint.in_use": "This is the pack the game uses now.",
   "screen.radiante.shader_packs.crashed": "The game closed while this pack was being tried (a crash, or the GPU stopped responding). Radiante PT was put back. Check the game log or crash report."
 }
