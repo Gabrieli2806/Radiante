@@ -1,6 +1,8 @@
 #ifndef VPT_WATER_MEDIUM_GLSL
 #define VPT_WATER_MEDIUM_GLSL
 
+#include "hooks/water.glsl"
+
 // Water as a participating medium, the way Bedrock RTX treats it: along a path through the water light is absorbed and
 // scattered per colour channel, so shallows stay clear and deep water turns blue or green. The coefficients come from a
 // converted Bedrock pack's biome fog, or else from the biome's vanilla water colour (skyUBO.waterExtinction.w is 1 once
@@ -33,7 +35,9 @@
 // only fogs out far away, while the light through it still takes on its colour. Only the camera's own stretch of
 // water is thinned; the light's paths (bounces, and the sun in shadow.rahit) cross it at full strength.
 vec3 waterMediumExtinction(float density) {
-    return max(skyUBO.waterExtinction.rgb, vec3(0.0)) * max(density, 0.0);
+    vec3 extinction = max(skyUBO.waterExtinction.rgb, vec3(0.0));
+    hookWaterAbsorption(extinction); // a pack's water colour (hooks/water.glsl); nothing in radiante-pt
+    return extinction * max(density, 0.0);
 }
 
 // A stretch of water a ray crossed after leaving a surface (the bounce it is on): how thick it is, and how much the

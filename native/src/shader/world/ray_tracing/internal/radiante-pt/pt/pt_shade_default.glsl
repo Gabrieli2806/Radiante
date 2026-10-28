@@ -117,6 +117,10 @@ layout(location = 1) rayPayloadEXT ShadowRay shadowRay;
 #include "pt/pt_material.glsl"
 #include "pt/pt_parallax.glsl"
 #include "pt/pt_deferred_shadow.glsl"
+// Hook points a pack extending radiante-pt replaces (hooks/*.glsl); empty here. surface.glsl first, so the
+// direct light hook can read what the surface hook keeps in its own globals.
+#include "hooks/surface.glsl"
+#include "hooks/direct_light.glsl"
 #include "pt/pt_direct.glsl"
 #include "pt/pt_media.glsl"
 #include "pt/pt_glass.glsl"
@@ -358,6 +362,7 @@ void ptShadeDefault(bool viewMark) {
         surface.geometricNormal = plantNormal;
     }
 #endif
+    hookSurface(surface, packedData, bounce);
 
     mainRay.normal = surface.shadingNormal;
     ptStoreMaterial(surface.albedoValue, surface.mat.f0, surface.mat.roughness, surface.mat.metallic,

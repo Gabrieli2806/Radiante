@@ -1111,6 +1111,9 @@
             },
             {
                 "VPT_POST_DOF_FOCUS_HISTORY_READY": false
+            },
+            {
+                "RADIANTE_HOOK_POST_GRADE": false
             }
         ],
         "commands": [
@@ -1194,6 +1197,19 @@
                             "assign": {
                                 "VPT_POST_DOF_FOCUS_HISTORY_READY": false
                             }
+                        }
+                    ]
+                }
+            },
+            {
+                "if_else": {
+                    "condition": "RADIANTE_HOOK_POST_GRADE",
+                    "then": [
+                        {
+                            "pass": "post_hook_copy"
+                        },
+                        {
+                            "pass": "post_hook_grade"
                         }
                     ]
                 }
@@ -1646,6 +1662,30 @@
                 "VPT_POST_DOF_DIRECTION_X": "0.0",
                 "VPT_POST_DOF_DIRECTION_Y": "1.0"
             }
+        },
+        {
+            "type": "full_screen",
+            "stage": "post_render",
+            "name": "post_hook_copy",
+            "fragment": "post_render/post_copy.frag",
+            "inputs": {
+                "images": [
+                    "out:ldr"
+                ]
+            },
+            "target": "post_motion"
+        },
+        {
+            "type": "full_screen",
+            "stage": "post_render",
+            "name": "post_hook_grade",
+            "fragment": "post_render/post_hook_grade.frag",
+            "inputs": {
+                "images": [
+                    "post_motion"
+                ]
+            },
+            "target": "out:ldr"
         }
     ]
 }

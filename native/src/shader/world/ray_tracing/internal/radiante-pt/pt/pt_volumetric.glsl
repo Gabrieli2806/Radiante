@@ -5,6 +5,7 @@
 // shadow rays towards the sun and up to the sky. Moved verbatim out of world.rgen.
 
 #include "common/biome_haze.glsl"
+#include "hooks/fog.glsl"
 
 float volumetricLightLuminance(vec3 value) {
     return dot(value, vec3(0.2126, 0.7152, 0.0722));
@@ -80,6 +81,7 @@ void volumetricAirMedium(float cosTheta, out vec3 sigmaS, out vec3 sigmaT) {
     vec3 betaM = VPT_ATMOSPHERE_BETA_M * mix(18.0, 54.0, skyUBO.rainGradient);
     sigmaS = betaR * rPhase + betaM * miePhase + vec3(fogDensity * fogPhase);
     sigmaT = betaR + betaM * 1.15 + vec3(fogDensity);
+    hookFog(cosTheta, sigmaS, sigmaT); // a pack's fog (hooks/fog.glsl); nothing in radiante-pt
 }
 
 #ifndef VPT_LIGHT_SHAFTS
