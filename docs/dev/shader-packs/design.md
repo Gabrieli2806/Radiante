@@ -8,21 +8,25 @@ How shader packs work in Radiante today, and the contract they are moving to. "T
 | Side | Where | Role |
 | --- | --- | --- |
 | Java | `client/pipeline/ShaderPackLibrary.java` | Finds packs in `radiante/shaderpacks/` (zips and folders), reads their manifest, checks the layout, crash marker (`.trying`) |
+| Java | `client/pipeline/ShaderPackManifest.java` | Manifest checks without loading: `extends`, `api_version`, `requires.radiante` |
 | Java | `client/gui/ShaderPacksScreen.java` | The screen: list, Use, Open Folder, Refresh, Copy Error |
 | Java | `client/gui/ShaderPackTrial.java` | Watches a switch: rejected config, compile errors, failed rebuild, ten seconds of frames before a pack counts as good |
 | Java | `client/pipeline/Pipeline.java` | The selected pack (`shader_pack_path` attribute), per-pack values, `getModuleAttributes` (values checked against the pack's types), runtime attributes |
 | Native | `prism/render/modules/world/shader_pack/shader_pack_loader.cpp` | Reads `configs.json` into `ShaderPack`, rejects bad configs (with the reason in the log) |
+| Native | `shader_pack/shader_pack_extends.cpp` | `extends`: stages the base and the pack, merges `configs.json` and `lang` (section 5); path checks for zips |
 | Native | `shader_pack/shader_compile.cpp` | Compiles the pack's GLSL with shaderc; include paths, attribute defines |
 | Native | `shader_pack/shader_pack.cpp`, `execution_script.cpp`, `runtime_resources.cpp` | Passes, execution scripts, textures and buffers, runtime attributes (`packParams`) |
 | Build | `native/src/shader/CMakeLists.txt` | Zips Radiante PT with `shader/util/`, `src/common/` and the SHaRC headers into `radiante-pt.zip` |
-| Build | `build.gradle`, `shaderPackExamples` | Builds the example packs on top of Radiante PT |
+| Build | `build.gradle`, `shaderPackExamples` | Zips the example packs (packs without `extends` are staged on Radiante PT) |
+| Tools | `native/src/tools/` | `shader_pack_stage` (stage a pack offline, `--self-test`), `compile_pack.py` (compile a staged pack's shaders) |
 
 A switch: the screen calls `Pipeline.selectShaderPack`, the background rebuild (`BackgroundRebuild`) builds the
 pipeline, `ShaderPackTrial` reads the renderer's log; on failure the built-in pack is put back and the lines are shown.
 
 ## 2. Anatomy of a pack (today)
 
-A zip or folder with `configs.json` at its top:
+A zip or folder with `configs.json` at its top. A pack that extends Radiante PT holds only `configs.json`, `pack.png`,
+`lang/` and the files it adds or replaces (usually `hooks/*.glsl`), section 5. A whole pack:
 
 ```
 my-pack/
@@ -30,6 +34,7 @@ my-pack/
   pack.png              icon (optional)
   lang/en_us.lang ...   names of the attributes
   world/ pt/ common/    the pack's shaders (GLSL)
+  hooks/                Radiante PT's hook points (section 5)
   util/ common/ extern/ renderer headers the pack must carry today (vertex fetch, uniforms, SHaRC)
 ```
 
@@ -48,14 +53,16 @@ In `configs.json`, under `"radiante"` (Radiance's `"radiance"` is read too):
 | `license` | yes | SPDX id, shown in the list |
 | `description` | yes | One line |
 | `icon` | yes | Image in the pack, shown in the list |
-| `api_version` | read, not enforced | The `radiante/vN` interface the pack is written for; 0 = built on Radiante PT's internals (today's packs) |
+| `api_version` | checked | The `radiante/vN` interface the pack is written for; 0 = built on Radiante PT's internals (every pack today). Radiante offers 0 until phase 2 |
+| `extends` | yes | The pack this one builds on: `"radiante-pt"` or `"radiante-pt@1"` (section 5) |
+| `requires` | `radiante` checked | `{"radiante": ">=1.4", "features": ["omm?", "ser?"]}`. `radiante`: `>=`, `>`, `=`, `<=`, `<` or a bare version (meaning `>=`) against the mod version. `features` (`?` = optional, the shader gets a define) is planned |
 | `id` | planned | Stable id (lowercase), for settings files and future pack lists |
-| `extends` | planned | The pack this one builds on (section 5) |
-| `requires` | planned | `{"radiante": ">=1.4", "features": ["omm?", "ser?"]}`; `?` = optional, the shader gets a define |
 | `homepage` | planned | Link shown in the list |
 
-A pack asking for an `api_version` newer than Radiante offers, or a required feature the GPU lacks, is listed with
-that reason and not loaded.
+A pack that extends an unknown base or another major of radiante-pt, asks for an `api_version` newer than Radiante
+offers, or needs another Radiante version, is listed with that reason and cannot be chosen (`ShaderPackManifest`,
+unit tested). The native loader refuses the same `extends` cases on its own, so a pack set by hand in `pipeline.yaml`
+fails like any other bad pack. A required feature the GPU lacks: planned.
 
 ## 4. Versioning and compatibility
 
@@ -70,40 +77,80 @@ that reason and not loaded.
   change. The Shader Packs screen says so.
 - **Radiance packs** have no `api_version` and are ported, not emulated ([decisions](decisions.md#d-002)).
 
-## 5. Inheritance and hook points (planned, phase 1)
+## 5. Inheritance and hook points
 
-The example pack showed the problem: of its 113 files, 103 were verbatim copies of Radiante PT and the renderer
-headers, and only 10 were its own. A copy breaks at the next change to Radiante PT. And of its own 10, the four
-shading files it overrides (`pt_direct.glsl`, `pt_shade_default.glsl`, `water_medium.glsl`,
-`world_miss_eval_impl.glsl`) each change one to a few lines of a file of hundreds: the rest still has to follow Radiante
-PT by hand.
+Implemented in phase 1. The first example pack showed the problem: of its 113 files, 103 were verbatim copies of
+Radiante PT and the renderer headers, and the four shading files it overrode each changed one to a few lines of a file
+of hundreds. A copy breaks at the next change to Radiante PT.
 
-**`extends`**: a pack names a base (`"extends": "radiante-pt"`) and holds only its own files.
+### `extends`
 
-- Files: the loader stages the base pack, then the pack's files over it (same rule as `shaderPackExamples` today).
-- `configs.json`: merged, not replaced. `attributes` are appended (same name = override of the base's default or
-  range), `passes` can be added and inserted by name (`"before": "post_render_tonemap"`), `textures`/`buffers`
-  appended, `execution` scripts can call the base's (`"base"` step). The manifest is the derived pack's own.
-- `lang/*.lang`: merged, the derived pack's keys win.
-- The base is pinned by version (`"extends": "radiante-pt@1"`); a base major change flags the derived pack.
+A pack names its base in the manifest, `"radiante": {"extends": "radiante-pt@1"}` (`@1` optional), and holds only its
+own files. Only radiante-pt can be a base today. `@N` is the major version of radiante-pt's pack interface (its hook
+points; `BUILT_IN_BASE_MAJOR` in `shader_pack_extends.hpp`, `ShaderPackManifest.BASE_MAJOR` in Java), raised when a
+hook's signature or meaning changes.
 
-**Hook points**: overriding whole shading files (`pt/pt_direct.glsl`) still drifts. Radiante PT gets small, stable
-hook files a derived pack replaces instead, each a function with a do-nothing default, called at the right place:
+The loader (`shader_pack_loader.cpp`, `stageIfExtending`) extracts the pack and radiante-pt as usual, builds a staged
+pack in `temp/shaders/world/ray_tracing/<pack>_<hash>_extended` (`shader_pack_extends.cpp`, `stageExtendedPack`) and
+parses that like any pack. The folder name is stable, so the SPIR-V cache keeps its shaders.
 
-| Hook (file `hooks/*.glsl`) | Called | Example use |
-| --- | --- | --- |
-| `hookSurface(inout SurfaceSample)` | After material sampling | Wet look, snow cover, custom PBR maps |
-| `hookDirectLight(...)` | Per light sample at a hit | Foliage translucency, cel shading |
-| `hookWaterAbsorption(inout vec3)` | Water medium | Water colour |
-| `hookSky(inout vec3, vec3 dir)` | Sky radiance | Sky tint, stylised skies |
-| `hookFog(...)` | Volumetric media | Fog density and colour |
-| `hookPostGrade(inout vec3)` | After tone mapping | Colour grade, LUT |
+| Part | Rule |
+| --- | --- |
+| Files | radiante-pt's, then the pack's over them; the same relative path is the pack's file. Symbolic links are skipped |
+| `attributes`, `textures`, `buffers`, `passes` | Merged by `name`. A pack entry with a base entry's name is merged into it field by field, the pack's fields winning (`{"name": "...wind", "default_value": "render_pipeline.false"}` changes only the default); a new name is appended. A name listed twice in the pack is an error |
+| New passes | `"before": "<pass>"` or `"after": "<pass>"` (one of them, only on new passes, same stage as the anchor): placed there in `passes` and next to every run of the anchor in the stage's script, inside `if_else` and `while` too; an anchor the script never runs is an error. Without either: appended to `passes` and run at the end of the stage's script, unless the pack's own script already runs it. The two keys are removed before parsing |
+| `execution`, `execution_post` | `global_variables` merged by variable name (the pack's start value wins). The pack's `commands`, when it gives any, replace the base's; a `{"base": true}` command in them, at any depth, stands for the base's commands. Scripts are merged before new passes are placed |
+| `sharc` | Merged field by field |
+| Manifest (`radiante`, `radiance`) | The pack's own; the base's is dropped |
+| Any other key (`requires_emission`...) | The pack's value replaces the base's |
+| `lang/*.lang` | The base's lines, then the pack's, per file name (case, `-` and `_` do not matter); the last line for a key wins, so the pack's names win |
 
-The set grows with requests; each hook is part of the public interface (section 4). With `extends` and hooks, the
-example pack is a manifest, six attributes, four hook files and a grade pass.
+Errors (unknown base, newer major, a bad anchor, an entry without a name, a pack over the limits) are thrown as
+`extends: <where>: <what>` and reported like any other load error: the built-in pack is used and the Shader Packs
+screen shows the line. Limits: 20000 files and 512 MB per pack, zipped or in a folder. Every pack's zip, not only
+one that extends another, is extracted entry by entry (`extractPackZip`): an entry that leaves the pack's folder
+(`..`, absolute, a drive letter, or a resolved path outside it), a symbolic link, an unreadable header, more bytes
+actually written than the limit or than the entry's header says, or a bad CRC, and the zip is refused and what was
+written removed.
 
-Until the loader supports `extends`, `./gradlew shaderPackExamples` does the staging at build time
-([examples](../../../examples/shaderpacks/)).
+### Hook points
+
+Radiante PT calls a function from a small file under `hooks/` at each point; its own files are empty. A pack replaces
+the file, keeping the include guard (`RADIANTE_HOOK_<NAME>_GLSL`). The signatures are part of `radiante-pt@1`.
+
+| File | Function | Called | Notes |
+| --- | --- | --- | --- |
+| `hooks/surface.glsl` | `void hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce)` | Default closest-hit shader, once per hit, after the material is sampled, before the denoiser guides, the mirror test and the lights read it | `surfaceFlags` is the packed vertex data: `isLeavesSurface(surfaceFlags)`, `isPlantSurface`, `isWaterSurface`... (`util/vertex.glsl`). Globals declared here are visible to `direct_light.glsl`, included right after it. Change `albedoValue` and `mat.albedo` together: `albedoValue` is the denoiser's albedo guide |
+| `hooks/direct_light.glsl` | `void hookDirectLight(SampledSurface surface, vec3 viewDir, vec3 lightDir, float NoL, inout vec3 lightBRDF)` | Every sun or moon sample at a surface, before its shadow ray | `lightBRDF` is the BRDF times the cosine. Behind an opaque surface it arrives as zero; left zero, no shadow ray is traced, as before; made non-zero, the surface is lit from behind (light through leaves, keeps opacity micromaps) |
+| `hooks/water.glsl` | `void hookWaterAbsorption(inout vec3 extinction)` | `waterMediumExtinction`, for the water a ray crosses | Extinction per colour channel per block, before the density settings |
+| `hooks/sky.glsl` | `void hookSky(inout vec3 radiance, vec3 direction)` | Overworld miss shader: the clear sky, before rain greys it and before the sun, moon, clouds and stars | Rays that bounce to the sky see it too, so it also colours sky light |
+| `hooks/fog.glsl` | `void hookFog(float cosTheta, inout vec3 scattering, inout vec3 extinction)` | `volumetricAirMedium`, the air the volumetric light marches through | Only with Volumetric Light on |
+| `hooks/post_grade.glsl` | `void hookPostGrade(inout vec3 color, vec2 uv)` | Pass `post_hook_grade` (`post_render/post_hook_grade.frag`), after tone mapping, motion blur and depth of field, before the HUD | Runs only when the pack sets the `execution_post` global `RADIANTE_HOOK_POST_GRADE` to true; `post_hook_copy` then puts the picture in `post_motion` first. The picture is the sampler `hookPostGradeInput` |
+
+**Radiante PT unchanged.** With its default hooks Radiante PT compiles to the same SPIR-V as before the hooks
+existed (checked offline at its default settings with glslangValidator and `spirv-opt -O`, IDs canonicalized: every
+ray tracing, compute, sky and froxel shader identical). The default `direct_light.glsl` defines
+`RADIANTE_HOOK_DIRECT_LIGHT_DEFAULT`, which keeps `pt_direct.glsl`'s original early exit for light behind a surface;
+a pack's file must not define it. The post shaders differ only by the new execution variable in their buffer, which
+they do not read.
+
+The set grows with requests; within `radiante-pt@1` hooks are only added (section 4). With `extends` and hooks the
+example pack is a manifest with five attributes, five hook files, three lang files and an icon.
+
+**Post render bindings**, for a pack's own post passes: set 3 holds the frame's images at fixed bindings whatever a
+pass lists as inputs: 0 `out:ldr`, 1 `out:first_hit_depth`, 2 the HDR image, 3 `out:motion_vector`, 4
+`out:normal_roughness`. A pack's textures are in set 4 at their `sampled_binding` (`post_motion`: 4). A pass that
+writes `out:ldr` must not sample set 3 binding 0: copy the picture to `post_motion` first (`post_render/post_copy.frag`
+reads set 3 binding 0), as `post_hook_copy` and Inkwell's `inkwell_copy` do.
+
+### Checking a pack offline
+
+`native/src/tools/shader_pack_stage` (a CMake target outside the default build) stages a pack as the loader does;
+`--self-test` runs the merge rules' checks and `--extract` the zip extraction (`zip_safety_test.py` feeds it crafted
+zips). `native/src/tools/compile_pack.py` compiles a staged pack's shaders with
+glslangValidator and the defines the loader gives at default settings (attributes, runtime attributes as
+`worldUBO.packParams` reads, pass defines, execution variables, SHaRC variants). See
+[examples](../../../examples/shaderpacks/README.md#check-a-pack-without-the-game).
 
 ## 6. Public headers (planned, phase 2)
 
@@ -174,6 +221,7 @@ Packs are code that runs on the GPU. Radiante does not sandbox shaders; it limit
 - A pack that fails to load or compile is replaced by Radiante PT before the player sees a broken frame.
 - A pack that hangs or crashes the GPU (`VK_ERROR_DEVICE_LOST`) ends the game, so a marker file
   (`radiante/shaderpacks/.trying`) makes the next start go back to Radiante PT and say which pack it was.
-- Packs are read from `radiante/shaderpacks/` only; zips are read without extracting outside the pack; shaders get
-  no file or network access (GLSL has none).
+- Packs are read from `radiante/shaderpacks/` only. Zips are extracted entry by entry with their own checks (section
+  5, [D-011](decisions.md#d-011)); a folder pack that extends another has the same limits and its symbolic links are
+  skipped. Shaders get no file or network access (GLSL has none).
 - Players should get packs from places they trust, as with any mod; the screen shows author and licence.

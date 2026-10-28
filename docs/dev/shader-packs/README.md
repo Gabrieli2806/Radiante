@@ -35,9 +35,11 @@ no error reporting, no settings layout. That is the gap this work closes.
 | Shader Packs screen (list, metadata, switch, open folder) | Done (`feature/shaderpacks`) |
 | Fallback to Radiante PT with the compiler's errors shown; crash recovery | Done |
 | Per-pack settings (`<pack>.zip.txt`), values checked against the pack's types | Done |
-| Example pack built as an overlay on Radiante PT (`examples/shaderpacks/`) | Done |
-| Pack inheritance (`extends`) and hook points in Radiante PT | Planned, [roadmap](roadmap.md) phase 1 |
-| Versioned public headers (`radiante/v1`) and `api_version` check | Planned, phase 2 |
+| Example pack built as an overlay on Radiante PT (`examples/shaderpacks/`) | Done, replaced by `extends` |
+| Pack inheritance (`extends`) and hook points in Radiante PT | Built (`feature/shaderpacks-api`), not yet tried in game, [roadmap](roadmap.md) phase 1 |
+| Example packs on `extends` and hooks (radiante-example, Inkwell) | Built, compile offline |
+| Versioned public headers (`radiante/v1`) | Planned, phase 2 |
+| `api_version` and `requires.radiante` checked in the list | Done (groundwork for phase 2) |
 | Original Radiance packs | Do not run: [findings](radiance-packs.md) |
 
 ## Documents
@@ -49,7 +51,7 @@ no error reporting, no settings layout. That is the gap this work closes.
 | [decisions.md](decisions.md) | Decisions taken and decisions still open (licence of the public headers) |
 | [radiance-packs.md](radiance-packs.md) | What happened when the original Radiance packs were tried, and why |
 | [../../en/shader-packs.md](../../en/shader-packs.md) | Guide for pack authors, today |
-| [../../../examples/shaderpacks/](../../../examples/shaderpacks/) | The example pack and how it is built |
+| [../../../examples/shaderpacks/](../../../examples/shaderpacks/) | The example packs, how they are built and checked offline |
 
 ## Keeping this up to date
 
@@ -60,5 +62,6 @@ no error reporting, no settings layout. That is the gap this work closes.
 - A decision goes in [decisions.md](decisions.md) with its date, status and reason, including the ones that end as
   "no".
 - Roadmap items link their GitHub issue; a finished phase is marked done with the commit or release it shipped in.
-- The example pack is rebuilt and tried after every change to Radiante PT it touches (`./gradlew shaderPackExamples`,
-  then select it in game).
+- The example packs are rebuilt and tried after every change to Radiante PT they touch (`./gradlew shaderPackExamples`,
+  then select them in game); a change to a hook's call site is checked offline first (`native/src/tools/`,
+  [design §5](design.md#checking-a-pack-offline)).

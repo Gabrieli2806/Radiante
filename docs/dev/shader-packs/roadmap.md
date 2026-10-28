@@ -6,8 +6,8 @@ Phases in order; each one is useful on its own. Efforts are rough, for one devel
 | Phase | Goal | Effort | Status |
 | --- | --- | --- | --- |
 | 0 | Choose packs in game, survive bad packs | — | Done (`feature/shaderpacks`) |
-| 1 | Small packs: `extends` and hook points | 1 week | Planned |
-| 2 | Stable interface: `radiante/v1` headers, `api_version` | 1-2 weeks | Planned |
+| 1 | Small packs: `extends` and hook points | 1 week | Built, not yet tried in game (`feature/shaderpacks-api`) |
+| 2 | Stable interface: `radiante/v1` headers, `api_version` | 1-2 weeks | Groundwork: `api_version` and `requires.radiante` checked in the list |
 | 3 | Reference packs and the author guide | 3-5 days | Planned |
 | 4 | Settings pages, presets and the development loop | 1-2 weeks | Planned |
 | 5 | Materials and micromap opt-out | 1-2 weeks | Planned |
@@ -20,10 +20,10 @@ Shader Packs screen, `radiante/shaderpacks/`, metadata, switch through the backg
 with the compiler's errors, crash recovery marker, per-pack values checked against the pack's types, native log of
 why a pack was rejected, example pack built as an overlay (`./gradlew shaderPackExamples`).
 
-## Phase 1: small packs
+## Phase 1: small packs (built, not yet tried in game)
 
 - Loader: `"extends"` in the manifest; stage the base, then the pack's files; merge `configs.json` (attributes,
-  passes with `before`/`after`, textures, buffers, execution) and `lang` files ([design §5](design.md#5-inheritance-and-hook-points-planned-phase-1)).
+  passes with `before`/`after`, textures, buffers, execution) and `lang` files ([design §5](design.md#5-inheritance-and-hook-points)).
 - Radiante PT: the first hook files (`hookSurface`, `hookDirectLight`, `hookWaterAbsorption`, `hookSky`, `hookFog`,
   `hookPostGrade`) with do-nothing defaults, called from the right places, no visible change.
 - The example pack rewritten as manifest + attributes + hook files; `shaderPackExamples` kept for packs that override
@@ -32,12 +32,29 @@ why a pack was rejected, example pack built as an overlay (`./gradlew shaderPack
 Done when: the example pack is under 10 files with no copied Radiante PT shader, loads through `extends` with the same
 picture as today's (side-by-side screenshots), and Radiante PT renders identically with its default hooks.
 
+Status (`feature/shaderpacks-api`):
+
+- Done: `extends` in the loader (`shader_pack_extends.cpp`, merge rules in [design §5](design.md#extends)); the six
+  hooks; radiante-example rewritten (10 files: manifest, five hook files, three lang files, icon; none copied);
+  Inkwell, a second example built only on `extends`, hooks and passes of its own; checked zip extraction for every
+  pack (path escapes, symbolic links, file count, bytes actually written, CRC); offline tools (`shader_pack_stage`
+  with `--self-test` and `--extract`, `compile_pack.py`, `zip_safety_test.py`).
+- Checked offline: native and Java builds; the merge's self-test; crafted zips; every shader of Radiante PT, the
+  example and Inkwell compiles with glslangValidator (Inkwell and the example also with all settings off their
+  defaults); Radiante PT's optimized SPIR-V with the default hooks is identical to before for every ray tracing,
+  compute and sky shader.
+- Not yet checked: in game. The side-by-side screenshots of the example (old overlay build against the `extends`
+  build) and of Radiante PT, Inkwell's look, and loading a pack through the Shader Packs screen.
+- Not done: `"extends"` of a pack other than radiante-pt.
+
 ## Phase 2: stable interface
 
 - `radiante/v1/` headers (bindings, scene, vertex fetch over both chunk layouts, surface flags, uniforms, material
   sampling) on an include root added to every pack compile.
 - Radiante PT moved onto them (dogfooding).
 - `api_version` enforced; packs with 0 marked "built on internals" in the list; `requires` features checked.
+  (Already in: a pack asking for an `api_version` above 0, or for another Radiante version in
+  `requires.radiante`, is listed with the reason and cannot be chosen.)
 - A CI step compiles the example packs against the current renderer, so a change that breaks the interface fails the
   build.
 

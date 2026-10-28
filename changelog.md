@@ -16,6 +16,16 @@ All notable changes to this project are documented in this file.
 - Shader pack authors: a guide (`docs/en/shader-packs.md`, `docs/es/paquetes-de-shaders.md`), an example pack in
   `examples/shaderpacks/` that holds only the files it changes and is built on top of Radiante PT with
   `./gradlew shaderPackExamples`, and the design, roadmap and decisions for pack support in `docs/dev/shader-packs/`.
+- Shader packs can build on Radiante PT instead of copying it: `"extends": "radiante-pt@1"` in the manifest, and the
+  pack holds only its own files; Radiante PT's files go under it and `configs.json` and the lang files are merged
+  (attributes, textures, buffers and passes by name, new passes placed with `before`/`after`). Radiante PT gains six
+  hook points a pack replaces (`hooks/surface.glsl`, `direct_light`, `water`, `sky`, `fog`, `post_grade`); with its
+  own empty hooks it compiles to the same shaders as before, so nothing changes in the built-in pack. The example
+  pack is rewritten on them, and a second example, Inkwell, gives a comic-book look (banded light, poster colours,
+  ink outlines, flat sky). Packs made for another base, a newer `api_version` or another Radiante version
+  (`requires.radiante`) are listed with the reason. Every pack zip is now extracted entry by entry, refusing paths
+  that leave the pack, symbolic links and more than 20000 files or 512 MB actually written. Packs that copied
+  Radiante PT's files keep working as before.
 - Bedrock `.mcaddon` files (and `.mcpack` files holding several packs) in the resource pack folder are listed and
   converted like a `.mcpack`: the resource packs inside are found (pack folders at any depth, nested `.mcpack`
   files), a pack's first subpack is laid over it, and behavior/script packs are skipped with a line in the log, since
