@@ -65,7 +65,8 @@ keeps each pixel's own view. A retro palette with an ordered dither is there, of
 | --- | --- | --- |
 | Texels per Block (0-16) | `hooks/surface.glsl` | 16: the texture's own texels (`hookTexelCentre`); lower merges texels, 0 turns it off |
 | Pixelated Shadows | `hooks/ray_origins.glsl` | Shadow rays of the sun or moon, block lights and held lights start from the texel centre (`hookShadowOffset`), aimed at the same light. Changes live |
-| Pixelated Reflections | `hooks/ray_origins.glsl` | Reflection rays start from the texel centre, turned to its view (`hookReflectionOffset`): glossy and mirror reflections and the reflection of water and glass. Changes live |
+| Shadow Softness (0-1) | `hooks/ray_origins.glsl` | Turns the sun's and moon's shadow ray towards the body's centre (`hookShadowSoftness`); 0.15 by default, so the shadow edge steps in texel squares instead of a penumbra over several texels. 1 is Radiante PT's softness. Changes live |
+| Pixelated Reflections | `hooks/ray_origins.glsl` | Reflection rays start from the texel centre, turned to its view (`hookReflectionOffset`): glossy and mirror reflections and the reflection of water and glass. Water's ripples are read at the texel centre, at half their tilt, so each texel of water is one flat facet. Changes live |
 | Retro Palette (0-32) | `hooks/post_grade.glsl` | Levels per colour channel; 0 (the default) or 1 keeps the colours. Changes live |
 | Dither (0-1) | `hooks/post_grade.glsl` | How much 4x4 ordered dither goes between palette levels. Changes live |
 

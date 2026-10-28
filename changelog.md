@@ -9,7 +9,8 @@ All notable changes to this project are documented in this file.
   follow the texture's pixels, and reflections, water's included, are solid squares, one per texel, near objects too;
   the light itself (its angle, a torch's falloff, bounce light, glow) stays smooth, and what is seen through water and
   glass stays sharp. Natural colours by default; the old example's retro palette is an option (Retro Palette, off).
-  Settings: Texels per Block, Pixelated Shadows, Pixelated Reflections and the palette. It replaces the Pixel Light
+  Settings: Texels per Block, Pixelated Shadows, Shadow Softness (hard sun and moon shadows, so their edges step in
+  texel squares), Pixelated Reflections (water read as one flat facet per texel) and the palette. It replaces the Pixel Light
   example: a pipeline that used `shaderpacks/pixel-light.zip` switches to the built-in pack, at its new defaults.
 - Shader packs: a new hook, `hooks/ray_origins.glsl` (`hookShadowOffset`, `hookReflectionOffset`), to start a hit's
   shadow rays and reflection rays somewhere else than where it is lit; the camera's reflections off water, glass and
