@@ -165,10 +165,11 @@ vec3 mellowAuroraRealisticGlow(MellowTime t, vec3 dir, vec3 sunDir) {
 // (the inside of the secondary) and a tail towards the antisolar point, widened by the sun's half-degree disc.
 //
 // Where: around the antisolar point, so only the part above the horizon shows. With the sun higher than 42 degrees
-// the whole primary is under the horizon, as in reality; low suns give the tall arcs. When: by day, while it rains
-// lightly, which in Minecraft is as the rain starts and, mostly, as it stops (the rain gradient eases off over a few
-// seconds; there is no clock of time since rain to keep it longer, as Mellow's wetness does). Not in thunder. No
-// moonbow.
+// the whole primary is under the horizon, as in reality; low suns give the tall arcs. When: by day, after rain, while
+// the air is still full of drops, as Mellow's rainbowStrength (wetness above the rain) does: it comes up over a few
+// seconds as the rain eases off, is strongest just after, and fades out between about one and two and a half minutes
+// later (radianteRainStoppedFor, which outlasts Iris's wetness), or as soon as rain is heavy again. Not in heavy rain
+// or thunder. No moonbow.
 const int MELLOW_RAINBOW_BANDS = 7;
 // 400 to 700 nm in steps of 50: the primary's and the secondary's angle from the antisolar point (degrees), and the
 // wavelength's colour in linear sRGB, roughly the spectral locus clipped into the gamut.
@@ -189,7 +190,11 @@ float mellowRainbowPeak(float x) {
 vec3 mellowRainbow(vec3 dir, vec3 sunDir) {
     if (float(MELLOW_RAINBOW) <= 0.0 || dir.y <= 0.0) return vec3(0.0);
     float rain = radianteRain();
-    float weather = smoothstep(0.02, 0.2, rain) * (1.0 - smoothstep(0.4, 0.8, rain)) * (1.0 - radianteThunder());
+    float stopped = radianteRainStoppedFor();
+    // Light rain only, and only once a shower that wetted the air is ending or over.
+    float afterRain = stopped > 0.0 ? smoothstep(0.0, 4.0, stopped) * (1.0 - smoothstep(50.0, 150.0, stopped))
+                                    : (1.0 - smoothstep(0.2, 0.35, rain)) * step(0.3, radianteWetness());
+    float weather = afterRain * (1.0 - smoothstep(0.3, 0.6, rain)) * (1.0 - radianteThunder());
     float sunUp = smoothstep(0.0, 0.06, sunDir.y);
     if (weather * sunUp <= 0.0) return vec3(0.0);
     float angle = degrees(acos(clamp(dot(dir, -sunDir), -1.0, 1.0)));

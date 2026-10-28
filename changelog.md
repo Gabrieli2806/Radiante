@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Shader packs can tell how wet the air is after rain: `radianteWetness()` (Iris's `wetness`, with its default
+  half-lives) and `radianteRainStoppedFor()`, seconds since the rain stopped, in `common/pack_world.glsl`. Radiante PT
+  reads neither. Mellow port 0.8.0: the rainbow now comes after rain and stays for a minute or two while the air is
+  still wet, strongest just after, instead of only the few seconds the rain takes to stop.
 - Shader packs: a new hook, `hooks/sky_emission.glsl` (`hookSkyEmission(direction, seen)`), for light glowing in the
   sky that every ray reaching it sees, so it lights the world too; `seen` lets a pack give bounced rays a cheap,
   smooth version. Radiante PT compiles to the same shaders as before. Mellow port 0.7.0 uses it: the aurora now
