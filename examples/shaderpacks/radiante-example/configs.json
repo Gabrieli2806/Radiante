@@ -17,6 +17,27 @@
             "define": "EXAMPLE_GRADE"
         },
         {
+            "name": "render_pipeline.module.ray_tracing.attribute.example_grade_strength",
+            "type": "float_range:0.0-1.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "EXAMPLE_GRADE_STRENGTH"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.example_bloom",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.15",
+            "runtime": true,
+            "define": "EXAMPLE_BLOOM"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.example_lens",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.0",
+            "runtime": true,
+            "define": "EXAMPLE_LENS"
+        },
+        {
             "name": "render_pipeline.module.ray_tracing.attribute.example_foliage_translucency",
             "type": "bool",
             "default_value": "render_pipeline.true",
@@ -50,7 +71,16 @@
         "global_variables": [
             {
                 "RADIANTE_HOOK_POST_GRADE": true
+            },
+            {
+                "RADIANTE_POST_BLOOM": true
             }
         ]
-    }
+    },
+    "debug_views": [
+        {
+            "name": "example_bloom",
+            "define": "EXAMPLE_DEBUG_BLOOM"
+        }
+    ]
 }

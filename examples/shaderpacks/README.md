@@ -7,14 +7,19 @@ replaces. The renderer puts radiante-pt under it when it loads it, so the pack f
 
 ## radiante-example
 
-A warm, contrasty look with light through leaves. Each change is a pack setting:
+A warm, contrasty look with light through leaves, a glow and optional lens effects. Each change is a pack setting:
 
 | Setting | File | What it does |
 | --- | --- | --- |
-| Colour grade | `hooks/post_grade.glsl` (turned on with `RADIANTE_HOOK_POST_GRADE` in `configs.json`) | Warm highlights, cool shadows, more contrast in the mids |
+| Colour grade, Grade Strength | `hooks/post_grade.glsl` (turned on with `RADIANTE_HOOK_POST_GRADE` in `configs.json`) | Warm highlights, cool shadows, more contrast in the mids. The strength changes live |
+| Bloom (0-1) | `hooks/post_grade.glsl` | A glow round bright things from Radiante's bloom pyramid, which the pack asks for with `RADIANTE_POST_BLOOM` in `configs.json` (`radianteAddBloom`, `common/pack_post.glsl`). Changes live |
+| Lens Flare and Fringes (0-1) | `hooks/post_grade.glsl` | Ghosts of bright lights mirrored through the centre (the bloom read at mirrored places) and colour fringes towards the edges. Changes live |
 | Light through leaves, strength | `hooks/surface.glsl`, `hooks/direct_light.glsl` | Sunlight behind leaves and small plants lights them from the back (`isLeavesSurface`, `isPlantSurface`); works with opacity micromaps. The strength changes live |
 | Water tint | `hooks/water.glsl` | Water absorption: deeper, bluer water |
 | Sky tint | `hooks/sky.glsl` | A cooler clear sky |
+
+It also has a debug view of its own, `/radiante debug view example_bloom`: the bloom alone (`debug_views` in
+`configs.json`, `EXAMPLE_DEBUG_BLOOM` in the hook).
 
 ## inkwell
 
@@ -44,8 +49,8 @@ texture's own pixels. A retro palette with an ordered dither goes over the pictu
 | --- | --- | --- |
 | Light Texels per Block (0-16) | `hooks/surface.glsl` | 16: light per texture texel (`hookTexelCentre`); lower merges texels, 0 turns it off |
 | Flat Texels | `hooks/surface.glsl` | Drops normal maps, which would shade inside a texel |
-| Palette Levels (0-32) | `hooks/post_grade.glsl` | Levels per colour channel; 0 or 1 keeps the colours |
-| Dither (0-1) | `hooks/post_grade.glsl` | How much 4x4 ordered dither goes between palette levels |
+| Palette Levels (0-32) | `hooks/post_grade.glsl` | Levels per colour channel; 0 or 1 keeps the colours. Changes live |
+| Dither (0-1) | `hooks/post_grade.glsl` | How much 4x4 ordered dither goes between palette levels. Changes live |
 
 It shows a pack changing where light is computed (`SampledSurface.worldPos` in `hookSurface`), not only its colour.
 
@@ -68,7 +73,7 @@ from there too: the aurora only where snow falls, and the thick fog of a pale ga
 | Sun Colour (0-1) | `hooks/direct_light.glsl` | Sunlight and moonlight take Mellow's hue; their strength stays Radiante's |
 | Atmospheric Fog (0-1) | `hooks/fog.glsl` | Mellow's fog density (thicker at sunrise, at night and in rain, and far thicker in a pale garden at night), with Volumetric Light on |
 | Water Colour (0-1) | `hooks/water.glsl` | Mellow's green-teal water, as the shape of the water's absorption |
-| Vibrance, Saturation, Contrast, LUT | `hooks/post_grade.glsl` | Mellow's final grade on the tone-mapped picture; LUT picks one of Mellow's (off by default, as in Mellow) |
+| Vibrance, Saturation, Contrast, LUT | `hooks/post_grade.glsl` | Mellow's final grade on the tone-mapped picture; LUT picks one of Mellow's (off by default, as in Mellow). All change live |
 
 It shows what a port by hand looks like: the effect's function is kept, what it read from Iris (images, uniforms,
 `worldTime`) is mapped to Radiante's, and its colours are scaled to Radiante's exposure. Mellow's exposure and ACES

@@ -4,3 +4,6 @@ render_pipeline.module.ray_tracing.attribute.example_foliage_translucency=Exampl
 render_pipeline.module.ray_tracing.attribute.example_foliage_transmission=Example: Leaf Transmission
 render_pipeline.module.ray_tracing.attribute.example_water_tint=Example: Water Absorption (RGB)
 render_pipeline.module.ray_tracing.attribute.example_sky_tint=Example: Sky Tint (RGB)
+render_pipeline.module.ray_tracing.attribute.example_grade_strength=Example: Grade Strength
+render_pipeline.module.ray_tracing.attribute.example_bloom=Example: Bloom
+render_pipeline.module.ray_tracing.attribute.example_lens=Example: Lens Flare and Fringes

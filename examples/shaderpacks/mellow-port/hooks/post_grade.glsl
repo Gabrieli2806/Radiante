@@ -10,6 +10,8 @@
 // they give, which is what Mellow's grade works on too (it raises the picture to 1 / 2.2 first). Mellow's LUT is off
 // by default, as in Mellow; it reads the tone-mapped colour in display terms and its output is the colour shown, so
 // the LUT's texel is taken as it is. Mellow's vignette is 0 by default and its film grain off, so neither is ported.
+// Vibrance, saturation, contrast and the LUT are live settings ("runtime": true): their defines read the world
+// uniform, so the LUT is picked with if, not #if.
 #ifndef MELLOW_VIBRANCE
 #    define MELLOW_VIBRANCE 1.14
 #endif
@@ -46,15 +48,10 @@ vec3 mellowApplyVibrance(vec3 color, float intensity) {
     return mix(color, mix(lightness, color, intensity), sat);
 }
 
-vec3 mellowDecodeLut(vec3 color, vec2 fragCoord) {
-#if MELLOW_LUT == 1
-#    define MELLOW_LUT_TEX mellowLutVintage
-#elif MELLOW_LUT == 2
-#    define MELLOW_LUT_TEX mellowLutMellow
-#else
-#    define MELLOW_LUT_TEX mellowLutPunchy
-#endif
-    float texSize = float(textureSize(MELLOW_LUT_TEX, 0).x);
+// The three LUTs are the same size (512x512, 64 levels), so the lookup is worked out once and only the texture read
+// is picked.
+vec3 mellowDecodeLut(vec3 color, vec2 fragCoord, int lut) {
+    float texSize = float(textureSize(mellowLutPunchy, 0).x);
     float cellNr = round(pow(texSize, 1.0 / 3.0));
     color += (mellowIgn(fragCoord) - 0.5) / (cellNr * cellNr);
     color = clamp(color, 0.0, 0.999);
@@ -62,16 +59,16 @@ vec3 mellowDecodeLut(vec3 color, vec2 fragCoord) {
     vec2 cellOffset = vec2(floor(offsetInCell * cellNr), floor(color.b * cellNr));
     vec2 offset = color.rg / cellNr;
     vec2 coord = clamp(offset + cellOffset / cellNr, 0.5 / texSize, 1.0 - 0.5 / texSize);
-    return texture(MELLOW_LUT_TEX, coord).rgb;
-#undef MELLOW_LUT_TEX
+    if (lut == 1) return texture(mellowLutVintage, coord).rgb;
+    if (lut == 2) return texture(mellowLutMellow, coord).rgb;
+    return texture(mellowLutPunchy, coord).rgb;
 }
 
 void hookPostGrade(inout vec3 color, vec2 uv) {
     vec2 fragCoord = uv * vec2(textureSize(hookPostGradeInput, 0));
     vec3 c = clamp(color, 0.0, 1.0);
-#if MELLOW_LUT != 0
-    c = mellowDecodeLut(c, fragCoord);
-#endif
+    int lut = int(MELLOW_LUT);
+    if (lut != 0) { c = mellowDecodeLut(c, fragCoord, lut); }
     c = mellowApplyVibrance(c, float(MELLOW_VIBRANCE));
     c = mix(vec3(mellowGradeLuminance(c)), c, float(MELLOW_SATURATION));
     c = (c - 0.5) * float(MELLOW_CONTRAST) + 0.5;

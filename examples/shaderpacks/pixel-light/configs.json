@@ -26,12 +26,14 @@
             "name": "render_pipeline.module.ray_tracing.attribute.pixel_light_palette",
             "type": "int_range:0-32",
             "default_value": "12",
+            "runtime": true,
             "define": "PIXEL_LIGHT_PALETTE"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.pixel_light_dither",
             "type": "float_range:0.0-1.0",
             "default_value": "0.6",
+            "runtime": true,
             "define": "PIXEL_LIGHT_DITHER"
         }
     ],
