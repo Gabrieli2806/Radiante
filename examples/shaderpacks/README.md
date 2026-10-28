@@ -54,18 +54,19 @@ It shows a pack changing where light is computed (`SampledSurface.worldPos` in `
 The look of [Mellow](https://modrinth.com/shader/mellow), an Iris pack by TheCMK under the MIT licence
 (`LICENSE-MELLOW`), on Radiante's light: Radiante still traces the shadows, bounces and reflections, Mellow gives the
 colours. Mellow's own noise images and LUTs are in `textures/` (MIT, from Mellow's `img/`), and its time of day and
-colour scheme in `mellow/mellow_common.glsl`, its clouds in `mellow/mellow_clouds.glsl`. Mellow's rain greys and
-darkens its sky, clouds and sunlight; the port does the same to its colours (Mellow's thunder darkening is left out:
-the shaders have no thunder strength).
+colour scheme in `mellow/mellow_common.glsl`, its clouds in `mellow/mellow_clouds.glsl`. Mellow's rain and thunder grey
+and darken its sky, clouds and sunlight, and thicken its clouds; the port does the same to its colours, with the
+thunder from `radianteThunder()` (radiante-pt's `common/pack_world.glsl`). Its biome-dependent parts read the biome
+from there too: the aurora only where snow falls, and the thick fog of a pale garden at night.
 
 | Setting | File | What it does |
 | --- | --- | --- |
 | Sky Colours (0-1) | `hooks/sky.glsl` | Mellow's sky gradient for sunrise, day, sunset and night, with its sunset glare, at Radiante's sky brightness |
 | Cloud Style (0-2), Amount, Opacity, Speed | `hooks/clouds.glsl` | Mellow's flat clouds (its default) or its volumetric ones, from its noise images, lit with its sun and sky colours. They cover the sun and moon, thicken and grey in rain as in Mellow, show in reflections and light the world |
 | Cloud Shadows (0-1) | `hooks/cloud_shadow.glsl` | The clouds' shadows on the ground, from the same clouds the sky shows (Mellow has none; this is the port's own) |
-| Stars (0-2), Aurora (0-0.5) | `hooks/stars.glsl` | Mellow's stars (they replace Radiante's) and its aurora, under the clouds. Mellow shows the aurora only in snowy biomes, which the port cannot tell, so it is off by default |
+| Stars (0-2), Aurora (0-0.5), Aurora Everywhere | `hooks/stars.glsl` | Mellow's stars (they replace Radiante's) and its aurora, under the clouds. As in Mellow the aurora shows only where snow falls (`radianteBiomePrecipitation()`), fading in as the camera enters a snowy biome; Aurora Everywhere shows it in every biome |
 | Sun Colour (0-1) | `hooks/direct_light.glsl` | Sunlight and moonlight take Mellow's hue; their strength stays Radiante's |
-| Atmospheric Fog (0-1) | `hooks/fog.glsl` | Mellow's fog density (thicker at sunrise, at night and in rain), with Volumetric Light on |
+| Atmospheric Fog (0-1) | `hooks/fog.glsl` | Mellow's fog density (thicker at sunrise, at night and in rain, and far thicker in a pale garden at night), with Volumetric Light on |
 | Water Colour (0-1) | `hooks/water.glsl` | Mellow's green-teal water, as the shape of the water's absorption |
 | Vibrance, Saturation, Contrast, LUT | `hooks/post_grade.glsl` | Mellow's final grade on the tone-mapped picture; LUT picks one of Mellow's (off by default, as in Mellow) |
 

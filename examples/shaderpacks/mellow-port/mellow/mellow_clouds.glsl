@@ -61,10 +61,11 @@ vec2 mellowFlatCloudPos(vec3 dir) {
     return (cloudPos + cameraPart + animation) * 32.0;
 }
 
-// The flat clouds' density at a point of the plane: Mellow's noise, cut by the cloud amount, which rises with rain.
+// The flat clouds' density at a point of the plane: Mellow's noise, cut by the cloud amount, which rises with rain
+// and thunder (get_clouds_flat and get_clouds_volumetric in shaders/global/atmosphere/clouds.glsl).
 float mellowFlatCloudDensity(vec2 cloudPos) {
     float noise = mellowNoise(cloudPos);
-    float cloudAmount = float(MELLOW_CLOUD_AMOUNT) / 100.0 + skyUBO.rainGradient / 5.0;
+    float cloudAmount = float(MELLOW_CLOUD_AMOUNT) / 100.0 + (skyUBO.rainGradient + radianteThunder()) / 5.0;
     return noise * smoothstep(0.0, 0.4 - float(MELLOW_CLOUD_OPACITY), noise - 0.6 + cloudAmount);
 }
 
@@ -104,7 +105,7 @@ void mellowVolumetricOffsets(out vec2 baseOffset, out vec2 detailOffset) {
 
 // The volumetric clouds' density at a camera-relative point of their layer.
 float mellowVolumetricDensity(vec3 pos, vec2 baseOffset, vec2 detailOffset) {
-    float cloudAmount = (float(MELLOW_CLOUD_AMOUNT) - 12.0) / 10.0 + skyUBO.rainGradient;
+    float cloudAmount = (float(MELLOW_CLOUD_AMOUNT) - 12.0) / 10.0 + skyUBO.rainGradient + radianteThunder() * 0.5;
     float base = textureLod(mellowNoiseTex, (pos.xz + baseOffset) * 0.00007, 0.0).r;
     float alt = (pos.y - MELLOW_VOLUMETRIC_BOTTOM) / (MELLOW_VOLUMETRIC_TOP - MELLOW_VOLUMETRIC_BOTTOM);
     float heightDensity = mellowLinstep(0.0, 0.75, 1.0 - alt) * mellowLinstep(0.0, 0.2, alt);

@@ -7,6 +7,7 @@ render_pipeline.module.ray_tracing.attribute.mellow_cloud_speed=Mellow: Velocida
 render_pipeline.module.ray_tracing.attribute.mellow_cloud_shadows=Mellow: Sombras de nubes
 render_pipeline.module.ray_tracing.attribute.mellow_stars=Mellow: Estrellas
 render_pipeline.module.ray_tracing.attribute.mellow_aurora=Mellow: Aurora
+render_pipeline.module.ray_tracing.attribute.mellow_aurora_everywhere=Mellow: Aurora en todas partes
 render_pipeline.module.ray_tracing.attribute.mellow_sun_tint=Mellow: Color del sol
 render_pipeline.module.ray_tracing.attribute.mellow_fog=Mellow: Niebla atmosférica
 render_pipeline.module.ray_tracing.attribute.mellow_water=Mellow: Color del agua

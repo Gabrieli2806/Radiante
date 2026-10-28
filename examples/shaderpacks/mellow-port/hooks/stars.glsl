@@ -7,14 +7,17 @@
 // (gbuffers_skybasic.fsh), so with Mellow's stars on, Radiante's are hidden.
 //
 // What changed for Radiante: both are in Mellow's units, scaled to Radiante's night sky as the sky is
-// (mellowSkyScale); they drift on Radiante's wind clock instead of frameTimeCounter. Mellow shows its aurora only in
-// snowy biomes (precipitationSmooth), which the shaders here cannot tell, so it is off by default and, when on, shows
-// everywhere (Mellow's AURORA_EVERYWHERE).
+// (mellowSkyScale); they drift on Radiante's wind clock instead of frameTimeCounter. As in Mellow the aurora shows only
+// where snow falls (AuroraStrength *= precipitationSmooth - 1 in get_aurora), fading in over a couple of seconds as
+// the camera enters a snowy biome, unless Aurora Everywhere is on (Mellow's AURORA_EVERYWHERE).
 #ifndef MELLOW_STARS
 #    define MELLOW_STARS 0.5
 #endif
 #ifndef MELLOW_AURORA
-#    define MELLOW_AURORA 0.0
+#    define MELLOW_AURORA 0.2
+#endif
+#ifndef MELLOW_AURORA_EVERYWHERE
+#    define MELLOW_AURORA_EVERYWHERE 0
 #endif
 
 #include "mellow/mellow_clouds.glsl"
@@ -32,6 +35,10 @@ float mellowStars(MellowTime t, vec3 dir) {
 // get_aurora: two samples of the noise on a band 10 to 13 units up, green at the bottom and teal at the top.
 vec3 mellowAurora(MellowTime t, vec3 dir) {
     float strength = float(MELLOW_AURORA) * t.night;
+#if MELLOW_AURORA_EVERYWHERE == 0
+    // Mellow's precipitationSmooth - 1: 1 where it snows, 0 where it rains, below 0 where nothing falls.
+    strength *= radianteBiomePrecipitation() - 1.0;
+#endif
     if (strength <= 0.01 || dir.y <= 0.0) return vec3(0.0);
     const vec3 COLOR_TOP = pow(vec3(28.0, 255.0, 218.0) / 255.0, vec3(2.2));
     const vec3 COLOR_BOTTOM = pow(vec3(122.0, 255.0, 28.0) / 255.0, vec3(2.2));

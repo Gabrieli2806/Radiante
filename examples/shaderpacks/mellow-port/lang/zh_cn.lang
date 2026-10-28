@@ -7,6 +7,7 @@ render_pipeline.module.ray_tracing.attribute.mellow_cloud_speed=Mellow：云速�
 render_pipeline.module.ray_tracing.attribute.mellow_cloud_shadows=Mellow：云阴影
 render_pipeline.module.ray_tracing.attribute.mellow_stars=Mellow：星星
 render_pipeline.module.ray_tracing.attribute.mellow_aurora=Mellow：极光
+render_pipeline.module.ray_tracing.attribute.mellow_aurora_everywhere=Mellow：极光随处可见
 render_pipeline.module.ray_tracing.attribute.mellow_sun_tint=Mellow：阳光颜色
 render_pipeline.module.ray_tracing.attribute.mellow_fog=Mellow：大气雾
 render_pipeline.module.ray_tracing.attribute.mellow_water=Mellow：水体颜色
