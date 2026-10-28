@@ -188,9 +188,13 @@ public final class ShaderPackLibrary {
             byte[] config = files.read(CONFIG);
             if (config == null) {
                 String nested = files.nestedConfigFolder();
-                return new Entry(stored, fileName, fallbackName, null, null, null, null, null, null,
-                    nested != null ? "screen.radiante.shader_packs.problem.nested"
-                        : "screen.radiante.shader_packs.problem.no_config", nested, builtIn);
+                // An Iris or OptiFine pack put in Radiante's folder: said as such, since "not a Radiante pack" leaves
+                // the player wondering what is wrong with a pack that works elsewhere.
+                String problem = nested != null ? "screen.radiante.shader_packs.problem.nested"
+                    : files.rasterShaderPack() ? "screen.radiante.shader_packs.problem.iris"
+                    : "screen.radiante.shader_packs.problem.no_config";
+                return new Entry(stored, fileName, fallbackName, null, null, null, null, null, null, problem, nested,
+                    builtIn);
             }
             JsonObject root;
             try {
@@ -328,6 +332,37 @@ public final class ShaderPackLibrary {
                 }
             }
             return null;
+        }
+
+        /**
+         * Whether this is an Iris or OptiFine pack: a {@code shaders/} folder, at the top or under the one folder a zip
+         * wraps it in, holding their program files ({@code .fsh}, {@code .vsh}...) or {@code shaders.properties}.
+         */
+        boolean rasterShaderPack() throws IOException {
+            if (this.zipFile != null) {
+                Enumeration<? extends ZipEntry> entries = this.zipFile.entries();
+                while (entries.hasMoreElements()) {
+                    if (rasterShaderFile(entries.nextElement().getName())) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            try (var stream = Files.walk(this.folder, 3)) {
+                return stream.anyMatch(file -> Files.isRegularFile(file)
+                    && rasterShaderFile(this.folder.relativize(file).toString().replace('\\', '/')));
+            }
+        }
+
+        private static boolean rasterShaderFile(String name) {
+            String lower = name.toLowerCase(Locale.ROOT);
+            int at = lower.startsWith("shaders/") ? 0 : lower.indexOf("/shaders/");
+            if (at < 0 || (at > 0 && lower.substring(0, at).contains("/"))) {
+                return false;
+            }
+            String file = lower.substring(lower.indexOf("shaders/", at) + "shaders/".length());
+            return file.equals("shaders.properties") || (!file.contains("/") && (file.endsWith(".fsh")
+                || file.endsWith(".vsh") || file.endsWith(".gsh") || file.endsWith(".csh")));
         }
 
         @Override

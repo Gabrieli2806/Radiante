@@ -61,6 +61,8 @@ public final class ShaderPacksScreen extends Screen {
     private static final int BUTTON = 16;
     /** The side of a pack's icon in its row, and in the panel. */
     private static final int ROW_ICON = 16;
+    /** An Iris or OptiFine pack put in Radiante's folder: named as one in its row rather than marked as broken. */
+    private static final String IRIS_PROBLEM = "screen.radiante.shader_packs.problem.iris";
     private static final int PANEL_ICON = 32;
     /** Icons by pack path and content, kept for the session as the addons' are. */
     private static final Map<String, Optional<Identifier>> ICONS = new HashMap<>();
@@ -456,6 +458,9 @@ public final class ShaderPacksScreen extends Screen {
             if (active(entry)) {
                 tag = Component.translatable("screen.radiante.shader_packs.active");
                 tagColor = ACCENT;
+            } else if (IRIS_PROBLEM.equals(entry.problem())) {
+                tag = Component.literal("Iris / OptiFine");
+                tagColor = TEXT_DIM;
             } else if (entry.problem() != null || failedLastTime(entry)) {
                 tag = Component.literal("!");
                 tagColor = BAD;

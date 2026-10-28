@@ -739,6 +739,7 @@
   "screen.radiante.shader_packs.needs_emission": "Este paquete necesita Emisión de Bloques, que está apagada.",
   "screen.radiante.shader_packs.problem.nested": "configs.json está dentro de la carpeta \"%s\": comprime los archivos del paquete, no la carpeta.",
   "screen.radiante.shader_packs.problem.no_config": "No hay configs.json arriba del todo: no es un paquete de shaders de Radiante.",
+  "screen.radiante.shader_packs.problem.iris": "Paquete de shaders de Iris u OptiFine: Radiante no los ejecuta. Úsalo con Iris, desde la carpeta shaderpacks del juego.",
   "screen.radiante.shader_packs.problem.bad_config": "No se puede leer configs.json: %s",
   "screen.radiante.shader_packs.problem.no_passes": "configs.json no tiene pases.",
   "screen.radiante.shader_packs.problem.unreadable": "No se puede abrir el paquete: %s",

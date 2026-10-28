@@ -9,7 +9,8 @@ All notable changes to this project are documented in this file.
   opens the folder, and switches packs with the usual background rebuild. A pack that does not load or compile is
   replaced by Radiante PT again, and the renderer's messages (the compiler's, or why `configs.json` was rejected) are
   shown under the list with a button to copy them; the renderer now logs why a pack's `configs.json` was rejected
-  instead of quietly loading the built-in pack. Zips that wrap the pack in a folder are flagged in the list. A pack
+  instead of quietly loading the built-in pack. Zips that wrap the pack in a folder are flagged in the list. Iris and OptiFine packs put in that folder
+  are listed as such, with a note that they belong to Iris. A pack
   that takes the game down while it is being tried is replaced by Radiante PT
   at the next start. A setting value a pack does not offer (radiante-pt's Bedrock water carried into another pack
   with the same setting) goes back to that pack's default instead of breaking its shaders.

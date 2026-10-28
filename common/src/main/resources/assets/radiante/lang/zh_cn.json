@@ -739,6 +739,7 @@
   "screen.radiante.shader_packs.needs_emission": "此光影包需要开启方块发光，目前已关闭。",
   "screen.radiante.shader_packs.problem.nested": "configs.json 位于文件夹“%s”内：请压缩光影包的文件，而不是文件夹。",
   "screen.radiante.shader_packs.problem.no_config": "顶层没有 configs.json：不是 Radiante 光影包。",
+  "screen.radiante.shader_packs.problem.iris": "这是 Iris 或 OptiFine 光影包：Radiante 无法运行。请在 Iris 中使用，放入游戏的 shaderpacks 文件夹。",
   "screen.radiante.shader_packs.problem.bad_config": "无法读取 configs.json：%s",
   "screen.radiante.shader_packs.problem.no_passes": "configs.json 中没有 passes。",
   "screen.radiante.shader_packs.problem.unreadable": "无法打开光影包：%s",
