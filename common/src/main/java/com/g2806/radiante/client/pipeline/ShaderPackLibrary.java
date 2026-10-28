@@ -41,6 +41,8 @@ public final class ShaderPackLibrary {
     private static final String CONFIG = "configs.json";
     /** Icons larger than this are not read: a pack's icon is drawn at 32 pixels. */
     private static final long LARGEST_ICON = 1024 * 1024;
+    /** A pack's configs.json and lang files larger than this are not read; Radiante PT's own is under 100 KB. */
+    private static final long LARGEST_CONFIG = 8 * 1024 * 1024;
 
     /**
      * One pack. {@code path} is what the pipeline stores ({@code shaderpacks/<name>}); {@code problem} is the
@@ -379,7 +381,7 @@ public final class ShaderPackLibrary {
         }
 
         byte[] read(String name) throws IOException {
-            return read(name, Long.MAX_VALUE);
+            return read(name, LARGEST_CONFIG);
         }
 
         /** A file of at most {@link #LARGEST_ICON} bytes, or null; never throws for a missing or odd one. */
@@ -400,8 +402,11 @@ public final class ShaderPackLibrary {
                 if (entry == null || entry.isDirectory() || entry.getSize() > largest) {
                     return null;
                 }
+                // Bounded by what actually comes out, not by the size the entry's header claims: a zip can lie
+                // about it, and a few kilobytes of compressed data can inflate to gigabytes.
                 try (InputStream in = this.zipFile.getInputStream(entry)) {
-                    return in.readAllBytes();
+                    byte[] bytes = in.readNBytes((int) Math.min(largest + 1, Integer.MAX_VALUE - 8));
+                    return bytes.length > largest ? null : bytes;
                 }
             }
             Path file = this.folder.resolve(name).normalize();
