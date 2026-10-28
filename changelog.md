@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Shader packs: a new hook, `hooks/sky_emission.glsl` (`hookSkyEmission(direction, seen)`), for light glowing in the
+  sky that every ray reaching it sees, so it lights the world too; `seen` lets a pack give bounced rays a cheap,
+  smooth version. Radiante PT compiles to the same shaders as before. Mellow port 0.7.0 uses it: the aurora now
+  faintly lights snow, water and the ground in its colour and shows in rough reflections (Aurora Light), and a
+  rainbow, primary and secondary, opposite a low sun in light rain, mostly as it stops (Rainbow).
 - Mellow port 0.6.0: a realistic aurora, now the default (Aurora Style; Mellow's own is still there): folded,
   rippling curtains with a sharp lower edge and rays, green below and red above, drifting and shimmering slowly,
   fading at the horizon and under the moon and hidden by clouds. Still only in snowy biomes unless Aurora Everywhere.
