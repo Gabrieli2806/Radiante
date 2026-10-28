@@ -50,21 +50,18 @@ Luz del Cielo (y el método de Mapeo de Tonos) a la vez:
 | Estilo | Mapeo de Tonos | Saturación | Luz Rebotada | Luz del Cielo |
 |---|---|---|---|---|
 | **Natural** | PBR Neutral | 100% | 100% | 100% |
-| **Bedrock** | PBR Neutral | 120% | 150% | 180% |
+| **Bedrock** (por defecto) | Bedrock RTX | 100% | 150% | 180% |
 | **Vívido** | ACES | 130% | 150% | 150% |
 
 - **Natural** — luz y color físicamente correctos, sin ningún ajuste encima. Es la referencia neutra.
-- **Bedrock** — ajustado para parecerse al look de Bedrock RTX: más saturado, con sombras y luz
+- **Bedrock** — el aspecto de Bedrock RTX, el predeterminado: la curva de tonos de Bedrock, con sombras y luz
   rebotada más claras que lo físicamente correcto, para que los cuartos se sientan más iluminados
   desde una sola fuente de luz.
 - **Vívido** — más contraste (vía el mapeo de tonos ACES, más cinematográfico) y más color que
   Natural, pero sin llegar a la luz rebotada extra de Bedrock.
 
-Los perfiles de render ponen estos valores por su cuenta (Bedrock RTX (Mejorado): saturación 100%,
-luz rebotada 150%, luz del cielo 180%), que no coinciden con ningún estilo, así que con un perfil el
-selector muestra **Personalizado**. Elegir un estilo convierte el perfil en Personalizado. Los
-perfiles usan además la curva de tonos propia de Bedrock, que el estilo no cambia: la columna Mapeo
-de Tonos solo se aplica cuando está en uso una de las tres curvas de arriba.
+Bedrock es el aspecto por defecto de radiante-pt, con la curva de tonos propia de Bedrock RTX.
+Cambiar cualquiera de estos a mano muestra el estilo como **Personalizado**.
 
 **Estilos de imagen.** Natural, Bedrock y Vívido cambian la saturación, el mapeo de tonos y cuánta luz rebotada llega.
 

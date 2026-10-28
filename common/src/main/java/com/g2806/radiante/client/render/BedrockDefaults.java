@@ -1,7 +1,6 @@
 package com.g2806.radiante.client.render;
 
 import com.g2806.radiante.client.pipeline.Pipeline;
-import com.g2806.radiante.client.profile.RendererProfile;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -15,7 +14,7 @@ import java.util.Map;
 import net.minecraft.resources.Identifier;
 
 /**
- * The Bedrock RTX (Enhanced) profile's built-in fog, water and light block glow, used when no Bedrock pack is enabled.
+ * Radiante's built-in Bedrock RTX fog, water and light block glow, used when no Bedrock pack provides them.
  * They are data, never textures:
  *
  * <ul>
@@ -29,8 +28,8 @@ import net.minecraft.resources.Identifier;
  * vanilla's texture.
  * </ul>
  *
- * Only the Bedrock RTX (Enhanced) profile uses them: Realistic and Custom keep Radiante's own values, and a Bedrock pack
- * that covers a biome or a sprite always wins.
+ * They are always in use: radiante-pt's defaults are the Bedrock RTX look. A Bedrock pack that covers a biome or a
+ * sprite always wins.
  */
 public final class BedrockDefaults {
 
@@ -49,14 +48,9 @@ public final class BedrockDefaults {
     private BedrockDefaults() {
     }
 
-    /** Whether the profile that takes these values is the one in use. */
-    public static boolean active() {
-        return RendererProfile.current() == RendererProfile.BEDROCK_RTX_ENHANCED;
-    }
-
-    /** Whether the light blocks take their glow from the table: the profile, and Bedrock's glow being cast. */
+    /** Whether the light blocks take their glow from the table: only while Bedrock's glow is cast. */
     static boolean emissionActive() {
-        return active() && Pipeline.castsBedrockGlow();
+        return Pipeline.castsBedrockGlow();
     }
 
     /** The built-in fog file's biomes, in the format of a converted pack's bedrock_fog.json; null if unreadable. */

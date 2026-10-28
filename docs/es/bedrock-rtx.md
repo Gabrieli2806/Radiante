@@ -41,8 +41,8 @@ resource pack que trae dentro.
   primero arriba.
 - Un **attachable del escudo** que le fija piezas (la antorcha de Vazah's Dynamic Lights, por
   ejemplo) se dibuja sobre el escudo de Java, en cada mano como lo dibuja el pack, y sus texels
-  brillantes brillan. Con los perfiles Bedrock RTX el escudo ilumina el mundo desde la mano como una
-  antorcha (del color de su llama); en los demás perfiles, como un bloque de luz en la mano. Solo se
+  brillantes brillan. El escudo ilumina el mundo desde la mano como una antorcha (del color de su
+  llama); con el brillo de Bedrock apagado en Avanzado, como un bloque de luz en la mano. Solo se
   usa el aspecto por defecto del pack: las variantes que Bedrock elige al jugar (antorcha apagada
   bajo el agua, antorcha de almas) no. Los attachables de otros ítems no se convierten.
 - Límites: los archivos comprimidos dentro del archivo solo se descomprimen hasta un límite de tamaño
@@ -51,8 +51,8 @@ resource pack que trae dentro.
 ### Colores de luz de Vibrant Visuals
 
 Un pack con iluminación local de Vibrant Visuals (`local_lighting/local_lighting.json`, el color de
-la luz de cada bloque que ilumina) trae esos colores, mientras el pack está activado y con los
-perfiles **Bedrock RTX**, que son los que ponen luces puntuales:
+la luz de cada bloque que ilumina) trae esos colores mientras el pack está activado (y se proyecta
+el brillo de Bedrock, activo por defecto; es lo que pone luces puntuales):
 
 - Antorchas, faroles, la vara del End, el faro, el fuego, las fogatas, las bayas brillantes y el
   arbusto de luciérnagas toman el color del pack para la luz que dan (también en la mano, para
@@ -92,28 +92,27 @@ reflejos, y un bloque que emite luz brilla donde el pack lo marca. Cuánta luz p
 sigue dependiendo de su nivel de luz, así las luces del pack encajan con la escala de luz de
 Radiante. No afecta a packs Java.
 
-## Los perfiles de render
+## El aspecto Bedrock RTX
 
-**Perfil de Render** (en la sección [Imagen](opciones/imagen.md)) tiene dos perfiles; cambiar un
-ajuste que gestiona uno de ellos lo convierte en **Personalizado**.
+Los valores por defecto de radiante-pt son el aspecto Bedrock RTX; no hay perfil que elegir. Llevan
+el resto del aspecto a Bedrock RTX: el cielo y la luz solar de Bedrock, bloom, una curva de tonos
+estilo Bedrock construida con el histograma de la imagen, exposición medida sobre la luz que llega a
+las superficies a la vista, colores sRGB exactos, reflejos de vidrio y agua y superficie del agua de
+Bedrock, luz solar filtrada por el vidrio, el volumen de niebla propio de Bedrock y agua más densa.
+Sobre Bedrock mantiene algunos extras: los bloques de luz con poco brillo en el pack se ven
+iluminados por su propia luz y los portales del End brillan. Funciona con o sin un `.mcpack`; los
+dos juntos son lo más cercano a Bedrock RTX. Todos los ajustes se pueden cambiar; **Restablecer**
+devuelve el aspecto.
 
-- **Bedrock RTX (Mejorado)**, el predeterminado, lleva el resto del aspecto a Bedrock RTX: el cielo
-  y la luz solar de Bedrock, bloom, una curva de tonos estilo Bedrock construida con el histograma
-  de la imagen, exposición medida sobre la luz que llega a las superficies a la vista, colores sRGB
-  exactos, reflejos de vidrio y agua y superficie del agua de Bedrock, luz solar filtrada por el
-  vidrio, el volumen de niebla propio de Bedrock y agua más densa. Sobre Bedrock mantiene algunos
-  extras: los bloques de luz con poco brillo en el pack se ven iluminados por su propia luz y los
-  portales del End brillan. Funciona con o sin un `.mcpack`; los dos juntos son lo más cercano a
-  Bedrock RTX.
+Sin ningún pack Bedrock activado, Radiante usa valores incorporados para la niebla y el agua de cada
+bioma y para cuánta luz da cada bloque de luz (antorchas, faroles, piedra luminosa, linternas
+marinas, luces rana, fuego, etc.). Solo se usan números, no texturas: qué píxeles de un bloque
+brillan, sus mapas de normales y sus demás materiales siguen necesitando un pack. Cualquier pack
+Bedrock que actives reemplaza todo esto.
 
-  Sin ningún pack Bedrock activado, este perfil usa valores incorporados para la niebla y el agua de cada
-  bioma y para cuánta luz da cada bloque de luz (antorchas, faroles, piedra luminosa, linternas marinas,
-  luces rana, fuego, etc.). Solo se usan números, no texturas: qué píxeles de un bloque brillan, sus
-  mapas de normales y sus demás materiales siguen necesitando un pack. Cualquier pack Bedrock que
-  actives reemplaza todo esto.
-- **Realista** parte del mismo aspecto y pone menos luz de relleno, más contraste, color más
-  calmado, olas más finas y agua turquesa más clara, para que nada parezca de plástico. Ver
-  [Imagen](opciones/imagen.md) para cada valor.
+Otros aspectos llegan como shader packs. Las versiones anteriores tenían un perfil de render
+**Realista**; si estaba elegido él o **Personalizado**, los ajustes que ponía vuelven a estos valores
+por defecto una vez, en el primer inicio tras la actualización, y el resto de ajustes se conserva.
 
 ## Archivos de una instalación de Bedrock
 
@@ -128,7 +127,7 @@ un resource pack. Radiante busca cada uno en, por orden:
 | Archivo | Para qué | Sin él |
 |---|---|---|
 | `sky.png` (64×256) y `look_up_tables.png` (128 de ancho) | **Atmósfera: Bedrock** (en [Cielo y Agua](opciones/cielo-niebla-agua.md)): los colores de cielo y luz solar de Bedrock RTX | La opción sale en gris y muestra Java (Bedrock no disponible); se usa el cielo propio de Radiante. |
-| `water_n.tga` | La superficie del agua de Bedrock (tres capas en movimiento de sus normales de agua), que usa el perfil Bedrock RTX (Mejorado) | El agua mantiene la superficie propia de Radiante. |
+| `water_n.tga` | La superficie del agua de Bedrock (tres capas en movimiento de sus normales de agua), que se usa por defecto | El agua mantiene la superficie propia de Radiante. |
 | `caustics.png` y `wibbly.png` | **Bedrock Caustics**, en Avanzado (desactivado por defecto) | La opción sale en gris; se usan las cáusticas procedurales de Radiante. |
 
 <!-- Captura pendiente: el cielo con Atmósfera en Java y en Bedrock, misma hora del día -->

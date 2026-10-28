@@ -78,7 +78,7 @@ Pasa también con Vulkan por software (`llvmpipe`). Ver
 
 ### Si todo va bien
 
-Radiante se activa al entrar a un mundo, con el perfil Bedrock RTX (Mejorado). Pipeline por
+Radiante se activa al entrar a un mundo, con el aspecto Bedrock RTX de radiante-pt. Pipeline por
 defecto: RT-DLSS si DLSS ya está instalado, si no RT-FSR.
 
 ### Teclas

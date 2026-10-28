@@ -101,7 +101,7 @@ the settings: it applies the changes and builds the shaders again.
 ## I want the settings of a fresh install back
 
 **Reset to Defaults**, at the bottom left of the settings. It resets everything, including pipeline
-settings with no visible control, and picks the Bedrock RTX (Enhanced) profile again. The pipeline
+settings with no visible control, which brings back the Bedrock RTX look. The pipeline
 goes back to RT-DLSS when DLSS is loaded, FSR otherwise. See [Settings](settings.md).
 
 ## None of this worked

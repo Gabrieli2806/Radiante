@@ -26,8 +26,8 @@ Versión de esta documentación: **1.1.0**.
 
 - **[Estilos de imagen y niveles de calidad](estilos-y-calidad.md)** — los niveles Baja/Media/Alta/Ultra,
   y los estilos Natural/Bedrock/Vívido.
-- **[Resource packs y perfiles de Bedrock RTX](bedrock-rtx.md)** — usar un `.mcpack` de Bedrock, los
-  perfiles Bedrock RTX (Mejorado) y Realista, y leer archivos de una instalación de Bedrock en el
+- **[Resource packs y aspecto de Bedrock RTX](bedrock-rtx.md)** — usar un `.mcpack` de Bedrock, el
+  aspecto Bedrock RTX que radiante-pt tiene por defecto, y leer archivos de una instalación de Bedrock en el
   mismo PC.
 - **[Distant Horizons](distant-horizons.md)** — soporte experimental de terreno lejano.
 - **[HDR](hdr.md)** — salida en pantallas HDR, brillo máximo y blanco de papel.
@@ -69,7 +69,7 @@ página con todos sus controles, valor por defecto y qué hace cada uno:
 - Ambiente de Bioma: el aire y el agua propios de cada bioma, de forma sutil, para biomas vanilla,
   de mods y de packs de Bedrock por igual.
 - LabPBR (`_n`/`_s`) para bloques, entidades e ítems; resource packs `.mcpack` de Bedrock RTX,
-  leídos con sus propios materiales; dos perfiles de render, Bedrock RTX (Mejorado) y Realista.
+  leídos con sus propios materiales; los valores por defecto de radiante-pt son el aspecto Bedrock RTX.
 - Presets: guarda un aspecto, cambia entre aspectos, comparte uno como código.
 - FSR incluido; DLSS y XeSS descargables. Generación de fotogramas DLSS o FSR y NVIDIA Reflex.
 - Salida HDR, desenfoque de movimiento y profundidad de campo.

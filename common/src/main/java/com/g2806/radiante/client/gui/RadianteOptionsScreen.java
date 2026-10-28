@@ -10,7 +10,6 @@ import com.g2806.radiante.client.render.FrameGeneration;
 import com.g2806.radiante.client.render.OutputResolution;
 import com.g2806.radiante.client.pipeline.Pipeline;
 import com.g2806.radiante.client.pipeline.Presets;
-import com.g2806.radiante.client.profile.RendererProfile;
 import com.mojang.serialization.Codec;
 import java.util.ArrayList;
 import java.util.List;
@@ -79,8 +78,6 @@ public class RadianteOptionsScreen extends Screen {
     /** Numeric pipeline settings, read once per screen; a setting the pipeline lacks has no entry. */
     private java.util.EnumMap<Tunable, Integer> pendingTunables;
     private PictureStyle.ToneMethod pendingToneMethod;
-    /** The renderer profile picked; applied last, so it wins over the individual settings changed in the same visit. */
-    private RendererProfile pendingProfile = RendererProfile.current();
     private boolean applied;
 
     /** The part of the settings shown; kept while the game runs, so the screen reopens where it was left. */
@@ -199,7 +196,6 @@ public class RadianteOptionsScreen extends Screen {
         this.pendingReflex = previous.pendingReflex;
         this.pendingTunables = previous.pendingTunables;
         this.pendingToneMethod = previous.pendingToneMethod;
-        this.pendingProfile = previous.pendingProfile;
         this.scroll = previous.layout != null ? previous.layout.scroll() : previous.scroll;
         this.search = previous.layout != null ? previous.layout.searchText() : previous.search;
     }
@@ -858,9 +854,6 @@ public class RadianteOptionsScreen extends Screen {
         // A quality level picks the upscaler's mode; the Custom mode would hide that.
         this.pendingCustomScale = false;
         if (Pipeline.supportsVolumetricFog()) {
-            if (!Boolean.valueOf(quality.volumetricFog).equals(this.pendingVolumetricFog)) {
-                leaveProfile();
-            }
             this.pendingVolumetricFog = quality.volumetricFog;
         }
         if (Pipeline.supportsClouds()) {
@@ -919,14 +912,14 @@ public class RadianteOptionsScreen extends Screen {
         this.pendingBiomeAmbiance = false;
         this.pendingFirstPersonShadow = true;
         this.pendingBiomeAmbianceStrength = 100;
-        this.pendingVolumetricFog = Pipeline.supportsVolumetricFog() ? Boolean.FALSE : null;
+        this.pendingVolumetricFog = Pipeline.supportsVolumetricFog() ? Boolean.TRUE : null;
         this.pendingMotionBlur = Boolean.FALSE;
         this.pendingCloudShadows = Boolean.FALSE;
         this.pendingRestir = Boolean.TRUE;
         this.pendingSer = Boolean.FALSE;
         this.pendingFroxelFog = Pipeline.supportsShaderPackToggle(Pipeline.FROXEL_FOG_ATTRIBUTE) ? Boolean.TRUE : null;
         this.pendingSeamlessGlass =
-            Pipeline.supportsShaderPackToggle(Pipeline.SEAMLESS_GLASS_ATTRIBUTE) ? Boolean.TRUE : null;
+            Pipeline.supportsShaderPackToggle(Pipeline.SEAMLESS_GLASS_ATTRIBUTE) ? Boolean.FALSE : null;
         this.pendingPackToggles.clear();
         for (String attribute : List.of(Pipeline.CACHE_DEEP_BOUNCES_ATTRIBUTE, Pipeline.BEDROCK_MATERIALS_ATTRIBUTE)) {
             if (Pipeline.supportsShaderPackToggle(attribute)) {
@@ -952,12 +945,11 @@ public class RadianteOptionsScreen extends Screen {
                 this.pendingAddons.put(setting, setting.defaultValue());
             }
         }
-        this.pendingProfile = RendererProfile.BEDROCK_RTX_ENHANCED;
         if (this.pendingTunables != null) {
             this.pendingTunables.replaceAll((tunable, value) -> tunable.defaultSteps);
         }
         if (this.pendingToneMethod != null) {
-            this.pendingToneMethod = PictureStyle.ToneMethod.PBR_NEUTRAL;
+            this.pendingToneMethod = PictureStyle.ToneMethod.BEDROCK;
         }
     }
 
@@ -1003,9 +995,6 @@ public class RadianteOptionsScreen extends Screen {
             },
             new OptionInstance.IntRange(tunable.min, tunable.max, false), current, value -> {
                 this.pendingTunables.put(tunable, value);
-                if (PROFILE_SETTINGS.contains(tunable.key()) || tunableManaged(tunable)) {
-                    leaveProfile();
-                }
                 if (affectsStyle) {
                     refreshQualityLater();
                 }
@@ -1192,7 +1181,6 @@ public class RadianteOptionsScreen extends Screen {
                     if (this.pendingToneMethod != null) {
                         this.pendingToneMethod = value.method;
                     }
-                    leaveProfile();
                     refreshQualityLater();
                 });
         }
@@ -1203,25 +1191,9 @@ public class RadianteOptionsScreen extends Screen {
                     Codec.STRING.xmap(PictureStyle.ToneMethod::valueOf, PictureStyle.ToneMethod::name)),
                 this.pendingToneMethod, value -> {
                     this.pendingToneMethod = value;
-                    leaveProfile();
                     refreshQualityLater();
                 });
-        OptionInstance<RendererProfile> profile = new OptionInstance<>("options.radiante.renderer_profile",
-            tooltip("options.radiante.renderer_profile"),
-            (caption, value) -> Component.translatable("options.radiante.renderer_profile." + value.name().toLowerCase(java.util.Locale.ROOT)),
-            new OptionInstance.Enum<>(this.pendingProfile == RendererProfile.CUSTOM
-                    ? List.of(RendererProfile.BEDROCK_RTX_ENHANCED, RendererProfile.REALISTIC, RendererProfile.CUSTOM)
-                    : List.of(RendererProfile.BEDROCK_RTX_ENHANCED, RendererProfile.REALISTIC),
-                Codec.STRING.xmap(RendererProfile::of, RendererProfile::name)),
-            this.pendingProfile,
-            value -> {
-                this.pendingProfile = value;
-                adoptProfileSwitches();
-                adoptProfileTunables();
-                // Fog Style is only offered outside Bedrock RTX: the list is laid out again.
-                refreshQualityLater();
-            });
-        addRows(profile, style, method, tunable(Tunable.SATURATION, true), tunable(Tunable.TEXTURE_CONTRAST, false),
+        addRows(style, method, tunable(Tunable.SATURATION, true), tunable(Tunable.TEXTURE_CONTRAST, false),
             tunable(Tunable.EXPOSURE_ADAPTATION, false),
             tunable(Tunable.EXPOSURE_SPEED, false), tunable(Tunable.EXPOSURE_BIAS, false),
             tunable(Tunable.LOW_LIGHT_BOOST, false), tunable(Tunable.EXPOSURE_DAY, false),
@@ -1291,7 +1263,6 @@ public class RadianteOptionsScreen extends Screen {
                         return;
                     }
                     this.pendingBedrockAtmosphere = value;
-                    profileSwitchChanged(Pipeline.BEDROCK_ATMOSPHERE_ATTRIBUTE, value);
                 });
         OptionInstance<Integer> cloudHeight = new OptionInstance<Integer>("options.radiante.cloud_height",
             RadianteOptionsScreen.<Integer>tooltip("options.radiante.cloud_height"),
@@ -1307,12 +1278,10 @@ public class RadianteOptionsScreen extends Screen {
                 OptionInstance.cachedConstantTooltip(Component.translatable("options.radiante.volumetric_fog.tooltip")),
                 this.pendingVolumetricFog, value -> {
                     this.pendingVolumetricFog = value;
-                    leaveProfile();
                     refreshQualityLater();
                 });
-            // The Bedrock RTX profile's fog is Bedrock's froxel volume; the other style has no Bedrock fog at all.
-            if (Pipeline.supportsShaderPackToggle(Pipeline.FROXEL_FOG_ATTRIBUTE)
-                && !this.pendingProfile.isBedrock()) {
+            // Bedrock's fog is always its froxel volume: the style is only a choice with Bedrock's fog off.
+            if (Pipeline.supportsShaderPackToggle(Pipeline.FROXEL_FOG_ATTRIBUTE) && !bedrockFog()) {
                 if (this.pendingFroxelFog == null) {
                     this.pendingFroxelFog = Pipeline.isShaderPackToggleOn(Pipeline.FROXEL_FOG_ATTRIBUTE);
                 }
@@ -1341,7 +1310,6 @@ public class RadianteOptionsScreen extends Screen {
             seamlessGlass = OptionInstance.createBoolean("options.radiante.seamless_glass",
                 tooltip("options.radiante.seamless_glass"), this.pendingSeamlessGlass, value -> {
                     this.pendingSeamlessGlass = value;
-                    profileSwitchChanged(Pipeline.SEAMLESS_GLASS_ATTRIBUTE, value);
                 });
         }
         // Which glass seamless glass joins: blocks and panes, blocks only or panes only.
@@ -1485,7 +1453,6 @@ public class RadianteOptionsScreen extends Screen {
         boolean value = this.pendingPackToggles.computeIfAbsent(attribute, Pipeline::isShaderPackToggleOn);
         return OptionInstance.createBoolean(key, tooltip(key), value, newValue -> {
             this.pendingPackToggles.put(attribute, newValue);
-            profileSwitchChanged(attribute, newValue);
         });
     }
 
@@ -1673,15 +1640,6 @@ public class RadianteOptionsScreen extends Screen {
                 if (optionKey == null) {
                     return null;
                 }
-                String profileSwitch = PROFILE_SWITCHES.get(optionKey);
-                if ((pendingProfile.isBedrock() && (PROFILE_SETTINGS.contains(optionKey)
-                    || realisticManages(optionKey)))
-                    || (profileSwitch != null && pendingProfile.managedValue(profileSwitch) != null)) {
-                    return Component.translatable("options.radiante.notice.profile", profileName(pendingProfile));
-                }
-                if (pendingProfile == RendererProfile.CUSTOM && optionKey.equals(O + "renderer_profile")) {
-                    return Component.translatable("options.radiante.notice.custom_profile");
-                }
                 return null;
             }
 
@@ -1714,8 +1672,6 @@ public class RadianteOptionsScreen extends Screen {
 
     /** The options an option switches off or takes the place of, named under its description. */
     private static final java.util.Map<String, List<String>> AFFECTS = java.util.Map.ofEntries(
-        java.util.Map.entry(O + "renderer_profile", List.of(O + "tone_method", T + "exposure_adaptation",
-            T + "low_light_boost", T + "glass_reflections", T + "water_density", O + "volumetric_fog")),
         java.util.Map.entry(O + "volumetric_fog", List.of(O + "fog_style", O + "volumetric_fog_strength",
             T + "fog_distance", T + "light_shafts", O + "volumetric_fog_samples")),
         java.util.Map.entry(O + "fog_style", List.of(O + "volumetric_fog_samples")),
@@ -1736,108 +1692,9 @@ public class RadianteOptionsScreen extends Screen {
         java.util.Map.entry(O + "quality", List.of(O + "dlss_mode", O + "upscaler_mode", O + "block_light_sampling",
             O + "volumetric_fog", O + "cloud_mode", O + "ray_bounces", O + "parallax", O + "volumetric_fog_samples")));
 
-    /** The settings on this screen the Bedrock RTX profile sets: changing one turns the profile into Custom. */
-    private static final java.util.Set<String> PROFILE_SETTINGS = java.util.Set.of(O + "tone_method",
-        O + "picture_style", T + "exposure_adaptation", T + "low_light_boost", T + "glass_reflections",
-        T + "water_density", O + "volumetric_fog");
-
-    /**
-     * A setting the Bedrock RTX profile manages was changed by hand: the profile becomes Custom, which keeps every
-     * value as it is. Left at Bedrock RTX the change was written over on the next build, without a word.
-     */
-    private void leaveProfile() {
-        if (this.pendingProfile.isBedrock()) {
-            this.pendingProfile = RendererProfile.CUSTOM;
-            refreshQualityLater();
-        }
-    }
-
-    /**
-     * The on/off settings on this screen a profile may set besides those: their option and the attribute behind it.
-     * Which of them a profile sets, and to what, is the profile's to say (RendererProfile.managedValue).
-     */
-    private static final java.util.Map<String, String> PROFILE_SWITCHES = java.util.Map.of(
-        O + "seamless_glass", Pipeline.SEAMLESS_GLASS_ATTRIBUTE,
-        O + "transparent_checkerboard", Pipeline.TRANSPARENT_CHECKERBOARD_ATTRIBUTE,
-        O + "bedrock_materials", Pipeline.BEDROCK_MATERIALS_ATTRIBUTE,
-        O + "atmosphere_style", Pipeline.BEDROCK_ATMOSPHERE_ATTRIBUTE);
-
-    /** A slider the chosen profile sets (the Realistic profile's extra rows; the Enhanced ones are PROFILE_SETTINGS). */
-    private boolean tunableManaged(Tunable tunable) {
-        return this.pendingProfile == RendererProfile.REALISTIC && this.pendingProfile.managedValue(tunable.attribute) != null;
-    }
-
-    private boolean realisticManages(String optionKey) {
-        if (this.pendingProfile != RendererProfile.REALISTIC) {
-            return false;
-        }
-        for (Tunable tunable : Tunable.values()) {
-            if (tunable.key().equals(optionKey) && tunableManaged(tunable)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /** A profile was picked: the sliders it sets show what it sets them to, and the ones it leaves go back to the values the other profile had. */
-    private void adoptProfileTunables() {
-        if (this.pendingTunables == null) {
-            return;
-        }
-        for (Tunable tunable : Tunable.values()) {
-            if (!this.pendingTunables.containsKey(tunable)) {
-                continue;
-            }
-            String managed = this.pendingProfile.managedValue(tunable.attribute);
-            if (managed == null) {
-                continue;
-            }
-            try {
-                int steps = (int) Math.round(Double.parseDouble(managed.trim()) / tunable.unit);
-                this.pendingTunables.put(tunable, Math.max(tunable.min, Math.min(tunable.max, steps)));
-            } catch (NumberFormatException notANumber) {
-                // A managed value that is not a number (a mode) has no slider.
-            }
-        }
-    }
-
-    /** A switch was flipped by hand: against what the chosen profile sets it to, the profile becomes Custom. */
-    private void profileSwitchChanged(String attribute, boolean on) {
-        String managed = this.pendingProfile.managedValue(attribute);
-        if (managed != null && !managed.equals(on ? "render_pipeline.true" : "render_pipeline.false")) {
-            leaveProfile();
-        }
-    }
-
-    /** A profile was picked: the switches it sets show what it sets them to, as they will be once applied. */
-    private void adoptProfileSwitches() {
-        for (String attribute : PROFILE_SWITCHES.values()) {
-            String managed = this.pendingProfile.managedValue(attribute);
-            if (managed == null) {
-                continue;
-            }
-            boolean on = managed.equals("render_pipeline.true");
-            if (attribute.equals(Pipeline.SEAMLESS_GLASS_ATTRIBUTE)) {
-                this.pendingSeamlessGlass = this.pendingSeamlessGlass == null ? null : on;
-            } else if (attribute.equals(Pipeline.BEDROCK_ATMOSPHERE_ATTRIBUTE)) {
-                this.pendingBedrockAtmosphere = this.pendingBedrockAtmosphere == null ? null : on;
-            } else if (Pipeline.supportsShaderPackToggle(attribute)) {
-                this.pendingPackToggles.put(attribute, on);
-            }
-        }
-    }
-
-    private static Component profileName(RendererProfile profile) {
-        return Component.translatable("options.radiante.renderer_profile."
-            + profile.name().toLowerCase(java.util.Locale.ROOT));
-    }
-
     /** Bedrock's fog volume is what fogs the air, as things are chosen here. */
     private boolean bedrockFog() {
-        return switch (this.pendingProfile) {
-            case BEDROCK_RTX_ENHANCED, REALISTIC -> true;
-            case CUSTOM -> packToggleOn("render_pipeline.module.ray_tracing.attribute.bedrock_volumetric_fog");
-        };
+        return packToggleOn("render_pipeline.module.ray_tracing.attribute.bedrock_volumetric_fog");
     }
 
     private static Component needs(String otherKey) {
@@ -1873,7 +1730,7 @@ public class RadianteOptionsScreen extends Screen {
         }
         // Bedrock's fog volume has no use for the air's own controls: with it they do nothing at all.
         boolean bedrock = bedrockFog();
-        Component profile = Component.translatable("options.radiante.blocked.bedrock_fog");
+        Component bedrockFogReason = Component.translatable("options.radiante.blocked.bedrock_fog");
         boolean fog = Boolean.TRUE.equals(this.pendingVolumetricFog);
         boolean grid = bedrock || (this.pendingFroxelFog != null ? this.pendingFroxelFog
             : packToggleOn(Pipeline.FROXEL_FOG_ATTRIBUTE));
@@ -1893,10 +1750,10 @@ public class RadianteOptionsScreen extends Screen {
         }
         return switch (key.substring(O.length())) {
             case "volumetric_fog_strength", "tunable.fog_distance", "tunable.light_shafts" ->
-                !fog ? needs(O + "volumetric_fog") : bedrock ? profile : null;
+                !fog ? needs(O + "volumetric_fog") : bedrock ? bedrockFogReason : null;
             case "volumetric_fog_samples" ->
-                !fog ? needs(O + "volumetric_fog") : bedrock ? profile : grid ? overriddenBy(O + "fog_style") : null;
-            case "fog_style" -> !fog ? needs(O + "volumetric_fog") : bedrock ? profile : null;
+                !fog ? needs(O + "volumetric_fog") : bedrock ? bedrockFogReason : grid ? overriddenBy(O + "fog_style") : null;
+            case "fog_style" -> !fog ? needs(O + "volumetric_fog") : bedrock ? bedrockFogReason : null;
             case "tunable.motion_blur_strength" ->
                 Boolean.TRUE.equals(this.pendingMotionBlur) ? null : needs(O + "motion_blur");
             case "tunable.dof_strength", "tunable.dof_range", "dof_auto_focus" ->
@@ -2131,10 +1988,6 @@ public class RadianteOptionsScreen extends Screen {
         for (java.util.Map.Entry<String, String> advanced : this.pendingAdvanced.entrySet()) {
             String[] target = advanced.getKey().split("\n", 2);
             changed |= Pipeline.setModuleValue(target[0], target[1], advanced.getValue());
-            String managed = this.pendingProfile.managedValue(target[1]);
-            if (managed != null && !managed.equals(advanced.getValue())) {
-                leaveProfile();
-            }
         }
         this.pendingAdvanced.clear();
         String[] renderScale = renderScaleTarget();
@@ -2145,16 +1998,11 @@ public class RadianteOptionsScreen extends Screen {
         if (changed) {
             Pipeline.savePipeline();
         }
-        RendererProfile chosen = this.pendingProfile;
-        if (chosen != RendererProfile.current()) {
-            changed |= chosen.apply();
-        }
         if (!changed) {
             return false;
         }
         // Only what is compiled into the pipeline waits for a build; the rest reaches the renderer now, or is built
-        // after all when the renderer turns it down. Saved after the push: the profile's enforce() it runs may set
-        // values of its own, which a build would have saved too.
+        // after all when the renderer turns it down. Saved after the push, as a build would have saved it.
         boolean rebuild = structural || Pipeline.takeStructuralChange() || !Pipeline.pushRuntimeChanges();
         if (!rebuild) {
             Pipeline.savePipeline();

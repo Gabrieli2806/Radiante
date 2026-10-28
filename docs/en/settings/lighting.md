@@ -4,17 +4,14 @@
 
 ![Radiante settings: Lighting](../../images/ui/settings-lighting.png)
 
-Where the **Realistic** profile sets something else than the default Bedrock RTX (Enhanced), its
-value follows in brackets.
-
 | Control | Range | Default | What it does |
 |---|---|---|---|
 | **Day Brightness** | 0% – 400% | 25% | Sun and sky light by day. |
 | **Night Brightness** | 0% – 400% | 35% | Moon and sky light by night. |
 | **Light Source Brightness** | 0% – 400% | 12% | Blocks that give off light: torches, lava, glowstone… |
 | **Held Light Brightness** | 0% – 400% | 12% | What you hold: its own glow and the light it casts. Needs Held Item Light. |
-| **Bounced Light** | 50% – 200% | 150% (80%) | How much light carries on after a bounce. 100% is physically correct; higher fills rooms like Bedrock RTX. |
-| **Sky Light** | 50% – 400% | 180% (100%) | How much the open sky lights the world. |
+| **Bounced Light** | 50% – 200% | 150% | How much light carries on after a bounce. 100% is physically correct; higher fills rooms like Bedrock RTX. |
+| **Sky Light** | 50% – 400% | 180% | How much the open sky lights the world. |
 | **Block Light Sampling** | On / Off | On | Each surface casts a shadow ray straight at a nearby light. Much less noise at night and in caves. Needs Block Emission (in [Performance](performance.md)). |
 | **ReSTIR Block Lights** | On / Off | On | Reuses the light each pixel picked across frames and neighbours. Much less noise in rooms with many lights. Needs Block Light Sampling. |
 | **Shader Execution Reordering** | On / Off | Off | SER: the GPU groups similar rays. Meant for RTX 40 or newer. Experimental: water may look white. |
@@ -25,4 +22,4 @@ value follows in brackets.
 
 They change with the Picture Style (see [Image](image.md) and
 [styles-and-quality.md](../styles-and-quality.md)). Changing them by hand turns the style into
-Custom, and under the Realistic profile the profile too.
+Custom.

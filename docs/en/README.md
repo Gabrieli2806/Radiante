@@ -25,8 +25,8 @@ Documentation version: **1.1.0**.
 
 - **[Picture styles and quality levels](styles-and-quality.md)** — the Low/Medium/High/Ultra
   levels, and the Natural/Bedrock/Vivid styles.
-- **[Bedrock RTX resource packs and profiles](bedrock-rtx.md)** — using a Bedrock `.mcpack`, the
-  Bedrock RTX (Enhanced) and Realistic profiles, and reading files from a Bedrock install on the
+- **[Bedrock RTX resource packs and look](bedrock-rtx.md)** — using a Bedrock `.mcpack`, the
+  Bedrock RTX look radiante-pt has by default, and reading files from a Bedrock install on the
   same PC.
 - **[Distant Horizons](distant-horizons.md)** — experimental far-terrain support.
 - **[HDR](hdr.md)** — output on HDR displays, peak brightness and paper white.
@@ -68,7 +68,7 @@ control, its default value, and what it does:
 - Biome Ambiance: every biome's own air and water, kept subtle, for vanilla, modded and Bedrock
   pack biomes alike.
 - LabPBR (`_n`/`_s`) for blocks, entities and items; Bedrock RTX `.mcpack` resource packs, read
-  with their own materials; two renderer profiles, Bedrock RTX (Enhanced) and Realistic.
+  with their own materials; radiante-pt's defaults are the Bedrock RTX look.
 - Presets: save a look, switch between looks, share one as a code.
 - FSR built in; DLSS and XeSS downloadable. DLSS or FSR frame generation and NVIDIA Reflex.
 - HDR output, motion blur and depth of field.

@@ -77,7 +77,7 @@ This also happens with software Vulkan (`llvmpipe`). See
 
 ### If all goes well
 
-Radiante turns on when you enter a world, with the Bedrock RTX (Enhanced) profile. Default pipeline:
+Radiante turns on when you enter a world, with radiante-pt's Bedrock RTX look. Default pipeline:
 RT-DLSS if DLSS is already installed, otherwise RT-FSR.
 
 ### Keys

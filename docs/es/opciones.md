@@ -54,8 +54,6 @@ Su ratón virtual queda apagado en esta pantalla salvo que lo actives en ella.
   activar antes otro ajuste, otro ocupa su lugar, el trazado de rayos está apagado o faltan los
   archivos de Bedrock.
 - **También decide:** los ajustes que este apaga o reemplaza.
-- Un ajuste que gestiona el perfil de render lo indica: cambiarlo convierte el perfil en
-  Personalizado.
 
 ## Calidad y Restablecer valores
 
@@ -65,8 +63,8 @@ Tocar uno de esos a mano lo deja en Personalizado. Detalle en
 [estilos-y-calidad.md](estilos-y-calidad.md#niveles-de-calidad).
 
 **Restablecer valores**, abajo a la izquierda, devuelve todo a un install nuevo, incluidos los
-ajustes del pipeline y del shader pack que no tienen control aquí, y vuelve a elegir el perfil
-Bedrock RTX (Mejorado). Con **Ctrl** pulsado se convierte en **Recompilar Shaders**: aplica los
+ajustes del pipeline y del shader pack que no tienen control aquí, lo que devuelve el aspecto
+Bedrock RTX de radiante-pt. Con **Ctrl** pulsado se convierte en **Recompilar Shaders**: aplica los
 cambios y vuelve a compilar los shaders, para cuando la imagen se ve mal tras cambiar ajustes.
 
 ## Ajustes que piden reiniciar
@@ -80,7 +78,7 @@ marca **(reinicio)** y, al salir de la pantalla, un aviso lista los cambios pend
 | Sección | Contenido |
 |---|---|
 | [Calidad](opciones/calidad-y-escalado.md) | Interruptor de trazado de rayos, nivel de calidad, pipeline, modo DLSS o de escalado, Reconstrucción de Rayos, resolución de render y de salida, generación de fotogramas, Reflex. |
-| [Imagen](opciones/imagen.md) | Perfil de render, estilo de imagen, exposición, nitidez de FSR, HDR, desenfoque de movimiento, profundidad de campo. |
+| [Imagen](opciones/imagen.md) | Estilo de imagen, mapeo de tonos, exposición, nitidez de FSR, HDR, desenfoque de movimiento, profundidad de campo. |
 | [Iluminación](opciones/iluminacion.md) | Brillos, luz rebotada y del cielo, muestreo de luces de bloque, ReSTIR, SER, luz del objeto en mano, sombra en primera persona. |
 | [Cielo y Agua](opciones/cielo-niebla-agua.md) | Atmósfera, nubes, estrellas, sol, trayectoria del sol, lluvia, vidrio, ambiente de bioma, niebla volumétrica, agua. |
 | [Rendimiento](opciones/rendimiento.md) | Rebotes de luz, espejos, vidrio, textura del agua, portal, lluvia, caché, tablero, parallax, materiales de packs Bedrock, calidad de niebla, construcción de chunks. |

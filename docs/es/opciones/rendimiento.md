@@ -9,22 +9,21 @@
 
 ![Ajustes de Radiante: Rendimiento](../../images/ui/settings-performance.png)
 
-Los valores por defecto son los que pone el perfil por defecto, **Bedrock RTX (Mejorado)**; cuando
-el perfil **Realista** pone otro, va entre paréntesis.
+Los valores por defecto son los de radiante-pt, el aspecto Bedrock RTX ([bedrock-rtx.md](../bedrock-rtx.md)).
 
 | Control | Rango | Por defecto | Qué hace |
 |---|---|---|---|
 | **Rebotes de Luz** | 1 – 128 | 4 | Cuántas veces rebota la luz. De 4 a 2 ronda +50% FPS. Más de 4 cuesta mucho y es para GPUs potentes; espejos y vidrio claro reciben rebotes extra por su cuenta. En gris mientras Un rebote + caché está activado. |
 | **Reflejos en Espejos** | 0 – 64 | 8 | Cuántos reflejos dentro de reflejos se trazan además de los Rebotes de Luz: espejos enfrentados, vidrio tras vidrio, agua vista en un espejo. Solo cuentan superficies casi perfectamente lisas, así que necesita un resource pack PBR; el agua y el vidrio siempre cuentan. Solo cuesta FPS donde hay espejos enfrentados. |
-| **Límite de Espejo** | 0% – 200% | 30% (20%) | Los metales al menos así de lisos se dibujan como espejos limpios y nítidos. 0% lo desactiva. |
-| **Reflejos del Vidrio** | 0% – 200% | 200% | Cuánto cielo muestran las ventanas sobre lo que hay detrás. 0% es vidrio totalmente limpio. Los perfiles mantienen el reflejo completo de Bedrock (200%). |
+| **Límite de Espejo** | 0% – 200% | 30% | Los metales al menos así de lisos se dibujan como espejos limpios y nítidos. 0% lo desactiva. |
+| **Reflejos del Vidrio** | 0% – 100% | 100% | Cuánto cielo muestran las ventanas sobre lo que hay detrás. 0% es vidrio totalmente limpio; 100% es el reflejo completo de Bedrock. |
 | **Textura del Agua** | 0% – 100% | 10% | Cuánto de la textura de agua del resource pack se ve sobre la superficie, como la dibuja Bedrock RTX. 0% es agua clara y transparente, sin el patrón. |
-| **Agua Turquesa Clara** | 0% – 100% | 0% (70%) | Cuánto se acerca el agua de cada bioma a un agua turquesa y clara: el rojo se absorbe en pocos bloques mientras el verde y el azul llegan a decenas, así que se ve el fondo y los rayos de luz a lo lejos. 0% es el agua del propio pack. |
+| **Agua Turquesa Clara** | 0% – 100% | 0% | Cuánto se acerca el agua de cada bioma a un agua turquesa y clara: el rojo se absorbe en pocos bloques mientras el verde y el azul llegan a decenas, así que se ve el fondo y los rayos de luz a lo lejos. 0% es el agua del propio pack. |
 | **Transparencia del Portal** | 0% – 100% | 50% | Cuánto de la transparencia del resource pack conserva un portal del Nether. 100% es como lo dibuja el pack, 0% es opaco. |
 | **Opacidad de la Lluvia** | 0% – 100% | 0% | Cuánto se ve cada trazo de lluvia. Bajo es agua cayendo fina y casi transparente que atrapa la luz; 100% es la textura de lluvia del pack como una lámina opaca. |
 | **Caché en Rebotes Profundos** | Activado / Desactivado | Activado | Tras el primer rebote, la luz sale de la caché de radiancia en vez de seguir trazando, y las superficies rebotadas no buscan luces de bloque, como Bedrock RTX. Mucho más rápido con muchas luces; la luz rebotada puede verse algo más suave. |
 | **Un rebote + caché** | Activado / Desactivado | Desactivado | Como Bedrock RTX: solo se traza un rebote de luz en todo, y el resto sale de la caché de radiancia donde cae. La mayor ganancia; la luz indirecta en zonas sin caché se ve algo más oscura por un momento. |
-| **Tablero en vidrio/agua** | Activado / Desactivado | Desactivado | El agua y el vidrio trazan su reflejo o su refracción por píxel, alternando en tablero de ajedrez, en vez de ambos: un rayo por píxel en lugar de dos, como Bedrock RTX. Los perfiles lo mantienen apagado. |
+| **Tablero en vidrio/agua** | Activado / Desactivado | Desactivado | El agua y el vidrio trazan su reflejo o su refracción por píxel, alternando en tablero de ajedrez, en vez de ambos: un rayo por píxel en lugar de dos, como Bedrock RTX. Apagado por defecto, porque la imagen a resolución completa de Bedrock necesita ambos. |
 | **Relieve de Texturas** (parallax) | Activado / Desactivado | Activado | Profundidad en texturas de resource packs con mapas de altura — ladrillos y piedras resaltan. Desactivado: texturas planas y algo más rápido. Sin un pack con mapas de altura, este control no cambia nada visualmente. |
 | **Materiales de Packs Bedrock** | Activado / Desactivado | Activado | Packs Bedrock RTX (`.mcpack`): metal, rugosidad y lo que brilla se leen directo de los mapas MER del pack con todo su detalle, como en Bedrock, en vez de la copia convertida (las vetas de los minerales y los bordes de metal conservan sus reflejos). No afecta a packs Java. |
 | **Calidad de Niebla Volumétrica** | 4 – 32 muestras | 16 | Muestras por rayo del estilo de niebla Radiante (ver [Cielo y Agua](cielo-niebla-agua.md)). Menos es más rápido y algo más ruidoso; 32 cuesta cerca de un 30% más que 16. En gris con el estilo Froxel o con el volumen de niebla de Bedrock, que no la usan. |

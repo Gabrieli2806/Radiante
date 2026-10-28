@@ -107,8 +107,8 @@ public final class HeldLight {
     }
 
     /**
-     * The colour of the light the held block casts when set down, when that is one of Bedrock's point lights and the
-     * profile casts them; null otherwise. A torch, lantern or end rod then lights the same in the hand as on the
+     * The colour of the light the held block casts when set down, when that is one of Bedrock's point lights and they
+     * are cast; null otherwise. A torch, lantern or end rod then lights the same in the hand as on the
      * ground: the same colour, strength and fall-off, so walking into a cave and setting it down changes nothing.
      */
     private static int[] pointLightOf(ItemStack stack) {

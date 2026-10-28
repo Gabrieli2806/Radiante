@@ -11,11 +11,11 @@ import java.util.Locale;
  */
 enum Tunable {
     SATURATION(Pipeline.TONE_MAPPING_MODULE_NAME, "render_pipeline.module.tone_mapping.attribute.saturation",
-        0.01, 50, 200, 120, Format.PERCENT),
+        0.01, 50, 200, 100, Format.PERCENT),
     EXPOSURE_ADAPTATION(Pipeline.TONE_MAPPING_MODULE_NAME,
-        "render_pipeline.module.tone_mapping.attribute.exposure_adaptation", 0.01, 0, 100, 50, Format.PERCENT),
+        "render_pipeline.module.tone_mapping.attribute.exposure_adaptation", 0.01, 0, 100, 100, Format.PERCENT),
     EXPOSURE_BIAS(Pipeline.TONE_MAPPING_MODULE_NAME, "render_pipeline.module.tone_mapping.attribute.exposure_bias",
-        0.1, -30, 30, 7, Format.EV),
+        0.1, -30, 30, 0, Format.EV),
     // One slider for both directions: how fast the exposure follows going into the light and into the dark.
     EXPOSURE_SPEED(Pipeline.TONE_MAPPING_MODULE_NAME, "render_pipeline.module.tone_mapping.attribute.exposure_up_speed",
         "render_pipeline.module.tone_mapping.attribute.exposure_down_speed", 0.08, 5, 250, 100, Format.PERCENT),
@@ -29,9 +29,10 @@ enum Tunable {
         220, 100, Format.PERCENT),
     FSR_SHARPNESS(Pipeline.FSR_MODULE_NAME, "render_pipeline.module.fsr_upscaler.attribute.sharpness", 0.01, 0, 100,
         70, Format.PERCENT),
-    // The most the exposure may brighten a dark scene.
+    // The most the exposure may brighten a dark scene; 100% is Bedrock RTX's 32, which lets a room lit through a
+    // window come up as bright as in Bedrock.
     LOW_LIGHT_BOOST(Pipeline.TONE_MAPPING_MODULE_NAME, "render_pipeline.module.tone_mapping.attribute.max_exposure",
-        0.02, 25, 400, 100, Format.PERCENT),
+        0.32, 1, 200, 100, Format.PERCENT),
     CLOUD_COVERAGE(null, "render_pipeline.module.ray_tracing.attribute.volumetric_cloud_coverage", 0.01, 0, 100, 50,
         Format.PERCENT),
     CLOUD_DENSITY(null, "render_pipeline.module.ray_tracing.attribute.volumetric_cloud_density", 0.01, 0, 400, 100,
@@ -47,7 +48,7 @@ enum Tunable {
     TEXTURE_CONTRAST(null, "render_pipeline.module.ray_tracing.attribute.albedo_gamma", 0.022, 46, 109, 100,
         Format.PERCENT),
     // How much of the sky a window shows on top of what is behind it.
-    GLASS_REFLECTIONS(null, "render_pipeline.module.ray_tracing.attribute.glass_reflection", 0.005, 0, 200, 100,
+    GLASS_REFLECTIONS(null, "render_pipeline.module.ray_tracing.attribute.glass_reflection", 0.01, 0, 100, 100,
         Format.PERCENT),
     // How much of the pack's water texture shows over the surface: Bedrock RTX's faint pattern, or clear water at 0.
     WATER_TEXTURE(null, "render_pipeline.module.ray_tracing.attribute.water_texture_layer", 0.01, 0, 100, 10,
@@ -73,7 +74,7 @@ enum Tunable {
         Format.PERCENT),
     WATER_WAVES(null, "render_pipeline.module.ray_tracing.attribute.water_wave_strength", 0.0035, 0, 400, 100,
         Format.PERCENT),
-    WATER_DENSITY(null, "render_pipeline.module.ray_tracing.attribute.water_density", 0.001, 0, 500, 100,
+    WATER_DENSITY(null, "render_pipeline.module.ray_tracing.attribute.water_density", 0.01, 0, 400, 100,
         Format.PERCENT),
     WATER_GOD_RAYS(null, "render_pipeline.module.ray_tracing.attribute.water_god_rays", 0.0012, 0, 400, 100,
         Format.PERCENT),
@@ -149,8 +150,8 @@ enum Tunable {
                 if (Math.abs(stored - clamp(steps) * this.unit) < this.unit * 0.5) {
                     return false;
                 }
-                // A slider left where it was shown is not written: a stored value outside the slider's range (a
-                // profile's 32 for the low-light boost, whose slider ends at 8) would otherwise be clamped on every
+                // A slider left where it was shown is not written: a stored value outside the slider's range would
+                // otherwise be clamped on every
                 // Apply. A value that does not parse is still replaced.
                 if (read() != null && read() == clamp(steps)) {
                     return false;

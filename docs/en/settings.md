@@ -51,7 +51,6 @@ mouse stays off on this screen unless you turn it on there.
 - A row that does nothing as things are set is grey, and the panel says why: another setting has to
   be turned on first, another one takes its place, ray tracing is off, or Bedrock's files are missing.
 - **Also decides:** the settings this one switches off or takes the place of.
-- A setting the renderer profile manages says so: changing it turns the profile into Custom.
 
 ## Quality and Reset to Defaults
 
@@ -61,8 +60,8 @@ hand turns it into Custom. Details in
 [styles-and-quality.md](styles-and-quality.md#quality-levels).
 
 **Reset to Defaults**, at the bottom left, returns everything to a fresh install, including
-pipeline and shader pack settings that have no control here, and picks the Bedrock RTX (Enhanced)
-profile again. Holding **Ctrl** turns it into **Rebuild Shaders**: it applies the changes and
+pipeline and shader pack settings that have no control here, which brings back radiante-pt's
+Bedrock RTX look. Holding **Ctrl** turns it into **Rebuild Shaders**: it applies the changes and
 builds the shaders again, for when the picture looks wrong after changing settings.
 
 ## Settings that need a restart
@@ -76,7 +75,7 @@ marked **(restart)** and, when you leave the screen, a notice lists the pending 
 | Section | Contents |
 |---|---|
 | [Quality](settings/quality-and-upscaling.md) | Ray tracing switch, quality level, pipeline, DLSS or upscaling mode, Ray Reconstruction, render and output resolution, frame generation, Reflex. |
-| [Image](settings/image.md) | Renderer profile, picture style, exposure, FSR sharpness, HDR, motion blur, depth of field. |
+| [Image](settings/image.md) | Picture style, tone mapping, exposure, FSR sharpness, HDR, motion blur, depth of field. |
 | [Lighting](settings/lighting.md) | Brightness, bounced and sky light, block light sampling, ReSTIR, SER, held item light, first person shadow. |
 | [Sky & Water](settings/sky-fog-water.md) | Atmosphere, clouds, stars, sun, sun path, rain, glass, biome ambiance, volumetric fog, water. |
 | [Performance](settings/performance.md) | Light bounces, mirrors, glass, water texture, portal, rain, cache, checkerboard, parallax, Bedrock pack materials, fog quality, chunk building. |

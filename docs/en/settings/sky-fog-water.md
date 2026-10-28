@@ -10,8 +10,7 @@
 |---|---|
 | ![Off](../../images/compare/volumetric-fog-off.webp) | ![On](../../images/compare/volumetric-fog-on.webp) |
 
-Defaults are what the default profile, **Bedrock RTX (Enhanced)**, sets; where the **Realistic**
-profile sets something else, its value follows in brackets.
+Defaults are radiante-pt's, the Bedrock RTX look ([bedrock-rtx.md](../bedrock-rtx.md)).
 
 | Control | Range / Values | Default | What it does |
 |---|---|---|---|
@@ -24,26 +23,26 @@ profile sets something else, its value follows in brackets.
 | **Cloud Quality** | 8 – 256 | 64 | Steps taken through volumetric clouds per ray. Higher is smoother and costs frame rate. |
 | **Stars** | 100 – 20000 | 3000 | How many stars the night sky has. |
 | **Stars at Altitude** | 0% – 400% | 100% | How much clearer the stars get the higher you are: at 100% they are twice as bright from a mountain top (around Y 190) as from sea level. 0% keeps them the same everywhere. With Biome Ambiance on, the biome's air counts too: sharper over deserts, peaks and the open sea, dimmer in a swamp's or a jungle's haze. |
-| **Sun Glow** | 0% – 300% | 100% (50%) | The halo around the sun. |
-| **Light Shafts** | 0% – 400% | 100% (53%) | Beams of light through windows, skylights and leaves. Needs Volumetric Fog; no effect with Bedrock's fog volume (see below). |
+| **Sun Glow** | 0% – 300% | 100% | The halo around the sun. |
+| **Light Shafts** | 0% – 400% | 100% | Beams of light through windows, skylights and leaves. Needs Volumetric Fog; no effect with Bedrock's fog volume (see below). |
 | **Sun Path** | Vanilla · Tilted · Custom | Vanilla | Vanilla: sun and moon cross straight overhead from east to west. Tilted: the path leans ten degrees south, so noon shadows are not straight down. Custom shows when the [Sun & Moon Path](#sun--moon-path-advanced) settings hold anything else. |
 | **Vanilla Sun/Moon Rotation** | On / Off | On | Keeps the sun and moon squares lined up with their path as in vanilla, instead of turning as they cross the sky. |
 | **Wet Ground in Rain** | On / Off | On | Surfaces under open sky darken and shine while it rains, and dry slowly after. |
 | **Wind** | On / Off | Off | Leaves, grass, flowers, crops, saplings, sugar cane, vines and lily pads sway in the wind within about 48 blocks of you, harder in rain and thunder; seagrass and kelp sway slowly with the current. The geometry itself moves, so shadows, reflections and light through the leaves move with it. Switching it reloads the world's geometry. In a dense forest it costs about 0.6 ms a frame on an RTX 5070; off, nothing. |
 | **Wind Strength** | 0% – 200% | 100% | How far the wind moves leaves and plants while Wind is on. 0% holds them still. |
-| **Seamless Glass** | On / Off | Off | Removes the frame around each glass block and pane: a glass wall reads as one sheet. The profiles turn it off, as Bedrock shows each block in its frame; turning it on makes the profile Custom. |
+| **Seamless Glass** | On / Off | Off | Removes the frame around each glass block and pane: a glass wall reads as one sheet. Off by default, as Bedrock shows each block in its frame. |
 | **Seamless Glass Scope** | Glass blocks and panes · Glass blocks only · Panes only | Glass blocks and panes | Which glass Seamless Glass joins. Needs Seamless Glass. |
 | **Biome Ambiance** | On / Off | Off | Each biome's own air and water, kept subtle: warm dust over deserts, a green murk over swamps, a cold bright mist over snow, red, teal and ash in the Nether, violet in the End; under water, clear and bright by a beach, dark and close in the deep ocean. Fades from one biome to the next, stays out of overworld caves, and works with or without Volumetric Fog. More under [Biome Ambiance](#biome-ambiance) below. |
 | **Biome Ambiance Strength** | 0% – 400% | 100% | How thick each biome's haze is. 100% is the tuned, subtle look; no effect on performance. Needs Biome Ambiance. |
-| **Volumetric Fog** | On / Off | On | Ray marches the air: sunlight and moonlight scatter in it, and trees and terrain cast light shafts through it. Costs noticeably more GPU time than the plain haze. With the Bedrock RTX profiles it is Bedrock's own fog volume. |
-| **Fog Style** | Froxel · Radiante | Froxel | Froxel: a 3D grid (froxels) lit once per cell and kept across frames; sharper shafts, block lights glow in the fog, and it costs less. Radiante: each pixel marches the air itself; follows every surface exactly but costs more. Hidden with the Bedrock RTX profiles, whose fog is Bedrock's own volume. |
+| **Volumetric Fog** | On / Off | On | Ray marches the air: sunlight and moonlight scatter in it, and trees and terrain cast light shafts through it. Costs noticeably more GPU time than the plain haze. By default it is Bedrock's own fog volume. |
+| **Fog Style** | Froxel · Radiante | Froxel | Froxel: a 3D grid (froxels) lit once per cell and kept across frames; sharper shafts, block lights glow in the fog, and it costs less. Radiante: each pixel marches the air itself; follows every surface exactly but costs more. Hidden while Bedrock Volumetric Fog (Advanced, on by default) fogs the air with its own volume. |
 | **Volumetric Fog Strength** | 0% – 400% | 100% | How thick the air that shows sunbeams and light shafts is. No effect on performance — only the sample count (in [Performance](performance.md)) does. |
 | **Fog Distance** | 48 – 192 blocks | 128 | How far volumetric fog and light shafts reach. |
-| **Water Waves** | 0% – 400% | 100% (143%) | How rough the water surface is. 0% is a flat, mirror-like surface. |
-| **Water Murkiness** | 0% – 500% | 500% | How quickly the view fades out underwater. Lower is clearer. The profiles set 1000%, Bedrock's full extinction, past the end of the slider, which then shows 500%. |
+| **Water Waves** | 0% – 400% | 100% | How rough the water surface is. 0% is a flat, mirror-like surface. |
+| **Water Murkiness** | 0% – 400% | 100% | How quickly the view fades out underwater. Lower is clearer. 100% is Bedrock's full extinction. |
 | **Underwater Light Rays** | 0% – 400% | 100% | Shafts of sunlight through the water surface while underwater. |
 
-With the Bedrock RTX profiles (or Bedrock Volumetric Fog turned on under Advanced) the air is fogged
+With Bedrock Volumetric Fog on (under Advanced, the default) the air is fogged
 by Bedrock's own volume, which has no use for Volumetric Fog Strength, Fog Distance, Light Shafts or
 Volumetric Fog Quality: those rows are grey and say so.
 

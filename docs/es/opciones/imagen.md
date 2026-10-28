@@ -4,21 +4,19 @@
 
 ![Ajustes de Radiante: Imagen](../../images/ui/settings-image.png)
 
-Los valores por defecto son los que pone el perfil por defecto, **Bedrock RTX (Mejorado)**; cuando
-el perfil **Realista** pone otro, va entre paréntesis.
+Los valores por defecto son los de radiante-pt, el aspecto Bedrock RTX ([bedrock-rtx.md](../bedrock-rtx.md)).
 
 | Control | Rango / Valores | Por defecto | Qué hace |
 |---|---|---|---|
-| **Perfil de Render** | Bedrock RTX (Mejorado) · Realista · Personalizado | Bedrock RTX (Mejorado) | **Bedrock RTX (Mejorado)**: el cielo y la luz solar propios de Bedrock RTX, exposición medida sobre la luz que llega a las superficies a la vista, la curva de tonos por histograma y el bloom de Bedrock, colores sRGB exactos, reflejos de vidrio y agua de Bedrock, luz solar filtrada por el vidrio, el volumen de niebla de Bedrock y agua más densa que apaga la distancia bajo el agua; encima, los bloques de luz con poco brillo en el pack se ven iluminados por su propia luz y los portales del End brillan. **Realista** es lo mismo con todo lo que hace que la imagen parezca de plástico puesto al revés: menos luz ambiental y rebotada (las sombras conservan profundidad), algo más de contraste, color más calmado (92 % de saturación), casi sin bloom, haces de luz y brillo del sol a la mitad, olas más finas e irregulares, agua turquesa más clara, solo el metal pulido como espejo limpio y un ojo que se adapta más despacio. Es más oscuro que Mejorado a propósito. **Personalizado** aparece al cambiar a mano un ajuste que gestiona un perfil; elige un perfil otra vez para recuperar sus valores. Se aplica al final: gana sobre los ajustes parecidos cambiados en la misma visita. Más en [bedrock-rtx.md](../bedrock-rtx.md). |
-| **Estilo de Imagen** | Natural · Bedrock · Vívido · Personalizado | Personalizado | Ajusta Saturación, Luz Rebotada y Luz del Cielo a la vez. Los valores de los perfiles no coinciden con ningún estilo, así que muestra Personalizado; elegir un estilo convierte el perfil en Personalizado. Detalle completo en [estilos-y-calidad.md](../estilos-y-calidad.md#estilos-de-imagen). |
-| **Mapeo de Tonos** | PBR Neutral · ACES · Reinhard | — | Cómo se ajusta la luz intensa a lo que la pantalla puede mostrar. PBR Neutral mantiene los colores fieles; ACES es más cinematográfico y con más contraste; Reinhard es suave y plano. Oculto mientras se usa la curva de tonos de Bedrock de los perfiles (se puede cambiar en Avanzado). |
-| **Saturación** | 50% – 200% | 100% (92%) | Qué tan colorida es la imagen. |
+| **Estilo de Imagen** | Natural · Bedrock · Vívido · Personalizado | Bedrock | Ajusta Saturación, Luz Rebotada, Luz del Cielo y la curva de tonos a la vez. Bedrock es el aspecto por defecto. Detalle completo en [estilos-y-calidad.md](../estilos-y-calidad.md#estilos-de-imagen). |
+| **Mapeo de Tonos** | Bedrock RTX · PBR Neutral · ACES · Reinhard | Bedrock RTX | Cómo se ajusta la luz intensa a lo que la pantalla puede mostrar. Bedrock RTX es la curva propia de Bedrock, construida con el histograma de la imagen; PBR Neutral mantiene los colores fieles; ACES es más cinematográfico y con más contraste; Reinhard es suave y plano. |
+| **Saturación** | 50% – 200% | 100% | Qué tan colorida es la imagen. |
 | **Contraste de Texturas** | 46% – 109% | 100% | Qué tan profundos y contrastados se ven los colores de bloques y entidades bajo la luz. 100% coincide con Bedrock RTX; menos da el aspecto más pálido y plano de versiones anteriores. |
 | **Adaptación del Ojo** | 0% – 100% | 100% | Cuánto se adapta la exposición a lo que miras. Menos mantiene los cuartos oscuros y el día brillante; 100% siempre iguala la imagen. |
-| **Velocidad de Adaptación del Ojo** | 5% – 250% | 100% (50%) | Qué tan rápido sigue la exposición al pasar de la oscuridad a la luz o al revés. Menos deja ver cómo se ajustan los ojos por un momento; 100% es casi instantáneo. |
+| **Velocidad de Adaptación del Ojo** | 5% – 250% | 100% | Qué tan rápido sigue la exposición al pasar de la oscuridad a la luz o al revés. Menos deja ver cómo se ajustan los ojos por un momento; 100% es casi instantáneo. |
 | **Exposición** | -3.0 EV – +3.0 EV | +0.0 EV | Brillo general de la imagen, en pasos fotográficos. |
-| **Refuerzo en Poca Luz** | 25% – 400% | 400% | Cuánto puede aclarar la exposición una escena oscura. Más deja ver mejor en cuevas y de noche; menos mantiene oscuro lo oscuro. Los perfiles ponen 1600%, más allá del final del slider, que entonces muestra 400%. |
-| **Exposición de Día** | 10% – 150% | 48% (42%) | Qué tan brillante se mantiene la imagen de día, frente a lo que daría solo el medidor de luz. Menos es más oscuro. |
+| **Refuerzo en Poca Luz** | 1% – 200% | 100% | Cuánto puede aclarar la exposición una escena oscura. Más deja ver mejor en cuevas y de noche; menos mantiene oscuro lo oscuro. 100% es el límite de Bedrock RTX. |
+| **Exposición de Día** | 10% – 150% | 48% | Qué tan brillante se mantiene la imagen de día, frente a lo que daría solo el medidor de luz. Menos es más oscuro. |
 | **Exposición de Noche** | 10% – 150% | 65% | Lo mismo de noche. |
 | **Límite en Oscuridad de Día** | 50% – 3200% | 250% | Cuánto puede abrirse la exposición de día en un lugar oscuro. Bajo mantiene oscuros los cuartos cerrados; alto aclara cuartos iluminados solo por una ventana. |
 | **Nitidez de FSR** | 0% – 100% | 70% | Cuánto afila FSR la imagen escalada. Más es más nítido pero puede mostrar halos en los bordes. Solo con RT-FSR. |
@@ -31,7 +29,7 @@ el perfil **Realista** pone otro, va entre paréntesis.
 | **Enfoque Automático** | Activado / Desactivado | Activado | La Profundidad de Campo enfoca lo que esté en el centro de la pantalla. Apagado mantiene el foco en Distancia de Enfoque, para capturas. |
 | **Distancia de Enfoque** | 1 – 256 bloques | 12 | A qué distancia queda nítida la imagen con Enfoque Automático apagado. |
 
-Con los perfiles Bedrock RTX el mapeo de tonos es estilo Bedrock (una curva construida a partir del
+Con la curva de tonos Bedrock RTX (la predeterminada) el mapeo de tonos es estilo Bedrock (una curva construida a partir del
 histograma de la imagen) y la exposición se mide sobre la luz que llega a las superficies a la
 vista, así que los sliders de exposición se comportan algo distinto que con las curvas PBR Neutral,
 ACES o Reinhard.

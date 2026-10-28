@@ -217,7 +217,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
 
     /**
      * Marks what follows as one of the other see-through blocks (ice, slime, honey), which Bedrock RTX draws the way
-     * it draws glass; only the Bedrock RTX profiles read it.
+     * it draws glass; radiante-pt's Bedrock RTX look reads it.
      */
     public PBRVertexWriter blend(boolean blend) {
         this.blend = blend;
