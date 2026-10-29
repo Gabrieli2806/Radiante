@@ -63,6 +63,12 @@ el brillo de Bedrock, activo por defecto; es lo que pone luces puntuales):
   bloques que el pack marca como luz estática (lava, luces de rana, lámparas de redstone) conservan
   el brillo de su textura; su color todavía no se aplica.
 
+El polvo de redstone brilla según su potencia, con pack o sin él: nada con potencia 0, y más
+brillante y de un rojo más claro hasta la potencia 15, con el color de vanilla para esa potencia;
+también ilumina un poco el suelo a su alrededor (una línea recta da como un cuarto de una antorcha
+de redstone). La emisión que un pack da a las texturas del polvo no se usa, así que el polvo sin
+potencia nunca brilla.
+
 ### Qué convierte exactamente
 
 Bedrock describe cada textura con un "texture set": una textura de color, un mapa MER(S)

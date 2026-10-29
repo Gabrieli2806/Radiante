@@ -100,6 +100,12 @@ public final class EmissionTiles {
      */
     private static final Map<Block, Integer> EXTRA_EMISSION = Map.of(
         net.minecraft.world.level.block.Blocks.REDSTONE_BLOCK, 5);
+    /**
+     * The light level a powered repeater or comparator glows at: its torches draw the redstone torch's own lit sprite,
+     * so they glow as it does (level 7). Left dark, these blocks, which carry no light level, counted as dark blocks
+     * drawing that sprite, and it was taken off the emitters: lit redstone torches did not glow either.
+     */
+    private static final int POWERED_DIODE_EMISSION = 7;
 
     private static Object registeredFor;
     /** Whether the last registration took emitters from Bedrock MER maps; toggling it registers again. */
@@ -123,6 +129,7 @@ public final class EmissionTiles {
     public static void invalidate() {
         registeredFor = null;
         PbrAtlases.invalidate();
+        RedstoneGlow.invalidate();
     }
 
     /** Whether this state draws a light block's glowing sprites while giving no light; see {@link #unlitStates}. */
@@ -204,7 +211,13 @@ public final class EmissionTiles {
                 }
             }
 
-            int extra = EXTRA_EMISSION.getOrDefault(block, 0);
+            boolean extraSomewhere = false;
+            for (BlockState state : block.getStateDefinition().getPossibleStates()) {
+                if (extraEmission(state) > 0) {
+                    extraSomewhere = true;
+                    break;
+                }
+            }
             // The sprites of this block's lit states and of its dark ones. A lit furnace, smoker, blast furnace or
             // campfire draws one sprite of its own (the glowing front, the burning logs) next to sprites its unlit
             // state draws too (the sides and top, the plain logs): those stay dark, or the whole block glowed on
@@ -212,7 +225,7 @@ public final class EmissionTiles {
             Map<TextureAtlasSprite, Integer> litSprites = new IdentityHashMap<>();
             Set<TextureAtlasSprite> darkSprites = Collections.newSetFromMap(new IdentityHashMap<>());
             for (BlockState state : block.getStateDefinition().getPossibleStates()) {
-                int level = Math.max(state.getLightEmission(), extra);
+                int level = Math.max(state.getLightEmission(), extraEmission(state));
                 BlockStateModel model = minecraft.getModelManager().getBlockStateModelSet().get(state);
                 parts.clear();
                 random.setSeed(42L);
@@ -221,10 +234,10 @@ public final class EmissionTiles {
                     ? Collections.newSetFromMap(new IdentityHashMap<>()) : null;
                 for (BlockStateModelPart part : parts) {
                     for (Direction direction : Direction.values()) {
-                        addSprites(part.getQuads(direction), level, emitsSomewhere || extra > 0, litSprites,
+                        addSprites(part.getQuads(direction), level, emitsSomewhere || extraSomewhere, litSprites,
                             sharedWithDarkBlocks, darkSprites, drawn);
                     }
-                    addSprites(part.getQuads(null), level, emitsSomewhere || extra > 0, litSprites,
+                    addSprites(part.getQuads(null), level, emitsSomewhere || extraSomewhere, litSprites,
                         sharedWithDarkBlocks, darkSprites, drawn);
                 }
                 if (drawn != null && !drawn.isEmpty()) {
@@ -271,6 +284,17 @@ public final class EmissionTiles {
         }
         unlitStates = Collections.unmodifiableSet(unlit);
         return emitters;
+    }
+
+    /** The light level Radiante gives a state that vanilla leaves dark; see EXTRA_EMISSION and POWERED_DIODE_EMISSION. */
+    private static int extraEmission(BlockState state) {
+        Block block = state.getBlock();
+        if ((block == net.minecraft.world.level.block.Blocks.REPEATER
+            || block == net.minecraft.world.level.block.Blocks.COMPARATOR)
+            && state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.POWERED)) {
+            return POWERED_DIODE_EMISSION;
+        }
+        return EXTRA_EMISSION.getOrDefault(block, 0);
     }
 
     private static void addSprites(List<BakedQuad> quads, int level, boolean blockEmitsSomewhere,
