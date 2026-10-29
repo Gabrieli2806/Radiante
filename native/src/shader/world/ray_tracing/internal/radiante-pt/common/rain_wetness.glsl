@@ -74,8 +74,8 @@ const float PUDDLE_SCALE = 7.0;
 const float PUDDLE_RIM = 0.03;
 // How long puddles stand after the rain eases off, in seconds: full for the first, gone by the second. The ground
 // itself dries sooner (its wetness falls with a time constant of 25 s).
-const float PUDDLE_LINGER_SECONDS = 30.0;
-const float PUDDLE_DRY_SECONDS = 120.0;
+const float PUDDLE_LINGER_SECONDS = 45.0;
+const float PUDDLE_DRY_SECONDS = 180.0;
 // Ripples: rings per block across, how long one ring lives in seconds, and how steep its wave is.
 const float RIPPLE_CELLS = 2.5;
 const float RIPPLE_LIFETIME = 0.9;

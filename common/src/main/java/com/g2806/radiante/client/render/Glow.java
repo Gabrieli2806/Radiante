@@ -36,7 +36,10 @@ public final class Glow {
     public static final float ENTITY_FLAME = FULL * 3.0f;
     /** Bright enough to stand out at night. It is only seen (RenderTypeInfo.emission): the beacon block lights around. */
     public static final float BEACON_BEAM = FULL * 1.5f;
-    public static final float LIGHTNING = FULL * 10.0f;
+    /** Seen as a white-hot streak, and lighting only the land close by: at ten times a block it lit everything around
+     *  it near white by night, the eye being opened up for the dark; radiante-pt's flash (LightningFlash) lights the
+     *  rest of the landscape in cold blue. */
+    public static final float LIGHTNING = FULL * 2.5f;
 
     private Glow() {
     }
