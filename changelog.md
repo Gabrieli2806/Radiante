@@ -9,7 +9,7 @@ All notable changes to this project are documented in this file.
   denoiser and upscaler stop taking the flickering streaks for the ground behind them, which smeared and sparkled
   through every storm. Bounced rays and the radiance cache no longer meet rain at all.
 - Puddles (Sky, Fog & Water): in steady rain, patches of open flat ground fill with standing water that mirrors the
-  sky and the lamps, with rain rings on them and on open water; they shrink as the ground dries.
+  sky and the lamps, with rain rings on them and on open water; they stand for a minute or two after the rain stops.
 - Lightning Flash (Sky, Fog & Water): a thunderstorm's lightning now lights the world from the bolt's direction, with
   shadows, and lights up the clouds while the sky flashes. The overcast sky is heavier overhead and darker in a storm.
 

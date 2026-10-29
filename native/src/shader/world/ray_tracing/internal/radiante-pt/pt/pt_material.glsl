@@ -458,22 +458,25 @@ void sampleSurfaceState(bool useTexture,
 
     // Rain soaks the ground under open sky: darker, glossy, and the bumps of the normal map drown.
     if (!useWaterMaterial && !isFftWaterSurface && !g_hitIsGlass && !isRainStreak) {
-        float wetness = vptGroundWetness(worldPos, baseGeoNormal);
+        float open = vptGroundOpen(worldPos, baseGeoNormal);
+        float wetness = open * skyUBO.rainWetness.x;
         if (wetness > 0.0) {
             vptApplyGroundWetness(mat, wetness);
             shadingNormal = normalizeF(mix(shadingNormal, geometricNormal, wetness * 0.7), geometricNormal);
-            // Puddles on solid ground only: a leaf's or a plant's top holds no water.
-            float puddle = alphaMode == ALPHA_MODE_OPAQUE ? vptPuddle(worldPos, wetness) : 0.0;
-            if (puddle > 0.0) {
-                vptApplyPuddle(mat, puddle);
-                shadingNormal = vptApplyRainRipples(normalizeF(mix(shadingNormal, geometricNormal, puddle),
-                                                               geometricNormal),
-                                                    vptRainRippleSlope(worldPos), puddle);
-            }
+        }
+        // Puddles on solid ground only: a leaf's or a plant's top holds no water. They outlast the wet ground.
+        float puddle = open > 0.0 && alphaMode == ALPHA_MODE_OPAQUE ? vptPuddle(worldPos, open) : 0.0;
+        if (puddle > 0.0) {
+            vptApplyPuddle(mat, puddle);
+            // Flat water, so the mirror image is sharp: the rings are kept faint on it, as their changing slope
+            // from frame to frame left the denoiser only a blurred image of the sky to show.
+            shadingNormal = vptApplyRainRipples(normalizeF(mix(shadingNormal, geometricNormal, puddle),
+                                                           geometricNormal),
+                                                vptRainRippleSlope(worldPos), puddle * PUDDLE_RIPPLES);
         }
     } else if (useWaterMaterial && baseGeoNormal.y > 0.5 && skyUBO.rainGradient > 0.01) {
         // Rain rings on water under the open sky.
-        float open = vptGroundWetness(worldPos, baseGeoNormal);
+        float open = vptGroundOpen(worldPos, baseGeoNormal);
         if (open > 0.0) {
             shadingNormal = vptApplyRainRipples(shadingNormal, vptRainRippleSlope(worldPos), open);
         }

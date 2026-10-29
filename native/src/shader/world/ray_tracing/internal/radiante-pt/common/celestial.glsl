@@ -35,9 +35,9 @@ float endFlashIntensity() {
 #ifndef VPT_LIGHTNING_FLASH
 #    define VPT_LIGHTNING_FLASH 1.0
 #endif
-// The flash's light at full strength, a cold blue-white; the sun's default is 8. Brighter, a storm by night went
-// white for half a second, the eye being opened up for the dark.
-const vec3 LIGHTNING_RADIANCE = vec3(1.9, 2.1, 2.8);
+// The flash's light at full strength, a cold blue; the sun's default is 8. The bolt's own glow lights the land
+// around it already, and with the eye opened up for the dark, a brighter flash turned a storm by night white.
+const vec3 LIGHTNING_RADIANCE = vec3(0.45, 0.55, 0.8);
 // How high the flash's light comes from: the bolt stands a long way off, lighting the land from above its horizon.
 const float LIGHTNING_ELEVATION = 0.75;
 

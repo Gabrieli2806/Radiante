@@ -11,14 +11,14 @@ import org.joml.Vector4f;
 /**
  * A lightning flash, for radiante-pt to light the world with while the sky flashes (celestial.glsl): its strength in
  * the z of the rain uniform, and the bearing of the nearest bolt from the camera in w. The game flashes the sky for two
- * ticks at a time, once to three times per bolt; the strength jumps to full with each and dies away over a tenth of a
- * second, so the light flickers with the bolt instead of switching. Nothing with the "Hide Lightning Flashes"
- * accessibility option, as the game's own flash.
+ * ticks at a time, once to three times per bolt; the strength jumps to full with each and dies away over a
+ * twentieth of a second, so the light flickers with the bolt instead of lingering. Nothing with the "Hide Lightning
+ * Flashes" accessibility option, as the game's own flash.
  */
 public final class LightningFlash {
 
     /** How fast a flash dies away once the sky stops flashing, in seconds. */
-    private static final float FADE_SECONDS = 0.1f;
+    private static final float FADE_SECONDS = 0.05f;
 
     private static float strength;
     private static float bearing;
