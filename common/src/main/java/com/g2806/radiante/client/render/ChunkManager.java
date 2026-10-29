@@ -409,6 +409,10 @@ public final class ChunkManager {
     private static long[] readyKeys = new long[256];
 
     public static void onSectionChanged(long sectionNode) {
+        // Nothing drains the list while the renderer is off for good, so it would only grow.
+        if (!RadianteRenderer.isActive()) {
+            return;
+        }
         synchronized (CHANGED) {
             CHANGED.add(sectionNode);
         }

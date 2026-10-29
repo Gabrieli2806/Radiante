@@ -47,6 +47,8 @@ public final class RadianteCommands {
         SuggestionProvider<S> packs = (context, builder) -> suggestPacks(builder);
         SuggestionProvider<S> views = (context, builder) -> suggestViews(builder);
         return LiteralArgumentBuilder.<S>literal("radiante")
+            // Every subcommand reaches the native renderer; without it the command is not offered.
+            .requires(source -> com.g2806.radiante.client.RadianteClient.isNativeLoaded())
             .then(LiteralArgumentBuilder.<S>literal("pack")
                 .then(LiteralArgumentBuilder.<S>literal("validate")
                     .executes(context -> validate(null))

@@ -13,6 +13,6 @@ public final class RadianteModMenu implements ModMenuApi {
 
     @Override
     public ConfigScreenFactory<?> getModConfigScreenFactory() {
-        return parent -> new RadianteOptionsScreen(parent, Minecraft.getInstance().options);
+        return parent -> RadianteOptionsScreen.create(parent, Minecraft.getInstance().options);
     }
 }

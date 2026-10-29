@@ -357,6 +357,18 @@ public class RadianteOptionsScreen extends Screen {
         return component != UpscalerDownloads.Component.DLSS || RadianteRenderer.isNvidiaGpu();
     }
 
+    /**
+     * The settings screen, or, when the native renderer is not loaded, the screen that says why: every page of the
+     * settings reaches the renderer. Everything that opens the settings from outside (the video settings button, the
+     * key binding, the mod list) goes through here.
+     */
+    public static Screen create(Screen parent, net.minecraft.client.Options options) {
+        if (!com.g2806.radiante.client.RadianteClient.isNativeLoaded()) {
+            return new UnsupportedHardwareScreen(parent);
+        }
+        return new RadianteOptionsScreen(parent, options);
+    }
+
     /** Development: opens the settings looking at a pipeline, as if picked in the selector. */
     public static RadianteOptionsScreen showingPreset(Screen parent, net.minecraft.client.Options options, Presets preset) {
         RadianteOptionsScreen screen = new RadianteOptionsScreen(parent, options);

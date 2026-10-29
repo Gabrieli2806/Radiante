@@ -364,7 +364,7 @@ public final class DevAutomation {
             return;
         }
         if (action.equals("settings")) {
-            minecraft.gui.setScreen(new com.g2806.radiante.client.gui.RadianteOptionsScreen(minecraft.gui.screen(), minecraft.options));
+            minecraft.gui.setScreen(com.g2806.radiante.client.gui.RadianteOptionsScreen.create(minecraft.gui.screen(), minecraft.options));
             return;
         }
         if (action.equals("shaderpacks")) {
@@ -650,7 +650,7 @@ public final class DevAutomation {
                                             net.minecraft.client.CameraType.FIRST_PERSON);
             RadianteClient.LOGGER.info("[dev] camera {}", value);
         } else if (action.equals("options")) {
-            minecraft.gui.setScreen(new com.g2806.radiante.client.gui.RadianteOptionsScreen(null, minecraft.options));
+            minecraft.gui.setScreen(com.g2806.radiante.client.gui.RadianteOptionsScreen.create(null, minecraft.options));
             RadianteClient.LOGGER.info("[dev] options screen");
         } else if (action.equals("warmup")) {
             com.g2806.radiante.client.gui.PipelineWarmUp.force();

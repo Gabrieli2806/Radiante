@@ -33,6 +33,6 @@ public final class RadianteNeoForge {
         NeoForge.EVENT_BUS.addListener(RegisterClientCommandsEvent.class,
             event -> event.getDispatcher().register(RadianteCommands.<CommandSourceStack>build()));
         container.registerExtensionPoint(IConfigScreenFactory.class,
-            (modContainer, parent) -> new RadianteOptionsScreen(parent, Minecraft.getInstance().options));
+            (modContainer, parent) -> RadianteOptionsScreen.create(parent, Minecraft.getInstance().options));
     }
 }

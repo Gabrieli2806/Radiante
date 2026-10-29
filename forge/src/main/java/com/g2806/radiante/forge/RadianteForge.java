@@ -31,6 +31,6 @@ public final class RadianteForge {
             event -> event.getDispatcher().register(RadianteCommands.<CommandSourceStack>build()));
         context.registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
             () -> new ConfigScreenHandler.ConfigScreenFactory(
-                (minecraft, parent) -> new RadianteOptionsScreen(parent, minecraft.options)));
+                (minecraft, parent) -> RadianteOptionsScreen.create(parent, minecraft.options)));
     }
 }
