@@ -227,10 +227,10 @@ bool ptGlassPassThrough(uint textureID,
 #ifndef VPT_RAIN_STREAK_BRIGHTNESS
 #    define VPT_RAIN_STREAK_BRIGHTNESS 1.0
 #endif
-// The streak's light at Rain Streaks 100 %: the share of the overcast sky over it that a falling drop gives back,
-// and a floor so the rain still shows faintly on a dark night.
+// The streak's light at Rain Streaks 100 %: the share of the overcast sky over it that a falling drop gives back.
+// There is no floor: a fixed light, however faint, is what the eye opened up for a dark night shows as bright white
+// streaks; at night rain shows where it dims the lit ground behind it (Rain Opacity) and by the night sky's glint.
 const float RAIN_STREAK_SKY = 0.35;
-const vec3 RAIN_STREAK_FLOOR = vec3(0.0025, 0.0028, 0.0035);
 
 // A raindrop streak met by the camera's view: seen through, with a faint glint of the light around it added on top,
 // as glass is (ptGlassPassThrough). It was a surface of its own before, refracted and lit like a sheet of water, and
@@ -246,7 +246,7 @@ bool ptRainPassThrough(uint textureID, vec2 textureUV, vec4 colorLayerValue) {
     // Only the sky: the rain's vertices carry full light levels everywhere, so they cannot say where a lamp is.
     vec3 skyUp = texture(skyFull, vec3(0.0, 1.0, 0.0)).rgb;
     vec3 overcast = vec3(0.1) * smoothstep(-0.3, 0.3, celestialSunDirection().y);
-    vec3 around = mix(skyUp, overcast, skyUBO.rainGradient) * RAIN_STREAK_SKY + RAIN_STREAK_FLOOR;
+    vec3 around = mix(skyUp, overcast, skyUBO.rainGradient) * RAIN_STREAK_SKY;
     float glint = coverage * max(VPT_RAIN_STREAK_BRIGHTNESS, 0.0) * (1.0 + 2.0 * opacity);
     mainRay.radiance += mainRay.throughput * around * glint;
     // Rain Opacity: how much of the view a streak takes away, a little blue-grey.
