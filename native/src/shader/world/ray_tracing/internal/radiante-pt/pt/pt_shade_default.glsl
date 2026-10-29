@@ -573,6 +573,8 @@ void ptShadeDefault(bool viewMark) {
         if (vertexGlow < 0.0) {
             vertexGlow = (bounce == 0u || rayCameraPath(mainRay) || g_viewBounce) ? -vertexGlow : 0.0;
         }
+        // A glow that is also in the light list (powered redstone dust) is not counted twice, as glowing texels.
+        if (isGlowLightSurface(packedData)) { vertexGlow *= blockEmissionWeight; }
         emissionRadiance += currentSurface.tint * vertexGlow * mainRay.throughput;
         mainRay.radiance += emissionRadiance;
 #if VPT_NRD_SIGNALS

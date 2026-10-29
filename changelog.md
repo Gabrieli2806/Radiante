@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Powered redstone dust glows by its power level, as in Bedrock RTX: none at power 0, then up to power 15 in vanilla's
+  colour for that power, and it casts a faint red light next to it (a straight line far under a redstone
+  torch). Before, dust looked the same powered or not. A Bedrock pack's emission for the dust textures no longer makes
+  unpowered dust glow.
+- Lit redstone torches glow again, and powered repeaters and comparators glow on their torches (and the lit line of
+  the repeater's top) like a redstone torch: repeaters and comparators draw the torch's lit texture without giving any
+  light, and that had taken the texture off the glowing ones.
 - A second built-in shader pack, **Pixelated Lighting**, listed next to Radiante PT under Shader Packs: pixelated
   shadows and reflections, after BetterRTX's preset of that name. Shadow edges from the sun, torches and held lights
   follow the texture's pixels, and reflections, water's included, are solid squares, one per texel, near objects too;

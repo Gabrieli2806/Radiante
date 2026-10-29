@@ -40,6 +40,8 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private static final int LAYER_FLAG = 0x10000;
     /** Leaves; see leaves(). */
     private static final int LEAVES_FLAG = 0x20000;
+    /** A glow that is also cast into the section's light list (powered redstone dust); see glowLight(). */
+    private static final int GLOW_LIGHT_FLAG = 0x40000;
 
     public static final int ALPHA_MODE_OPAQUE = 0;
     public static final int ALPHA_MODE_CUTOUT = 1;
@@ -70,6 +72,10 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private static final int OFF_ALBEDO_EMISSION = 108;
     /** postBase.x, which carries the wind code of section geometry; see wind(). */
     private static final int OFF_WIND = 112;
+    /** postBase.y, unused by section geometry otherwise: the light a glowing vertex casts; see castLight(). */
+    private static final int OFF_CAST_LIGHT = 116;
+    /** postBase.z, unused by section geometry otherwise: the colour of that light, 0xRRGGBB; see castColor(). */
+    private static final int OFF_CAST_COLOR = 120;
     private static final int OFF_ALPHA_MODE = 124;
 
     /** The kinds of foliage the wind moves, as util/wind.glsl numbers them; see wind(). */
@@ -119,6 +125,9 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private float windRise;
     private float windScale;
     private boolean leaves;
+    private boolean glowLight;
+    private float castLight;
+    private int castColor = 0xFFFFFF;
     private int paneFlags;
     private boolean computeQuadNormals;
     /** Divides vanilla's face shading back out of the colour of quads whose normal is computed (fluids). */
@@ -285,6 +294,29 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     /** Marks what follows as leaves (LEAVES_SURFACE_BIT in the shaders). */
     public PBRVertexWriter leaves(boolean leaves) {
         this.leaves = leaves;
+        return this;
+    }
+
+    /**
+     * Marks what follows as a glow that also lights its surroundings (powered redstone dust, see RedstoneGlow): the
+     * native side turns each of its quads with a cast light into lights of the section's list, and the shaders leave
+     * its glow out where a bounce reaches a light the surface before it already sampled, as they do for glowing
+     * texels. Kept on a geometry of its own, so every geometry carries one set of flags.
+     */
+    public PBRVertexWriter glowLight(boolean glowLight) {
+        this.glowLight = glowLight;
+        return this;
+    }
+
+    /** The light the vertices from here on cast, before their colour; 0 casts none. Read only with glowLight. */
+    public PBRVertexWriter castLight(float castLight) {
+        this.castLight = castLight;
+        return this;
+    }
+
+    /** The colour of the light the vertices from here on cast, 0xRRGGBB. Read only with glowLight. */
+    public PBRVertexWriter castColor(int castColor) {
+        this.castColor = castColor;
         return this;
     }
 
@@ -465,11 +497,15 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         MemoryUtil.memPutInt(v + OFF_COORDINATE, this.coordinate);
         MemoryUtil.memPutFloat(v + OFF_ALBEDO_EMISSION, this.albedoEmission);
         MemoryUtil.memPutFloat(v + OFF_WIND, windCode(y));
+        if (this.glowLight) {
+            MemoryUtil.memPutFloat(v + OFF_CAST_LIGHT, this.castLight);
+            MemoryUtil.memPutInt(v + OFF_CAST_COLOR, this.castColor);
+        }
         MemoryUtil.memPutInt(v + OFF_ALPHA_MODE,
             this.alphaMode | (this.water ? WATER_FLAG : 0) | (this.rain ? RAIN_FLAG : 0) | (this.held ? HELD_FLAG : 0) | (this.glass ? GLASS_FLAG : 0)
                 | (this.plant ? PLANT_FLAG : 0) | this.paneFlags | (this.blend ? BLEND_FLAG : 0)
                 | (this.unlit ? UNLIT_FLAG : 0) | (this.lava ? LAVA_FLAG : 0) | (this.layerOffset != 0.0f ? LAYER_FLAG : 0)
-                | (this.leaves ? LEAVES_FLAG : 0));
+                | (this.leaves ? LEAVES_FLAG : 0) | (this.glowLight ? GLOW_LIGHT_FLAG : 0));
         if (this.colorOverride != 0) {
             setColor(255, 255, 255, 255);
         }

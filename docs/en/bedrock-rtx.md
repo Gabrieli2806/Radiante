@@ -59,6 +59,11 @@ on by default, is cast; it is what places point lights):
   Blocks the pack lists as static lights (lava, froglights, redstone lamps) keep the glow of their
   texture; their colour is not applied yet.
 
+Redstone dust glows by its power, with or without a pack: not at all at power 0, then brighter
+and lighter red up to power 15, in vanilla's colour for that power, and it lights the floor around
+it a little (a straight line casts about a quarter of a redstone torch). A pack's emission for the
+dust textures is not used, so dust never glows unpowered.
+
 ### What exactly gets converted
 
 Bedrock describes each texture with a "texture set": a colour texture, a MER(S) map (metalness,
