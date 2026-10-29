@@ -774,6 +774,9 @@ void ptShadeDefault(bool viewMark) {
             return;
         }
 
+        // The next hit's texture level comes from a cone as wide as the lobe this bounce was drawn from (ray_cone.glsl).
+        mainRay.coneSpread = coneSpreadAfterScatter(mainRay.coneSpread, currentSurface.mat.roughness, lobeType);
+
         vec3 throughputBefore = mainRay.throughput;
         mainRay.throughput *= bsdf / max(pdf, 1e-4);
         // Bedrock RTX fills a room from a single patch of sunlight: light off rough surfaces carries on stronger than

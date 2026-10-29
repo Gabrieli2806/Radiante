@@ -4,6 +4,9 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Bounced light no longer reads the full-size texture far away: the ray cone that picks a texture's level of detail
+  now widens with the lobe a bounce is drawn from (diffuse or rough), so light bounced off distant foliage and
+  textured ground stops sparkling.
 - On a device Radiante does not support yet (macOS, Windows on ARM such as Snapdragon laptops, 32-bit Java, Android
   launchers), or when its renderer's library fails to load, the game no longer crashes: it starts with Minecraft's own
   renderer, a one-time screen names the device and says why, and Radiante's settings show that message instead.
