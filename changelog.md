@@ -12,6 +12,9 @@ All notable changes to this project are documented in this file.
   faint glint of the overcast sky (Rain Streaks slider), so the
   denoiser and upscaler stop taking the flickering streaks for the ground behind them, which smeared and sparkled
   through every storm. Bounced rays and the radiance cache no longer meet rain at all.
+- Clouds in rain are heavy grey masses lit only by the overcast, darker underneath and in a storm; they took part of
+  the full sun before and glowed against the dim sky.
+- Steady rain soaks the open ground over half a minute: darker and glossier while it falls, drying back after.
 - Puddles (Sky, Fog & Water): in steady rain, patches of open flat ground fill with standing water that mirrors the
   sky and the lamps, with rain rings on them and on open water; they stand for two to three minutes after the rain stops.
 - Lightning Flash (Sky, Fog & Water): a thunderstorm's lightning now lights the world from the bolt's direction, with

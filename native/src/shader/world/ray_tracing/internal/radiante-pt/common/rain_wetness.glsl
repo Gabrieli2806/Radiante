@@ -53,15 +53,20 @@ float vptGroundWetness(vec3 position, vec3 outwardNormal) {
 
 // How rough wet open ground gets.
 const float WET_GROUND_ROUGHNESS = 0.32;
+// How rough it is while the rain is still falling on it, and how much soaked ground darkens (rough, non-metal).
+const float WET_GROUND_RAINING_ROUGHNESS = 0.14;
+const float WET_GROUND_DARKENING = 0.5;
 
 /** Water fills the pores: rough, non-metal surfaces darken the most, and everything turns glossy. */
 void vptApplyGroundWetness(inout LabPBRMat material, float wetness) {
     if (wetness <= 0.0 || material.transmission > 0.0) { return; }
     float absorbency = (1.0 - material.metallic) * clamp(material.roughness * 2.0, 0.0, 1.0);
-    material.albedo *= 1.0 - 0.35 * wetness * absorbency;
+    material.albedo *= 1.0 - WET_GROUND_DARKENING * wetness * absorbency;
     // Glossy, not a mirror: the standing water of a puddle (vptApplyPuddle) is what mirrors the world. At 0.08 all the
     // open ground mirrored the sky as one sheet of water, and the puddles had nothing to stand out from.
-    material.roughness = mix(material.roughness, min(material.roughness, WET_GROUND_ROUGHNESS), wetness);
+    // Water still running on it while it rains: glossier then, drying back to merely glossy once it stops.
+    float wetRoughness = mix(WET_GROUND_ROUGHNESS, WET_GROUND_RAINING_ROUGHNESS, skyUBO.rainGradient);
+    material.roughness = mix(material.roughness, min(material.roughness, wetRoughness), wetness);
     material.f0 = mix(material.f0, max(material.f0, vec3(0.02)), wetness);
 }
 
@@ -72,8 +77,10 @@ void vptApplyGroundWetness(inout LabPBRMat material, float wetness) {
 #    define VPT_RAIN_PUDDLES 0.5
 #endif
 // How large a puddle patch is, in blocks (the period of the coarser noise), and how soft its rim is.
-const float PUDDLE_SCALE = 7.0;
+const float PUDDLE_SCALE = 10.0;
 const float PUDDLE_RIM = 0.03;
+// How far the noise threshold drops at full wetness and Puddles 100 %.
+const float PUDDLE_FILL = 1.1;
 // How long puddles stand after the rain eases off, in seconds: full for the first, gone by the second. The ground
 // itself dries sooner (its wetness falls with a time constant of 25 s).
 const float PUDDLE_LINGER_SECONDS = 45.0;
@@ -83,7 +90,7 @@ const float RIPPLE_CELLS = 2.5;
 const float RIPPLE_LIFETIME = 0.9;
 const float RIPPLE_SLOPE = 0.35;
 // How much of the rings a puddle shows, against open water.
-const float PUDDLE_RIPPLES = 0.35;
+const float PUDDLE_RIPPLES = 0.5;
 
 // A point's x and z in the world, kept small enough for a float: the camera's position wrapped to 4096 blocks.
 vec2 vptRainWorldXZ(vec3 position) {
@@ -119,9 +126,10 @@ float vptPuddle(vec3 position, float open) {
     float wetness = open * max(skyUBO.rainWetness.x, linger);
     if (amount <= 0.0 || wetness <= 0.3) { return 0.0; }
     vec2 p = vptRainWorldXZ(position);
-    float n = 0.65 * vptRainValueNoise(p / PUDDLE_SCALE) + 0.35 * vptRainValueNoise(p / (PUDDLE_SCALE * 0.33) + 17.0);
+    float n = 0.75 * vptRainValueNoise(p / PUDDLE_SCALE) + 0.25 * vptRainValueNoise(p / (PUDDLE_SCALE * 0.33) + 17.0);
+    // At the default (Puddles 50 %) and full rain, about three fifths of the open ground; less as it dries.
     float fill = smoothstep(0.3, 1.0, wetness) * amount;
-    float threshold = 1.0 - 0.9 * fill;
+    float threshold = 1.0 - PUDDLE_FILL * fill;
     return smoothstep(threshold, threshold + PUDDLE_RIM, n);
 }
 

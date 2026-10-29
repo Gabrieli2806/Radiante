@@ -84,6 +84,14 @@ hitAttributeEXT vec2 attribs;
 #    define VPT_VANILLA_CLOUD_SKY_LIGHT 1.6
 #endif
 
+// A rain cloud's shade against the overcast sky, by the face seen: top, sides, underside. And how much darker a full
+// thunderstorm makes them, and how much of a lightning flash they give back.
+const float CLOUD_RAIN_TOP = 0.9;
+const float CLOUD_RAIN_SIDE = 0.65;
+const float CLOUD_RAIN_UNDERSIDE = 0.45;
+const float CLOUD_STORM_SHADE = 0.6;
+const float CLOUD_LIGHTNING = 0.25;
+
 void main() {
     vec3 viewDir = -mainRay.direction;
 
@@ -196,8 +204,14 @@ void main() {
     float horizonWeight = 0.3 * glowSide * glowSide * glowTime;
     vec3 skyLight = skyAbove * (1.0 - horizonWeight) + lightHorizon * horizonWeight;
     lightRadiance += tint * skyLight * VPT_VANILLA_CLOUD_SKY_LIGHT * mainRay.throughput;
-    vec3 rainyRadiance = mix(skyAmbient * 0.12, vec3(0.08), dayFactor);
-    vec3 wetCloudRadiance = lightRadiance * mix(0.2, 0.35, dayFactor) + rainyRadiance;
+    // In rain a cloud is a heavy grey mass lit only by the overcast around it (world_miss_eval_impl.glsl's rainy
+    // sky), darker underneath than on its top and sides, and darker still in a storm. It took a fifth to a third of
+    // the full sun before, which the rain hides from everything else: against the dim overcast every cloud glowed.
+    float faceShade = normal.y > 0.5 ? CLOUD_RAIN_TOP : (normal.y < -0.5 ? CLOUD_RAIN_UNDERSIDE : CLOUD_RAIN_SIDE);
+    vec3 overcast = vec3(0.1) * dayFactor * mix(1.0, CLOUD_STORM_SHADE, skyUBO.thunderGradient);
+    vec3 wetCloudRadiance = tint * overcast * faceShade * mainRay.throughput * alpha;
+    // A lightning flash lights them from within for an instant (celestial.glsl).
+    wetCloudRadiance += tint * LIGHTNING_RADIANCE * (lightningFlash() * CLOUD_LIGHTNING) * mainRay.throughput;
     // Only the face the ray enters through adds the cloud; the one it leaves through just lets it out again.
     if (!leaving) {
         mainRay.radiance += VPT_VANILLA_CLOUD_OPACITY * mix(lightRadiance, wetCloudRadiance, progress);
