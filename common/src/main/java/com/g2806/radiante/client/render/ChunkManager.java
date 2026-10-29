@@ -644,9 +644,9 @@ public final class ChunkManager {
                     instance.scaleColor(1.0f / shade);
                 }
             }
-            // Powered dust's tinted quads (the dust; the untinted overlay over it is not) glow by its power and cast
-            // light from the face turned toward its block, the one lying open on the floor or wall it is on.
-            PBRVertexWriter quadWriter = scratch.dustPower > 0 && quad.materialInfo().isTinted()
+            // Powered dust's own quads (not the overlay drawn over it) glow by its power and cast light from the face
+            // turned toward its block, the one lying open on the floor or wall it is on.
+            PBRVertexWriter quadWriter = scratch.dustPower > 0 && RedstoneGlow.isDust(quad)
                 ? scratch.glowWriter(quad.materialInfo().layer(), atlasId)
                     .albedoEmission(RedstoneGlow.seenGlow(scratch.dustPower))
                     .castLight(facesInward(quad) ? RedstoneGlow.castLight(scratch.dustPower, quad.materialInfo().sprite())

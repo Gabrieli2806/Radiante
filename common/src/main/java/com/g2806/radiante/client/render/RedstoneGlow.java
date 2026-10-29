@@ -32,11 +32,12 @@ public final class RedstoneGlow {
     private static final float SEEN_FLOOR = 0.3f;
     /**
      * The light cast per unit of covered area at power 15 (radiance on the light-level scale of EmissionTiles, kind 0).
-     * A straight line covers about a sixth of its block, so it casts about 2.6, the light of one face of a level 8
-     * block: a quarter of a redstone torch (level 7 on five faces, about 11), so a wire lights the floor around it red
-     * without a long line outshining the torch that powers it.
+     * A straight line's sprite covers about a twelfth of its quad, so it casts about 4, a little more than one face
+     * of a level 15 block's texel average: under half of a redstone torch (level 7 on five faces, about 11), enough
+     * to light the floor around the wire red at night without a long line outshining the torch that powers it. At a
+     * third of this the light on the floor could not be told from none.
      */
-    static final float CAST_PER_COVERAGE = 16.0f;
+    static final float CAST_PER_COVERAGE = 48.0f;
     /** The covered share assumed for a sprite whose pixels cannot be read (a straight half line of vanilla's). */
     private static final float DEFAULT_COVERAGE = 0.08f;
 
@@ -54,6 +55,16 @@ public final class RedstoneGlow {
     /** The power of this redstone dust, 0 to 15, or -1 when it is not dust. */
     static int power(BlockState state) {
         return state.is(Blocks.REDSTONE_WIRE) ? state.getValue(RedstoneWireBlock.POWER) : -1;
+    }
+
+    /**
+     * Whether this quad of a dust block is the dust itself rather than the overlay drawn over it. Since Minecraft 26
+     * the dust draws a sprite of its own per power, already coloured, and no quad of it is tinted any more: tested on
+     * the tint, no quad glowed. The tint still marks it where a pack's model keeps vanilla's older tinted dust.
+     */
+    static boolean isDust(net.minecraft.client.resources.model.geometry.BakedQuad quad) {
+        return quad.materialInfo().isTinted()
+            || !quad.materialInfo().sprite().contents().name().getPath().endsWith("_overlay");
     }
 
     /** The glow seen on dust of this power, before its colour: none at 0, then from the floor up to SEEN_GLOW. */

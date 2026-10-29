@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 ## [Unreleased]
 
 - Powered redstone dust glows by its power level, as in Bedrock RTX: none at power 0, then up to power 15 in vanilla's
-  colour for that power, and it lights its surroundings a little (a straight line about a quarter of a redstone
+  colour for that power, and it lights its surroundings a little (a straight line about a third of a redstone
   torch). Before, dust looked the same powered or not. A Bedrock pack's emission for the dust textures no longer makes
   unpowered dust glow.
 - Lit redstone torches glow again, and powered repeaters and comparators glow on their torches (and the lit line of
