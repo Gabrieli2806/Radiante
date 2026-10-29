@@ -74,6 +74,8 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private static final int OFF_WIND = 112;
     /** postBase.y, unused by section geometry otherwise: the light a glowing vertex casts; see castLight(). */
     private static final int OFF_CAST_LIGHT = 116;
+    /** postBase.z, unused by section geometry otherwise: the colour of that light, 0xRRGGBB; see castColor(). */
+    private static final int OFF_CAST_COLOR = 120;
     private static final int OFF_ALPHA_MODE = 124;
 
     /** The kinds of foliage the wind moves, as util/wind.glsl numbers them; see wind(). */
@@ -125,6 +127,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private boolean leaves;
     private boolean glowLight;
     private float castLight;
+    private int castColor = 0xFFFFFF;
     private int paneFlags;
     private boolean computeQuadNormals;
     /** Divides vanilla's face shading back out of the colour of quads whose normal is computed (fluids). */
@@ -311,6 +314,12 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         return this;
     }
 
+    /** The colour of the light the vertices from here on cast, 0xRRGGBB. Read only with glowLight. */
+    public PBRVertexWriter castColor(int castColor) {
+        this.castColor = castColor;
+        return this;
+    }
+
     public PBRVertexWriter layerOffset(float layerOffset) {
         this.layerOffset = layerOffset;
         return this;
@@ -490,6 +499,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         MemoryUtil.memPutFloat(v + OFF_WIND, windCode(y));
         if (this.glowLight) {
             MemoryUtil.memPutFloat(v + OFF_CAST_LIGHT, this.castLight);
+            MemoryUtil.memPutInt(v + OFF_CAST_COLOR, this.castColor);
         }
         MemoryUtil.memPutInt(v + OFF_ALPHA_MODE,
             this.alphaMode | (this.water ? WATER_FLAG : 0) | (this.rain ? RAIN_FLAG : 0) | (this.held ? HELD_FLAG : 0) | (this.glass ? GLASS_FLAG : 0)

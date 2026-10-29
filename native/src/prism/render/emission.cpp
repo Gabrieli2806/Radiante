@@ -364,7 +364,11 @@ void collectEmissiveQuadLights(const Emission &emission,
         if ((v0.alphaMode & gpu::Vertex::alphaModeGlowLightFlag) != 0u) {
             const float cast = v0.postBase.y;
             if (!(cast > 0.0f)) continue;
-            const glm::vec3 tint = (glowTint(v0) + glowTint(v1) + glowTint(v2) + glowTint(v3)) * 0.25f;
+            // postBase.z carries the light's colour as 0xRRGGBB (RedstoneGlow.castColor): dust is drawn with sprites
+            // already coloured per power and no tint, so the vertex colour would cast white light.
+            const uint32_t packed = std::bit_cast<uint32_t>(v0.postBase.z);
+            const glm::vec3 tint = glm::vec3(float((packed >> 16u) & 0xFFu), float((packed >> 8u) & 0xFFu),
+                                             float(packed & 0xFFu)) / 255.0f;
             const std::array<std::array<const PBRVertex *, 3>, 2> triangles = {{{&v0, &v1, &v2}, {&v0, &v2, &v3}}};
             uint64_t pieceIndex = 0;
             for (const auto &triangle : triangles) {

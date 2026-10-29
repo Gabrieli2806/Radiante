@@ -649,6 +649,7 @@ public final class ChunkManager {
             PBRVertexWriter quadWriter = scratch.dustPower > 0 && RedstoneGlow.isDust(quad)
                 ? scratch.glowWriter(quad.materialInfo().layer(), atlasId)
                     .albedoEmission(RedstoneGlow.seenGlow(scratch.dustPower))
+                    .castColor(RedstoneGlow.castColor(scratch.dustPower))
                     .castLight(facesInward(quad) ? RedstoneGlow.castLight(scratch.dustPower, quad.materialInfo().sprite())
                         : 0.0f)
                 : scratch.writer(quad.materialInfo().layer(), atlasId);

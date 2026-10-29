@@ -83,7 +83,7 @@ struct Vertex {
     static constexpr uint32_t alphaModeLeavesFlag = 0x20000u;
     static constexpr uint32_t leavesSurfaceBit = 1u << 30u;
     // A glow given per vertex (albedoEmission) that is also cast as a light of the section's list (powered redstone
-    // dust, RedstoneGlow.java): postBase.y holds the light each quad casts, before its colour.
+    // dust, RedstoneGlow.java): postBase.y holds the light each quad casts, postBase.z its colour (0xRRGGBB bits).
     static constexpr uint32_t alphaModeGlowLightFlag = 0x40000u;
     static constexpr uint32_t glowLightSurfaceBit = 1u << 31u;
 

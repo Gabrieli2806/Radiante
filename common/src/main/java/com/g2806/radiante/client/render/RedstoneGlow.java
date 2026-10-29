@@ -24,7 +24,7 @@ public final class RedstoneGlow {
      * The glow seen at power 15, on the scale of {@link Glow}: a little dimmer than a level 15 block, so the dust reads
      * as glowing red without the white bloom of lava.
      */
-    static final float SEEN_GLOW = Glow.ofLevel(9);
+    static final float SEEN_GLOW = Glow.ofLevel(6);
     /**
      * Share of the full seen glow that any power above 0 keeps: with the glow linear in power, dust at power 1 to 3
      * was too dim to tell from unpowered dust, which vanilla's darker colour for weak dust makes dimmer still.
@@ -32,12 +32,11 @@ public final class RedstoneGlow {
     private static final float SEEN_FLOOR = 0.3f;
     /**
      * The light cast per unit of covered area at power 15 (radiance on the light-level scale of EmissionTiles, kind 0).
-     * A straight line's sprite covers about a twelfth of its quad, so it casts about 4, a little more than one face
-     * of a level 15 block's texel average: under half of a redstone torch (level 7 on five faces, about 11), enough
-     * to light the floor around the wire red at night without a long line outshining the torch that powers it. At a
-     * third of this the light on the floor could not be told from none.
+     * A straight line's sprite covers about a twelfth of its quad, so at power 15 it casts about 1.5 in its red: a
+     * faint red on the floor next to the wire at night, well under a redstone torch (level 7 on five faces, about
+     * 11). Dust is a hint of glow, not a lamp: at 48 a lit line read as a light source of its own.
      */
-    static final float CAST_PER_COVERAGE = 48.0f;
+    static final float CAST_PER_COVERAGE = 18.0f;
     /** The covered share assumed for a sprite whose pixels cannot be read (a straight half line of vanilla's). */
     private static final float DEFAULT_COVERAGE = 0.08f;
 
@@ -65,6 +64,18 @@ public final class RedstoneGlow {
     static boolean isDust(net.minecraft.client.resources.model.geometry.BakedQuad quad) {
         return quad.materialInfo().isTinted()
             || !quad.materialInfo().sprite().contents().name().getPath().endsWith("_overlay");
+    }
+
+    /**
+     * The colour of the light dust of this power casts, 0xRRGGBB: vanilla's colour for the power (as the older
+     * RedStoneWireBlock.getColorForPower worked it out), from dark red at power 1 to bright red at 15.
+     */
+    static int castColor(int power) {
+        float f = power / 15.0f;
+        float r = f * 0.6f + (f > 0.0f ? 0.4f : 0.3f);
+        float g = Math.max(0.0f, Math.min(1.0f, f * f * 0.7f - 0.5f));
+        float b = Math.max(0.0f, Math.min(1.0f, f * f * 0.6f - 0.7f));
+        return Math.round(r * 255.0f) << 16 | Math.round(g * 255.0f) << 8 | Math.round(b * 255.0f);
     }
 
     /** The glow seen on dust of this power, before its colour: none at 0, then from the floor up to SEEN_GLOW. */
