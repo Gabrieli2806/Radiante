@@ -1371,7 +1371,7 @@ public class RadianteOptionsScreen extends Screen {
                 value -> this.pendingBiomeAmbianceStrength = value),
             volumetricFog, fogStyle, volumetricStrength, tunable(Tunable.FOG_DISTANCE, false),
             tunable(Tunable.WATER_WAVES, false), tunable(Tunable.WATER_DENSITY, false),
-            tunable(Tunable.WATER_GOD_RAYS, false), tunable(Tunable.UNDERWATER_CAMERA_EFFECTS, false));
+            tunable(Tunable.WATER_GOD_RAYS, false));
     }
 
     /** The Sun Path choices: vanilla's path, the one leaning south, or what the Sun & Moon Path group sets. */

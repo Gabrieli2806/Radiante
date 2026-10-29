@@ -336,8 +336,6 @@
   "options.radiante.tunable.water_density.tooltip": "Qué tan rápido se desvanece la vista bajo el agua. Menos es más claro.",
   "options.radiante.tunable.water_god_rays": "Rayos de Luz Bajo el Agua",
   "options.radiante.tunable.water_god_rays.tooltip": "Haces de sol que atraviesan la superficie cuando estás bajo el agua.",
-  "options.radiante.tunable.underwater_camera_effects": "Efectos de Cámara Bajo el Agua",
-  "options.radiante.tunable.underwater_camera_effects.tooltip": "Un vaivén suave, bordes difuminados, viñeta y cáusticas tenues del sol con la cabeza bajo el agua. Menos es más sutil; 0% los quita.",
   "options.radiante.apply": "Aplicar",
   "options.radiante.apply.tooltip": "Aplica los cambios ahora sin cerrar la pantalla.",
   "options.radiante.undo": "Deshacer",

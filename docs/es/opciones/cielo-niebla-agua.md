@@ -42,7 +42,6 @@ Los valores por defecto son los de radiante-pt, el aspecto Bedrock RTX ([bedrock
 | **Olas del Agua** | 0% – 400% | 100% | Qué tan agitada es la superficie del agua. 0% es plana como un espejo. |
 | **Turbidez del Agua** | 0% – 400% | 100% | Qué tan rápido se desvanece la vista bajo el agua. Menos es más claro. 100% es la extinción completa de Bedrock. |
 | **Rayos de Luz Bajo el Agua** | 0% – 400% | 100% | Haces de sol que atraviesan la superficie cuando estás bajo el agua. |
-| **Efectos de Cámara Bajo el Agua** | 0% – 200% | 100% | Con la cabeza bajo el agua: un vaivén suave de la vista, bordes más suaves y oscuros y, de día, un parpadeo tenue de cáusticas del sol cerca de la superficie. Menos es más sutil; 0% los quita. Fuera del agua no cuestan nada. |
 
 Con la Niebla Volumétrica de Bedrock activada (en Avanzado, por defecto) el aire lo nubla
 el volumen propio de Bedrock, de 50 bloques: muestra la niebla del bioma (con Ambiente de Bioma activado) y los

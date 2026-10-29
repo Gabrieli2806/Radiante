@@ -70,7 +70,6 @@ render_pipeline.module.ray_tracing.attribute.water_light_depth=Water Light Depth
 render_pipeline.module.ray_tracing.attribute.water_ambient=Water Ambient Light
 render_pipeline.module.ray_tracing.attribute.water_wave_strength=Water Wave Strength
 render_pipeline.module.ray_tracing.attribute.water_god_rays=Underwater God Rays
-render_pipeline.module.ray_tracing.attribute.underwater_camera_effects=Underwater Camera Effects
 render_pipeline.module.ray_tracing.attribute.translucency=Translucency
 render_pipeline.module.ray_tracing.attribute.light_shafts=Light Shafts
 render_pipeline.module.ray_tracing.attribute.aerial_perspective=Aerial Perspective

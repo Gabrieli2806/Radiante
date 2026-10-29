@@ -27,8 +27,7 @@ All notable changes to this project are documented in this file.
   blue. Shader packs can read the size with `radianteWaterDepth()` and `radianteWaterWidth()`.
 - Under water by day the view is no longer as bright as the land above: the daylight that lights what you see has
   come down through the water over you, so it dims and turns blue-green the deeper you swim (red goes first). The
-  night look under water is unchanged. New setting **Underwater Camera Effects** (Sky & Water, 100%): with your head
-  under water, a gentle sway, soft darker edges and faint sun caustics near the surface; 0% turns them off.
+  night look under water is unchanged.
 - Fog you can see. With the defaults the air had no haze at all: Bedrock's fog volume only carries the biome's fog,
   which is zero with Biome Ambiance off (the default), and turning Volumetric Fog on or off changed only the last few
   blocks before the render distance. Now:

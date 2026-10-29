@@ -749,13 +749,6 @@
             "define": "VPT_POST_MOTION_BLUR_SAMPLE_COUNT"
         },
         {
-            "name": "render_pipeline.module.ray_tracing.attribute.underwater_camera_effects",
-            "type": "float_range:0.0-2.0",
-            "default_value": "1.0",
-            "runtime": true,
-            "define": "VPT_UNDERWATER_CAMERA_EFFECTS"
-        },
-        {
             "name": "render_pipeline.module.ray_tracing.attribute.post_enable_dof",
             "type": "bool",
             "default_value": "render_pipeline.false",
@@ -1289,7 +1282,7 @@
             },
             {
                 "if_else": {
-                    "condition": "RADIANTE_HOOK_POST_GRADE || (VPT_UNDERWATER_CAMERA_EFFECTS > 0 && CAMERA_SUBMERSION_TYPE == 1)",
+                    "condition": "RADIANTE_HOOK_POST_GRADE",
                     "then": [
                         {
                             "pass": "post_hook_copy"

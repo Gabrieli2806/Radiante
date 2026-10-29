@@ -47,9 +47,6 @@ class Buffers : public SharedObject<Buffers> {
     // Whether the camera moves by a sub-pixel jitter from frame to frame, for the temporal passes and upscalers.
     void setUseJitter(bool useJitter);
     void setAndUploadSkyUniformBuffer(const gpu::Data::SkyUBO &ubo);
-    // What the camera is in as the sky uniform written last says (SkyUBO.cameraSubmersionType: 0 lava, 1 water,
-    // 2 powder snow, 3 none), for the post stage's script to run its under water passes only under water.
-    uint32_t cameraSubmersionType();
     void setAndUploadTextureMappingBuffer(const gpu::Data::TextureMapping &mapping);
 
     // The current frame's copies; null until the first upload of each.
@@ -80,7 +77,6 @@ class Buffers : public SharedObject<Buffers> {
     std::array<glm::vec4, PRISM_PACK_PARAM_COUNT> packParams_{};
     gpu::Data::WorldUBO lastWorld_{};
     bool useJitter_ = true;
-    uint32_t cameraSubmersionType_ = 3;
     size_t jitterIndex_ = 0;
     uint32_t frameCounter_ = 0;
     std::ranlux48 seedEngine_;

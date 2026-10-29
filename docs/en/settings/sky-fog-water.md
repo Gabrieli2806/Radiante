@@ -42,7 +42,6 @@ Defaults are radiante-pt's, the Bedrock RTX look ([bedrock-rtx.md](../bedrock-rt
 | **Water Waves** | 0% – 400% | 100% | How rough the water surface is. 0% is a flat, mirror-like surface. |
 | **Water Murkiness** | 0% – 400% | 100% | How quickly the view fades out underwater. Lower is clearer. 100% is Bedrock's full extinction. |
 | **Underwater Light Rays** | 0% – 400% | 100% | Shafts of sunlight through the water surface while underwater. |
-| **Underwater Camera Effects** | 0% – 200% | 100% | While your head is under water: a gentle sway of the view, softer and darker edges, and by day a faint flicker of sun caustics near the surface. Lower is subtler, 0% turns them off. They cost nothing above water. |
 
 With Bedrock Volumetric Fog on (under Advanced, the default) the air is fogged
 by Bedrock's own volume, 50 blocks deep: it shows the biome's fog (with Biome Ambiance on) and the light shafts
