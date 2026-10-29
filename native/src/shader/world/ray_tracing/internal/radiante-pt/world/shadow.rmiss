@@ -61,6 +61,13 @@ void main() {
     }
 #endif
 
+    // A lightning flash takes the sun's or moon's place while it lasts (celestial.glsl).
+    float lightning = lightningFlash();
+    if (lightning > 1e-3) {
+        shadowRay.radiance += LIGHTNING_RADIANCE * lightning * shadowRay.throughput;
+        return;
+    }
+
     // The End has no sun or moon; its only sky light is the flash.
     if (worldUBO.skyType == 2) {
         shadowRay.radiance += END_FLASH_RADIANCE * endFlashIntensity() * shadowRay.throughput;

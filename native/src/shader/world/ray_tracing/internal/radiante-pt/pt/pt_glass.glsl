@@ -223,4 +223,44 @@ bool ptGlassPassThrough(uint textureID,
 }
 #endif
 
+// How bright a raindrop streak is: the share of the light around it that it sends to the eye at full coverage.
+#ifndef VPT_RAIN_STREAK_BRIGHTNESS
+#    define VPT_RAIN_STREAK_BRIGHTNESS 1.0
+#endif
+// The streak's light at Rain Streaks 100 %: the share of the overcast sky over it that a falling drop gives back.
+const float RAIN_STREAK_SKY = 0.05;
+
+// A raindrop streak met by the camera's view: seen through, with a faint glint of the light around it added on top,
+// as glass is (ptGlassPassThrough). It was a surface of its own before, refracted and lit like a sheet of water, and
+// the denoiser and the upscaler took the streak, flickering in and out from frame to frame (the any-hit keeps a
+// streak at random by its alpha), for what the pixel showed: its normal, depth and falling motion stood in for the
+// ground behind it, which smeared and sparkled through every storm, and each streak paid for sun and lamp shadow
+// rays. The glint is worked out from the sky over it, with no rays. Bounced rays never meet rain (prepareSecondaryBase).
+bool ptRainPassThrough(uint textureID, vec2 textureUV, vec4 colorLayerValue) {
+    if (!isRainSurface(g_hit.packedData)) { return false; }
+    vec4 texel = sampleTexture(textures[nonuniformEXT(textureID)], textureUV, 0.0, false);
+    float coverage = clamp(texel.a * colorLayerValue.a, 0.0, 1.0);
+    float opacity = clamp(VPT_RAIN_OPACITY, 0.0, 1.0);
+    // Only the sky: the rain's vertices carry full light levels everywhere, so they cannot say where a lamp is.
+    vec3 skyUp = texture(skyFull, vec3(0.0, 1.0, 0.0)).rgb;
+    vec3 overcast = vec3(0.1) * smoothstep(-0.3, 0.3, celestialSunDirection().y);
+    vec3 around = mix(skyUp, overcast, skyUBO.rainGradient) * RAIN_STREAK_SKY;
+    float glint = coverage * max(VPT_RAIN_STREAK_BRIGHTNESS, 0.0) * (1.0 + 2.0 * opacity);
+    mainRay.radiance += mainRay.throughput * around * glint;
+    // Rain Opacity: how much of the view a streak takes away, a little blue-grey.
+    mainRay.throughput *= mix(vec3(1.0), vec3(0.82, 0.90, 1.0), coverage * opacity);
+    mainRay.hitT = g_hit.hitT;
+    mainRay.coneWidth += mainRay.hitT * mainRay.coneSpread;
+    mainRay.origin = g_hit.rayOrigin + g_hit.rayDir * (g_hit.hitT + PASS_THROUGH_STEP);
+    ptClearReflectionRequest();
+    mainRay.hasPrevScenePos = 0u;
+    ptStoreMaterial(vec4(1.0), vec3(0.04), 1.0, 0.0, 1.0, 1.0, 0.0);
+    ptStoreAux(vec2(0.0));
+    raySetNoisy(mainRay, false);
+    raySetContinue(mainRay, true);
+    raySetPassThrough(mainRay, true);
+    raySetStop(mainRay, false);
+    return true;
+}
+
 #endif // VPT_PT_GLASS_GLSL

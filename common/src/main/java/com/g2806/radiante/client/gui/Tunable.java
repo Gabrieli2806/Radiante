@@ -62,6 +62,14 @@ enum Tunable {
     // How much of a rain streak shows: thin, nearly clear falling water at the default, an opaque sheet at 100%.
     RAIN_OPACITY(null, "render_pipeline.module.ray_tracing.attribute.rain_opacity", 0.01, 0, 100, 0,
         Format.PERCENT),
+    // How much a rain streak catches the light around it: the overcast sky over it.
+    RAIN_STREAKS(null, "render_pipeline.module.ray_tracing.attribute.rain_streak_brightness", 0.01, 0, 200, 100,
+        Format.PERCENT),
+    // How much of the open, flat ground puddles cover in steady rain (with Wet Ground in Rain on).
+    PUDDLES(null, "render_pipeline.module.ray_tracing.attribute.rain_puddles", 0.01, 0, 100, 50, Format.PERCENT),
+    // How brightly a lightning flash lights the world in a thunderstorm.
+    LIGHTNING_FLASH(null, "render_pipeline.module.ray_tracing.attribute.lightning_flash", 0.01, 0, 200, 100,
+        Format.PERCENT),
     // How far the wind moves leaves and plants, while Wind is on.
     WIND_STRENGTH(null, Pipeline.WIND_STRENGTH_ATTRIBUTE, 0.01, 0, 200, 100, Format.PERCENT),
     STARS(Pipeline.POST_RENDER_MODULE_NAME, "render_pipeline.module.post_render.attribute.star_count", 100.0, 1, 200,

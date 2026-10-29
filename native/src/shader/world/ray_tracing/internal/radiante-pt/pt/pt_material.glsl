@@ -462,6 +462,20 @@ void sampleSurfaceState(bool useTexture,
         if (wetness > 0.0) {
             vptApplyGroundWetness(mat, wetness);
             shadingNormal = normalizeF(mix(shadingNormal, geometricNormal, wetness * 0.7), geometricNormal);
+            // Puddles on solid ground only: a leaf's or a plant's top holds no water.
+            float puddle = alphaMode == ALPHA_MODE_OPAQUE ? vptPuddle(worldPos, wetness) : 0.0;
+            if (puddle > 0.0) {
+                vptApplyPuddle(mat, puddle);
+                shadingNormal = vptApplyRainRipples(normalizeF(mix(shadingNormal, geometricNormal, puddle),
+                                                               geometricNormal),
+                                                    vptRainRippleSlope(worldPos), puddle);
+            }
+        }
+    } else if (useWaterMaterial && baseGeoNormal.y > 0.5 && skyUBO.rainGradient > 0.01) {
+        // Rain rings on water under the open sky.
+        float open = vptGroundWetness(worldPos, baseGeoNormal);
+        if (open > 0.0) {
+            shadingNormal = vptApplyRainRipples(shadingNormal, vptRainRippleSlope(worldPos), open);
         }
     }
 

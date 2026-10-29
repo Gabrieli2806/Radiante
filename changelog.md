@@ -4,6 +4,15 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Rain is cleaner and cheaper. Rain streaks are no longer shaded as surfaces: the camera sees through them with a
+  faint glint of the overcast sky (Rain Streaks slider), so the
+  denoiser and upscaler stop taking the flickering streaks for the ground behind them, which smeared and sparkled
+  through every storm. Bounced rays and the radiance cache no longer meet rain at all.
+- Puddles (Sky, Fog & Water): in steady rain, patches of open flat ground fill with standing water that mirrors the
+  sky and the lamps, with rain rings on them and on open water; they shrink as the ground dries.
+- Lightning Flash (Sky, Fog & Water): a thunderstorm's lightning now lights the world from the bolt's direction, with
+  shadows, and lights up the clouds while the sky flashes. The overcast sky is heavier overhead and darker in a storm.
+
 - Volumetric fog (Froxel style, and Bedrock's fog volume) holds still while you look around: its light now lives in
   two grids fixed to the world around the camera (half-block cells to 32 blocks, two-block cells to 128) instead of a
   grid cut along the view, and each pixel marches its ray through them. Turning the camera used to re-cut the air into

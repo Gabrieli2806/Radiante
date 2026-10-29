@@ -41,13 +41,108 @@ float vptGroundWetness(vec3 position, vec3 outwardNormal) {
     return rain * smoothstep(0.0, 0.5, sqrt(edgeDistanceSquared)) * smoothstep(0.5, 0.95, outwardNormal.y);
 }
 
+// How rough wet open ground gets.
+const float WET_GROUND_ROUGHNESS = 0.2;
+
 /** Water fills the pores: rough, non-metal surfaces darken the most, and everything turns glossy. */
 void vptApplyGroundWetness(inout LabPBRMat material, float wetness) {
     if (wetness <= 0.0 || material.transmission > 0.0) { return; }
     float absorbency = (1.0 - material.metallic) * clamp(material.roughness * 2.0, 0.0, 1.0);
     material.albedo *= 1.0 - 0.35 * wetness * absorbency;
-    material.roughness = mix(material.roughness, min(material.roughness, 0.08), wetness);
+    // Glossy, not a mirror: the standing water of a puddle (vptApplyPuddle) is what mirrors the world. At 0.08 all the
+    // open ground mirrored the sky as one sheet of water, and the puddles had nothing to stand out from.
+    material.roughness = mix(material.roughness, min(material.roughness, WET_GROUND_ROUGHNESS), wetness);
     material.f0 = mix(material.f0, max(material.f0, vec3(0.02)), wetness);
+}
+
+// ---- Puddles and rain ripples
+
+// How much of the open, flat ground puddles cover in steady rain, 0..1 (the Puddles setting).
+#ifndef VPT_RAIN_PUDDLES
+#    define VPT_RAIN_PUDDLES 0.5
+#endif
+// How large a puddle patch is, in blocks (the period of the coarser noise), and how soft its rim is.
+const float PUDDLE_SCALE = 7.0;
+const float PUDDLE_RIM = 0.08;
+// Ripples: rings per block across, how long one ring lives in seconds, and how steep its wave is.
+const float RIPPLE_CELLS = 2.5;
+const float RIPPLE_LIFETIME = 0.9;
+const float RIPPLE_SLOPE = 0.35;
+
+// A point's x and z in the world, kept small enough for a float: the camera's position wrapped to 4096 blocks.
+vec2 vptRainWorldXZ(vec3 position) {
+    return vec2(mod(worldUBO.cameraPos.xz, dvec2(4096.0))) + position.xz;
+}
+
+float vptRainHash(vec2 cell) {
+    uvec2 q = uvec2(ivec2(cell) + ivec2(1 << 20));
+    uint h = q.x * 1597334677u ^ q.y * 3812015801u;
+    h ^= h >> 15u;
+    h *= 2246822519u;
+    h ^= h >> 13u;
+    return float(h & 0xFFFFFFu) / 16777215.0;
+}
+
+float vptRainValueNoise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(vptRainHash(i), vptRainHash(i + vec2(1.0, 0.0)), f.x),
+               mix(vptRainHash(i + vec2(0.0, 1.0)), vptRainHash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+/** How much of a puddle stands here, 0..1, on a wet upward face (wetness from vptGroundWetness). Patches fixed to the
+ *  world, from a noise; they spread as the ground soaks and shrink back as it dries, so they go last. Kept off the
+ *  dry rim of a wet patch (by a wall or overhang). */
+float vptPuddle(vec3 position, float wetness) {
+    float amount = clamp(VPT_RAIN_PUDDLES, 0.0, 1.0);
+    if (amount <= 0.0 || wetness <= 0.3) { return 0.0; }
+    vec2 p = vptRainWorldXZ(position);
+    float n = 0.65 * vptRainValueNoise(p / PUDDLE_SCALE) + 0.35 * vptRainValueNoise(p / (PUDDLE_SCALE * 0.33) + 17.0);
+    float fill = smoothstep(0.3, 1.0, wetness) * amount;
+    float threshold = 1.0 - 0.6 * fill;
+    return smoothstep(threshold, threshold + PUDDLE_RIM, n);
+}
+
+/** Standing water: as dark as soaked ground and smooth as water's surface, so it mirrors the sky and the lamps. */
+void vptApplyPuddle(inout LabPBRMat material, float puddle) {
+    if (puddle <= 0.0 || material.transmission > 0.0) { return; }
+    material.albedo *= 1.0 - 0.25 * puddle * (1.0 - material.metallic);
+    material.roughness = mix(material.roughness, 0.015, puddle);
+    material.f0 = mix(material.f0, max(material.f0, vec3(0.02)), puddle);
+}
+
+/** The slope rain ripples give a flat water surface here (x, z), while it rains: rings that spread from where drops
+ *  land and fade, from cells fixed to the world in two offset layers, one ring per cell at a time. */
+vec2 vptRainRippleSlope(vec3 position) {
+    float rain = skyUBO.rainGradient;
+    if (rain <= 0.01) { return vec2(0.0); }
+    vec2 p = vptRainWorldXZ(position) * RIPPLE_CELLS;
+    float time = worldUBO.windTime / RIPPLE_LIFETIME;
+    vec2 slope = vec2(0.0);
+    for (int layer = 0; layer < 2; layer++) {
+        vec2 q = p + (layer == 0 ? vec2(0.0) : vec2(0.5, 0.37));
+        vec2 cell = floor(q) + vec2(float(layer) * 4096.0, 0.0);
+        float h = vptRainHash(cell);
+        float phase = fract(time + h);
+        // Not every cell has a drop in it every cycle: fewer as the rain thins.
+        if (fract(h * 13.7 + floor(time + h) * 0.618) > rain) { continue; }
+        vec2 centre = floor(q) + 0.3 + 0.4 * vec2(fract(h * 7.3), fract(h * 3.1));
+        vec2 offset = q - centre;
+        float d = length(offset);
+        float x = (d - phase * 0.45) * 22.0;
+        float fade = (1.0 - phase) * (1.0 - phase);
+        // d/dd of sin(x) exp(-x^2): a ring of one crest and one trough.
+        float wave = (cos(x) - 2.0 * x * sin(x)) * exp(-x * x) * fade;
+        slope += offset / max(d, 1e-4) * wave;
+    }
+    return slope * RIPPLE_SLOPE * rain;
+}
+
+/** The normal turned by the ripples (slope from vptRainRippleSlope), on an upward face. */
+vec3 vptApplyRainRipples(vec3 normal, vec2 slope, float strength) {
+    if (strength <= 0.0 || dot(slope, slope) <= 0.0) { return normal; }
+    return normalize(normal + vec3(-slope.x, 0.0, -slope.y) * strength);
 }
 
 #endif

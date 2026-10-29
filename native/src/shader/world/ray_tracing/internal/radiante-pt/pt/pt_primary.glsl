@@ -131,21 +131,24 @@ void preparePrimary(int step, int isHand, out float len, out uint mask, out uint
 }
 
 void prepareSecondaryBase(int bounce, int isHand, out float len, out uint mask) {
+    // No rain on bounced rays (WEATHER_MASK): a streak is kept or skipped at random each frame by the any-hit, so a
+    // bounce that met one carried a different glint every frame, and reflections and indirect light in rain came out
+    // speckled. The streaks also cost an any-hit call for every bounce through a storm. The camera still sees them.
     if (bounce == 0) {
         len = worldTraceDistance();
         if (worldUBO.isFirstPerson > 0) {
             // The held item has to be reachable by bounced light, otherwise a torch in the hand glows without
             // lighting anything around it in first person, while the same torch lights the scene in third person.
-            mask = WORLD_MASK | HAND_MASK | FISHING_BOBBER_MASK | WEATHER_MASK | PARTICLE_MASK | CLOUD_MASK;
+            mask = WORLD_MASK | HAND_MASK | FISHING_BOBBER_MASK | PARTICLE_MASK | CLOUD_MASK;
         } else {
-            mask = WORLD_MASK | PLAYER_MASK | FISHING_BOBBER_MASK | WEATHER_MASK | PARTICLE_MASK | CLOUD_MASK;
+            mask = WORLD_MASK | PLAYER_MASK | FISHING_BOBBER_MASK | PARTICLE_MASK | CLOUD_MASK;
         }
     } else if (bounce <= 1) {
         len = worldTraceDistance();
         if (isHand == 0) {
-            mask = WORLD_MASK | PLAYER_MASK | FISHING_BOBBER_MASK | WEATHER_MASK | PARTICLE_MASK | CLOUD_MASK;
+            mask = WORLD_MASK | PLAYER_MASK | FISHING_BOBBER_MASK | PARTICLE_MASK | CLOUD_MASK;
         } else {
-            mask = WORLD_MASK | FISHING_BOBBER_MASK | WEATHER_MASK | PARTICLE_MASK | CLOUD_MASK;
+            mask = WORLD_MASK | FISHING_BOBBER_MASK | PARTICLE_MASK | CLOUD_MASK;
         }
     } else {
         len = 384.0;

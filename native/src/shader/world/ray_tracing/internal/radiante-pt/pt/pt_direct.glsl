@@ -125,13 +125,17 @@ vec3 sampleSurfaceDirectLight(SampledSurface surface,
     // The overworld's sun or moon, or the End's flash while it lasts (shadow.rmiss gives its light).
     bool endFlash = worldUBO.skyType == 2 && endFlashIntensity() > 1e-3;
     if (worldUBO.skyType != 1 && !endFlash) { return vec3(0.0); }
+    // A lightning flash, which outshines the sun or moon behind the storm while it lasts (shadow.rmiss).
+    bool lightning = lightningFlash() > 1e-3;
 
     bool isOpaqueSurface = surface.mat.transmission <= EPS;
     vec3 lightDir = celestialSunDirection();
     if (lightDir.y < 0.0 && !endFlash) { lightDir = celestialMoonDirection(); }
+    if (lightning) { lightDir = lightningDirection(); }
 
-    vec3 sampledLightDir = SampleVMFXi(ptCelestialSample(mainRay), lightDir, 3000.0);
-    if (!endFlash && celestialSunDirection().y < 0.0) {
+    // A bolt is wider in the sky than the sun: softer shadows.
+    vec3 sampledLightDir = SampleVMFXi(ptCelestialSample(mainRay), lightDir, lightning ? 400.0 : 3000.0);
+    if (!endFlash && !lightning && celestialSunDirection().y < 0.0) {
         bool onDisc;
         vec3 moonSample = sampleMoonDiscDirection(mainRay.seed, lightDir, onDisc);
         if (onDisc) { sampledLightDir = moonSample; }
@@ -226,7 +230,8 @@ vec3 sampleSurfaceDirectLight(SampledSurface surface,
     if (backLit && g_translucencyKind == PT_TRANSLUCENCY_LEAVES) { shadowOrigin += sampledLightDir * LEAF_BLOCK_SKIP; }
     uint shadowMask = WORLD_MASK | g_shadowPlayerMask;
     if (VPT_CLOUD_MODE != 2u) { shadowMask |= CLOUD_MASK; }
-    float progress = skyUBO.rainGradient;
+    // The rain hides the sun, not the lightning.
+    float progress = lightning ? 0.0 : skyUBO.rainGradient;
     if (g_deferShadowRays) {
         // The light is all known but for what the ray lets through (pt_deferred_shadow.glsl).
         vec3 scale = mainRay.throughput * lightBRDF;

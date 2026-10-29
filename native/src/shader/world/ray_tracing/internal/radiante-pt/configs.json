@@ -520,6 +520,27 @@
             "define": "VPT_RAIN_OPACITY"
         },
         {
+            "name": "render_pipeline.module.ray_tracing.attribute.rain_streak_brightness",
+            "type": "float_range:0.0-2.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "VPT_RAIN_STREAK_BRIGHTNESS"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.rain_puddles",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "VPT_RAIN_PUDDLES"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.lightning_flash",
+            "type": "float_range:0.0-2.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "VPT_LIGHTNING_FLASH"
+        },
+        {
             "name": "render_pipeline.module.ray_tracing.attribute.wind",
             "type": "bool",
             "default_value": "render_pipeline.false",
