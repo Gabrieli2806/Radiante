@@ -162,6 +162,11 @@ public final class ChunkManager {
         return state.is(BlockTags.LEAVES);
     }
 
+    /** Ice of every kind and snow, which the sun lights a little past the edge of its light (PBRVertexWriter.frost). */
+    private static boolean isFrost(BlockState state) {
+        return state.is(BlockTags.ICE) || state.is(BlockTags.SNOW);
+    }
+
     private static final int VERTEX_FORMAT_PBR = 12;
     public static final int GEOMETRY_TYPE_WORLD_SOLID = 1;
     public static final int GEOMETRY_TYPE_WORLD_TRANSPARENT = 2;
@@ -694,6 +699,7 @@ public final class ChunkManager {
             scratch.blockIsUnlit = EmissionTiles.isUnlit(blockState) || scratch.dustPower >= 0;
             scratch.blockIsPlant = isPlant(blockState);
             scratch.blockIsLeaves = isLeaves(blockState);
+            scratch.blockIsFrost = isFrost(blockState);
             scratch.blockIsPane = scratch.blockIsGlass && isGlassPane(blockState);
             scratch.windKind = PBRVertexWriter.WIND_NONE;
             if (windOn) {
@@ -713,6 +719,7 @@ public final class ChunkManager {
                 scratch.blockIsUnlit = false;
                 scratch.blockIsPlant = false;
                 scratch.blockIsLeaves = false;
+                scratch.blockIsFrost = false;
                 scratch.blockIsPane = false;
                 // The water round seagrass and kelp stays where it is.
                 scratch.windKind = PBRVertexWriter.WIND_NONE;
@@ -724,6 +731,7 @@ public final class ChunkManager {
                 scratch.blockIsUnlit = EmissionTiles.isUnlit(blockState) || scratch.dustPower >= 0;
                 scratch.blockIsPlant = isPlant(blockState);
                 scratch.blockIsLeaves = isLeaves(blockState);
+                scratch.blockIsFrost = isFrost(blockState);
                 scratch.blockIsPane = scratch.blockIsGlass && isGlassPane(blockState);
                 scratch.windKind = blockWind;
                 // Water with water or solid blocks on every side draws no face, and never asks for a writer: when
@@ -1037,6 +1045,8 @@ public final class ChunkManager {
         private float windScale;
         /** The block being written is leaves; see PBRVertexWriter.leaves. */
         private boolean blockIsLeaves;
+        /** The block being written is ice or snow; see PBRVertexWriter.frost. */
+        private boolean blockIsFrost;
         private boolean blockIsPane;
         private boolean paneCapUp;
         private boolean paneCapDown;
@@ -1090,7 +1100,7 @@ public final class ChunkManager {
                 writer = new PBRVertexWriter(4096);
                 writers.put(layer, writer);
             }
-            writer.textureId(atlasId).alphaMode(alphaModeOf(layer)).coordinate(0).water(false).lava(false).glass(this.blockIsGlass).plant(this.blockIsPlant).leaves(this.blockIsLeaves)
+            writer.textureId(atlasId).alphaMode(alphaModeOf(layer)).coordinate(0).water(false).lava(false).glass(this.blockIsGlass).plant(this.blockIsPlant).leaves(this.blockIsLeaves).frost(this.blockIsFrost)
                 .glassPane(this.blockIsPane, this.paneCapUp, this.paneCapDown).blend(this.blockIsBlend)
                 .unlit(this.blockIsUnlit).wind(this.windKind, this.windBaseY, this.windRise, this.windScale);
             this.current = writer;
@@ -1108,7 +1118,7 @@ public final class ChunkManager {
                 this.glowWriters.put(layer, writer);
             }
             writer.textureId(atlasId).alphaMode(alphaModeOf(layer)).coordinate(0).water(false).lava(false).glass(false)
-                .plant(false).leaves(false).glassPane(false, false, false).blend(false).unlit(true).glowLight(true)
+                .plant(false).leaves(false).frost(false).glassPane(false, false, false).blend(false).unlit(true).glowLight(true)
                 .wind(PBRVertexWriter.WIND_NONE, 0.0f, 0.0f, 0.0f);
             this.current = writer;
             return writer;

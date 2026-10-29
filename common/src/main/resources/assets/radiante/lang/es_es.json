@@ -309,6 +309,8 @@
   "options.radiante.tunable.bounce_light.tooltip": "Cuánta luz continúa tras rebotar en las superficies. Más llena las salas con un solo rayo de sol; 100% es físicamente realista.",
   "options.radiante.tunable.sky_light": "Luz del Cielo",
   "options.radiante.tunable.sky_light.tooltip": "Cuán fuerte ilumina el cielo abierto el mundo. Más aclara la sombra bajo edificios y árboles.",
+  "options.radiante.tunable.translucency": "Translucidez",
+  "options.radiante.tunable.translucency.tooltip": "Luz del sol y la luna que atraviesa hojas, plantas, hielo y nieve desde atrás. Más hace brillar más las hojas a contraluz; 0% ilumina solo su lado soleado.",
   "options.radiante.tunable.glass_reflections": "Reflejos del Vidrio",
   "options.radiante.tunable.glass_reflections.tooltip": "Cuánto cielo muestran las ventanas sobre lo que hay detrás. 0% es vidrio totalmente limpio.",
   "options.radiante.tunable.water_texture": "Textura del Agua",

@@ -441,6 +441,18 @@ void ptShadeDefault(bool viewMark) {
     g_hookDPdv = dPdvWorld;
     g_hookViewDir = viewDir;
     hookSurface(surface, packedData, bounce);
+    // What the sun lets through it from behind (translucentBackLight), after the pack's hookSurface, which may set
+    // surface.mat.subSurface to say how much.
+    if (isLeavesSurface(packedData)) {
+        ptSetTranslucency(PT_TRANSLUCENCY_LEAVES, surface.mat.subSurface, TRANSLUCENCY_LEAVES);
+    } else if (isPlantSurface(packedData)) {
+        ptSetTranslucency(PT_TRANSLUCENCY_FOLIAGE, surface.mat.subSurface, TRANSLUCENCY_PLANT);
+    } else if (isFrostSurface(packedData)) {
+        ptSetTranslucency(PT_TRANSLUCENCY_FROST, surface.mat.subSurface, TRANSLUCENCY_FROST);
+    } else {
+        ptSetTranslucency(surface.mat.subSurface > 0.0 ? PT_TRANSLUCENCY_FOLIAGE : PT_TRANSLUCENCY_NONE,
+                          surface.mat.subSurface, 0.0);
+    }
 #ifdef PT_DEBUG_VIEW_FLAGS
     if (bounce == 0u) {
         vec3 flagsColor = radianteDebugFlagsColor(isWaterSurface(packedData), isLavaSurface(packedData),

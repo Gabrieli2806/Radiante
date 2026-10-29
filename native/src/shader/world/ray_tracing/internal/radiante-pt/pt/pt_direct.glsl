@@ -51,6 +51,64 @@ vec3 sampleMoonDiscDirection(inout uint seed, vec3 moonDir, out bool found) {
     return moonDir;
 }
 
+#ifndef VPT_TRANSLUCENCY
+#    define VPT_TRANSLUCENCY 1.0
+#endif
+
+// How the surface being shaded lets the sun or moon through (set by the hit shader for each surface it lights, see
+// ptSetTranslucency): none, foliage (leaves, small plants) or frost (ice, packed ice, snow).
+const uint PT_TRANSLUCENCY_NONE = 0u;
+const uint PT_TRANSLUCENCY_FOLIAGE = 1u;
+const uint PT_TRANSLUCENCY_FROST = 2u;
+// Leaves: foliage that fills a whole block (see LEAF_BLOCK_SKIP).
+const uint PT_TRANSLUCENCY_LEAVES = 3u;
+uint g_translucencyKind = PT_TRANSLUCENCY_NONE;
+float g_translucency = 0.0;
+
+// What each kind lets through when nothing (no pack, no LabPBR subsurface map) says otherwise. Leaves are thin and
+// let the most through; a blade of grass a little less; ice and snow scatter it about inside and give back a little
+// at the shadowed side.
+const float TRANSLUCENCY_LEAVES = 1.0;
+const float TRANSLUCENCY_PLANT = 0.8;
+const float TRANSLUCENCY_FROST = 0.6;
+// The share of the light on a leaf's far side that comes out at the near one, at full Translucency.
+const float FOLIAGE_TRANSMITTANCE = 0.45;
+// How far round ice and snow the light wraps past the terminator (as a cosine), and the blue it takes on inside.
+const float FROST_WRAP = 0.5;
+const vec3 FROST_TINT = vec3(0.55, 0.78, 1.0);
+// How far towards the light the shadow ray of a leaf lit from behind starts: past the leaf block's own far faces,
+// which are the same leaves the light comes through. Traced from the face itself, the block's dense texels hid the
+// light from nearly every leaf, and a tree against the sun showed no glow even at its edges; the leaves around it
+// still shade it, so a canopy glows at its rim and stays dark inside.
+const float LEAF_BLOCK_SKIP = 0.9;
+
+// The kind and strength for a surface from its flags. A pack's hookSurface (or a LabPBR subsurface map) that sets
+// surface.mat.subSurface above zero sets the strength itself.
+void ptSetTranslucency(uint kind, float subSurface, float fallback) {
+    g_translucencyKind = kind;
+    g_translucency = kind == PT_TRANSLUCENCY_NONE ? 0.0 : (subSurface > 0.0 ? subSurface : fallback);
+}
+
+// The sun or moon on a translucent surface from behind it (NoL <= 0), times the cosine: what the shadow ray, traced
+// from the far side towards the light as it is for any surface, lets through is multiplied by this. Leaves and plants
+// pass it on tinted by their colour and mostly forwards, so a leaf glows when the light is behind it as seen; ice and
+// snow give a soft blue light past the terminator that fades as the light goes round behind them.
+vec3 translucentBackLight(SampledSurface surface, vec3 viewDir, vec3 lightDir, float NoL) {
+    float strength = g_translucency * max(VPT_TRANSLUCENCY, 0.0);
+    if (strength <= 0.0) { return vec3(0.0); }
+    if (g_translucencyKind == PT_TRANSLUCENCY_FROST) {
+        float wrap = clamp((NoL + FROST_WRAP) / (1.0 + FROST_WRAP), 0.0, 1.0);
+        return surface.mat.albedo * FROST_TINT * (INV_PI * wrap * wrap * strength);
+    }
+    // Forward scattering, Henyey-Greenstein (g 0.5) relative to an even spread and kept from flaring when the light
+    // sits right behind the leaf, half and half with the even spread.
+    const float g = 0.5;
+    float cosForward = clamp(dot(lightDir, -viewDir), -1.0, 1.0);
+    float hg = (1.0 - g * g) / pow(1.0 + g * g - 2.0 * g * cosForward, 1.5);
+    float phase = mix(1.0, min(hg, 4.0), 0.5);
+    return surface.mat.albedo * (INV_PI * FOLIAGE_TRANSMITTANCE * strength * phase * abs(NoL));
+}
+
 vec3 sampleSurfaceDirectLight(SampledSurface surface,
                               vec3 viewDir,
                               vec2 referenceUv,
@@ -82,15 +140,17 @@ vec3 sampleSurfaceDirectLight(SampledSurface surface,
     // Light behind an opaque surface gives nothing, unless a pack's direct light hook says otherwise (light through
     // leaves): its BRDF starts at zero, and a zero after the hook skips the shadow ray as before. With the default
     // hook the early exit stays as it always was.
-#ifdef RADIANTE_HOOK_DIRECT_LIGHT_DEFAULT
-    if (isOpaqueSurface && sampledLightNoL <= 0.0) { return vec3(0.0); }
-    const bool lightBehind = false;
-#else
+    // A translucent surface (leaves, plants, ice, snow) takes the light from behind as well (translucentBackLight).
     bool lightBehind = isOpaqueSurface && sampledLightNoL <= 0.0;
+    bool backLit = lightBehind && g_translucency > 0.0 && VPT_TRANSLUCENCY > 0.0;
+#ifdef RADIANTE_HOOK_DIRECT_LIGHT_DEFAULT
+    if (lightBehind && !backLit) { return vec3(0.0); }
 #endif
 
     vec3 lightBRDF = vec3(0.0);
-    if (!lightBehind) {
+    if (backLit) {
+        lightBRDF = translucentBackLight(surface, viewDir, sampledLightDir, sampledLightNoL);
+    } else if (!lightBehind) {
 #if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
         if (!endFlash && isOpaqueSurface) {
             // Bedrock evaluates the BRDF at directionToSun. Jitter only the
@@ -106,10 +166,15 @@ vec3 sampleSurfaceDirectLight(SampledSurface surface,
             if (lightPdf <= 1e-6) { return vec3(0.0); }
         }
     }
+    // Ice and snow on the lit side near the terminator: the wrapped light of translucentBackLight carried on up to
+    // where plain diffuse light overtakes it, so the light fades round the block instead of stopping at the edge.
+    if (!lightBehind && g_translucencyKind == PT_TRANSLUCENCY_FROST && VPT_TRANSLUCENCY > 0.0) {
+        float wrap = clamp((sampledLightNoL + FROST_WRAP) / (1.0 + FROST_WRAP), 0.0, 1.0);
+        float extra = max(wrap * wrap - max(sampledLightNoL, 0.0), 0.0);
+        lightBRDF += surface.mat.albedo * FROST_TINT * (INV_PI * extra * g_translucency * VPT_TRANSLUCENCY);
+    }
     hookDirectLight(surface, viewDir, sampledLightDir, sampledLightNoL, lightBRDF);
-#ifndef RADIANTE_HOOK_DIRECT_LIGHT_DEFAULT
     if (lightBehind && all(equal(lightBRDF, vec3(0.0)))) { return vec3(0.0); }
-#endif
 #ifndef RADIANTE_HOOK_CLOUD_SHADOW_DEFAULT
     // A pack's clouds shading the light (hooks/cloud_shadow.glsl); the shadow ray still traces the rest.
     lightBRDF *= clamp(hookCloudShadow(surface.worldPos, sampledLightDir), 0.0, 1.0);
@@ -158,6 +223,7 @@ vec3 sampleSurfaceDirectLight(SampledSurface surface,
         vec3 visibilityNormal = dot(sampledLightDir, exitGeoNormal) >= 0.0 ? exitGeoNormal : -exitGeoNormal;
         shadowOrigin = baseWorldPos + visibilityNormal * 0.0002;
     }
+    if (backLit && g_translucencyKind == PT_TRANSLUCENCY_LEAVES) { shadowOrigin += sampledLightDir * LEAF_BLOCK_SKIP; }
     uint shadowMask = WORLD_MASK | g_shadowPlayerMask;
     if (VPT_CLOUD_MODE != 2u) { shadowMask |= CLOUD_MASK; }
     float progress = skyUBO.rainGradient;
@@ -357,11 +423,16 @@ vec3 bedrockBlendedFaceLight(vec3 position, vec3 normal, vec3 viewDir, vec3 colo
     face.mat.normal = vec3(0.0, 0.0, 1.0);
     face.mat.ao = 1.0;
     face.mat.height = 1.0;
+    uint translucencyKind = g_translucencyKind;
+    float translucency = g_translucency;
+    ptSetTranslucency(PT_TRANSLUCENCY_NONE, 0.0, 0.0);
     vec3 light = sampleSurfaceDirectLight(face, viewDir, vec2(0.0), position, vec2(0.0), vec2(0.0), vec3(1.0, 0.0, 0.0),
                                           vec3(0.0, 0.0, 1.0), normal, false, -1, 0.0, false);
     light += sampleBlockLight(position, normal, normal, viewDir, face.mat, false);
     light += sampleHeldLight(position, normal, normal, face.mat);
     light += mainRay.throughput * face.mat.albedo * bedrockFaceSkyLight(position, normal);
+    g_translucencyKind = translucencyKind;
+    g_translucency = translucency;
     return light;
 }
 #endif

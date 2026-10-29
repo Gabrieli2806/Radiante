@@ -69,6 +69,8 @@ enum Tunable {
     BOUNCE_LIGHT(null, "render_pipeline.module.ray_tracing.attribute.bounce_light_boost", 0.01, 50, 200, 150,
         Format.PERCENT),
     SKY_LIGHT(null, "render_pipeline.module.ray_tracing.attribute.sky_light_boost", 0.01, 50, 400, 180, Format.PERCENT),
+    // How much sun leaves and plants let through from behind, and how far round ice and snow it wraps.
+    TRANSLUCENCY(null, "render_pipeline.module.ray_tracing.attribute.translucency", 0.01, 0, 200, 100, Format.PERCENT),
     SUN_GLOW(null, "render_pipeline.module.ray_tracing.attribute.sun_glow", 0.0008, 0, 300, 100, Format.PERCENT),
     LIGHT_SHAFTS(null, "render_pipeline.module.ray_tracing.attribute.light_shafts", 0.00015, 0, 400, 100,
         Format.PERCENT),

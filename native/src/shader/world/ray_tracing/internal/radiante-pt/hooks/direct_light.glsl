@@ -10,8 +10,10 @@
 //   lightDir  towards the sampled point of the sun or moon, unit length
 //   NoL       dot(lightDir, surface.geometricNormal); negative when the light is behind the surface
 //   lightBRDF the BRDF times the cosine for this sample: what the light the shadow ray lets through is multiplied
-//             by. Zero when the light is behind an opaque surface; leave it zero there to skip the shadow ray, or
-//             make it non-zero to light the surface from behind (light through leaves).
+//             by. Zero when the light is behind an opaque surface, but on leaves, plants, ice and snow (and what
+//             hookSurface gave a surface.mat.subSurface), where it is radiante-pt's light through them from behind
+//             (Translucency); leave it zero there to skip the shadow ray, or make it non-zero to light the surface
+//             from behind.
 void hookDirectLight(SampledSurface surface, vec3 viewDir, vec3 lightDir, float NoL, inout vec3 lightBRDF) {}
 
 // Only in this default file: radiante-pt then keeps its own early exit for light behind a surface, so its shaders are

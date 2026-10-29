@@ -42,6 +42,8 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private static final int LEAVES_FLAG = 0x20000;
     /** A glow that is also cast into the section's light list (powered redstone dust); see glowLight(). */
     private static final int GLOW_LIGHT_FLAG = 0x40000;
+    /** Ice and snow; see frost(). */
+    private static final int FROST_FLAG = 0x80000;
 
     public static final int ALPHA_MODE_OPAQUE = 0;
     public static final int ALPHA_MODE_CUTOUT = 1;
@@ -125,6 +127,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private float windRise;
     private float windScale;
     private boolean leaves;
+    private boolean frost;
     private boolean glowLight;
     private float castLight;
     private int castColor = 0xFFFFFF;
@@ -289,6 +292,12 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         // A leaf or water plant vertex keeps its kind even without weight: a code interpolated across a triangle must
         // never read as another kind (util/wind.glsl). Grass, the first kind, is 0 at its foot, the same as still.
         return this.windKind * WIND_KIND_STRIDE + weight;
+    }
+
+    /** Marks what follows as ice or snow (FROST_SURFACE_BIT in the shaders). */
+    public PBRVertexWriter frost(boolean frost) {
+        this.frost = frost;
+        return this;
     }
 
     /** Marks what follows as leaves (LEAVES_SURFACE_BIT in the shaders). */
@@ -505,7 +514,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
             this.alphaMode | (this.water ? WATER_FLAG : 0) | (this.rain ? RAIN_FLAG : 0) | (this.held ? HELD_FLAG : 0) | (this.glass ? GLASS_FLAG : 0)
                 | (this.plant ? PLANT_FLAG : 0) | this.paneFlags | (this.blend ? BLEND_FLAG : 0)
                 | (this.unlit ? UNLIT_FLAG : 0) | (this.lava ? LAVA_FLAG : 0) | (this.layerOffset != 0.0f ? LAYER_FLAG : 0)
-                | (this.leaves ? LEAVES_FLAG : 0) | (this.glowLight ? GLOW_LIGHT_FLAG : 0));
+                | (this.leaves ? LEAVES_FLAG : 0) | (this.glowLight ? GLOW_LIGHT_FLAG : 0) | (this.frost ? FROST_FLAG : 0));
         if (this.colorOverride != 0) {
             setColor(255, 255, 255, 255);
         }

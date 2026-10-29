@@ -309,6 +309,8 @@
   "options.radiante.tunable.bounce_light.tooltip": "光线反弹后保留的量。越高，一小片阳光就能照亮整个房间；100% 符合物理。",
   "options.radiante.tunable.sky_light": "天空光",
   "options.radiante.tunable.sky_light.tooltip": "开阔天空照亮世界的强度。越高，建筑和树下的阴影越亮。",
+  "options.radiante.tunable.translucency": "半透光",
+  "options.radiante.tunable.translucency.tooltip": "日光和月光从背后透过树叶、植物、冰和雪。越高，逆光的树叶越亮；0% 只照亮朝阳的一面。",
   "options.radiante.tunable.glass_reflections": "玻璃反射",
   "options.radiante.tunable.glass_reflections.tooltip": "窗户在其后方景物之上映出多少天空。0% 为完全通透的玻璃。",
   "options.radiante.tunable.water_texture": "水面纹理",

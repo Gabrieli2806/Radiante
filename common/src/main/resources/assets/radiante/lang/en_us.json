@@ -309,6 +309,8 @@
   "options.radiante.tunable.bounce_light.tooltip": "How much light carries on after bouncing off surfaces. Higher fills rooms from a single patch of sunlight; 100% is physically based.",
   "options.radiante.tunable.sky_light": "Sky Light",
   "options.radiante.tunable.sky_light.tooltip": "How strongly the open sky lights the world. Higher brightens shade under buildings and trees.",
+  "options.radiante.tunable.translucency": "Translucency",
+  "options.radiante.tunable.translucency.tooltip": "Sun and moonlight through leaves, plants, ice and snow from behind. Higher makes backlit leaves glow more; 0% lights only their sunny side.",
   "options.radiante.tunable.glass_reflections": "Glass Reflections",
   "options.radiante.tunable.glass_reflections.tooltip": "How much of the sky windows show on top of what is behind them. 0% is perfectly clear glass.",
   "options.radiante.tunable.water_texture": "Water Texture",

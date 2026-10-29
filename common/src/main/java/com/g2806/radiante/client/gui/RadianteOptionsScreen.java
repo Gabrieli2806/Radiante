@@ -1248,7 +1248,7 @@ public class RadianteOptionsScreen extends Screen {
                 value -> stage("emissionBrightness", value)),
             brightnessSlider("options.radiante.held_light_brightness", staged("heldLightBrightness", Options.heldLightBrightness),
                 value -> stage("heldLightBrightness", value)),
-            tunable(Tunable.BOUNCE_LIGHT, true), tunable(Tunable.SKY_LIGHT, true),
+            tunable(Tunable.BOUNCE_LIGHT, true), tunable(Tunable.SKY_LIGHT, true), tunable(Tunable.TRANSLUCENCY, true),
             OptionInstance.createBoolean("options.radiante.block_light_sampling",
                 tooltip("options.radiante.block_light_sampling"), staged("blockLightSampling", Options.blockLightSampling),
                 value -> {

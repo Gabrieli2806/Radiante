@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Translucency (Lighting, 100%): leaves and small plants let the sun and moon through from behind, tinted by their
+  colour and brightest looking towards the light, so a tree glows against a low sun instead of standing dark; ice and
+  snow take the light a little past their shadowed edge, with a blue tint. No extra rays. Shader packs can set how much
+  per surface with `surface.mat.subSurface` in `hookSurface`, and test ice and snow with `isFrostSurface`.
 - Volumetric fog's light shafts (Bedrock's fog volume) no longer break up into drifting cloudy blotches while the
   camera moves: the froxel light is filtered over its neighbours before it is integrated, so a window's shaft stays a
   smooth beam.

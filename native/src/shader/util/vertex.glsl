@@ -10,6 +10,8 @@ const uint USE_OVERLAY_BIT = 1u << 2u;
 const uint USE_GLINT_BIT = 1u << 3u;
 const uint USE_NORM_BIT = 1u << 4u;
 const uint USE_LIGHT_BIT = 1u << 5u;
+// Ice, packed ice, blue ice and snow: lit a little past the terminator and from behind (translucentBackLight).
+const uint FROST_SURFACE_BIT = 1u << 6u;
 const uint ALPHA_MODE_SHIFT = 8u;
 const uint COORDINATE_SHIFT = 12u;
 // The surface of water, marked by the section builder.
@@ -172,6 +174,10 @@ bool isLavaSurface(uint packedData) {
 
 bool isGlowLightSurface(uint packedData) {
     return (packedData & GLOW_LIGHT_SURFACE_BIT) != 0u;
+}
+
+bool isFrostSurface(uint packedData) {
+    return (packedData & FROST_SURFACE_BIT) != 0u;
 }
 
 bool isLeavesSurface(uint packedData) {

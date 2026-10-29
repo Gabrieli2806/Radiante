@@ -423,6 +423,13 @@
             "define": "VPT_WATER_GOD_RAYS"
         },
         {
+            "name": "render_pipeline.module.ray_tracing.attribute.translucency",
+            "type": "float_range:0.0-2.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "VPT_TRANSLUCENCY"
+        },
+        {
             "name": "render_pipeline.module.ray_tracing.attribute.light_shafts",
             "type": "float_range:0.0-0.1",
             "default_value": "0.015",
