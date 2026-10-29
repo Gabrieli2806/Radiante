@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Glow lichen glows and lights much less (level 2 instead of its light level 7): spread over a cave wall it lit the
+  cave like a room of torches.
 - Powered redstone dust glows by its power level, as in Bedrock RTX: none at power 0, then up to power 15 in vanilla's
   colour for that power, and it casts a faint red light next to it (a straight line far under a redstone
   torch). Before, dust looked the same powered or not. A Bedrock pack's emission for the dust textures no longer makes

@@ -79,6 +79,13 @@ public final class EmissionTiles {
     private static final Identifier END_PORTAL_EYE = Identifier.withDefaultNamespace("block/end_portal_frame_eye");
     // The light a lit eye casts: enough for the frame it sits in and the floor around the ring.
     private static final int END_PORTAL_EYE_EMISSION = 8;
+    /**
+     * Glow lichen carries light level 7, but it spreads over whole cave walls, and every texel of its sprite cast that
+     * level: a lichen-covered cave lit up like a room of torches. It glows and lights at level 2 instead, a faint
+     * green-blue on the stone round it.
+     */
+    private static final Identifier GLOW_LICHEN = Identifier.withDefaultNamespace("block/glow_lichen");
+    private static final int GLOW_LICHEN_EMISSION = 2;
     // How brightly the eye itself shows, of the most a texture can: all of it. The eye is a dark teal, and at the
     // strength of the light it casts it showed dimmer than the pale frame it lit - the light did not seem to come
     // from it.
@@ -259,6 +266,10 @@ public final class EmissionTiles {
             if (sprite != null) {
                 emitters.remove(sprite);
             }
+        }
+        TextureAtlasSprite lichen = atlas.getSprite(GLOW_LICHEN);
+        if (lichen != null && emitters.containsKey(lichen)) {
+            emitters.put(lichen, GLOW_LICHEN_EMISSION);
         }
         TextureAtlasSprite eye = atlas.getSprite(END_PORTAL_EYE);
         if (eye != null) {
