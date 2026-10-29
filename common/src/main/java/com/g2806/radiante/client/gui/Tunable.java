@@ -78,6 +78,9 @@ enum Tunable {
         Format.PERCENT),
     WATER_GOD_RAYS(null, "render_pipeline.module.ray_tracing.attribute.water_god_rays", 0.0012, 0, 400, 100,
         Format.PERCENT),
+    // The camera's own view under water: swaying, soft edges, a vignette and the sun's faint caustics; 0% off.
+    UNDERWATER_CAMERA_EFFECTS(null, "render_pipeline.module.ray_tracing.attribute.underwater_camera_effects", 0.01, 0,
+        200, 100, Format.PERCENT),
     // How bright the picture is kept by day and at night, against what the light meter would make it.
     EXPOSURE_DAY(null, "render_pipeline.module.ray_tracing.attribute.exposure_day_scale", 0.01, 10, 150, 48,
         Format.PERCENT),

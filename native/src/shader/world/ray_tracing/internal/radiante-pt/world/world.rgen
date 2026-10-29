@@ -707,11 +707,16 @@ void main() {
                                           waterDistance : min(waterDistance, 50.0),
                                       VPT_WATER_DENSITY, vec3(0.0), orgDirection, waterTransmittance, waterScatter);
 #else
+            // A pool is clearer than the sea its biome's coefficients describe (waterBodyShallowness).
+            float cameraWaterDensity = VPT_WATER_DENSITY * mix(1.0, UNDERWATER_SMALL_BODY_DENSITY, waterBodyShallowness());
             if (waterDistance >= INF_DISTANCE) {
-                waterMediumSegmentUnclamped(waterDistance, VPT_WATER_DENSITY, waterTransmittance, waterScatter);
+                waterMediumSegmentUnclamped(waterDistance, cameraWaterDensity, waterTransmittance, waterScatter);
             } else {
-                waterMediumSegment(waterDistance, VPT_WATER_DENSITY, waterTransmittance, waterScatter);
+                waterMediumSegment(waterDistance, cameraWaterDensity, waterTransmittance, waterScatter);
             }
+            // By day what lies behind the water was lit by daylight that came down through the water above the camera
+            // first (underwaterDaylightColumn); the water's own glow already is (waterMediumIncomingLight).
+            waterTransmittance *= underwaterDaylightColumn();
 #endif
             // Lit by the sky above: the camera's water under a roof or in a cave does not glow with it.
             waterScatter *= mix(0.35, 1.0, volumetricSkyVisibility(eyePos, false));
@@ -745,18 +750,25 @@ void main() {
             // with the option off.
             bool biomeWater = skyUBO.waterFog.a > 0.5;
             float visibility = biomeWater ? skyUBO.waterFog.a : UNDERWATER_VISIBILITY;
-            float seen = surfaceDepth == INF_DISTANCE || surfaceDepth <= 0.0 ? visibility * 4.0 : surfaceDepth;
-            float clearness = exp(-seen / visibility);
             // a clear sea blue for plain water (vanilla's water fog is nearly navy)
             vec3 fogTint = biomeWater ? max(skyUBO.waterFog.rgb, vec3(0.0)) : UNDERWATER_FOG_TINT;
+            // The biome's water is the sea's. In a pool or a pond there is too little water for its murk to gather:
+            // the view reaches further and the water it fades into is lighter, while the sea keeps its look.
+            float shallow = waterBodyShallowness();
+            visibility *= mix(1.0, UNDERWATER_SMALL_BODY_VISIBILITY, shallow);
+            fogTint *= mix(1.0, UNDERWATER_SMALL_BODY_BRIGHTNESS, shallow);
 #ifndef RADIANTE_HOOK_UNDERWATER_FOG_DEFAULT
             // A pack's water seen from inside (hooks/underwater_fog.glsl).
             hookUnderwaterFog(fogTint, visibility);
             fogTint = max(fogTint, vec3(0.0));
             visibility = max(visibility, 0.01);
-            seen = surfaceDepth == INF_DISTANCE || surfaceDepth <= 0.0 ? visibility * 4.0 : surfaceDepth;
-            clearness = exp(-seen / visibility);
 #endif
+            // Only the water the view crosses fogs it: looking up out of a pool at the sky or the shore, the stretch
+            // past the surface is air, which the fog counted as water (a pool's surface was a wall of sea blue). The
+            // first stretch ends at the water's surface or whatever stands in the water.
+            float seen = surfaceDepth == INF_DISTANCE || surfaceDepth <= 0.0 ? visibility * 4.0 : surfaceDepth;
+            seen = min(seen, selectedFirstHit.cameraWaterDistance);
+            float clearness = exp(-seen / visibility);
             // How much of the sky lights the water around the camera. With a biome's water it is the sky light over
             // the water's surface there (skyUBO.waterAlbedo.a, eased by BiomeAmbiance); one ray straight up from the
             // eye went black under a lily pad or a branch and lit again a step on, and a swamp was mostly black.
@@ -766,7 +778,11 @@ void main() {
                             mix(0.2, 1.0, skyOverWater);
             // The deeper the camera, the less of the sky's light is left in the water around it: the colour the
             // view fades into darkens on the way down, sooner in water one sees less far in.
-            if (biomeWater) { ambient *= exp(-waterCameraDepth() * UNDERWATER_DEPTH_DIMMING / visibility); }
+            // By day that light has crossed the water above the camera at the water's own absorption (Beer-Lambert),
+            // which darkens it much sooner than the dimming kept for the night, whose look it leaves as it was.
+            float depthDimming = biomeWater ? exp(-waterCameraDepth() * UNDERWATER_DEPTH_DIMMING / visibility) : 1.0;
+            float dayColumn = dot(underwaterDaylightColumn(), vec3(0.2126, 0.7152, 0.0722));
+            ambient *= min(depthDimming, dayColumn);
             vec3 fogLight = fogTint * ambient * UNDERWATER_FOG_LIGHT;
             if (useTransparentSplit) {
                 transparentReflectionRadiance *= clearness;

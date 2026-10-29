@@ -357,6 +357,9 @@ void PostRenderModule::build() {
     expressionVariables_ = {
         {.name = "RENDER_WIDTH", .value = static_cast<double>(width_)},
         {.name = "RENDER_HEIGHT", .value = static_cast<double>(height_)},
+        // What the camera is in (SkyUBO.cameraSubmersionType), set each frame in runScript: radiante-pt runs its
+        // under water camera effects only while it is 1, under water.
+        {.name = "CAMERA_SUBMERSION_TYPE", .value = 3.0},
     };
     log.step("shader pack");
 
@@ -1064,6 +1067,13 @@ void PostRenderModule::runScript(Recording &recording) {
     if (commands.empty()) return;
 
     resetScriptVariables();
+    if (auto buffers = Renderer::instance().buffers()) {
+        for (auto &variable : expressionVariables_) {
+            if (variable.name == "CAMERA_SUBMERSION_TYPE") {
+                variable.value = static_cast<double>(buffers->cameraSubmersionType());
+            }
+        }
+    }
     shaderPack_->executeCommands(ShaderPackLoader::Stage::PostRender, commands, scriptVariables_, expressionVariables_,
                                  true, kScriptLoopLimit,
                                  [this, &recording](const std::string &passName, ExecutionVariables &variables) {

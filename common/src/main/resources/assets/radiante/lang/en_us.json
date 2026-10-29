@@ -332,6 +332,8 @@
   "options.radiante.tunable.water_density.tooltip": "How quickly the water fades out with distance, from the inside. Lower is clearer.",
   "options.radiante.tunable.water_god_rays": "Underwater Light Rays",
   "options.radiante.tunable.water_god_rays.tooltip": "Shafts of sunlight through the water surface while under water.",
+  "options.radiante.tunable.underwater_camera_effects": "Underwater Camera Effects",
+  "options.radiante.tunable.underwater_camera_effects.tooltip": "A gentle sway, soft edges, a vignette and faint sun caustics while your head is under water. Lower is subtler, 0% turns them off.",
   "options.radiante.apply": "Apply",
   "options.radiante.apply.tooltip": "Apply the changes now and keep the screen open.",
   "options.radiante.undo": "Undo",
