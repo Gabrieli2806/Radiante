@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Water under the camera now depends on the body of water, not only on the biome: with the head in a pool or a small
+  pond the view reaches further and the water is lighter, while lakes and the sea keep the biome's look. Radiante
+  measures the water column and how far the water runs around the camera (eased as you swim). Looking up out of the
+  water, only the water itself fogs the view now: the sky and the shore past the surface no longer vanish into sea
+  blue. Shader packs can read the size with `radianteWaterDepth()` and `radianteWaterWidth()`.
 - A second built-in shader pack, **Pixelated Lighting**, listed next to Radiante PT under Shader Packs: pixelated
   shadows and reflections, after BetterRTX's preset of that name. Shadow edges from the sun, torches and held lights
   follow the texture's pixels, and reflections, water's included, are solid squares, one per texel, near objects too;

@@ -99,6 +99,15 @@ float radianteBiomeRainy() { return clamp(1.0 - skyUBO.biomeClimate.z - skyUBO.b
 // smooth(biome_precipitation, ...) is this.
 float radianteBiomePrecipitation() { return 1.0 + skyUBO.biomeClimate.z - skyUBO.biomeClimate.w; }
 
+// ---- The body of water the camera is in, eased over about half a second; both 0 out of water
+
+// The height of the water column at the camera's eye, floor to surface, in blocks (1 in a one-block-deep pool, at
+// most 64).
+float radianteWaterDepth() { return skyUBO.waterBodyDepth; }
+// How far the water runs across at the camera's eye level, averaged over four directions, in blocks (1 in a 1x1
+// pool, at most 49 in open water).
+float radianteWaterWidth() { return skyUBO.waterBodyWidth; }
+
 // ---- Which biome
 
 // The biome at the camera as the FNV-1a hash of its id ("minecraft:snowy_plains"), 0 without a world. Compare it

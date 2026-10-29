@@ -17,6 +17,17 @@
 #endif
 // How fast the water's own glow darkens with the camera's depth, in visibilities: at 0.5, twenty blocks down in
 // water one sees 22 blocks in, about two thirds of it is left.
+// In the smallest bodies of water (waterBodyShallowness 1, a pool): how many times further the view under water
+// reaches, how much lighter the colour it fades into is, and how thin a Bedrock pack's water is to look through.
+#ifndef UNDERWATER_SMALL_BODY_VISIBILITY
+#    define UNDERWATER_SMALL_BODY_VISIBILITY 4.0
+#endif
+#ifndef UNDERWATER_SMALL_BODY_BRIGHTNESS
+#    define UNDERWATER_SMALL_BODY_BRIGHTNESS 1.6
+#endif
+#ifndef UNDERWATER_SMALL_BODY_DENSITY
+#    define UNDERWATER_SMALL_BODY_DENSITY 0.35
+#endif
 #ifndef UNDERWATER_DEPTH_DIMMING
 #    define UNDERWATER_DEPTH_DIMMING 0.5
 #endif

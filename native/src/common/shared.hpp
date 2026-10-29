@@ -396,13 +396,18 @@ struct SkyUBO {
     T_UINT previousBiomeId;
     T_FLOAT biomeIdBlend;
 
-    // ---- The air after rain for shader packs (336..351), PackWeather on the Java side; radiante-pt reads none of it.
+    // ---- The air after rain for shader packs (336..343), PackWeather on the Java side; radiante-pt reads none of it.
     // Iris's wetness: the rain smoothed, rising with a half-life of a minute and falling with one of twenty seconds.
     T_FLOAT wetness;
     // Seconds since the rain eased off after wetting the air: 0 while it rains, 1e6 before any rain.
     T_FLOAT rainStoppedFor;
-    T_FLOAT weatherPad0;
-    T_FLOAT weatherPad1;
+    // ---- The body of water the camera is in (344..351), WaterBody on the Java side, eased; both 0 out of water.
+    // Read by radiante-pt so that a pool looks clearer than the sea, and by packs through common/pack_world.glsl.
+    // Depth: the height of the water column at the eye, floor to surface, in blocks (capped at 64).
+    T_FLOAT waterBodyDepth;
+    // Width: how far the water runs across at eye level, averaged over four directions, in blocks (1 for a 1x1 pool,
+    // at most 49).
+    T_FLOAT waterBodyWidth;
 };
 
 // Per-texture lookup from an atlas texture to its PBR companions. specular, normal and rawMer are texture ids,

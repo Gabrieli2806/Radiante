@@ -83,6 +83,7 @@ every hook including `post_grade.glsl`:
 | Function | Value |
 | --- | --- |
 | `radianteRain()`, `radianteThunder()` | Rain and thunder, 0 to 1 (Iris's `rainStrength`, `thunderStrength`) |
+| `radianteWaterDepth()`, `radianteWaterWidth()` | The body of water the camera is in: the water column's height and how far the water runs across, in blocks; 0 out of water |
 | `radianteWetness()`, `radianteRainStoppedFor()` | The air's wetness, the rain smoothed so it lingers after rain (Iris's `wetness`), and seconds since the rain stopped (0 while it rains), for what follows rain for minutes |
 | `radianteBiomeTemperature()`, `radianteBiomeDownfall()` | The biome's temperature and downfall |
 | `radianteBiomeSnowy()`, `radianteBiomeDry()`, `radianteBiomeRainy()` | 0 to 1: snow falls here, nothing falls here, rain falls here |

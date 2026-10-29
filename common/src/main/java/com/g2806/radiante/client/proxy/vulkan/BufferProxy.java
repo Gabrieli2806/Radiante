@@ -302,7 +302,8 @@ public class BufferProxy {
             bb.putFloat(offset + 3 * Integer.BYTES, uniform.biomeIdBlend());
             offset += 4 * Integer.BYTES;
 
-            // The air's wetness after rain for shader packs (PackWeather); zw are padding.
+            // The air's wetness after rain for shader packs (PackWeather), then the size of the body of water the camera
+            // is in (WaterBody), which radiante-pt reads too.
             putVec4(bb, offset, uniform.packWeather());
 
             updateSkyUniform(addr);
