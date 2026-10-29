@@ -130,7 +130,7 @@ public final class BedrockRtxValues {
         new CompatParameter("fog", null, RT + "volumetric_light_mode", RT + "volumetric_light_mode.volumetric",
             ParameterStatus.MATCHES_BEDROCK, "Bedrock fogs the air with a froxel volume"),
         new CompatParameter("fog", null, RT + "froxel_fog", TRUE, ParameterStatus.MATCHES_BEDROCK,
-            "the volume is a froxel grid, as Radiante's"),
+            "Bedrock lights a froxel grid; Radiante lights grids fixed to the world, and marches them per pixel"),
         new CompatParameter("fog", null, RT + "bedrock_volumetric_fog", TRUE, ParameterStatus.MATCHES_BEDROCK,
             "50-block volume with 5 (11^w - 1) slices, the pack's air medium and height profile, sun through shadow "
                 + "rays with 1/pi Henyey-Greenstein, sky light; replaces the biome haze, light shafts and Radiante's "

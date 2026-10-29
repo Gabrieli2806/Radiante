@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Volumetric fog (Froxel style, and Bedrock's fog volume) holds still while you look around: its light now lives in
+  two grids fixed to the world around the camera (half-block cells to 32 blocks, two-block cells to 128) instead of a
+  grid cut along the view, and each pixel marches its ray through them. Turning the camera used to re-cut the air into
+  other cells, so light shafts and the fog's shape shifted with the view; now the same view gives the same fog however
+  you got there.
 - ReSTIR Bounced Light (Lighting, off): experimental ReSTIR GI for the first bounce of light off what the camera sees.
   Each pixel keeps its bounce's sample in a reservoir and merges it with last frame's and its neighbours' (a
   visibility ray checks a neighbour's sample), for less noise in rooms and caves lit by bounced light. Off by default:
