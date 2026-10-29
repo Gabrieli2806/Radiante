@@ -1,0 +1,322 @@
+{
+    "radiante": {
+        "display_name": "Neon Dusk",
+        "version": "1.0.0",
+        "author": "G2806",
+        "license": "GPL-3.0",
+        "description": "Synthwave on path-traced light: a magenta dusk or purple night sky with a striped retro sun and a horizon grid, neon block light, wet glossy ground, pink and cyan haze, fringed bloom and a teal and magenta grade.",
+        "icon": "pack.png",
+        "api_version": 0,
+        "extends": "radiante-pt@1"
+    },
+    "attributes": [
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.neon_sky_mode",
+            "type": "int_range:0-2",
+            "default_value": "1",
+            "runtime": true,
+            "define": "NEON_SKY_MODE",
+            "group": "neon.group.sky",
+            "order": 10,
+            "description": "neon.desc.sky_mode"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.neon_sky_strength",
+            "type": "float_range:0.0-1.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "NEON_SKY_STRENGTH",
+            "group": "neon.group.sky",
+            "order": 11,
+            "step": 0.05,
+            "description": "neon.desc.sky_strength"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.neon_sky_light",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.3",
+            "runtime": true,
+            "define": "NEON_SKY_LIGHT",
+            "group": "neon.group.sky",
+            "order": 12,
+            "step": 0.05,
+            "description": "neon.desc.sky_light"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.neon_sun",
+            "type": "float_range:0.0-2.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "NEON_SUN",
+            "group": "neon.group.sky",
+            "order": 13,
+            "step": 0.05,
+            "description": "neon.desc.sun"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.neon_sun_size",
+            "type": "float_range:4.0-20.0",
+            "default_value": "12.0",
+            "runtime": true,
+            "define": "NEON_SUN_SIZE",
+            "group": "neon.group.sky",
+            "order": 14,
+            "step": 1.0,
+            "description": "neon.desc.sun_size",
+            "visible_when": {
+                "attribute": "neon_sun",
+                "not_equals": 0
+            }
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.neon_sun_height",
+            "type": "float_range:-4.0-20.0",
+            "default_value": "8.0",
+            "runtime": true,
+            "define": "NEON_SUN_HEIGHT",
+            "group": "neon.group.sky",
+            "order": 15,
+            "step": 1.0,
+            "advanced": true,
+            "description": "neon.desc.sun_height",
+            "visible_when": {
+                "attribute": "neon_sky_mode",
+                "not_equals": 0
+            }
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.neon_grid",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "NEON_GRID",
+            "group": "neon.group.sky",
+            "order": 16,
+            "step": 0.05,
+            "description": "neon.desc.grid"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.neon_stars",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.4",
+            "runtime": true,
+            "define": "NEON_STARS",
+            "group": "neon.group.sky",
+            "order": 17,
+            "step": 0.05,
+            "description": "neon.desc.stars"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.neon_light_colour",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.75",
+            "runtime": true,
+            "define": "NEON_LIGHT_COLOUR",
+            "group": "neon.group.lights",
+            "order": 20,
+            "step": 0.05,
+            "description": "neon.desc.light_colour"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.neon_light_strength",
+            "type": "float_range:0.5-4.0",
+            "default_value": "1.8",
+            "runtime": true,
+            "define": "NEON_LIGHT_STRENGTH",
+            "group": "neon.group.lights",
+            "order": 21,
+            "step": 0.1,
+            "description": "neon.desc.light_strength"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.neon_sun_tint",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.35",
+            "runtime": true,
+            "define": "NEON_SUN_TINT",
+            "group": "neon.group.lights",
+            "order": 22,
+            "step": 0.05,
+            "description": "neon.desc.sun_tint"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.neon_wet",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.8",
+            "runtime": true,
+            "define": "NEON_WET",
+            "group": "neon.group.surfaces",
+            "order": 30,
+            "step": 0.05,
+            "description": "neon.desc.wet",
+            "performance_impact": "low"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.neon_puddles",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "NEON_PUDDLES",
+            "group": "neon.group.surfaces",
+            "order": 31,
+            "step": 0.05,
+            "description": "neon.desc.puddles",
+            "visible_when": {
+                "attribute": "neon_wet",
+                "not_equals": 0
+            }
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.neon_haze",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.35",
+            "runtime": true,
+            "define": "NEON_HAZE",
+            "group": "neon.group.atmosphere",
+            "order": 40,
+            "step": 0.05,
+            "description": "neon.desc.haze"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.neon_bloom",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.3",
+            "runtime": true,
+            "define": "NEON_BLOOM",
+            "group": "neon.group.post",
+            "order": 50,
+            "step": 0.05,
+            "description": "neon.desc.bloom",
+            "performance_impact": "low"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.neon_fringe",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "NEON_FRINGE",
+            "group": "neon.group.post",
+            "order": 51,
+            "step": 0.05,
+            "description": "neon.desc.fringe"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.neon_grade",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.8",
+            "runtime": true,
+            "define": "NEON_GRADE",
+            "group": "neon.group.post",
+            "order": 52,
+            "step": 0.05,
+            "description": "neon.desc.grade"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.neon_saturation",
+            "type": "float_range:0.5-1.5",
+            "default_value": "1.15",
+            "runtime": true,
+            "define": "NEON_SATURATION",
+            "group": "neon.group.post",
+            "order": 53,
+            "step": 0.05,
+            "description": "neon.desc.saturation"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.bedrock_volumetric_fog",
+            "default_value": "render_pipeline.false"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.light_shafts",
+            "default_value": "0.03"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.sun_glow",
+            "default_value": "0.0"
+        }
+    ],
+    "presets": [
+        {
+            "name": "neon.preset.dusk",
+            "description": "neon.preset.dusk.desc",
+            "values": {
+                "neon_sky_mode": 1,
+                "neon_sky_strength": 1.0,
+                "neon_sky_light": 0.3,
+                "neon_sun": 1.0,
+                "neon_sun_size": 12.0,
+                "neon_sun_height": 8.0,
+                "neon_grid": 0.5,
+                "neon_stars": 0.4,
+                "neon_light_colour": 0.75,
+                "neon_light_strength": 1.8,
+                "neon_sun_tint": 0.35,
+                "neon_wet": 0.8,
+                "neon_puddles": 0.5,
+                "neon_haze": 0.35,
+                "neon_bloom": 0.3,
+                "neon_fringe": 0.5,
+                "neon_grade": 0.8,
+                "neon_saturation": 1.15
+            }
+        },
+        {
+            "name": "neon.preset.midnight",
+            "description": "neon.preset.midnight.desc",
+            "values": {
+                "neon_sky_mode": 2,
+                "neon_sky_strength": 1.0,
+                "neon_sky_light": 0.4,
+                "neon_sun": 0.6,
+                "neon_sun_size": 14.0,
+                "neon_sun_height": 6.0,
+                "neon_grid": 0.8,
+                "neon_stars": 1.0,
+                "neon_light_colour": 0.9,
+                "neon_light_strength": 2.4,
+                "neon_sun_tint": 0.6,
+                "neon_wet": 1.0,
+                "neon_puddles": 0.7,
+                "neon_haze": 0.55,
+                "neon_bloom": 0.45,
+                "neon_fringe": 0.6,
+                "neon_grade": 1.0,
+                "neon_saturation": 1.2
+            }
+        },
+        {
+            "name": "neon.preset.daylight",
+            "description": "neon.preset.daylight.desc",
+            "values": {
+                "neon_sky_mode": 0,
+                "neon_sky_strength": 0.7,
+                "neon_sky_light": 0.2,
+                "neon_sun": 0.8,
+                "neon_sun_size": 10.0,
+                "neon_sun_height": 8.0,
+                "neon_grid": 0.3,
+                "neon_stars": 0.3,
+                "neon_light_colour": 0.6,
+                "neon_light_strength": 1.4,
+                "neon_sun_tint": 0.2,
+                "neon_wet": 0.5,
+                "neon_puddles": 0.3,
+                "neon_haze": 0.2,
+                "neon_bloom": 0.2,
+                "neon_fringe": 0.3,
+                "neon_grade": 0.5,
+                "neon_saturation": 1.05
+            }
+        }
+    ],
+    "execution_post": {
+        "global_variables": [
+            {
+                "RADIANTE_HOOK_POST_GRADE": true
+            },
+            {
+                "RADIANTE_POST_BLOOM": true
+            }
+        ]
+    }
+}

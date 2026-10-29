@@ -1,0 +1,51 @@
+# Neon Dusk: its own settings, groups, descriptions and presets; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.neon_sky_mode=Sky Look
+render_pipeline.module.ray_tracing.attribute.neon_sky_strength=Neon Sky
+render_pipeline.module.ray_tracing.attribute.neon_sky_light=Sky Light Tint
+render_pipeline.module.ray_tracing.attribute.neon_sun=Retro Sun
+render_pipeline.module.ray_tracing.attribute.neon_sun_size=Retro Sun Size
+render_pipeline.module.ray_tracing.attribute.neon_sun_height=Retro Sun Height
+render_pipeline.module.ray_tracing.attribute.neon_grid=Horizon Grid
+render_pipeline.module.ray_tracing.attribute.neon_stars=Neon Stars
+render_pipeline.module.ray_tracing.attribute.neon_light_colour=Neon Light Colour
+render_pipeline.module.ray_tracing.attribute.neon_light_strength=Light Strength
+render_pipeline.module.ray_tracing.attribute.neon_sun_tint=Sun and Moon Tint
+render_pipeline.module.ray_tracing.attribute.neon_wet=Wet Ground
+render_pipeline.module.ray_tracing.attribute.neon_puddles=Puddles
+render_pipeline.module.ray_tracing.attribute.neon_haze=Neon Haze
+render_pipeline.module.ray_tracing.attribute.neon_bloom=Bloom
+render_pipeline.module.ray_tracing.attribute.neon_fringe=Colour Fringes
+render_pipeline.module.ray_tracing.attribute.neon_grade=Teal and Magenta Grade
+render_pipeline.module.ray_tracing.attribute.neon_saturation=Saturation
+
+neon.group.sky=Sky
+neon.group.lights=Lights
+neon.group.surfaces=Surfaces
+neon.group.atmosphere=Atmosphere
+neon.group.post=Post
+
+neon.desc.sky_mode=0 follows the real day and night, 1 keeps a magenta dusk all day, 2 a purple night. Only the look: the sun still lights the world from where it really is.
+neon.desc.sky_strength=How much of the neon sky replaces Radiante's where you look. 0 keeps Radiante's sky.
+neon.desc.sky_light=How much the sky's light on the world takes the neon hue. Higher tints the shade more; its brightness stays Radiante's.
+neon.desc.sun=Brightness of the big striped sun. 0 hides it.
+neon.desc.sun_size=How big the retro sun is, in degrees across its radius.
+neon.desc.sun_height=How high the retro sun stands over the sunset with a locked look, in degrees. Lower sinks it behind the horizon.
+neon.desc.grid=The glowing grid and line on the horizon, seen past the world's edge and over far water. 0 turns it off.
+neon.desc.stars=Pink, cyan and white stars over the night look, even by day. 0 turns them off.
+neon.desc.light_colour=Pushes block light towards neon: warm lights magenta, cool and green ones cyan, white ones violet. 0 keeps their colours.
+neon.desc.light_strength=How bright block lights, their glow and held lights are. Higher lights rooms and bloom more.
+neon.desc.sun_tint=Colours sunlight with the look (pink by day, peach at dusk, violet at night) and moonlight cyan. Strength stays the same.
+neon.desc.wet=Up-facing ground goes darker and glossy, rain or not, so lights reflect in it. 0 keeps it dry.
+neon.desc.puddles=How much of the wet ground is mirror-smooth puddles.
+neon.desc.haze=Pink haze towards the sun, cyan away from it, with light shafts and glow round lights. Needs Volumetric Light, and Bedrock Volumetric Fog off (the pack's default).
+neon.desc.bloom=Glow round bright lights and the sun. Higher is a bigger glow.
+neon.desc.fringe=Magenta and cyan rims on the glow and towards the screen's corners. 0 turns them off.
+neon.desc.grade=Shadows towards teal, highlights towards magenta, a softer contrast curve and darker corners. 0 turns it off.
+neon.desc.saturation=Colour strength of the finished picture. 1 keeps it.
+
+neon.preset.dusk=Neon Dusk
+neon.preset.dusk.desc=The pack's own look: a magenta dusk all day with the retro sun low over the sunset.
+neon.preset.midnight=Midnight
+neon.preset.midnight.desc=A deep purple night all day, stars, brighter neon, soaking streets and thicker haze.
+neon.preset.daylight=Daylight Neon
+neon.preset.daylight.desc=The real day and night with a softer neon sky, lighter grade and drier ground.
