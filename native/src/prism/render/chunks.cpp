@@ -251,6 +251,8 @@ struct ChunkBuildData {
     int x = 0;
     int y = 0;
     int z = 0;
+    // The blocks the geometry spans along x and z (Chunk1::minX), worked out by queueChunkBuild.
+    int minX = 0, maxX = 0, minZ = 0, maxZ = 0;
     int64_t version = 0;
     // The grid the version was taken from: reset() starts a new one, whose slots number their builds from 0 again.
     uint64_t generation = 0;
@@ -1032,6 +1034,23 @@ void Chunks::queueChunkBuild(ChunkBuildTask task) {
         const char *name = task.geometryGroupNames != nullptr ? task.geometryGroupNames[g] : nullptr;
         data->geometryGroupNames.emplace_back(name != nullptr ? name : "default");
     }
+    // Vertex positions are relative to the origin. How far a Distant Horizons section reaches is only known from its
+    // geometry.
+    float minX = 0.0f, maxX = 0.0f, minZ = 0.0f, maxZ = 0.0f;
+    bool any = false;
+    for (const auto &geometry : data->vertices) {
+        for (const PBRVertex &vertex : geometry) {
+            minX = any ? std::min(minX, vertex.pos.x) : vertex.pos.x;
+            maxX = any ? std::max(maxX, vertex.pos.x) : vertex.pos.x;
+            minZ = any ? std::min(minZ, vertex.pos.z) : vertex.pos.z;
+            maxZ = any ? std::max(maxZ, vertex.pos.z) : vertex.pos.z;
+            any = true;
+        }
+    }
+    data->minX = data->x + static_cast<int>(std::floor(minX));
+    data->maxX = data->x + static_cast<int>(std::ceil(maxX));
+    data->minZ = data->z + static_cast<int>(std::floor(minZ));
+    data->maxZ = data->z + static_cast<int>(std::ceil(maxZ));
 
     {
         std::unique_lock<std::recursive_mutex> lock(mutex_);
@@ -1460,6 +1479,10 @@ bool Chunks::swapIn(ChunkBuildData &data) {
     slot.x = data.x;
     slot.y = data.y;
     slot.z = data.z;
+    slot.minX = data.minX;
+    slot.maxX = data.maxX;
+    slot.minZ = data.minZ;
+    slot.maxZ = data.maxZ;
     slot.blas = data.blas;
     slot.geometryCount = data.geometryCount();
     slot.geometryGroupNames = std::make_shared<std::vector<std::string>>(std::move(data.geometryGroupNames));

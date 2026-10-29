@@ -16,7 +16,9 @@ All notable changes to this project are documented in this file.
   sky and the lamps, with rain rings on them and on open water; they stand for two to three minutes after the rain stops.
 - Lightning Flash (Sky, Fog & Water): a thunderstorm's lightning now lights the world from the bolt's direction, with
   shadows, and lights up the clouds while the sky flashes; the bolt's own glow no longer lights a storm by night white. The overcast sky is heavier overhead and darker in a storm.
-
+- With Distant Horizons, its terrain under the chunks that are built is left out of the rays instead of being skipped
+  by each one: rays near the ground crossed it under the real terrain and paid for every face they passed. In a forest
+  at an 8 chunk render distance radiante-pt's trace took 2.4 ms less (17.6 to 15.2 ms).
 - Volumetric fog (Froxel style, and Bedrock's fog volume) holds still while you look around: its light now lives in
   two grids fixed to the world around the camera (half-block cells to 32 blocks, two-block cells to 128) instead of a
   grid cut along the view, and each pixel marches its ray through them. Turning the camera used to re-cut the air into

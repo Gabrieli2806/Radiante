@@ -43,6 +43,8 @@ class WorldPrepare : public SharedObject<WorldPrepare> {
         std::shared_ptr<gpu::BLAS> blas;
         int x, y, z;
         uint32_t sbtOffset;
+        // The blocks its geometry spans along x and z (Chunk1::minX).
+        int minX, maxX, minZ, maxZ;
     };
 
     struct ChunkCache {
@@ -73,11 +75,16 @@ class WorldPrepare : public SharedObject<WorldPrepare> {
         std::vector<uint32_t> indices;
     };
 
-    // The Distant Horizons columns the near terrain covers (lod_coverage.glsl), widened by how far a far terrain
-    // section can reach into them.
+    // The Distant Horizons columns the near terrain covers (lod_coverage.glsl), in blocks.
     struct LodWindow {
         int32_t size = 0;
         int32_t minX = 0, maxX = 0, minZ = 0, maxZ = 0;
+        // The coverage itself: the window's first column, in chunks, and one bit per column (lod_coverage.glsl).
+        int32_t originX = 0, originZ = 0;
+        const uint32_t *columns = nullptr;
+
+        // Whether the near terrain is built in every chunk column of these blocks (max exclusive).
+        bool covers(int32_t blockMinX, int32_t blockMaxX, int32_t blockMinZ, int32_t blockMaxZ) const;
     };
 
     struct EntityRecord {
