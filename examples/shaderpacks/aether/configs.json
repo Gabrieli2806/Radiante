@@ -1,0 +1,572 @@
+{
+    "radiante": {
+        "display_name": "Aether",
+        "version": "1.0.0",
+        "author": "G2806",
+        "license": "GPL-3.0",
+        "description": "A cinematic, gently fantastic look on Radiante's path-traced light: a painted sky with golden and blue hours, a round sun with a corona, soft silver-lined clouds and their drifting shadows, coloured stars and a milky way that lights the night, golden haze for god rays, puddles after rain, turquoise water, candle-warm torches, a quiet End sky and a filmic grade with glow and a soft anamorphic streak.",
+        "icon": "pack.png",
+        "api_version": 0,
+        "extends": "radiante-pt@1"
+    },
+    "attributes": [
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_sky",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.8",
+            "runtime": true,
+            "define": "AETHER_SKY",
+            "group": "aether.group.sky",
+            "order": 10,
+            "step": 0.05,
+            "description": "aether.desc.sky"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_sky_light",
+            "type": "float_range:0.0-0.5",
+            "default_value": "0.2",
+            "runtime": true,
+            "define": "AETHER_SKY_LIGHT",
+            "group": "aether.group.sky",
+            "order": 11,
+            "step": 0.05,
+            "advanced": true,
+            "description": "aether.desc.sky_light",
+            "visible_when": {
+                "attribute": "aether_sky",
+                "not_equals": 0
+            }
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_round_discs",
+            "type": "bool",
+            "default_value": "render_pipeline.true",
+            "define": "AETHER_ROUND_DISCS",
+            "group": "aether.group.sky",
+            "order": 12,
+            "description": "aether.desc.round_discs"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_sun_size",
+            "type": "float_range:0.5-2.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "AETHER_SUN_SIZE",
+            "group": "aether.group.sky",
+            "order": 13,
+            "step": 0.1,
+            "description": "aether.desc.sun_size",
+            "visible_when": {
+                "attribute": "aether_round_discs",
+                "equals": true
+            }
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_corona",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "AETHER_CORONA",
+            "group": "aether.group.sky",
+            "order": 14,
+            "step": 0.05,
+            "description": "aether.desc.corona"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_end_sky",
+            "type": "float_range:0.0-1.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "AETHER_END_SKY",
+            "group": "aether.group.sky",
+            "order": 15,
+            "step": 0.05,
+            "description": "aether.desc.end_sky"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_stars",
+            "type": "float_range:0.0-2.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "AETHER_STARS",
+            "group": "aether.group.night",
+            "order": 20,
+            "step": 0.1,
+            "description": "aether.desc.stars"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_milky_way",
+            "type": "float_range:0.0-1.5",
+            "default_value": "0.6",
+            "runtime": true,
+            "define": "AETHER_MILKY_WAY",
+            "group": "aether.group.night",
+            "order": 21,
+            "step": 0.05,
+            "description": "aether.desc.milky_way"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_night_glow",
+            "type": "float_range:0.0-4.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "AETHER_NIGHT_GLOW",
+            "group": "aether.group.night",
+            "order": 22,
+            "step": 0.25,
+            "advanced": true,
+            "description": "aether.desc.night_glow",
+            "performance_impact": "low",
+            "visible_when": {
+                "attribute": "aether_milky_way",
+                "not_equals": 0
+            }
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_clouds",
+            "type": "bool",
+            "default_value": "render_pipeline.true",
+            "define": "AETHER_CLOUDS",
+            "group": "aether.group.clouds",
+            "order": 30,
+            "description": "aether.desc.clouds",
+            "performance_impact": "low"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_cloud_cover",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.45",
+            "runtime": true,
+            "define": "AETHER_CLOUD_COVER",
+            "group": "aether.group.clouds",
+            "order": 31,
+            "step": 0.05,
+            "description": "aether.desc.cloud_cover",
+            "visible_when": {
+                "attribute": "aether_clouds",
+                "equals": true
+            }
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_cirrus",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "AETHER_CIRRUS",
+            "group": "aether.group.clouds",
+            "order": 32,
+            "step": 0.05,
+            "description": "aether.desc.cirrus",
+            "visible_when": {
+                "attribute": "aether_clouds",
+                "equals": true
+            }
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_cloud_shadows",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.6",
+            "runtime": true,
+            "define": "AETHER_CLOUD_SHADOWS",
+            "group": "aether.group.clouds",
+            "order": 33,
+            "step": 0.05,
+            "description": "aether.desc.cloud_shadows",
+            "performance_impact": "low",
+            "visible_when": {
+                "attribute": "aether_clouds",
+                "equals": true
+            }
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_cloud_speed",
+            "type": "float_range:0.0-3.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "AETHER_CLOUD_SPEED",
+            "group": "aether.group.clouds",
+            "order": 34,
+            "step": 0.1,
+            "advanced": true,
+            "description": "aether.desc.cloud_speed",
+            "visible_when": {
+                "attribute": "aether_clouds",
+                "equals": true
+            }
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_haze",
+            "type": "float_range:0.0-2.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "AETHER_HAZE",
+            "group": "aether.group.atmosphere",
+            "order": 40,
+            "step": 0.1,
+            "description": "aether.desc.haze"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_valley_mist",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "AETHER_VALLEY_MIST",
+            "group": "aether.group.atmosphere",
+            "order": 41,
+            "step": 0.05,
+            "description": "aether.desc.valley_mist"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_nether_haze",
+            "type": "float_range:0.5-2.0",
+            "default_value": "1.2",
+            "runtime": true,
+            "define": "AETHER_NETHER_HAZE",
+            "group": "aether.group.atmosphere",
+            "order": 42,
+            "step": 0.1,
+            "description": "aether.desc.nether_haze"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_sun_warmth",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "AETHER_SUN_WARMTH",
+            "group": "aether.group.light",
+            "order": 50,
+            "step": 0.05,
+            "description": "aether.desc.sun_warmth"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_leaf_light",
+            "type": "float_range:0.0-2.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "AETHER_LEAF_LIGHT",
+            "group": "aether.group.light",
+            "order": 51,
+            "step": 0.1,
+            "description": "aether.desc.leaf_light",
+            "performance_impact": "low"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_torch_warmth",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.6",
+            "runtime": true,
+            "define": "AETHER_TORCH_WARMTH",
+            "group": "aether.group.light",
+            "order": 52,
+            "step": 0.05,
+            "description": "aether.desc.torch_warmth"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_wetness",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.8",
+            "runtime": true,
+            "define": "AETHER_WETNESS",
+            "group": "aether.group.light",
+            "order": 53,
+            "step": 0.05,
+            "description": "aether.desc.wetness"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_puddles",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.6",
+            "runtime": true,
+            "define": "AETHER_PUDDLES",
+            "group": "aether.group.light",
+            "order": 54,
+            "step": 0.05,
+            "description": "aether.desc.puddles"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_water_tint",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.7",
+            "runtime": true,
+            "define": "AETHER_WATER_TINT",
+            "group": "aether.group.water",
+            "order": 60,
+            "step": 0.05,
+            "description": "aether.desc.water_tint"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_water_clarity",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "AETHER_WATER_CLARITY",
+            "group": "aether.group.water",
+            "order": 61,
+            "step": 0.05,
+            "description": "aether.desc.water_clarity"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_water_calm",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "AETHER_WATER_CALM",
+            "group": "aether.group.water",
+            "order": 62,
+            "step": 0.05,
+            "description": "aether.desc.water_calm"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_underwater_warp",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.4",
+            "runtime": true,
+            "define": "AETHER_UNDERWATER_WARP",
+            "group": "aether.group.water",
+            "order": 63,
+            "step": 0.05,
+            "description": "aether.desc.underwater_warp"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_grade",
+            "type": "float_range:0.0-1.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "AETHER_GRADE",
+            "group": "aether.group.post",
+            "order": 70,
+            "step": 0.05,
+            "description": "aether.desc.grade"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_bloom",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.25",
+            "runtime": true,
+            "define": "AETHER_BLOOM",
+            "group": "aether.group.post",
+            "order": 71,
+            "step": 0.05,
+            "description": "aether.desc.bloom",
+            "performance_impact": "low"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_streak",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.3",
+            "runtime": true,
+            "define": "AETHER_STREAK",
+            "group": "aether.group.post",
+            "order": 72,
+            "step": 0.05,
+            "description": "aether.desc.streak",
+            "performance_impact": "low"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_vignette",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.35",
+            "runtime": true,
+            "define": "AETHER_VIGNETTE",
+            "group": "aether.group.post",
+            "order": 73,
+            "step": 0.05,
+            "description": "aether.desc.vignette"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_aberration",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.25",
+            "runtime": true,
+            "define": "AETHER_ABERRATION",
+            "group": "aether.group.post",
+            "order": 74,
+            "step": 0.05,
+            "description": "aether.desc.aberration"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.cloud_mode",
+            "default_value": "render_pipeline.module.ray_tracing.attribute.cloud_mode.off"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.wind",
+            "default_value": "render_pipeline.true"
+        }
+    ],
+    "presets": [
+        {
+            "name": "aether.preset.aether",
+            "description": "aether.preset.aether.desc",
+            "values": {
+                "aether_sky": 0.8,
+                "aether_sky_light": 0.2,
+                "aether_round_discs": true,
+                "aether_sun_size": 1.0,
+                "aether_corona": 0.5,
+                "aether_end_sky": 1.0,
+                "aether_stars": 1.0,
+                "aether_milky_way": 0.6,
+                "aether_night_glow": 1.0,
+                "aether_clouds": true,
+                "aether_cloud_cover": 0.45,
+                "aether_cirrus": 0.5,
+                "aether_cloud_shadows": 0.6,
+                "aether_cloud_speed": 1.0,
+                "aether_haze": 1.0,
+                "aether_valley_mist": 0.5,
+                "aether_nether_haze": 1.2,
+                "aether_sun_warmth": 0.5,
+                "aether_leaf_light": 1.0,
+                "aether_torch_warmth": 0.6,
+                "aether_wetness": 0.8,
+                "aether_puddles": 0.6,
+                "aether_water_tint": 0.7,
+                "aether_water_clarity": 0.5,
+                "aether_water_calm": 0.5,
+                "aether_underwater_warp": 0.4,
+                "aether_grade": 1.0,
+                "aether_bloom": 0.25,
+                "aether_streak": 0.3,
+                "aether_vignette": 0.35,
+                "aether_aberration": 0.25
+            }
+        },
+        {
+            "name": "aether.preset.golden",
+            "description": "aether.preset.golden.desc",
+            "values": {
+                "aether_sky": 0.9,
+                "aether_sky_light": 0.25,
+                "aether_round_discs": true,
+                "aether_sun_size": 1.2,
+                "aether_corona": 0.8,
+                "aether_end_sky": 1.0,
+                "aether_stars": 1.0,
+                "aether_milky_way": 0.6,
+                "aether_night_glow": 1.0,
+                "aether_clouds": true,
+                "aether_cloud_cover": 0.35,
+                "aether_cirrus": 0.8,
+                "aether_cloud_shadows": 0.5,
+                "aether_cloud_speed": 1.0,
+                "aether_haze": 1.6,
+                "aether_valley_mist": 0.4,
+                "aether_nether_haze": 1.2,
+                "aether_sun_warmth": 0.8,
+                "aether_leaf_light": 1.3,
+                "aether_torch_warmth": 0.8,
+                "aether_wetness": 0.8,
+                "aether_puddles": 0.6,
+                "aether_water_tint": 0.7,
+                "aether_water_clarity": 0.5,
+                "aether_water_calm": 0.6,
+                "aether_underwater_warp": 0.4,
+                "aether_grade": 1.0,
+                "aether_bloom": 0.4,
+                "aether_streak": 0.45,
+                "aether_vignette": 0.4,
+                "aether_aberration": 0.25
+            }
+        },
+        {
+            "name": "aether.preset.moody",
+            "description": "aether.preset.moody.desc",
+            "values": {
+                "aether_sky": 0.6,
+                "aether_sky_light": 0.15,
+                "aether_round_discs": true,
+                "aether_sun_size": 1.0,
+                "aether_corona": 0.4,
+                "aether_end_sky": 1.0,
+                "aether_stars": 0.8,
+                "aether_milky_way": 0.4,
+                "aether_night_glow": 1.0,
+                "aether_clouds": true,
+                "aether_cloud_cover": 0.7,
+                "aether_cirrus": 0.3,
+                "aether_cloud_shadows": 0.8,
+                "aether_cloud_speed": 1.4,
+                "aether_haze": 1.4,
+                "aether_valley_mist": 1.0,
+                "aether_nether_haze": 1.5,
+                "aether_sun_warmth": 0.3,
+                "aether_leaf_light": 0.8,
+                "aether_torch_warmth": 0.8,
+                "aether_wetness": 1.0,
+                "aether_puddles": 0.8,
+                "aether_water_tint": 0.5,
+                "aether_water_clarity": 0.3,
+                "aether_water_calm": 0.2,
+                "aether_underwater_warp": 0.6,
+                "aether_grade": 1.0,
+                "aether_bloom": 0.2,
+                "aether_streak": 0.2,
+                "aether_vignette": 0.6,
+                "aether_aberration": 0.35
+            }
+        },
+        {
+            "name": "aether.preset.clean",
+            "description": "aether.preset.clean.desc",
+            "values": {
+                "aether_sky": 0.5,
+                "aether_sky_light": 0.1,
+                "aether_round_discs": true,
+                "aether_sun_size": 1.0,
+                "aether_corona": 0.3,
+                "aether_end_sky": 0.6,
+                "aether_stars": 0.7,
+                "aether_milky_way": 0.4,
+                "aether_night_glow": 0.5,
+                "aether_clouds": true,
+                "aether_cloud_cover": 0.3,
+                "aether_cirrus": 0.3,
+                "aether_cloud_shadows": 0.4,
+                "aether_cloud_speed": 1.0,
+                "aether_haze": 0.6,
+                "aether_valley_mist": 0.2,
+                "aether_nether_haze": 1.0,
+                "aether_sun_warmth": 0.25,
+                "aether_leaf_light": 0.8,
+                "aether_torch_warmth": 0.3,
+                "aether_wetness": 0.6,
+                "aether_puddles": 0.3,
+                "aether_water_tint": 0.5,
+                "aether_water_clarity": 0.7,
+                "aether_water_calm": 0.5,
+                "aether_underwater_warp": 0.2,
+                "aether_grade": 0.5,
+                "aether_bloom": 0.12,
+                "aether_streak": 0.0,
+                "aether_vignette": 0.15,
+                "aether_aberration": 0.0
+            }
+        }
+    ],
+    "textures": [
+        {
+            "name": "aether_noise",
+            "type": "file",
+            "path": "textures/aether_noise.png",
+            "sampled_binding": 56,
+            "filter": "linear",
+            "address_mode": "repeat"
+        }
+    ],
+    "execution_post": {
+        "global_variables": [
+            {
+                "RADIANTE_HOOK_POST_GRADE": true
+            },
+            {
+                "RADIANTE_POST_BLOOM": true
+            }
+        ]
+    },
+    "debug_views": [
+        {
+            "name": "aether_wetness",
+            "define": "AETHER_DEBUG_WETNESS"
+        }
+    ]
+}
