@@ -180,7 +180,8 @@ const WorldPrepare::ChunkCache &WorldPrepare::refreshChunkCache(Chunks &chunks) 
         if (chunk == nullptr || chunk->blas == nullptr) continue;
 
         if (i >= gridCount && cache.lodStart == ~size_t(0)) cache.lodStart = cache.instances.size();
-        cache.instances.push_back({chunk->blas, chunk->x, chunk->y, chunk->z, sbtOffset});
+        cache.instances.push_back({chunk->blas, chunk->x, chunk->y, chunk->z, sbtOffset, chunk->minX, chunk->maxX,
+                                   chunk->minZ, chunk->maxZ});
         cache.blasOffsets.push_back(geometryBase);
         cache.hitGroupNames.push_back(&kShadowGroup);
         const auto *groupNames = chunk->geometryGroupNames.get();
@@ -227,17 +228,33 @@ WorldPrepare::LodWindow WorldPrepare::refreshLodCoverage(Chunks &chunks,
                                      VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR, VK_ACCESS_2_SHADER_READ_BIT);
     }
 
-    // The widest far section that can still reach into the window.
-    constexpr int32_t kReach = 1024;
     const int32_t originX = static_cast<int32_t>(lodCoverage_[0]);
     const int32_t originZ = static_cast<int32_t>(lodCoverage_[1]);
     LodWindow window;
     window.size = static_cast<int32_t>(lodCoverage_[2]);
-    window.minX = originX * 16 - kReach;
-    window.minZ = originZ * 16 - kReach;
+    window.minX = originX * 16;
+    window.minZ = originZ * 16;
     window.maxX = (originX + window.size) * 16;
     window.maxZ = (originZ + window.size) * 16;
+    window.originX = originX;
+    window.originZ = originZ;
+    window.columns = lodCoverage_.data() + Chunks::kLodCoverageHeader;
     return window;
+}
+
+bool WorldPrepare::LodWindow::covers(int32_t blockMinX, int32_t blockMaxX, int32_t blockMinZ,
+                                     int32_t blockMaxZ) const {
+    if (size <= 0 || columns == nullptr || blockMaxX <= blockMinX || blockMaxZ <= blockMinZ) return false;
+    const int32_t fromX = (blockMinX >> 4) - originX, toX = ((blockMaxX - 1) >> 4) - originX;
+    const int32_t fromZ = (blockMinZ >> 4) - originZ, toZ = ((blockMaxZ - 1) >> 4) - originZ;
+    if (fromX < 0 || fromZ < 0 || toX >= size || toZ >= size) return false;
+    for (int32_t z = fromZ; z <= toZ; z++) {
+        for (int32_t x = fromX; x <= toX; x++) {
+            const uint32_t bit = static_cast<uint32_t>(z * size + x);
+            if ((columns[bit >> 5] & (1u << (bit & 31))) == 0) return false;
+        }
+    }
+    return true;
 }
 
 WorldPrepare::HitGroupTable &WorldPrepare::hitGroupTable(const std::unordered_map<std::string, uint32_t> &groups,
@@ -477,12 +494,23 @@ void WorldPrepareContext::addChunkInstances(const WorldPrepare::ChunkCache &cach
 
         // Distant Horizons terrain is hidden per ray in the columns the near terrain covers (lod_coverage.glsl),
         // which needs its any-hit shader: far terrain that may reach into the covered window is made non-opaque.
+        // A section the near terrain covers whole is left out of every ray (mask 0): rays crossing it, under the
+        // ground the player stands on, made the any-hit run on every one of its faces, 2.4 ms of radiante-pt's trace
+        // in a forest at an 8 chunk render distance. It keeps its instance, so the shaders' instance numbers stay as
+        // they are.
         VkGeometryInstanceFlagsKHR flags = 0;
-        if (lod.size > 0 && i >= cache.lodStart && instance.x >= lod.minX && instance.x < lod.maxX &&
-            instance.z >= lod.minZ && instance.z < lod.maxZ) {
-            flags = VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR;
+        uint8_t mask = 0x01;
+        // Any section whose own blocks reach into the window: a test on its corner with a margin of 1024 blocks
+        // missed the widest ones, 2048 across.
+        if (lod.size > 0 && i >= cache.lodStart && instance.maxX > lod.minX && instance.minX < lod.maxX &&
+            instance.maxZ > lod.minZ && instance.minZ < lod.maxZ) {
+            if (lod.covers(instance.minX, instance.maxX, instance.minZ, instance.maxZ)) {
+                mask = 0x00;
+            } else {
+                flags = VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR;
+            }
         }
-        tlasBuilder_->add(translation(tx, ty, tz), static_cast<uint32_t>(i), 0x01, instance.sbtOffset, flags,
+        tlasBuilder_->add(translation(tx, ty, tz), static_cast<uint32_t>(i), mask, instance.sbtOffset, flags,
                           instance.blas->address());
 
         // Chunks do not move: last frame's transform is this frame's.
