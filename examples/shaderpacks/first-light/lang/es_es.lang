@@ -1,0 +1,34 @@
+# First Light: sus propios ajustes, grupos, descripciones y preajustes; el resto de los nombres vienen de radiante-pt.
+render_pipeline.module.ray_tracing.attribute.fl_light_colour=Color de la luz
+render_pipeline.module.ray_tracing.attribute.fl_light_strength=Intensidad de la luz
+render_pipeline.module.ray_tracing.attribute.fl_god_rays=Rayos de luz
+render_pipeline.module.ray_tracing.attribute.fl_dusk_fog=Bruma al amanecer y atardecer
+render_pipeline.module.ray_tracing.attribute.fl_sky_blue=Cielo azul intenso
+render_pipeline.module.ray_tracing.attribute.fl_polish=Pulido
+render_pipeline.module.ray_tracing.attribute.fl_water_mirror=Agua espejo
+render_pipeline.module.ray_tracing.attribute.fl_bloom=Resplandor
+render_pipeline.module.ray_tracing.attribute.fl_contrast=Contraste
+render_pipeline.module.ray_tracing.attribute.fl_saturation=Saturación
+
+first_light.group.light=Luz
+first_light.group.atmosphere=Atmósfera
+first_light.group.surfaces=Superficies
+first_light.group.post=Post
+
+first_light.desc.light_colour=Satura más la luz de los bloques, para que la piedra luminosa, la lava y los faroles tiñan las paredes. 0 mantiene sus colores.
+first_light.desc.light_strength=El brillo de las luces de bloques, su resplandor y la luz en la mano. Más alto ilumina más las salas oscuras.
+first_light.desc.god_rays=Bruma en el aire que muestra los haces de sol por ventanas y hojas. Más alto es más densa. Requiere Luz volumétrica, y Niebla volumétrica de Bedrock desactivada (por defecto en el pack).
+first_light.desc.dusk_fog=Cuánto se espesa la bruma al amanecer y al atardecer. 0 la deja igual todo el día.
+first_light.desc.sky_blue=Un azul más profundo y saturado donde miras el cielo. Su luz sobre el mundo sigue siendo la de Radiante.
+first_light.desc.polish=Hace más brillantes las superficies que ya son lisas. Las rugosas no cambian. 0 lo desactiva.
+first_light.desc.water_mirror=Agua más tranquila y lisa, con reflejos más nítidos. 0 mantiene las olas de Radiante.
+first_light.desc.bloom=Resplandor alrededor del sol, las lámparas y las ventanas iluminadas. Más alto es un resplandor mayor.
+first_light.desc.contrast=Sombras más oscuras y luces más brillantes. 0 lo desactiva.
+first_light.desc.saturation=Intensidad del color de la imagen final. 1 la mantiene.
+
+first_light.preset.first_light=First Light
+first_light.preset.first_light.desc=La demo DXR de Xbox Series X de 2020: rayos de luz nítidos, cielo azul intenso, luces vivas y contraste marcado.
+first_light.preset.gamescom=Gamescom 2019
+first_light.preset.gamescom.desc=La presentación de 2019: niebla y haces densos, color más fuerte, luz de bloques más brillante y más resplandor.
+first_light.preset.softer=Más suave
+first_light.preset.softer.desc=El mismo estilo atenuado: bruma ligera, contraste y color más suaves.

@@ -1,0 +1,34 @@
+# First Light：本包自己的设置、分组、说明和预设；其余名称来自 radiante-pt。
+render_pipeline.module.ray_tracing.attribute.fl_light_colour=光源颜色
+render_pipeline.module.ray_tracing.attribute.fl_light_strength=光源强度
+render_pipeline.module.ray_tracing.attribute.fl_god_rays=体积光束
+render_pipeline.module.ray_tracing.attribute.fl_dusk_fog=晨昏薄雾
+render_pipeline.module.ray_tracing.attribute.fl_sky_blue=深蓝天空
+render_pipeline.module.ray_tracing.attribute.fl_polish=抛光
+render_pipeline.module.ray_tracing.attribute.fl_water_mirror=镜面水
+render_pipeline.module.ray_tracing.attribute.fl_bloom=泛光
+render_pipeline.module.ray_tracing.attribute.fl_contrast=对比度
+render_pipeline.module.ray_tracing.attribute.fl_saturation=饱和度
+
+first_light.group.light=光照
+first_light.group.atmosphere=大气
+first_light.group.surfaces=表面
+first_light.group.post=后期
+
+first_light.desc.light_colour=让方块光更饱和，使荧石、岩浆和灯笼为墙面染色。0 保持原色。
+first_light.desc.light_strength=方块光、其辉光和手持光源的亮度。越高，暗室越亮。
+first_light.desc.god_rays=空气中的薄雾，显现穿过窗户和树叶的阳光光束。越高越浓。需要开启体积光，并关闭 Bedrock 体积雾（本包默认）。
+first_light.desc.dusk_fog=日出和日落时薄雾变浓的程度。0 全天不变。
+first_light.desc.sky_blue=直视天空时更深、更饱和的蓝色。天空照亮世界的光仍为 Radiante 的。
+first_light.desc.polish=让本已光滑的表面更有光泽。粗糙表面不变。0 关闭。
+first_light.desc.water_mirror=更平静、更光滑的水面，反射更清晰。0 保留 Radiante 的波浪。
+first_light.desc.bloom=太阳、灯和明亮窗户周围的辉光。越高辉光越大。
+first_light.desc.contrast=更暗的阴影和更亮的高光。0 关闭。
+first_light.desc.saturation=最终画面的色彩强度。1 保持不变。
+
+first_light.preset.first_light=First Light
+first_light.preset.first_light.desc=2020 年 Xbox Series X DXR 演示：清晰的光束、深蓝天空、鲜艳的光源和强烈的对比。
+first_light.preset.gamescom=Gamescom 2019
+first_light.preset.gamescom.desc=2019 年首次亮相：浓雾和光束、更强的色彩、更亮的方块光和更多泛光。
+first_light.preset.softer=柔和
+first_light.preset.softer.desc=同样的风格但更收敛：薄雾、更柔和的对比度与色彩。

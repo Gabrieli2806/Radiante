@@ -1,0 +1,34 @@
+# First Light: its own settings, groups, descriptions and presets; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.fl_light_colour=Light Colour
+render_pipeline.module.ray_tracing.attribute.fl_light_strength=Light Strength
+render_pipeline.module.ray_tracing.attribute.fl_god_rays=God Rays
+render_pipeline.module.ray_tracing.attribute.fl_dusk_fog=Dawn and Dusk Haze
+render_pipeline.module.ray_tracing.attribute.fl_sky_blue=Deep Blue Sky
+render_pipeline.module.ray_tracing.attribute.fl_polish=Polish
+render_pipeline.module.ray_tracing.attribute.fl_water_mirror=Mirror Water
+render_pipeline.module.ray_tracing.attribute.fl_bloom=Bloom
+render_pipeline.module.ray_tracing.attribute.fl_contrast=Contrast
+render_pipeline.module.ray_tracing.attribute.fl_saturation=Saturation
+
+first_light.group.light=Light
+first_light.group.atmosphere=Atmosphere
+first_light.group.surfaces=Surfaces
+first_light.group.post=Post
+
+first_light.desc.light_colour=Makes block light more saturated, so glowstone, lava and lanterns tint the walls. 0 keeps their colours.
+first_light.desc.light_strength=How bright block lights, their glow and held lights are. Higher lights dark rooms more.
+first_light.desc.god_rays=Haze in the air that shows sun shafts through windows and leaves. Higher is thicker. Needs Volumetric Light, and Bedrock Volumetric Fog off (the pack's default).
+first_light.desc.dusk_fog=How much thicker the haze gets at sunrise and sunset. 0 keeps it the same all day.
+first_light.desc.sky_blue=A deeper, more saturated blue where you look at the sky. Its light on the world stays Radiante's.
+first_light.desc.polish=Makes already smooth surfaces glossier. Rough ones stay as they are. 0 turns it off.
+first_light.desc.water_mirror=Calmer, smoother water with sharper reflections. 0 keeps Radiante's waves.
+first_light.desc.bloom=Glow round the sun, lamps and bright windows. Higher is a bigger glow.
+first_light.desc.contrast=Darker shadows and brighter highlights. 0 turns it off.
+first_light.desc.saturation=Colour strength of the finished picture. 1 keeps it.
+
+first_light.preset.first_light=First Light
+first_light.preset.first_light.desc=The 2020 Xbox Series X DXR demo: clear god rays, a deep blue sky, vivid lights and punchy contrast.
+first_light.preset.gamescom=Gamescom 2019
+first_light.preset.gamescom.desc=The 2019 reveal: thick fog and shafts, stronger colour, brighter block light and more bloom.
+first_light.preset.softer=Softer
+first_light.preset.softer.desc=The same look toned down: light haze, gentler contrast and colour.
