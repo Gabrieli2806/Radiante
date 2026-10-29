@@ -465,20 +465,22 @@ void sampleSurfaceState(bool useTexture,
             shadingNormal = normalizeF(mix(shadingNormal, geometricNormal, wetness * 0.7), geometricNormal);
         }
         // Puddles on solid ground only: a leaf's or a plant's top holds no water. They outlast the wet ground.
-        float puddle = open > 0.0 && alphaMode == ALPHA_MODE_OPAQUE ? vptPuddle(worldPos, open) : 0.0;
+        vec3 rainPos = vptRainSurfacePosition(worldPos);
+        float puddle = open > 0.0 && alphaMode == ALPHA_MODE_OPAQUE ? vptRainPuddleEdge(vptPuddle(rainPos, open)) : 0.0;
         if (puddle > 0.0) {
             vptApplyPuddle(mat, puddle);
             // Flat water, so the mirror image is sharp: the rings are kept faint on it, as their changing slope
             // from frame to frame left the denoiser only a blurred image of the sky to show.
             shadingNormal = vptApplyRainRipples(normalizeF(mix(shadingNormal, geometricNormal, puddle),
                                                            geometricNormal),
-                                                vptRainRippleSlope(worldPos), puddle * PUDDLE_RIPPLES);
+                                                vptRainRippleSlope(rainPos), puddle * PUDDLE_RIPPLES);
         }
     } else if (useWaterMaterial && baseGeoNormal.y > 0.5 && skyUBO.rainGradient > 0.01) {
         // Rain rings on water under the open sky.
         float open = vptGroundOpen(worldPos, baseGeoNormal);
         if (open > 0.0) {
-            shadingNormal = vptApplyRainRipples(shadingNormal, vptRainRippleSlope(worldPos), open);
+            vec2 slope = vptRainRippleSlope(vptRainSurfacePosition(worldPos));
+            shadingNormal = vptApplyRainRipples(shadingNormal, slope, open);
         }
     }
 

@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Pixelated Lighting: puddles and rain rings come out in the texture's pixels, with hard edges. Shader packs can
+  move where rain's marks are worked out with the new `hooks/rain_surface.glsl`.
 - In first person, the player now shows in mirror-like reflections (wet ground, puddles, water, windows) while First
   Person Shadow is on, as in third person. Before, only their shadow showed.
 - Rain is cleaner and cheaper. Rain streaks are no longer shaded as surfaces: the camera sees through them with a

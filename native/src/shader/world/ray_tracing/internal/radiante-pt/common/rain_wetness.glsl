@@ -1,6 +1,8 @@
 #ifndef VPT_RAIN_WETNESS_GLSL
 #define VPT_RAIN_WETNESS_GLSL
 
+#include "hooks/rain_surface.glsl"
+
 // Wet ground in rain. The Java side keeps
 // a texture of the top rain-blocking block of every column around the camera (RainExposure): an upward face that is
 // the top of its column, in a biome where it rains rather than snows, gets darker and glossier with the rain. Faces
@@ -156,6 +158,24 @@ vec2 vptRainRippleSlope(vec3 position) {
         slope += offset / max(d, 1e-4) * wave;
     }
     return slope * RIPPLE_SLOPE * rain;
+}
+
+/** Where the puddle and the rings are looked up for a hit at worldPos: a pack's point (hooks/rain_surface.glsl). */
+vec3 vptRainSurfacePosition(vec3 worldPos) {
+#ifndef RADIANTE_HOOK_RAIN_SURFACE_DEFAULT
+    return hookRainPosition(worldPos);
+#else
+    return worldPos;
+#endif
+}
+
+/** The puddle's cover, through a pack's rim (hooks/rain_surface.glsl). */
+float vptRainPuddleEdge(float puddle) {
+#ifndef RADIANTE_HOOK_RAIN_SURFACE_DEFAULT
+    return clamp(hookPuddleEdge(puddle), 0.0, 1.0);
+#else
+    return puddle;
+#endif
 }
 
 /** The normal turned by the ripples (slope from vptRainRippleSlope), on an upward face. */
