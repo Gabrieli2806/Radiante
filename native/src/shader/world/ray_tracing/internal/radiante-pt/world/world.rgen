@@ -119,6 +119,7 @@
 #include "pt/pt_froxel.glsl"
 #include "pt/pt_sharc.glsl"
 #include "pt/pt_primary.glsl"
+#include "pt/pt_restir_gi.glsl"
 #include "pt/pt_bounce.glsl"
 // Hook points a pack extending radiante-pt replaces; empty here. The ray generation shader names its uniforms as the
 // hit shaders do, so they read the same worldUBO and skyUBO.
@@ -188,6 +189,10 @@ void main() {
     // This frame's reservoir starts empty: pixels that see the sky, water or glass first write none of their own,
     // and must not hand an old one on to the next frame.
     imageStore(vptRestirImage, ivec3(pixel, int((worldUBO.frameCounter & 1u) * 2u + 1u)), vec4(0.0, 0.0, -1.0, 0.0));
+#endif
+#if VPT_RESTIR_GI != 0 && !(SHARC_UPDATE && USE_SHARC)
+    // The same for the first bounce's reservoir (pt/pt_restir_gi.glsl).
+    restirGiClear(pixel);
 #endif
 #if VPT_FROXEL_ACTIVE && !(SHARC_UPDATE && USE_SHARC)
     shadeFroxels();
@@ -638,11 +643,31 @@ void main() {
                                   hasSecondHit, distFirstToSecond);
                 }
             } else {
+#if VPT_RESTIR_GI != 0
+                vec3 restirGiOrigin = mainRay.origin;
+                vec3 restirGiDirection = mainRay.direction;
+                vec3 restirGiThroughput = mainRay.throughput;
+                vec3 restirGiBefore = mainRay.radiance;
+#endif
                 traceSecondaryAveraged(isHand == 1 ? VPT_HAND_SAMPLES : 1, startBounce, isHand,
 #    if SHARC_QUERY && USE_SHARC
                               sharcParameters, sharcDebugBounceCount, sharcDebugCacheHit,
 #    endif
                               hasSecondHit, distFirstToSecond);
+#if VPT_RESTIR_GI != 0
+                // The first diffuse bounce of what the camera sees: resampled across frames and neighbours
+                // (pt/pt_restir_gi.glsl). Not the hand: it moves with the camera, and averages its own samples.
+                if (isFirstHitDiffuse && isHand == 0) {
+                    float restirGiDistance = distFirstToSecond;
+                    vec3 restirGiBounce = restirGiResolve(
+                        pixel, ivec2(gl_LaunchSizeEXT.xy), firstHitWorldPos, normalize(firstHitNormal), restirGiOrigin,
+                        restirGiDirection, restirGiThroughput, mainRay.radiance - restirGiBefore, hasSecondHit,
+                        restirGiDistance, cameraDelta, prevRelativeMVP, mainRay.seed);
+                    mainRay.radiance = restirGiBefore + restirGiBounce;
+                    hasSecondHit = restirGiDistance > 0.0;
+                    distFirstToSecond = restirGiDistance;
+                }
+#endif
 
                 if (isFirstHitDiffuse) { firstHitIndirectRadiance = mainRay.radiance - firstHitDirectRadiance; }
             }

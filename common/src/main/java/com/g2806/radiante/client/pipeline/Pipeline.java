@@ -504,6 +504,8 @@ public class Pipeline {
     public static final String SER_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.ser";
     /** ReSTIR reuse of block light samples across frames and pixels (needs block light sampling). */
     public static final String RESTIR_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.restir";
+    /** ReSTIR GI: the first diffuse bounce resampled across frames and neighbouring pixels. */
+    public static final String RESTIR_GI_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.restir_gi";
     /** Bedrock packs' MER maps read as authored instead of through their LabPBR conversion. */
     public static final String BEDROCK_MATERIALS_ATTRIBUTE =
         "render_pipeline.module.ray_tracing.attribute.bedrock_materials";

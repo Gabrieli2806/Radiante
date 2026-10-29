@@ -405,6 +405,8 @@
   "options.radiante.frame_generation_backend.fsr": "FSR",
   "options.radiante.restir": "ReSTIR Block Lights",
   "options.radiante.restir.tooltip": "Reuses the block lights each pixel picked over time and across neighbouring pixels. Much less noise in rooms with many lights. Needs Block Light Sampling.",
+  "options.radiante.restir_gi": "ReSTIR Bounced Light",
+  "options.radiante.restir_gi.tooltip": "Reuses the bounced light each pixel found across frames and neighbouring pixels. Less noise in rooms and caves lit by bounced light. Bounced light may lag a moment behind a change.",
   "options.radiante.ser": "Shader Execution Reordering",
   "options.radiante.ser.tooltip": "NVIDIA RTX 40 and newer: groups rays by what they hit, which usually raises frame rate. Experimental: water can look white.",
   "options.radiante.biome_ambiance_strength": "Biome Ambiance Strength",

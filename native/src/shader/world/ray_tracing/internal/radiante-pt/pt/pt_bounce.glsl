@@ -183,6 +183,9 @@ void traceSecondary(inout MainRay rayState,
         if (b == startBounce) {
             secondHitDistance = rayState.hitT;
             hasSecondHit = rayState.hitT != INF_DISTANCE;
+#if VPT_RESTIR_GI != 0
+            g_restirGiSecondNormal = hasSecondHit ? rayState.normal : vec3(0.0);
+#endif
         }
 
         if (rayState.hitT != INF_DISTANCE) {

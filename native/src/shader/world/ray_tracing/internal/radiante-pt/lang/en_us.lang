@@ -8,6 +8,7 @@ render_pipeline.module.ray_tracing.attribute.cloud_mode.vanilla=Vanilla
 render_pipeline.module.ray_tracing.attribute.cloud_mode.volumetric=Volumetric
 render_pipeline.module.ray_tracing.attribute.ser=Shader Execution Reordering
 render_pipeline.module.ray_tracing.attribute.restir=ReSTIR Block Lights
+render_pipeline.module.ray_tracing.attribute.restir_gi=ReSTIR Bounced Light
 render_pipeline.module.ray_tracing.attribute.seamless_glass=Seamless Glass
 render_pipeline.module.ray_tracing.attribute.seamless_glass_scope=Seamless Glass Scope
 render_pipeline.module.ray_tracing.attribute.seamless_glass_scope.both=Glass blocks and panes

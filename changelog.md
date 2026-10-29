@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- ReSTIR Bounced Light (Lighting, off): experimental ReSTIR GI for the first bounce of light off what the camera sees.
+  Each pixel keeps its bounce's sample in a reservoir and merges it with last frame's and its neighbours' (a
+  visibility ray checks a neighbour's sample), for less noise in rooms and caves lit by bounced light. Off by default:
+  behind DLSS Ray Reconstruction the gain is small and the light reads a few percent darker.
 - Bounced light no longer reads the full-size texture far away: the ray cone that picks a texture's level of detail
   now widens with the lobe a bounce is drawn from (diffuse or rough), so light bounced off distant foliage and
   textured ground stops sparkling.

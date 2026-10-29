@@ -8,3 +8,4 @@ render_pipeline.module.ray_tracing.attribute.bedrock_materials=Materiales Bedroc
 render_pipeline.module.ray_tracing.attribute.nrd_signals=Señales de NRD
 render_pipeline.module.ray_tracing.attribute.translucency=Translucidez
 render_pipeline.module.ray_tracing.attribute.aerial_perspective_start=Inicio de la Perspectiva Aérea
+render_pipeline.module.ray_tracing.attribute.restir_gi=ReSTIR para Luz Rebotada

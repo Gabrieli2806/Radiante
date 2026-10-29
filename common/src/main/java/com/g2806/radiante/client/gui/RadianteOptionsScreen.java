@@ -63,6 +63,12 @@ public class RadianteOptionsScreen extends Screen {
     private Boolean pendingCloudShadows;
     private String pendingSeamlessScope;
     private Boolean pendingRestir;
+    private Boolean pendingRestirGi;
+    /**
+     * radiante-pt's default for restir_gi (configs.json), what Reset puts back. Off: behind DLSS Ray Reconstruction it
+     * took only a little noise off and read a few percent darker.
+     */
+    private static final Boolean RESTIR_GI_DEFAULT = Boolean.FALSE;
     private Boolean pendingSer;
     private Boolean pendingFroxelFog;
     private Boolean pendingSeamlessGlass;
@@ -186,6 +192,7 @@ public class RadianteOptionsScreen extends Screen {
         this.pendingCloudShadows = previous.pendingCloudShadows;
         this.pendingSeamlessScope = previous.pendingSeamlessScope;
         this.pendingRestir = previous.pendingRestir;
+        this.pendingRestirGi = previous.pendingRestirGi;
         this.pendingSer = previous.pendingSer;
         this.pendingFroxelFog = previous.pendingFroxelFog;
         this.pendingSeamlessGlass = previous.pendingSeamlessGlass;
@@ -614,6 +621,18 @@ public class RadianteOptionsScreen extends Screen {
             this.pendingRestir, value -> this.pendingRestir = value);
     }
 
+    /** ReSTIR GI for the first bounce of light, where the shader pack has it. */
+    private OptionInstance<Boolean> restirGiOption() {
+        if (!Pipeline.supportsShaderPackToggle(Pipeline.RESTIR_GI_ATTRIBUTE)) {
+            return null;
+        }
+        if (this.pendingRestirGi == null) {
+            this.pendingRestirGi = Pipeline.isShaderPackToggleOn(Pipeline.RESTIR_GI_ATTRIBUTE);
+        }
+        return OptionInstance.createBoolean("options.radiante.restir_gi", tooltip("options.radiante.restir_gi"),
+            this.pendingRestirGi, value -> this.pendingRestirGi = value);
+    }
+
     /** DLSS or FSR frame generation, offered where the GPU runs both (FSR works next to any upscaler). */
     private OptionInstance<Integer> frameGenerationBackendOption() {
         if (!FrameGeneration.hasBackendChoice() || staged("hdrOutput", Options.hdrOutput)) {
@@ -932,6 +951,7 @@ public class RadianteOptionsScreen extends Screen {
         this.pendingMotionBlur = Boolean.FALSE;
         this.pendingCloudShadows = Boolean.FALSE;
         this.pendingRestir = Boolean.TRUE;
+        this.pendingRestirGi = Pipeline.supportsShaderPackToggle(Pipeline.RESTIR_GI_ATTRIBUTE) ? RESTIR_GI_DEFAULT : null;
         this.pendingSer = Boolean.FALSE;
         this.pendingFroxelFog = Pipeline.supportsShaderPackToggle(Pipeline.FROXEL_FOG_ATTRIBUTE) ? Boolean.TRUE : null;
         this.pendingSeamlessGlass =
@@ -1267,7 +1287,7 @@ public class RadianteOptionsScreen extends Screen {
                     stage("blockLightSampling", value);
                     refreshQualityLater();
                 }),
-            restirOption(), serOption(),
+            restirOption(), restirGiOption(), serOption(),
             OptionInstance.createBoolean("options.radiante.glowing_pixel_light",
                 tooltip("options.radiante.glowing_pixel_light"),
                 staged("glowingPixelLight", Options.glowingPixelLight), value -> stage("glowingPixelLight", value)),
@@ -2009,6 +2029,9 @@ public class RadianteOptionsScreen extends Screen {
         }
         if (this.pendingRestir != null) {
             changed |= Pipeline.setShaderPackToggle(Pipeline.RESTIR_ATTRIBUTE, this.pendingRestir);
+        }
+        if (this.pendingRestirGi != null) {
+            changed |= Pipeline.setShaderPackToggle(Pipeline.RESTIR_GI_ATTRIBUTE, this.pendingRestirGi);
         }
         if (this.pendingSeamlessScope != null) {
             changed |= Pipeline.setShaderPackValue(SEAMLESS_SCOPE, this.pendingSeamlessScope);

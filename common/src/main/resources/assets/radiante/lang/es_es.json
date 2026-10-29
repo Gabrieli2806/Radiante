@@ -405,6 +405,8 @@
   "options.radiante.frame_generation_backend.fsr": "FSR",
   "options.radiante.restir": "ReSTIR para Luces de Bloque",
   "options.radiante.restir.tooltip": "Reutiliza las luces de bloque que eligió cada píxel a lo largo del tiempo y entre píxeles vecinos. Mucho menos ruido en salas con muchas luces. Requiere Muestreo de Luz de Bloques.",
+  "options.radiante.restir_gi": "ReSTIR para Luz Rebotada",
+  "options.radiante.restir_gi.tooltip": "Reutiliza la luz rebotada que encontró cada píxel entre fotogramas y píxeles vecinos. Menos ruido en cuartos y cuevas iluminados por luz rebotada. La luz rebotada puede tardar un momento en seguir un cambio.",
   "options.radiante.ser": "Reordenamiento de Ejecución (SER)",
   "options.radiante.ser.tooltip": "NVIDIA RTX 40 y posteriores: agrupa los rayos según lo que golpean, lo que suele subir los fotogramas. Experimental: el agua puede verse blanca.",
   "options.radiante.biome_ambiance_strength": "Intensidad del Ambiente de Bioma",
