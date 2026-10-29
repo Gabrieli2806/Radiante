@@ -4,6 +4,9 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Volumetric fog's light shafts (Bedrock's fog volume) no longer break up into drifting cloudy blotches while the
+  camera moves: the froxel light is filtered over its neighbours before it is integrated, so a window's shaft stays a
+  smooth beam.
 - Glow lichen glows and lights much less (level 2 instead of its light level 7): spread over a cave wall it lit the
   cave like a room of torches.
 - Powered redstone dust glows by its power level, as in Bedrock RTX: none at power 0, then up to power 15 in vanilla's
