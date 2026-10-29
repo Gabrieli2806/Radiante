@@ -326,6 +326,8 @@
   "options.radiante.tunable.sun_glow.tooltip": "The halo around the sun.",
   "options.radiante.tunable.light_shafts": "Light Shafts",
   "options.radiante.tunable.light_shafts.tooltip": "Beams of light through windows, skylights and leaves. Needs Volumetric Fog.",
+  "options.radiante.tunable.aerial_perspective": "Aerial Perspective",
+  "options.radiante.tunable.aerial_perspective.tooltip": "Haze over the distance: far terrain, Distant Horizons' too, fades into the sky behind it, more in rain and humid biomes. Higher is hazier; 0% turns it off. No effect on performance.",
   "options.radiante.tunable.water_waves": "Water Waves",
   "options.radiante.tunable.water_waves.tooltip": "How rough the water surface is. 0% is a flat, mirror-like surface.",
   "options.radiante.tunable.water_density": "Water Murkiness",

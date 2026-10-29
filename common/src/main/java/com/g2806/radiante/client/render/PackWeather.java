@@ -5,8 +5,8 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import org.joml.Vector4f;
 
 /**
- * The air's wetness after rain, for shader packs (radiante-pt's {@code common/pack_world.glsl}). Radiante PT itself
- * reads none of it.
+ * The air's wetness after rain, for shader packs (radiante-pt's {@code common/pack_world.glsl}). Radiante PT reads it
+ * too: the air stays a little hazier after rain (aerial perspective, {@code common/biome_haze.glsl}).
  *
  * <p>x is Iris's {@code wetness}: the rain strength smoothed with Iris's default half-lives, {@code wetnessHalflife}
  * 600 and {@code drynessHalflife} 200, which Iris's SmoothedFloat reads as deciseconds, so it rises with a half-life of

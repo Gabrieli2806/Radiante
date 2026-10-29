@@ -24,7 +24,8 @@ Defaults are radiante-pt's, the Bedrock RTX look ([bedrock-rtx.md](../bedrock-rt
 | **Stars** | 100 – 20000 | 3000 | How many stars the night sky has. |
 | **Stars at Altitude** | 0% – 400% | 100% | How much clearer the stars get the higher you are: at 100% they are twice as bright from a mountain top (around Y 190) as from sea level. 0% keeps them the same everywhere. With Biome Ambiance on, the biome's air counts too: sharper over deserts, peaks and the open sea, dimmer in a swamp's or a jungle's haze. |
 | **Sun Glow** | 0% – 300% | 100% | The halo around the sun. |
-| **Light Shafts** | 0% – 400% | 100% | Beams of light through windows, skylights and leaves. Needs Volumetric Fog; no effect with Bedrock's fog volume (see below). |
+| **Light Shafts** | 0% – 400% | 100% | Beams of light through windows, skylights and leaves, within about 48 blocks of you. Needs Volumetric Fog. |
+| **Aerial Perspective** | 0% – 400% | 100% | The air's own haze over the distance: far terrain, Distant Horizons' included, fades towards the sky behind it, about an eighth of the way at 16 chunks and two fifths at 64 at sea level on a clear day. Thicker in rain, thunder and humid biomes (jungle, swamp), thinner over deserts and from a mountain top, none in caves. Works with Volumetric Fog on or off and with Biome Ambiance (whose haze it does not stack on). 0% turns it off; no effect on performance. |
 | **Sun Path** | Vanilla · Tilted · Custom | Vanilla | Vanilla: sun and moon cross straight overhead from east to west. Tilted: the path leans ten degrees south, so noon shadows are not straight down. Custom shows when the [Sun & Moon Path](#sun--moon-path-advanced) settings hold anything else. |
 | **Vanilla Sun/Moon Rotation** | On / Off | On | Keeps the sun and moon squares lined up with their path as in vanilla, instead of turning as they cross the sky. |
 | **Wet Ground in Rain** | On / Off | On | Surfaces under open sky darken and shine while it rains, and dry slowly after. |
@@ -44,8 +45,9 @@ Defaults are radiante-pt's, the Bedrock RTX look ([bedrock-rtx.md](../bedrock-rt
 | **Underwater Camera Effects** | 0% – 200% | 100% | While your head is under water: a gentle sway of the view, softer and darker edges, and by day a faint flicker of sun caustics near the surface. Lower is subtler, 0% turns them off. They cost nothing above water. |
 
 With Bedrock Volumetric Fog on (under Advanced, the default) the air is fogged
-by Bedrock's own volume, which has no use for Volumetric Fog Strength, Fog Distance, Light Shafts or
-Volumetric Fog Quality: those rows are grey and say so.
+by Bedrock's own volume, 50 blocks deep: it shows the biome's fog (with Biome Ambiance on) and the light shafts
+(Light Shafts and Volumetric Fog Strength set how strong). It has no use for Fog Distance or Volumetric Fog
+Quality: those rows are grey and say so. The haze over the distance beyond it is Aerial Perspective.
 
 ## Sun & Moon Path (advanced)
 
