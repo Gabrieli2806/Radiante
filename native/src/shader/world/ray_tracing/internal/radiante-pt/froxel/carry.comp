@@ -28,13 +28,31 @@ void main() {
     vec3 rayDir;
     vec3 position = froxelCellCenter(cell, rayDir);
     // Without history (just off last frame's view, or after a jump) the same cell of last frame stands in until the
-    // world pass reaches it.
-    ivec3 texel = cell;
+    // world pass reaches it. With it, last frame's grid is read trilinearly where the cell sat: the nearest cell
+    // snapped the light to the grid while the camera moved, and the fog crawled in blocks.
+    vec3 light;
     vec3 previousUvw;
     if (froxelHistoryUsable() && froxelReproject(position, previousUvw)) {
-        texel = clamp(ivec3(previousUvw * vec3(FROXEL_EXTENT)), ivec3(0), FROXEL_EXTENT - 1);
+        vec3 texelPosition = previousUvw * vec3(FROXEL_EXTENT) - 0.5;
+        ivec3 base = ivec3(floor(texelPosition));
+        vec3 fraction = texelPosition - vec3(base);
+        vec3 sum = vec3(0.0);
+        float weightSum = 0.0;
+        for (int corner = 0; corner < 8; corner++) {
+            ivec3 offset = ivec3(corner & 1, (corner >> 1) & 1, corner >> 2);
+            vec3 weight3 = mix(vec3(1.0) - fraction, fraction, vec3(offset));
+            float weight = weight3.x * weight3.y * weight3.z;
+            ivec3 texel = clamp(base + offset, ivec3(0), FROXEL_EXTENT - 1);
+            vec3 value = imageLoad(froxelLightImage, texel + ivec3(0, 0, froxelReadOffset())).rgb;
+            if (weight > 0.0 && !any(isnan(value)) && !any(isinf(value))) {
+                sum += value * weight;
+                weightSum += weight;
+            }
+        }
+        light = weightSum > 0.0 ? sum / weightSum : vec3(0.0);
+    } else {
+        light = imageLoad(froxelLightImage, cell + ivec3(0, 0, froxelReadOffset())).rgb;
     }
-    vec3 light = imageLoad(froxelLightImage, texel + ivec3(0, 0, froxelReadOffset())).rgb;
     if (any(isnan(light)) || any(isinf(light))) { light = vec3(0.0); }
     float extinction = froxelExtinction(position.y + float(worldUBO.cameraPos.y));
     imageStore(froxelLightImage, cell + ivec3(0, 0, froxelWriteOffset()), vec4(max(light, vec3(0.0)), extinction));

@@ -71,6 +71,7 @@ render_pipeline.module.ray_tracing.attribute.water_ambient=Water Ambient Light
 render_pipeline.module.ray_tracing.attribute.water_wave_strength=Water Wave Strength
 render_pipeline.module.ray_tracing.attribute.water_god_rays=Underwater God Rays
 render_pipeline.module.ray_tracing.attribute.light_shafts=Light Shafts
+render_pipeline.module.ray_tracing.attribute.aerial_perspective=Aerial Perspective
 render_pipeline.module.ray_tracing.attribute.water_density_from_above=Water Density From Above
 render_pipeline.module.ray_tracing.attribute.bounce_light_boost=Bounce Light Boost
 render_pipeline.module.ray_tracing.attribute.sky_light_boost=Sky Light Boost

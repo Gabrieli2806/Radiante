@@ -16,7 +16,7 @@ import org.joml.Vector4f;
 
 /**
  * The biome at the camera and the thunder, for shader packs (radiante-pt's {@code common/pack_world.glsl}). Radiante
- * PT itself reads none of it. The climate is eased over a couple of seconds like the biome haze, so an effect a pack
+ * PT reads the downfall and the thunder for how hazy the air is (aerial perspective). The climate is eased over a couple of seconds like the biome haze, so an effect a pack
  * ties to it fades across a border instead of switching; the biome's id is handed over as a hash with the one before
  * it and how far the change has come, so a pack can crossfade an effect it gives one biome alone.
  */

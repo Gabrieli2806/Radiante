@@ -11,6 +11,28 @@
 #    include "common/block_light_data.glsl"
 
 layout(set = 5, binding = 40, rgba16f) uniform image3D froxelLightImage;
+
+// Last frame's grid at a point, trilinear (it is a storage image, so by hand). Nearest cells snapped the history to
+// the grid as the camera moved, and the fog crawled in blocks.
+vec4 froxelHistory(vec3 uvw) {
+    vec3 texelPosition = uvw * vec3(FROXEL_EXTENT) - 0.5;
+    ivec3 base = ivec3(floor(texelPosition));
+    vec3 fraction = texelPosition - vec3(base);
+    ivec3 offset3 = ivec3(0, 0, froxelReadOffset());
+    vec4 sum = vec4(0.0);
+    float weightSum = 0.0;
+    for (int corner = 0; corner < 8; corner++) {
+        ivec3 offset = ivec3(corner & 1, (corner >> 1) & 1, corner >> 2);
+        vec3 weight3 = mix(vec3(1.0) - fraction, fraction, vec3(offset));
+        float weight = weight3.x * weight3.y * weight3.z;
+        vec4 value = imageLoad(froxelLightImage, clamp(base + offset, ivec3(0), FROXEL_EXTENT - 1) + offset3);
+        if (weight > 0.0 && finiteVec3(value.rgb) && finiteFloat(value.a)) {
+            sum += value * weight;
+            weightSum += weight;
+        }
+    }
+    return weightSum > 0.0 ? sum / weightSum : vec4(0.0);
+}
 const float FROXEL_BLOCK_LIGHT_REACH = 32.0;
 // How much of the block lights the air scatters: a soft glow, not a lit wall of haze across a street of signs.
 const float FROXEL_BLOCK_LIGHT_GLOW = 0.12;
@@ -41,7 +63,9 @@ vec3 froxelBlockLight(vec3 position, inout uint seed) {
     if (vptHasEntityLights()) { slots[slotCount++] = VPT_ENTITY_LIGHT_SLOT; }
     if (slotCount == 0) { return vec3(0.0); }
 
-    const int CANDIDATES = 2;
+    // Four lights looked at for the one traced: the lights cost only a read each, and with two the glow around a
+    // street of lanterns sparkled from one look to the next.
+    const int CANDIDATES = 4;
     vec3 cameraPos = vec3(worldUBO.cameraPos.xyz);
     float weightSum = 0.0;
     float chosenTarget = 0.0;
@@ -110,20 +134,34 @@ const float FROXEL_TAIL_SHADOW_REACH = 24.0;
 // structure): the pack's air medium, lit by the sun through a shadow ray with Henyey-Greenstein scattering normalised
 // by 1/pi, and by the sky; the sunlit part scales with the square of the height profile, the sky part with it once.
 // The anisotropy g is a run-time value in Bedrock (UNKNOWN; VPT_BEDROCK_FOG_G).
-vec3 shadeBedrockFogCell(vec3 position, vec3 rayDir, bool openAir) {
+vec3 shadeBedrockFogCell(vec3 position, vec3 rayDir, float distance, bool openAir) {
     vec3 lightDir = celestialLightDirection();
     float worldY = position.y + float(worldUBO.cameraPos.y);
     float height = biomeFogHeightProfile(worldY);
     vec3 sigmaS = biomeFogChroma() * biomeFogDensity() * clamp(skyUBO.biomeFog.rgb, vec3(0.0), vec3(1.0));
-    if (height <= 0.0 || max(sigmaS.r, max(sigmaS.g, sigmaS.b)) <= 0.0) { return vec3(0.0); }
+    bool biomeFog = height > 0.0 && max(sigmaS.r, max(sigmaS.g, sigmaS.b)) > 0.0;
+    // Light shafts, as Radiante's own air has them (shadeFroxelCell): the air near the camera scatters the sunlight
+    // it is lit by. The pack's fog alone is zero without Biome Ambiance, and with it a few thousandths a block: the
+    // volume came out empty, and turning Volumetric Fog on changed next to nothing. Sun only, so a dark room stays
+    // dark around the beam; Light Shafts and Volumetric Fog Strength set how much.
+    float shaftDensity = max(VPT_LIGHT_SHAFTS, 0.0) * max(skyUBO.fogControls.z, 0.0) *
+                         (1.0 - smoothstep(LIGHT_SHAFT_REACH * 0.6, LIGHT_SHAFT_REACH, distance));
+    // In full rain the sun is gone (sampleVolumetricDirectionalLight), and a shadow ray per cell would only find
+    // that out.
+    if (skyUBO.rainGradient >= 0.98) { shaftDensity = 0.0; }
+    if (!biomeFog && shaftDensity <= 0.0) { return vec3(0.0); }
+
+    float cosTheta = clamp(dot(rayDir, lightDir), -1.0, 1.0);
+    vec3 sunPosition = openAir ? position + lightDir * FROXEL_OPEN_AIR_LIFT : position;
+    vec3 sunLight = sampleVolumetricDirectionalLight(sunPosition, lightDir, false);
+    float shaftPhase = mix(INV_4_PI, min(henyeyGreenstein(cosTheta, 0.5), 2.0), 0.5);
+    vec3 source = sunLight * (shaftDensity * shaftPhase);
+    if (!biomeFog) { return source; }
 
     float g = clamp(VPT_BEDROCK_FOG_G, -0.95, 0.95);
-    float cosTheta = clamp(dot(rayDir, lightDir), -1.0, 1.0);
     float phase = (1.0 - g * g) / pow(abs(1.0 + g * g - 2.0 * g * cosTheta), 1.5) / PI;
-    vec3 sunPosition = openAir ? position + lightDir * FROXEL_OPEN_AIR_LIFT : position;
-    vec3 sun = sampleVolumetricDirectionalLight(sunPosition, lightDir, false) * phase;
     vec3 sky = biomeFogAmbient(rayDir) * (openAir ? 1.0 : volumetricSkyVisibility(position, false)) / PI;
-    return sigmaS * (height * height * sun + height * sky);
+    return source + sigmaS * (height * height * sunLight * phase + height * sky);
 }
 #endif
 
@@ -131,7 +169,7 @@ vec3 shadeBedrockFogCell(vec3 position, vec3 rayDir, bool openAir) {
 // openAir: as it would be with nothing around to shade it, the sun and the sky in full.
 vec3 shadeFroxelCell(vec3 position, vec3 rayDir, float distance, inout uint seed, bool openAir) {
 #if VPT_BEDROCK_FOG != 0
-    return shadeBedrockFogCell(position, rayDir, openAir);
+    return shadeBedrockFogCell(position, rayDir, distance, openAir);
 #endif
     vec3 lightDir = celestialLightDirection();
     float cosTheta = clamp(dot(rayDir, lightDir), -1.0, 1.0);
@@ -170,6 +208,9 @@ vec3 shadeFroxelCell(vec3 position, vec3 rayDir, float distance, inout uint seed
     return source;
 }
 
+// How much of a cell's light each fresh look at it brings in; the rest is its reprojected history.
+const float FROXEL_HISTORY_BLEND = 0.15;
+
 // This thread's share of the cells lit afresh this frame (froxelIsFresh); froxel/carry.comp has already carried
 // the others' history over. Each fresh cell blends its new light into its reprojected history.
 void shadeFroxels() {
@@ -188,18 +229,38 @@ void shadeFroxels() {
         ivec3 cell = ivec3((inSlice % quarter.x) * 2 + int(pattern & 1u), (inSlice / quarter.x) * 2 + int(pattern >> 1u),
                            slice);
         uint seed = xxhash32(uvec3(uint(cell.x) | (uint(cell.y) << 16u), uint(cell.z), worldUBO.seed ^ 0x6A09E667u));
-        vec3 jitter = vec3(rand(seed), rand(seed), rand(seed));
+        // Where in the cell it is lit this time: a fixed offset per cell stepped along the R3 sequence each time the
+        // cell comes round (every fourth frame), so the history averages points spread evenly through the cell
+        // instead of white noise. A shadow's edge across a cell (a branch, a window frame) is in or out at each
+        // point, and random points left the average flickering in blotches, the fog's "noisy spots".
+        uint cellHash = xxhash32(uvec3(uint(cell.x) | (uint(cell.y) << 16u), uint(cell.z), 0x9E3779B9u));
+        vec3 cellOffset = vec3(uvec3(cellHash, cellHash >> 11u, cellHash >> 22u) & uvec3(2047u, 2047u, 1023u)) /
+                          vec3(2048.0, 2048.0, 1024.0);
+        float visit = float((worldUBO.frameCounter >> 2u) & 4095u);
+        vec3 jitter = fract(cellOffset + visit * vec3(0.8191725134, 0.6710436067, 0.5497004779));
         vec2 uv = (vec2(cell.xy) + jitter.xy) / vec2(FROXEL_EXTENT.xy);
         vec3 rayDir = froxelRayDirection(uv);
         float distance = froxelDistanceFromW((float(cell.z) + jitter.z) / float(FROXEL_EXTENT.z));
         vec3 position = froxelCameraOrigin() + rayDir * distance;
 
         vec3 inscatter = shadeFroxelCell(position, rayDir, distance, seed, false);
+        // The history is read where the cell's centre was (the jitter is this frame's, not a move of the cell).
+        vec3 centreDir;
+        vec3 centre = froxelCellCenter(cell, centreDir);
         vec3 previousUvw;
-        if (historyUsable && froxelReproject(position, previousUvw)) {
-            ivec3 texel = clamp(ivec3(previousUvw * vec3(FROXEL_EXTENT)), ivec3(0), FROXEL_EXTENT - 1);
-            vec4 history = imageLoad(froxelLightImage, texel + ivec3(0, 0, readOffset));
-            if (finiteVec3(history.rgb)) { inscatter = mix(max(history.rgb, vec3(0.0)), inscatter, 0.3); }
+        if (historyUsable && froxelReproject(centre, previousUvw)) {
+            vec3 history = max(froxelHistory(previousUvw).rgb, vec3(0.0));
+            // A rare bright sample (a block light picked at a hand's length, the sun through a one-pixel gap) is let
+            // in at a quarter past four times what the cell held: it still shows if it stays, but does not flash.
+            float historyLuma = dot(history, vec3(0.2126, 0.7152, 0.0722));
+            float sampleLuma = dot(inscatter, vec3(0.2126, 0.7152, 0.0722));
+            float ceiling = historyLuma * 4.0 + 1e-4;
+            if (finiteFloat(sampleLuma) && sampleLuma > ceiling) {
+                inscatter *= (ceiling + (sampleLuma - ceiling) * 0.25) / sampleLuma;
+            }
+            // Each cell is lit every fourth frame; at 0.15 its history spans about seven of those (half a second at
+            // 60 fps), against three at the 0.3 before, which left the in-or-out shadow tests flickering.
+            inscatter = mix(history, inscatter, FROXEL_HISTORY_BLEND);
         }
         if (!finiteVec3(inscatter)) { inscatter = vec3(0.0); }
         float extinction = froxelExtinction(position.y + float(worldUBO.cameraPos.y));

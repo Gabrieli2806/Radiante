@@ -347,7 +347,8 @@ struct SkyUBO {
     // distant things orange; Radiante's own grey haze uses (1, 1, 1).
     T_VEC4 biomeFogChroma;
     // x: world height below which the haze is at full density, y: height where it has thinned to nothing. Radiante's
-    // own haze never thins, so both sit far above the world.
+    // own haze never thins, so both sit far above the world. z: how open the camera is to the sky (its sky light,
+    // 0..1, eased), set with or without Biome Ambiance: the air's own haze (aerial perspective) follows it. w unused.
     T_VEC4 biomeFogHeights;
 
     // Water as a medium for the biomes at the camera, from a converted Bedrock pack when it has one, otherwise derived
@@ -384,7 +385,8 @@ struct SkyUBO {
     T_VEC4 spriteRotation;
 
     // ---- The weather and the biome for shader packs (304..335), read through radiante-pt's common/pack_world.glsl;
-    // radiante-pt itself reads none of it. BiomeClimate on the Java side.
+    // radiante-pt reads the downfall, the thunder and the wetness for how hazy the air is (aerialDensityScale in
+    // common/biome_haze.glsl). BiomeClimate on the Java side.
     // The biome at the camera, eased over a couple of seconds so effects fade across a border. x: its temperature,
     // y: its downfall, z: how snowy (1 where snow falls at the camera's height), w: how dry (1 where nothing falls).
     T_VEC4 biomeClimate;
@@ -396,7 +398,8 @@ struct SkyUBO {
     T_UINT previousBiomeId;
     T_FLOAT biomeIdBlend;
 
-    // ---- The air after rain for shader packs (336..351), PackWeather on the Java side; radiante-pt reads none of it.
+    // ---- The air after rain for shader packs (336..351), PackWeather on the Java side; radiante-pt reads the wetness
+    // too (aerialDensityScale).
     // Iris's wetness: the rain smoothed, rising with a half-life of a minute and falling with one of twenty seconds.
     T_FLOAT wetness;
     // Seconds since the rain eased off after wetting the air: 0 while it rains, 1e6 before any rain.

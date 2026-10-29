@@ -24,7 +24,8 @@ Los valores por defecto son los de radiante-pt, el aspecto Bedrock RTX ([bedrock
 | **Estrellas** | 100 – 20000 | 3000 | Cuántas estrellas tiene el cielo nocturno. |
 | **Estrellas con la Altura** | 0% – 400% | 100% | Cuánto más nítidas se ven las estrellas mientras más alto estés: a 100% brillan el doble desde la cima de una montaña (cerca de Y 190) que a nivel del mar. 0% las deja igual en todas partes. Con Ambiente de Bioma activado también cuenta el aire del bioma: más nítidas sobre desiertos, cumbres y mar abierto, más tenues en la bruma de un pantano o una jungla. |
 | **Resplandor del Sol** | 0% – 300% | 100% | El halo alrededor del sol. |
-| **Rayos de Luz** | 0% – 400% | 100% | Haces de luz por ventanas, claraboyas y hojas. Requiere Niebla Volumétrica; no tiene efecto con el volumen de niebla de Bedrock (ver abajo). |
+| **Rayos de Luz** | 0% – 400% | 100% | Haces de luz por ventanas, claraboyas y hojas, hasta unos 48 bloques de ti. Requiere Niebla Volumétrica. |
+| **Perspectiva Aérea** | 0% – 400% | 100% | La neblina propia del aire en la distancia: el terreno lejano, también el de Distant Horizons, se funde con el cielo que tiene detrás, alrededor de un octavo a 16 chunks y dos quintos a 64 a nivel del mar en un día despejado. Más espesa con lluvia, tormenta y en biomas húmedos (jungla, pantano), más fina sobre desiertos y desde una cima, nula en cuevas. Funciona con la Niebla Volumétrica activada o no y con Ambiente de Bioma (sin sumarse a su neblina). 0% la quita; no afecta al rendimiento. |
 | **Trayectoria del Sol** | Vanilla · Inclinada · Personalizada | Vanilla | Vanilla: el sol y la luna pasan directamente sobre la cabeza de este a oeste. Inclinada: la trayectoria se inclina diez grados al sur, así que las sombras del mediodía no caen rectas hacia abajo. Personalizada aparece cuando los ajustes de [Trayectoria del Sol y la Luna](#trayectoria-del-sol-y-la-luna-avanzado) tienen otros valores. |
 | **Rotación Vanilla del Sol/Luna** | Activado / Desactivado | Activado | Mantiene los cuadrados del sol y la luna alineados con su trayectoria como en vanilla, en vez de girar al cruzar el cielo. |
 | **Suelo Mojado con Lluvia** | Activado / Desactivado | Activado | Las superficies a cielo abierto se oscurecen y brillan mientras llueve, y se secan poco a poco. |
@@ -43,8 +44,10 @@ Los valores por defecto son los de radiante-pt, el aspecto Bedrock RTX ([bedrock
 | **Rayos de Luz Bajo el Agua** | 0% – 400% | 100% | Haces de sol que atraviesan la superficie cuando estás bajo el agua. |
 
 Con la Niebla Volumétrica de Bedrock activada (en Avanzado, por defecto) el aire lo nubla
-el volumen propio de Bedrock, que no usa Intensidad de Niebla Volumétrica, Distancia de Niebla,
-Rayos de Luz ni Calidad de Niebla Volumétrica: esas filas salen en gris y lo dicen.
+el volumen propio de Bedrock, de 50 bloques: muestra la niebla del bioma (con Ambiente de Bioma activado) y los
+rayos de luz (Rayos de Luz e Intensidad de Niebla Volumétrica fijan cuánto). No usa Distancia de Niebla ni Calidad
+de Niebla Volumétrica: esas filas salen en gris y lo dicen. La neblina en la distancia más allá es la Perspectiva
+Aérea.
 
 ## Trayectoria del Sol y la Luna (avanzado)
 

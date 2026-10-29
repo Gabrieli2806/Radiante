@@ -242,8 +242,11 @@ void integrateVolumetricFog(vec3 origin,
         clamp(int(ceil(float(maxSteps) * sqrt(marchEnd / volumetricMediumMaxDistance()))), min(4, maxSteps), maxSteps);
     // In full rain the sun and moon are gone, and a shadow ray per step would only find that out.
     bool directLight = skyUBO.rainGradient < 0.98;
-    uint seed = xxhash32(uvec3(uint(gl_LaunchIDEXT.x), uint(gl_LaunchIDEXT.y), worldUBO.seed ^ 0xBB67AE85u));
-    float jitter = rand(seed);
+    // Interleaved gradient noise, shifted each frame: neighbouring pixels start their steps evenly apart, so the
+    // march's banding breaks up into a fine, even pattern the upscaler's history averages away. White noise per pixel
+    // (as before) left clumps of pixels with the same start, which showed as grainy spots in the fog.
+    vec2 ignPixel = vec2(gl_LaunchIDEXT.xy) + 5.588238 * float(worldUBO.frameCounter & 63u);
+    float jitter = fract(52.9829189 * fract(dot(ignPixel, vec2(0.06711056, 0.00583715))));
     vec3 litSum = vec3(0.0);
     float litWeight = 0.0;
     float marchT = 0.0;

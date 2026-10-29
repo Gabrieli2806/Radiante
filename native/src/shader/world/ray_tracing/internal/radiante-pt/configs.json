@@ -375,6 +375,13 @@
             "define": "VPT_BIOME_FOG_SCATTERING"
         },
         {
+            "name": "render_pipeline.module.ray_tracing.attribute.aerial_perspective",
+            "type": "float_range:0.0-4.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "VPT_AERIAL_PERSPECTIVE"
+        },
+        {
             "name": "render_pipeline.module.ray_tracing.attribute.water_density",
             "type": "float_range:0.0-4.0",
             "default_value": "1.0",

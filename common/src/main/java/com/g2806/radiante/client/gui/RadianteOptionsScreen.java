@@ -1350,6 +1350,7 @@ public class RadianteOptionsScreen extends Screen {
                 value -> stage("starAltitude", value)),
             tunable(Tunable.SUN_GLOW, false),
             tunable(Tunable.LIGHT_SHAFTS, false),
+            tunable(Tunable.AERIAL_PERSPECTIVE, false),
             sunPathOption(),
             OptionInstance.createBoolean("options.radiante.vanilla_celestial_orientation",
                 OptionInstance.cachedConstantTooltip(
@@ -1780,8 +1781,9 @@ public class RadianteOptionsScreen extends Screen {
             return null;
         }
         return switch (key.substring(O.length())) {
-            case "volumetric_fog_strength", "tunable.fog_distance", "tunable.light_shafts" ->
-                !fog ? needs(O + "volumetric_fog") : bedrock ? bedrockFogReason : null;
+            // Bedrock's fog volume lights the air's shafts too, but keeps its own fixed reach.
+            case "volumetric_fog_strength", "tunable.light_shafts" -> !fog ? needs(O + "volumetric_fog") : null;
+            case "tunable.fog_distance" -> !fog ? needs(O + "volumetric_fog") : bedrock ? bedrockFogReason : null;
             case "volumetric_fog_samples" ->
                 !fog ? needs(O + "volumetric_fog") : bedrock ? bedrockFogReason : grid ? overriddenBy(O + "fog_style") : null;
             case "fog_style" -> !fog ? needs(O + "volumetric_fog") : bedrock ? bedrockFogReason : null;

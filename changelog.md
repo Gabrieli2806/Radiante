@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Fog you can see. With the defaults the air had no haze at all: Bedrock's fog volume only carries the biome's fog,
+  which is zero with Biome Ambiance off (the default), and turning Volumetric Fog on or off changed only the last few
+  blocks before the render distance. Now:
+  - **Aerial Perspective** (Sky & Water, 100%): far terrain, Distant Horizons' included, fades towards the sky behind
+    it, about an eighth of the way at 16 chunks and two fifths at 64 at sea level, thicker in rain, thunder and humid
+    biomes, thinner over deserts and from mountain tops, none in caves. Worked out per pixel from the distance, so it
+    is free and has no noise, and near chunks and LODs fade alike. It makes up the floor under Biome Ambiance's haze
+    instead of stacking on it.
+  - Bedrock's fog volume (the default fog) now shows light shafts through leaves, windows and skylights, so
+    Volumetric Fog on looks different from off; Light Shafts and Volumetric Fog Strength work with it again.
+  - Less noise in the volumetric fog: each fog cell is lit at points spread evenly through it over time instead of at
+    random, keeps a longer history, reads it back smoothly as the camera moves, and lets a rare bright sample in
+    gently; torch glow in the fog looks at four lights instead of two. The Radiante fog style's march starts its
+    steps on a fine, even pattern instead of white noise.
 - A second built-in shader pack, **Pixelated Lighting**, listed next to Radiante PT under Shader Packs: pixelated
   shadows and reflections, after BetterRTX's preset of that name. Shadow edges from the sun, torches and held lights
   follow the texture's pixels, and reflections, water's included, are solid squares, one per texel, near objects too;
