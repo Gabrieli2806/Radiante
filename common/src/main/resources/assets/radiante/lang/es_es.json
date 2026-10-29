@@ -330,6 +330,8 @@
   "options.radiante.tunable.light_shafts.tooltip": "Haces de luz por ventanas, claraboyas y hojas. Requiere Niebla Volumétrica.",
   "options.radiante.tunable.aerial_perspective": "Perspectiva Aérea",
   "options.radiante.tunable.aerial_perspective.tooltip": "Neblina en la distancia: el terreno lejano, también el de Distant Horizons, se funde con el cielo, más con lluvia y en biomas húmedos. Más alto, más neblina; 0% la quita. No afecta al rendimiento.",
+  "options.radiante.tunable.aerial_perspective_start": "Inicio de la Perspectiva Aérea",
+  "options.radiante.tunable.aerial_perspective_start.tooltip": "A qué distancia empieza la neblina lejana; lo más cercano no se nubla. Más alto deja más terreno cercano despejado.",
   "options.radiante.tunable.water_waves": "Olas del Agua",
   "options.radiante.tunable.water_waves.tooltip": "Qué tan agitada es la superficie del agua. 0% es plana como un espejo.",
   "options.radiante.tunable.water_density": "Turbidez del Agua",

@@ -125,6 +125,9 @@ void biomeHaze(vec3 rayDir, bool hitSky, float hitDistance, out float transmitta
 #ifndef VPT_AERIAL_PERSPECTIVE
 #    define VPT_AERIAL_PERSPECTIVE 1.0
 #endif
+#ifndef VPT_AERIAL_PERSPECTIVE_START
+#    define VPT_AERIAL_PERSPECTIVE_START 128.0
+#endif
 
 // Extinction per block at sea level at 100 %: about an eighth of the view gone at 16 chunks, two fifths at 64 chunks of
 // Distant Horizons terrain, seen at sea level in a temperate biome on a clear day.
@@ -134,6 +137,9 @@ const float AERIAL_REFERENCE_HEIGHT = 64.0;
 const float AERIAL_SCALE_HEIGHT = 200.0;
 // Below sea level (a deep valley, a ravine seen from its rim) the air thickens no further than this many scale heights.
 const float AERIAL_MAX_BELOW = 0.5;
+// Past Aerial Perspective Start, the share of the start distance over which the haze comes in, and its least length.
+const float AERIAL_FADE = 0.5;
+const float AERIAL_FADE_MIN = 32.0;
 
 // How much thicker the air is than on a clear temperate day: humid biomes (the biome's downfall) and rain haze more,
 // dry ones less; wet air lingers a little after the rain.
@@ -183,7 +189,16 @@ void aerialPerspective(vec3 rayDir, float hitDistance, float otherAirDensity, ou
     float cameraY = float(worldUBO.cameraPos.y);
     float present = max(otherAirDensity, 0.0) + max(skyUBO.biomeFog.a, 0.0) * biomeFogHeightProfile(cameraY);
     if (present > 0.0) { densityScale = max(densityScale - present / AERIAL_DENSITY, densityScale * 0.35); }
-    float opticalDepth = aerialOpticalDepth(cameraY, rayDir.y, hitDistance, densityScale);
+    // No haze nearer than Aerial Perspective Start: the air thickens from nothing there to its full density over
+    // AERIAL_FADE of the start (at least AERIAL_FADE_MIN blocks), and is integrated from the start point on, not from
+    // the camera. Hazed from the camera, a house across the street was already faintly washed out.
+    float start = max(VPT_AERIAL_PERSPECTIVE_START, 0.0);
+    if (hitDistance <= start) { return; }
+    float fade = max(start * AERIAL_FADE, AERIAL_FADE_MIN);
+    float past = hitDistance - start;
+    // The path length weighted by the linear ramp of the density over the fade.
+    float weighted = past < fade ? past * past / (2.0 * fade) : past - 0.5 * fade;
+    float opticalDepth = aerialOpticalDepth(cameraY + rayDir.y * start, rayDir.y, weighted, densityScale);
     float t = exp(-opticalDepth);
     transmittance = vec3(t);
     additive = aerialHazeRadiance(rayDir) * (1.0 - t);

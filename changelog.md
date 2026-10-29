@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Aerial Perspective Start (Sky & Water, 128 blocks): no distance haze nearer than this; it fades in over the next
+  half of that distance and is counted from there, not from the camera, so nearby land and buildings stay clear.
 - Translucency (Lighting, 100%): leaves and small plants let the sun and moon through from behind, tinted by their
   colour and brightest looking towards the light, so a tree glows against a low sun instead of standing dark; ice and
   snow take the light a little past their shadowed edge, with a blue tint. No extra rays. Shader packs can set how much

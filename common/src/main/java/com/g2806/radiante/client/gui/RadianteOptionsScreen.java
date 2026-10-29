@@ -1350,7 +1350,7 @@ public class RadianteOptionsScreen extends Screen {
                 value -> stage("starAltitude", value)),
             tunable(Tunable.SUN_GLOW, false),
             tunable(Tunable.LIGHT_SHAFTS, false),
-            tunable(Tunable.AERIAL_PERSPECTIVE, false),
+            tunable(Tunable.AERIAL_PERSPECTIVE, false), tunable(Tunable.AERIAL_PERSPECTIVE_START, false),
             sunPathOption(),
             OptionInstance.createBoolean("options.radiante.vanilla_celestial_orientation",
                 OptionInstance.cachedConstantTooltip(

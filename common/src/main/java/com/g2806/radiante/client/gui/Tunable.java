@@ -77,6 +77,9 @@ enum Tunable {
     // The air's own haze over the distance: far terrain (Distant Horizons' too) fading into the sky behind it.
     AERIAL_PERSPECTIVE(null, "render_pipeline.module.ray_tracing.attribute.aerial_perspective", 0.01, 0, 400, 100,
         Format.PERCENT),
+    // How far from the camera the haze begins: nothing nearer, faded in over the next half of that distance.
+    AERIAL_PERSPECTIVE_START(null, "render_pipeline.module.ray_tracing.attribute.aerial_perspective_start", 1.0, 0,
+        1024, 128, Format.BLOCKS),
     WATER_WAVES(null, "render_pipeline.module.ray_tracing.attribute.water_wave_strength", 0.0035, 0, 400, 100,
         Format.PERCENT),
     WATER_DENSITY(null, "render_pipeline.module.ray_tracing.attribute.water_density", 0.01, 0, 400, 100,

@@ -46,6 +46,7 @@ enum OptionImpact {
         Map.entry("options.radiante.tunable.light_shafts", LOW),
         Map.entry("options.radiante.tunable.translucency", NONE),
         Map.entry("options.radiante.tunable.aerial_perspective", NONE),
+        Map.entry("options.radiante.tunable.aerial_perspective_start", NONE),
         Map.entry("options.radiante.tunable.water_god_rays", LOW),
         Map.entry("options.radiante.chunk_building_threads", VARIES),
         Map.entry("options.radiante.hdr_output", LOW),

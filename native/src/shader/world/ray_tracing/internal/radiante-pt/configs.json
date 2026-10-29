@@ -382,6 +382,13 @@
             "define": "VPT_AERIAL_PERSPECTIVE"
         },
         {
+            "name": "render_pipeline.module.ray_tracing.attribute.aerial_perspective_start",
+            "type": "float_range:0.0-1024.0",
+            "default_value": "128.0",
+            "runtime": true,
+            "define": "VPT_AERIAL_PERSPECTIVE_START"
+        },
+        {
             "name": "render_pipeline.module.ray_tracing.attribute.water_density",
             "type": "float_range:0.0-4.0",
             "default_value": "1.0",

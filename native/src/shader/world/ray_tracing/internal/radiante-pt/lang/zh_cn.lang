@@ -73,6 +73,7 @@ render_pipeline.module.ray_tracing.attribute.water_wave_strength=水面波浪强
 render_pipeline.module.ray_tracing.attribute.water_god_rays=水下光束
 render_pipeline.module.ray_tracing.attribute.translucency=半透光
 render_pipeline.module.ray_tracing.attribute.light_shafts=光柱
+render_pipeline.module.ray_tracing.attribute.aerial_perspective_start=空气透视起始距离
 render_pipeline.module.ray_tracing.attribute.aerial_perspective=空气透视
 render_pipeline.module.ray_tracing.attribute.water_density_from_above=水上观察水体浓度
 render_pipeline.module.ray_tracing.attribute.bounce_light_boost=反弹光增强
