@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- In first person, the player now shows in mirror-like reflections (wet ground, puddles, water, windows) while First
+  Person Shadow is on, as in third person. Before, only their shadow showed.
 - Rain is cleaner and cheaper. Rain streaks are no longer shaded as surfaces: the camera sees through them with a
   faint glint of the overcast sky (Rain Streaks slider), so the
   denoiser and upscaler stop taking the flickering streaks for the ground behind them, which smeared and sparkled

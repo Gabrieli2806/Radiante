@@ -156,6 +156,10 @@ void traceSecondary(inout MainRay rayState,
                     (leavingLobeType == 2u || (leavingLobeType == 1u && rayLoadMaterial(rayState).roughness < 0.08));
         resetMainRay(rayState, b);
         prepareSecondary(b, isHand, len, mask);
+        // In first person a mirror-like view (wet ground, a puddle, water, a window) shows the player, as it does in
+        // third person: their body is in the scene only while First Person Shadow is on. Light gathered by rough
+        // bounces still leaves it out, so the body seen from within does not darken what is around the camera.
+        if (viewChain && isHand == 0 && worldUBO.isFirstPerson > 0) { mask |= PLAYER_MASK; }
         // What such a ray ends in is seen, not gathered as light; see the miss shader and the water medium.
         if (viewChain) { rayState.pad0 = RAY_VIEW_BOUNCE_MARK; }
 

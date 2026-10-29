@@ -156,9 +156,8 @@ void prepareSecondaryBase(int bounce, int isHand, out float len, out uint mask) 
     }
 }
 
-/** Rays bounced off or bent by a surface. In first person the player's own body is never among what they find (it
- *  only casts shadows, see g_shadowPlayerMask): the water's surface mirrors it, seen from above, as a flat dark
- *  silhouette lying on the reflection, which Bedrock's renderer does not show. */
+/** Rays bounced off or bent by a surface. In first person the player's own body is left out of what they find (it
+ *  casts shadows, see g_shadowPlayerMask), except along a mirror-like view, which pt_bounce.glsl lets see it. */
 void prepareSecondary(int bounce, int isHand, out float len, out uint mask) {
     prepareSecondaryBase(bounce, isHand, len, mask);
     if (worldUBO.isFirstPerson > 0) { mask &= ~PLAYER_MASK; }
