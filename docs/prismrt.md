@@ -377,8 +377,8 @@ first-hit direct and indirect diffuse, specular, emission, refraction, and fog i
   in the world, not drawn afterwards.
 
 Fog and clouds are mostly in the path tracer: volumetric fog per pixel (`pt_volumetric.glsl`) or through
-two grids of light fixed to the world around the camera (`common/froxel_fog.glsl`, `pt_froxel.glsl`, moved with the
-camera by `froxel/shift.comp`), and volumetric clouds resolved over time
+two grids of light fixed to the world around the camera (`common/froxel_fog.glsl`; moved with the camera by
+`froxel/shift.comp`, relit by the world pass in `pt_froxel.glsl`, and marched per pixel by `froxel/march.comp`), and volumetric clouds resolved over time
 (`volumetric_cloud/temporal.comp`) and composited by `volumetric_cloud/apply.comp`, which also hands the cloud
 transmittance to the star pass.
 

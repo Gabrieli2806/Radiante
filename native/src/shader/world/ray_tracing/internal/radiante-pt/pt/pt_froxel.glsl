@@ -1,26 +1,32 @@
 #ifndef VPT_PT_FROXEL_GLSL
 #define VPT_PT_FROXEL_GLSL
 
-// Volumetric fog in the world grids (common/froxel_fog.glsl): this thread's share of the cells relit this frame, and
-// each pixel's march through the grids. Only compiled with the fog's grid on. The grids are declared here rather
-// than in pt_bindings.glsl (see the note there).
+// Volumetric fog in the world grids (common/froxel_fog.glsl): this thread's share of the cells relit this frame.
+// Each pixel's march through the grids is froxel/march.comp's (common/fog_march.glsl), after this pass. Only
+// compiled with the fog's grid on. The grids are declared here rather than in pt_bindings.glsl (see the note there).
 
 #if VPT_FROXEL_ACTIVE
 #    include "common/froxel_fog.glsl"
 #    include "common/block_light_data.glsl"
+#    include "common/fog_march.glsl"
 
-// Written where this pass relights a cell, and read through the samplers by every pixel's march in the same pass: a
-// pixel may read a cell another thread is rewriting, and either value is that cell's light, a frame apart.
+// Written where this pass relights a cell; froxel/march.comp reads them through samplers after the pass.
 layout(set = 5, binding = 40, rgba16f) uniform image3D fogSunNearImage;
 layout(set = 5, binding = 41, rgba16f) uniform image3D fogBlockNearImage;
 layout(set = 5, binding = 46, rgba16f) uniform image3D fogSunFarImage;
 layout(set = 5, binding = 49, rgba16f) uniform image3D fogBlockFarImage;
-layout(set = 5, binding = 42) uniform sampler3D fogSunNearTexture;
-layout(set = 5, binding = 43) uniform sampler3D fogBlockNearTexture;
-layout(set = 5, binding = 47) uniform sampler3D fogSunFarTexture;
+// Per pixel, what froxel/march.comp needs to march its fog (common/fog_march.glsl, fogMarchRecord*).
+layout(set = 5, binding = 50, rgba32ui) uniform writeonly uimage2D fogMarchRecordImage;
 
-// How much of the block lights the air scatters: a soft glow, not a lit wall of haze across a street of signs.
-const float FROXEL_BLOCK_LIGHT_GLOW = 0.12;
+void clearFogMarchRecord(ivec2 pixel) {
+    imageStore(fogMarchRecordImage, pixel, uvec4(0u));
+}
+
+void writeFogMarchRecord(ivec2 pixel, float distance, bool hitSky, float biomeReach, vec3 glassTint,
+                         bool transparentSplit) {
+    imageStore(fogMarchRecordImage, pixel, fogMarchRecordOf(distance, hitSky, biomeReach, glassTint, transparentSplit));
+}
+
 
 // Light reaching a point in the air from the block lights around it (torches, lanterns, glowstone...), picked as the
 // surfaces pick them (block_light.glsl) but without a surface: the fog glows around each light.
@@ -104,113 +110,12 @@ vec3 froxelBlockLight(vec3 position, inout uint seed) {
     return VPT_INDIRECT_LIGHT_STRENGTH * worldUBO.emissionBrightness * estimate * visibility;
 }
 
-// How far above a point its light is taken from when the point stands for open air (see froxelFog's tail): over
-// every building and hill.
-const float FROXEL_OPEN_AIR_LIFT = 500.0;
-// Past the fog's range, over how many blocks a shadow at its far edge fades out of the air behind it.
-const float FROXEL_TAIL_SHADOW_REACH = 24.0;
-
 // How much of a cell's light each fresh look brings in once it has had a few (before that, an even average of its
-// looks). A cell in view is looked at every fourth frame and one out of view every sixteenth, at another point in it
-// each time: at 0.1 its light averages about ten points, half a second at 60 fps.
+// looks). A fine cell in view within 16 blocks is looked at every fourth frame, one further out every eighth, and one
+// out of view or in the coarse grid every sixteenth, at another point in it each time: at 0.1 its light averages
+// about ten points, half a second at 60 fps near the camera.
 const float FOG_VOLUME_BLEND = 0.1;
 const float FOG_VOLUME_MAX_LOOKS = 64.0;
-// Steps each pixel takes through the grids, packed near the camera (fewer over a short stretch, two a block). The
-// grids are smooth between cells, so the steps only need to be about a cell apart where the cells are.
-const int FOG_VOLUME_STEPS = 24;
-// Over how many fine cells (two a block) the fine grid hands over to the coarse one at its edge.
-const float FOG_VOLUME_HANDOVER = 4.0;
-
-// The medium a pixel's ray crosses, as factors of what reaches each point: the light it scatters towards the eye per
-// block is sun * (sunAir + sunShaft * shaftFade + (sunFog + sunFog2 * h) * h) + sky * (skyAir + skyFog * h)
-// + block * (blockAir + blockShaft * shaftFade + blockFog * h), with h the biome fog's height profile and shaftFade
-// the light shafts' fade with distance.
-struct FogMedium {
-    vec3 sunAir;
-    float sunShaft;
-    vec3 sunFog;
-    vec3 sunFog2;
-    vec3 skyAir;
-    vec3 skyFog;
-    vec3 blockAir;
-    float blockShaft;
-    vec3 blockFog;
-};
-
-// Whether there is anything in the air to light: Bedrock's fog without light shafts and without the pack's fog has
-// none, and its cells are then left alone.
-bool fogVolumeHasMedium() {
-#if VPT_BEDROCK_FOG != 0
-    float shafts = max(VPT_LIGHT_SHAFTS, 0.0) * max(skyUBO.fogControls.z, 0.0);
-    float fog = biomeFogDensity() * max(skyUBO.biomeFog.r, max(skyUBO.biomeFog.g, skyUBO.biomeFog.b));
-    return shafts > 0.0 || fog > 0.0;
-#else
-    return true;
-#endif
-}
-
-FogMedium fogMedium(vec3 rayDir) {
-    FogMedium medium;
-    vec3 lightDir = celestialLightDirection();
-    float cosTheta = clamp(dot(rayDir, lightDir), -1.0, 1.0);
-    float shaftPhase = mix(INV_4_PI, min(henyeyGreenstein(cosTheta, 0.5), 2.0), 0.5);
-#if VPT_BEDROCK_FOG != 0
-    // Bedrock RTX's volumetric fog (observed structure): the pack's air medium, lit by the sun with
-    // Henyey-Greenstein scattering normalised by 1/pi, and by the sky; the sunlit part scales with the square of the
-    // height profile, the sky part with it once. The anisotropy g is a run-time value in Bedrock (UNKNOWN;
-    // VPT_BEDROCK_FOG_G). Light shafts as Radiante's own air has them: the air near the camera scatters the sunlight
-    // it is lit by, sun only, so a dark room stays dark around the beam; Light Shafts and Volumetric Fog Strength set
-    // how much. (The pack's fog alone is zero without Biome Ambiance, and a few thousandths a block with it.)
-    vec3 sigmaS = biomeFogChroma() * biomeFogDensity() * clamp(skyUBO.biomeFog.rgb, vec3(0.0), vec3(1.0));
-    float g = clamp(VPT_BEDROCK_FOG_G, -0.95, 0.95);
-    float phase = (1.0 - g * g) / pow(abs(1.0 + g * g - 2.0 * g * cosTheta), 1.5) / PI;
-    medium.sunAir = vec3(0.0);
-    medium.sunShaft = max(VPT_LIGHT_SHAFTS, 0.0) * max(skyUBO.fogControls.z, 0.0) * shaftPhase;
-    // In full rain the sun is gone (sampleVolumetricDirectionalLight).
-    if (skyUBO.rainGradient >= 0.98) { medium.sunShaft = 0.0; }
-    medium.sunFog = vec3(0.0);
-    medium.sunFog2 = sigmaS * phase;
-    medium.skyAir = vec3(0.0);
-    medium.skyFog = sigmaS * biomeFogAmbient(rayDir) / PI;
-    medium.blockAir = vec3(0.0);
-    medium.blockShaft = 0.0;
-    medium.blockFog = vec3(0.0);
-#else
-    // Radiante's own air (the per-pixel march's medium, integrateVolumetricFog): the air, its light shafts and the
-    // biome's fog. Block lights scatter evenly in every direction, by the shafts' density near the camera, the
-    // biome's fog and the air.
-    vec3 sigmaS;
-    vec3 sigmaT;
-    volumetricAirMedium(cosTheta, sigmaS, sigmaT);
-    float airDensity = volumetricAirDensity();
-    float fogStrength = max(skyUBO.fogControls.z, 0.0);
-    vec3 airSigmaS = sigmaS * airDensity * max(VPT_VOLUMETRIC_LIGHT_SCATTERING_STRENGTH, 0.0) * fogStrength;
-    vec3 airSigmaT = sigmaT * airDensity * 0.45 * fogStrength;
-    vec3 biome = biomeFogChroma() * biomeFogDensity() * clamp(skyUBO.biomeFog.rgb, vec3(0.0), vec3(1.5));
-    float biomePhase = mix(INV_4_PI, min(henyeyGreenstein(cosTheta, VPT_BIOME_FOG_FORWARD), 4.0), 0.6);
-    vec3 ambient = biomeFogAmbient(rayDir);
-    float glow = INV_4_PI * FROXEL_BLOCK_LIGHT_GLOW;
-    medium.sunAir = airSigmaS;
-    medium.sunShaft = max(VPT_LIGHT_SHAFTS, 0.0) * shaftPhase;
-    medium.sunFog = biome * biomePhase * max(VPT_BIOME_FOG_SCATTERING, 0.0);
-    medium.sunFog2 = vec3(0.0);
-    medium.skyAir = ambient * airSigmaT * 0.35;
-    medium.skyFog = ambient * biome;
-    medium.blockAir = airSigmaT * 0.35 * glow;
-    medium.blockShaft = max(VPT_LIGHT_SHAFTS, 0.0) * glow;
-    medium.blockFog = biome * glow;
-#endif
-    return medium;
-}
-
-vec3 fogMediumSource(FogMedium medium, vec3 position, float distance, vec4 sunSky, vec3 block) {
-    float h = biomeFogHeightProfile(position.y + float(worldUBO.cameraPos.y));
-    float shaftFade = 1.0 - smoothstep(LIGHT_SHAFT_REACH * 0.6, LIGHT_SHAFT_REACH, distance);
-    return sunSky.rgb * (medium.sunAir + medium.sunShaft * shaftFade + (medium.sunFog + medium.sunFog2 * h) * h) +
-           sunSky.a * (medium.skyAir + medium.skyFog * h) +
-           block * (medium.blockAir + medium.blockShaft * shaftFade + medium.blockFog * h);
-}
-
 // Relights one cell: the sun through a shadow ray, the sky straight up and (fine grid, Radiante's air) one block
 // light, each from a point that steps through the cell from one look to the next, blended into what the cell held.
 void relightFogCell(int cascade, ivec3 relative, ivec3 cameraCell, vec3 cameraFraction, bool needSky) {
@@ -232,6 +137,13 @@ void relightFogCell(int cascade, ivec3 relative, ivec3 cameraCell, vec3 cameraFr
     vec4 clip = worldUBO.cameraProjMat * (worldUBO.cameraEffectedViewMat * vec4(centre, 1.0));
     bool inView = all(lessThan(abs(clip.xy), vec2(max(clip.w, 0.0) * 1.2 + 2.0 * cellSize)));
     if (!inView && looks > 0.0 && ((worldUBO.frameCounter >> 2u) & 3u) != 0u) { return; }
+    // Further out, where a cell is a smaller part of the view and the light changes no faster: in view beyond 16
+    // blocks every eighth frame, and the coarse grid every sixteenth.
+    uint visitCount = worldUBO.frameCounter >> 2u;
+    if (looks > 0.0 && cascade == 1 && (visitCount & 3u) != 0u) { return; }
+    if (looks > 0.0 && cascade == 0 && dot(centre, centre) > 256.0 && (visitCount & 1u) != 0u) { return; }
+    // Nothing past the air's reach is ever read (fogVolumeReach); a cell there keeps what it had.
+    if (looks > 0.0 && length(centre) > fogVolumeReach() + 2.0 * cellSize) { return; }
 
     // Where in the cell it is lit this time: a fixed offset per world cell stepped along the R3 sequence each time
     // the cell comes round, so the average is over points spread evenly through the cell, not white noise. A
@@ -316,154 +228,6 @@ void shadeFroxels() {
     }
 }
 
-// Where the camera is in both grids, for reading them.
-struct FogGrids {
-    vec3 nearFraction;
-    vec3 nearOrigin;
-    vec3 farFraction;
-    vec3 farOrigin;
-};
-
-FogGrids fogGrids() {
-    FogGrids grids;
-    ivec3 nearCell = fogVolumeCameraCell(worldUBO.cameraPos.xyz, 0, grids.nearFraction);
-    ivec3 farCell = fogVolumeCameraCell(worldUBO.cameraPos.xyz, 1, grids.farFraction);
-    // The camera's cell's texel (the sampler wraps round, as the grid does).
-    grids.nearOrigin = vec3(fogVolumeTexel(nearCell));
-    grids.farOrigin = vec3(fogVolumeTexel(farCell));
-    return grids;
-}
-
-// What reaches a point (camera-relative) from the grids: the sun (rgb) and the sky (a), and the block lights. The fine
-// grid where it reaches, handing over to the coarse one at its edge; past the coarse one, its edge.
-void fogGridLight(FogGrids grids, vec3 position, out vec4 sunSky, out vec3 block) {
-    const vec3 inner = vec3(FOG_VOLUME_EXTENT / 2) - 0.5;
-    vec3 near = grids.nearFraction + position / FOG_VOLUME_NEAR_CELL;
-    vec3 edge = inner - abs(near);
-    float nearWeight = clamp(min(edge.x, min(edge.y, edge.z)) / FOG_VOLUME_HANDOVER, 0.0, 1.0);
-    sunSky = vec4(0.0);
-    block = vec3(0.0);
-    if (nearWeight < 1.0) {
-        vec3 far = clamp(grids.farFraction + position / FOG_VOLUME_FAR_CELL, -inner, inner);
-        sunSky = textureLod(fogSunFarTexture, (grids.farOrigin + far) / vec3(FOG_VOLUME_EXTENT), 0.0);
-    }
-    if (nearWeight > 0.0) {
-        vec3 uvw = (grids.nearOrigin + near) / vec3(FOG_VOLUME_EXTENT);
-        sunSky = mix(sunSky, textureLod(fogSunNearTexture, uvw, 0.0), nearWeight);
-#if VPT_BEDROCK_FOG == 0
-        block = textureLod(fogBlockNearTexture, uvw, 0.0).rgb * nearWeight;
-#endif
-    }
-    if (!finiteVec3(sunSky.rgb) || !finiteFloat(sunSky.a)) { sunSky = vec4(0.0); }
-    if (!finiteVec3(block)) { block = vec3(0.0); }
-    sunSky = max(sunSky, vec4(0.0));
-    block = max(block, vec3(0.0));
-}
-
-// A step's distance, as a share w of the march: packed near the camera, as Bedrock's slices are over its 50 blocks
-// (5 (11^w - 1)), and about even over a short stretch.
-float fogMarchDistance(float w, float marchEnd) {
-    float curve = max(marchEnd / 5.0, 1e-3);
-    return marchEnd * (pow(curve + 1.0, w) - 1.0) / curve;
-}
-
-// The fog between the camera and endDistance along this pixel's ray, marched through the grids; past the fog's range
-// the medium carries on lit as its far edge. Every step reads the light where it lies in the world, so turning the
-// camera only changes which rays are marched, not the light they cross. The steps start at an offset that changes
-// from pixel to pixel and frame to frame, which the upscaler's history averages out.
-void froxelFog(vec3 origin, vec3 rayDir, vec2 uv, float endDistance, float biomeReach, bool hitSky,
-               out vec3 transmittance, out vec3 radiance) {
-    transmittance = vec3(1.0);
-    radiance = vec3(0.0);
-    if (!finiteFloat(endDistance) || endDistance <= 0.05 || !fogVolumeHasMedium()) { return; }
-    float range = froxelRange();
-    float marchEnd = min(endDistance, range);
-    FogMedium medium = fogMedium(rayDir);
-    FogGrids grids = fogGrids();
-    int steps = clamp(int(ceil(marchEnd * 2.0)), 4, FOG_VOLUME_STEPS);
-    vec2 pixel = vec2(gl_LaunchIDEXT.xy);
-    float offset = fract(52.9829189 * fract(dot(pixel, vec2(0.06711056, 0.00583715))) +
-                         float(worldUBO.frameCounter & 1023u) * 0.6180339887);
-
-    vec3 inscatter = vec3(0.0);
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0 && VPT_BEDROCK_FOG != 0
-    vec3 rgbTransmittance = vec3(1.0);
-#else
-    float t = 1.0;
-#endif
-    float previous = 0.0;
-    for (int i = 0; i < steps; i++) {
-        float next = fogMarchDistance(float(i + 1) / float(steps), marchEnd);
-        float distance = fogMarchDistance((float(i) + offset) / float(steps), marchEnd);
-        float stepLength = max(next - previous, 0.0);
-        previous = next;
-        vec3 position = origin + rayDir * distance;
-        vec4 sunSky;
-        vec3 block;
-        fogGridLight(grids, position, sunSky, block);
-        vec3 source = fogMediumSource(medium, position, distance, sunSky, block);
-        float worldY = position.y + float(worldUBO.cameraPos.y);
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0 && VPT_BEDROCK_FOG != 0
-        inscatter += rgbTransmittance * source * stepLength;
-        rgbTransmittance *= exp(-froxelBedrockExtinctionRGB(worldY) * stepLength);
-#else
-        float extinction = froxelExtinction(worldY);
-        float stepTransmittance = exp(-extinction * stepLength);
-        inscatter += t * source * (1.0 - stepTransmittance) / extinction;
-        t *= stepTransmittance;
-#endif
-    }
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0 && VPT_BEDROCK_FOG != 0
-    if (!finiteVec3(inscatter) || !finiteVec3(rgbTransmittance)) { return; }
-    radiance = max(inscatter, vec3(0.0));
-    transmittance = clamp(rgbTransmittance, vec3(0.0), vec3(1.0));
-#else
-    if (!finiteVec3(inscatter) || !finiteFloat(t)) { return; }
-    radiance = max(inscatter, vec3(0.0));
-
-    // Past the range the medium carries on, lit as the grids have it at the range's edge. (Bedrock's own fog was
-    // taken to stop at its volume's far edge, 50 blocks out: every hill beyond stood equally clear behind a fogged
-    // foreground, and with the haze as faint as it now is, 50 blocks of it showed nothing of a biome's air at all.)
-    float tail = max(max(endDistance, biomeReach) - range, 0.0);
-    if (tail > 0.0 && t > 1e-3) {
-        vec3 edgePosition = origin + rayDir * range;
-        vec4 sunSky;
-        vec3 block;
-        fogGridLight(grids, edgePosition, sunSky, block);
-        vec3 far = max(fogMediumSource(medium, edgePosition, range, sunSky, block), vec3(0.0));
-        float extinction = froxelExtinction(edgePosition.y + float(worldUBO.cameraPos.y));
-        float tailTransmittance = exp(-extinction * tail);
-        float tailDepth = (1.0 - tailTransmittance) / extinction;
-        vec3 tailLight = far * tailDepth;
-        if (hitSky) {
-            // Towards the sky the air behind the range is open: a shadow that falls on its far edge does not run on
-            // through all of it. Lit whole as that edge, a tower between the camera and the sun stood a second time
-            // in the sky, a dark, stepped copy of itself cut out of the haze around the sun. The edge's own light
-            // fades into the open air's over FROXEL_TAIL_SHADOW_REACH.
-            float edgeRate = extinction + 1.0 / FROXEL_TAIL_SHADOW_REACH;
-            float edgeDepth = (1.0 - exp(-edgeRate * tail)) / edgeRate;
-            vec3 lightDir = celestialLightDirection();
-            vec3 openSun = vec3(0.0);
-            if (skyUBO.rainGradient < 0.98) {
-                openSun = sampleVolumetricDirectionalLight(edgePosition + lightDir * FROXEL_OPEN_AIR_LIFT, lightDir,
-                                                           false);
-#    if VPT_BEDROCK_FOG == 0
-                openSun *= volumetricCloudLightVisibility(edgePosition + vec3(worldUBO.cameraPos.xyz), lightDir, 2,
-                                                          0.175);
-#    endif
-            }
-            vec3 open = fogMediumSource(medium, edgePosition, range, vec4(openSun, 1.0), vec3(0.0));
-            if (finiteVec3(open)) { tailLight = far * edgeDepth + max(open, vec3(0.0)) * (tailDepth - edgeDepth); }
-        }
-        if (finiteVec3(tailLight)) {
-            radiance += t * tailLight;
-            t *= tailTransmittance;
-        }
-    }
-    radiance = softClampVolumetricLight(radiance);
-    transmittance = vec3(t);
-#endif
-}
 #endif
 
 #endif // VPT_PT_FROXEL_GLSL

@@ -196,6 +196,8 @@ void main() {
 #endif
 #if VPT_FROXEL_ACTIVE && !(SHARC_UPDATE && USE_SHARC)
     shadeFroxels();
+    // No fog for this pixel unless it gets that far (several paths return early); see writeFogMarchRecord.
+    clearFogMarchRecord(pixel);
 #endif
     vec2 resolution = vec2(gl_LaunchSizeEXT.xy);
 #if SHARC_UPDATE && USE_SHARC
@@ -1262,6 +1264,17 @@ void main() {
     bool applyVolumetricCompose =
         useVolumetricFog && !raySkipFog(mainRay) && skyUBO.cameraSubmersionType != 1 && !cameraInMedium &&
         worldUBO.skyType == 1 && skyUBO.hasBlindnessOrDarkness == 0;
+#if VPT_FROXEL_ACTIVE
+    if (applyVolumetricCompose) {
+        // The march through the fog's world grids runs after this pass (froxel/march.comp), from what is kept here,
+        // and folds the fog into this pixel's radiance and composed fog as the per-pixel march below does.
+        float volumetricDistance = surfaceDepth == INF_DISTANCE ? volumetricMediumMaxDistance() : surfaceDepth;
+        float biomeReach =
+            biomeFogReach(orgDirection, surfaceDepth == INF_DISTANCE, surfaceDepth == INF_DISTANCE ? 0.0 : surfaceDepth);
+        writeFogMarchRecord(ivec2(pixel), volumetricDistance, surfaceDepth == INF_DISTANCE, biomeReach,
+                            fogGlassTint(volumetricDistance), useTransparentSplit);
+    }
+#else
     if (applyVolumetricCompose) {
         // Only as far as the first surface, as the biome haze: a ray carried on off water or glass crosses its own
         // air, and marching the whole reflected or refracted length hid every pool under a white wall of fog.
@@ -1270,13 +1283,8 @@ void main() {
         vec3 volumetricLight;
         float biomeReach =
             biomeFogReach(orgDirection, surfaceDepth == INF_DISTANCE, surfaceDepth == INF_DISTANCE ? 0.0 : surfaceDepth);
-#if VPT_FROXEL_ACTIVE
-        froxelFog(eyePos, orgDirection, pixelCenter / resolution, volumetricDistance, biomeReach,
-                  surfaceDepth == INF_DISTANCE, volumetricTransmittance, volumetricLight);
-#else
         integrateVolumetricFog(eyePos, orgDirection, volumetricDistance, biomeReach, rayInsideBoat(mainRay),
                                volumetricTransmittance, volumetricLight);
-#endif
         volumetricLight *= fogGlassTint(volumetricDistance);
         mainRay.radiance = mainRay.radiance * volumetricTransmittance + volumetricLight;
 #if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0 && VPT_BEDROCK_FOG != 0
@@ -1298,6 +1306,7 @@ void main() {
         }
 #endif
     }
+#endif
     bool isFirstHitSpecular = useTransparentSplit ? hasTransparentReflection :
                                                     (isFirstHitNoisy && !isFirstHitDiffuse && !isFirstHitRefraction);
     float specHitDepth = 0.0;
@@ -1339,6 +1348,9 @@ void main() {
         imageStore(fogImage, ivec2(pixel), vec4(0.0, 0.0, 0.0, -1.0));
 #endif
         imageStore(outputImage, ivec2(pixel), vec4(glowRadiance, 1.0));
+#if VPT_FROXEL_ACTIVE && !(SHARC_UPDATE && USE_SHARC)
+        clearFogMarchRecord(ivec2(pixel));
+#endif
         return;
     }
     imageStore(outputImage, ivec2(pixel), vec4(mainRay.radiance + nightVisionAmbient, 1.0));

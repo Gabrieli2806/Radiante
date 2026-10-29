@@ -17,17 +17,7 @@
 // biome's vanilla fog colour.
 const float BIOME_HAZE_MAX_DISTANCE = 320.0;
 
-// How thick the haze is at a world height: full below biomeFogHeights.x, thinning to nothing at .y. Bedrock RTX fogs
-// settle in the valleys this way; Radiante's own haze puts both heights far above the world.
-float biomeFogHeightProfile(float worldY) {
-    vec2 heights = skyUBO.biomeFogHeights.xy;
-    return clamp((heights.y - worldY) / max(heights.y - heights.x, 1.0), 0.0, 1.0);
-}
-
-// Extinction per channel relative to biomeFog.a: a fog that absorbs more blue than red turns the distance warm.
-vec3 biomeFogChroma() {
-    return max(skyUBO.biomeFogChroma.rgb, vec3(0.0));
-}
+#include "common/biome_fog_profile.glsl"
 
 // How far a sky ray runs through the biome haze. The haze is a layer that thins out to nothing at biomeFogHeights.y,
 // so a ray rising at an angle crosses about half of what is left of it over the camera, divided by the sine of that

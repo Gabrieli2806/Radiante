@@ -1079,6 +1079,15 @@
             "storage_binding": 49
         },
         {
+            "name": "fog_march_record",
+            "type": "intermediate",
+            "shared": true,
+            "format": "R32G32B32A32_UINT",
+            "width": "RENDER_WIDTH",
+            "height": "RENDER_HEIGHT",
+            "storage_binding": 50
+        },
+        {
             "name": "radiante_debug_view",
             "type": "intermediate",
             "shared": true,
@@ -1144,6 +1153,25 @@
             },
             {
                 "pass": "world"
+            },
+            {
+                "if_else": {
+                    "condition": "VPT_FROXEL_FOG",
+                    "then": [
+                        {
+                            "if_else": {
+                                "condition": "VPT_VOLUMETRIC_LIGHT_MODE == 1",
+                                "then": [
+                                    {
+                                        "pass": "fog_march"
+                                    }
+                                ],
+                                "else": []
+                            }
+                        }
+                    ],
+                    "else": []
+                }
             },
             {
                 "if_else": {
@@ -1418,6 +1446,7 @@
                     "fog_block_near",
                     "fog_sun_far",
                     "fog_block_far",
+                    "fog_march_record",
                     "out:fog_transmission"
                 ]
             },
@@ -1544,6 +1573,30 @@
                     "shader": "world/world_no_volumetric.rmiss"
                 }
             ]
+        },
+        {
+            "type": "compute",
+            "name": "fog_march",
+            "inputs": {
+                "images": [
+                    "sky_cube",
+                    "fog_sun_near",
+                    "fog_block_near",
+                    "fog_sun_far",
+                    "fog_march_record"
+                ]
+            },
+            "outputs": {
+                "images": [
+                    "out:radiance",
+                    "out:fog_image",
+                    "out:fog_transmission"
+                ]
+            },
+            "compute": "froxel/march.comp",
+            "gx": "(RENDER_WIDTH + 7) / 8",
+            "gy": "(RENDER_HEIGHT + 7) / 8",
+            "gz": "1"
         },
         {
             "type": "compute",
