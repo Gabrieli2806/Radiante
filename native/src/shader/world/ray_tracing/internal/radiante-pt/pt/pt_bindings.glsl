@@ -130,8 +130,8 @@ layout(set = 5, binding = VPT_RESTIR_BINDING, rgba32f) uniform image2DArray vptR
 #    define PT_DECLARES_RESTIR_IMAGE 1
 #endif
 
-// The volumetric fog's world grids (set 5 bindings 40 to 43, 46, 47, 49) are declared in pt_froxel.glsl, after
-// common/froxel_fog.glsl and block_light_data.glsl: they exist only with the fog's grid on, and declared here they would
+// Froxel fog's three grids (set 5 bindings 40, 42, 47) are declared in pt_froxel.glsl, after common/froxel_fog.glsl
+// and block_light_data.glsl as they always were: they exist only with froxel fog on, and declared here they would
 // reorder the unused resources of the SHaRC update variant in unoptimised SPIR-V.
 
 #endif // VPT_PT_BINDINGS_GLSL

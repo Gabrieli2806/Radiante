@@ -1,21 +1,15 @@
 #ifndef VPT_FROXEL_FOG_GLSL
 #define VPT_FROXEL_FOG_GLSL
 
-// Volumetric fog's light, kept in the world (the "froxel" fog of the settings; the name stayed when the grid moved).
+// Froxel fog: the air in front of the camera is cut into a grid of
+// frustum-aligned cells ("froxels"), each lit once by the sun or moon through a shadow ray, by the sky and by the block
+// lights around it, and kept over frames. A compute pass then integrates the grid front to back, and each pixel reads
+// the fog up to its surface from that integral instead of marching the air itself. Light shafts come out sharper and
+// steadier than the per-pixel march, torches glow in the fog, and it costs far fewer rays.
 //
-// The light in the air around the camera lives in two grids of cells fixed to the world: a fine one of half-block
-// cells reaching 32 blocks out (16 up and down), and a coarse one of two-block cells reaching 128 (64 up and down).
-// Each grid follows the camera a whole cell at a time and wraps around (a cell's texel is its world cell modulo the
-// grid's size), so a cell keeps its light for as long as the camera stays near it, and nothing is ever reprojected.
-// Each cell holds what reaches it, in two textures: the sun or moon through a shadow ray (rgb) and how much of the sky
-// it sees (a); the block lights' glow (rgb, fine grid only) and how many looks the cell has had (a). The world pass relights a share of the cells every frame at points spread through each cell over time, and
-// each pixel then marches its own ray through the grids, filtered by the sampler, with the medium (how thick the air
-// is, how it scatters towards the eye) worked out along the ray itself.
-//
-// It used to be a grid cut along the view (froxels), each cell lit at a point on its own view ray. Turning the camera
-// cut the air into other cells: every cell then stood for another piece of the world, its history was reprojected
-// out of cells of another shape, and the fog moved and changed shape with the view while the player only looked
-// around.
+// froxel_light holds two grids stacked in z (this frame's and last frame's, by frame parity): rgb is the light the
+// cell scatters towards the camera per block, a its extinction per block. froxel_integral holds, per cell, the light
+// scattered in from the camera to the cell's far edge (rgb) and the transmittance over that stretch (a).
 //
 // Needs worldUBO, lastWorldUBO and skyUBO.
 
@@ -30,12 +24,10 @@
 #    define VPT_BEDROCK_FOG_G 0.6
 #endif
 
-// Both grids have this many cells (powers of two: a cell's texel is its world cell masked by size - 1).
-const ivec3 FOG_VOLUME_EXTENT = ivec3(128, 64, 128);
-// Half a block near the camera, so a shaft through a one-block window keeps its edges; two further out.
-const float FOG_VOLUME_NEAR_CELL = 0.5;
-const float FOG_VOLUME_FAR_CELL = 2.0;
-// Bedrock RTX's volume reaches 50 blocks (observed).
+const ivec3 FROXEL_EXTENT = ivec3(160, 90, 64);
+const float FROXEL_SLICE_CURVATURE = 10.0;
+// Bedrock RTX's volume reaches 50 blocks, its slices at 5 * (11^w - 1): the same spacing as below with this range
+// (observed).
 const float BEDROCK_FOG_RANGE = 50.0;
 
 float froxelRange() {
@@ -46,39 +38,65 @@ float froxelRange() {
 #endif
 }
 
-float fogVolumeCellSize(int cascade) {
-    return cascade == 0 ? FOG_VOLUME_NEAR_CELL : FOG_VOLUME_FAR_CELL;
+// Slices are thin near the camera, where shafts are sharp, and thicker further out.
+float froxelDistanceFromW(float w) {
+    float coordinate = clamp(w, 0.0, 1.0);
+    return froxelRange() * (pow(FROXEL_SLICE_CURVATURE + 1.0, coordinate) - 1.0) / FROXEL_SLICE_CURVATURE;
 }
 
-// The world cell the camera is in, and where in it (0 to 1 per axis), for a camera position.
-// The block is split off in double precision once (a floor and a subtraction); the cell sizes are powers of two, so
-// the rest is integer and float work. A double division per pixel cost about a millisecond on GPUs with slow fp64.
-ivec3 fogVolumeCameraCell(dvec3 cameraPos, int cascade, out vec3 fraction) {
-    dvec3 blockFloor = floor(cameraPos);
-    ivec3 block = ivec3(blockFloor);
-    vec3 inBlock = vec3(cameraPos - blockFloor);
-    if (cascade == 0) {
-        vec3 scaled = inBlock * 2.0;
-        vec3 half2 = floor(scaled);
-        fraction = scaled - half2;
-        return block * 2 + ivec3(half2);
-    }
-    // Two-block cells: an arithmetic shift is a floor division for negative blocks too.
-    ivec3 cell = block >> 1;
-    fraction = (vec3(block - cell * 2) + inBlock) * 0.5;
-    return cell;
+float froxelWFromDistance(float distance) {
+    float normalized = max(distance, 0.0) * (FROXEL_SLICE_CURVATURE / froxelRange()) + 1.0;
+    return clamp(log(normalized) / log(FROXEL_SLICE_CURVATURE + 1.0), 0.0, 1.0);
 }
 
-// A world cell's texel: two's complement makes the mask a true modulo for negative cells too.
-ivec3 fogVolumeTexel(ivec3 worldCell) {
-    return worldCell & (FOG_VOLUME_EXTENT - 1);
+// The z offset of the grid written this frame (0 or FROXEL_EXTENT.z); the other one holds last frame's.
+int froxelWriteOffset() {
+    return int(worldUBO.frameCounter & 1u) * FROXEL_EXTENT.z;
 }
 
-// The world cell a texel stands for while the camera is in cameraCell: the grid covers the cells from cameraCell -
-// extent / 2 up to (not including) cameraCell + extent / 2.
-ivec3 fogVolumeCellOfTexel(ivec3 texel, ivec3 cameraCell) {
-    ivec3 low = cameraCell - FOG_VOLUME_EXTENT / 2;
-    return low + ((texel - low) & (FOG_VOLUME_EXTENT - 1));
+int froxelReadOffset() {
+    return FROXEL_EXTENT.z - froxelWriteOffset();
+}
+
+vec3 froxelCameraOrigin() {
+    return worldUBO.cameraEffectedViewMatInv[3].xyz;
+}
+
+// uv as the ray generation shader's pixels have it: (0,0) at the first pixel.
+vec3 froxelRayDirection(vec2 uv) {
+    vec2 ndc = uv * 2.0 - 1.0;
+    vec4 viewPosition = worldUBO.cameraProjMatInv * vec4(ndc, 0.0, 1.0);
+    viewPosition /= viewPosition.w;
+    return normalize(vec3(worldUBO.cameraEffectedViewMatInv * vec4(viewPosition.xyz, 0.0)));
+}
+
+// Where a point (camera-relative, this frame) sat in last frame's grid, as uvw; false off its frustum or range.
+bool froxelReproject(vec3 scenePosition, out vec3 previousUvw) {
+    previousUvw = vec3(0.0);
+    vec3 previousScenePosition = scenePosition + vec3(worldUBO.cameraPos.xyz - lastWorldUBO.cameraPos.xyz);
+    vec4 previousView = lastWorldUBO.cameraEffectedViewMat * vec4(previousScenePosition, 1.0);
+    vec4 previousClip = lastWorldUBO.cameraProjMat * previousView;
+    if (previousClip.w <= 1e-6) { return false; }
+    vec2 previousNdc = previousClip.xy / previousClip.w;
+    if (any(greaterThan(abs(previousNdc), vec2(1.0)))) { return false; }
+    float previousDistance = length(previousView.xyz);
+    previousUvw = vec3(previousNdc * 0.5 + 0.5, froxelWFromDistance(previousDistance));
+    return previousDistance < froxelRange();
+}
+
+// Which cells are lit afresh this frame: a quarter of them, in a 2x2 pattern that shifts every frame and slice.
+uint froxelFreshPattern(int slice) {
+    return (worldUBO.frameCounter + uint(slice)) & 3u;
+}
+
+bool froxelIsFresh(ivec3 cell) {
+    return (uint(cell.x & 1) | (uint(cell.y & 1) << 1u)) == froxelFreshPattern(cell.z);
+}
+
+// The centre of a cell, camera-relative, and the direction to it.
+vec3 froxelCellCenter(ivec3 cell, out vec3 rayDir) {
+    rayDir = froxelRayDirection((vec2(cell.xy) + 0.5) / vec2(FROXEL_EXTENT.xy));
+    return froxelCameraOrigin() + rayDir * froxelDistanceFromW((float(cell.z) + 0.5) / float(FROXEL_EXTENT.z));
 }
 
 #ifndef VPT_ATMOSPHERE_BETA_R
@@ -88,6 +106,8 @@ ivec3 fogVolumeCellOfTexel(ivec3 texel, ivec3 cameraCell) {
 #    define VPT_ATMOSPHERE_BETA_M vec3(0.000021)
 #endif
 
+// The medium's extinction per block at a world height, as the per-pixel march has it (volumetricAirMedium and the
+// biome fog in world.rgen), as one luminance.
 // Keep RGB extinction for original RTX; a luminance scalar cannot represent coloured absorption.
 vec3 froxelBedrockExtinctionRGB(float worldY) {
     vec2 heights = skyUBO.biomeFogHeights.xy;
@@ -96,20 +116,36 @@ vec3 froxelBedrockExtinctionRGB(float worldY) {
     return max(skyUBO.biomeFogChroma.rgb, vec3(0.0)) * density * height;
 }
 
-// The medium's extinction per block at a world height, as the per-pixel march has it (volumetricAirMedium and the
-// biome fog in world.rgen), as one luminance.
 float froxelExtinction(float worldY) {
 #if VPT_BEDROCK_FOG != 0
     // The pack's air: extinction per channel scaled by the height profile (full below max_density_height, none
-    // from zero_density_height up), as one luminance.
-    return max(dot(froxelBedrockExtinctionRGB(worldY), vec3(0.2126, 0.7152, 0.0722)), 1e-6);
+    // from zero_density_height up), as one luminance for the integral.
+    vec2 fogHeights = skyUBO.biomeFogHeights.xy;
+    float height = clamp((fogHeights.y - worldY) / max(fogHeights.y - fogHeights.x, 1.0), 0.0, 1.0);
+    float density = worldUBO.skyType == 1 ? max(skyUBO.biomeFog.a, 0.0) : 0.0;
+    vec3 sigmaT = max(skyUBO.biomeFogChroma.rgb, vec3(0.0)) * density * height;
+    return max(dot(sigmaT, vec3(0.2126, 0.7152, 0.0722)), 1e-6);
 #endif
     float sunHeight = abs(normalize(skyUBO.sunDirection).y);
     float airDensity = mix(1.0, 0.7, smoothstep(0.05, 0.35, sunHeight));
     vec3 betaR = VPT_ATMOSPHERE_BETA_R * 18.0;
     vec3 betaM = VPT_ATMOSPHERE_BETA_M * mix(18.0, 54.0, skyUBO.rainGradient);
     vec3 air = (betaR + betaM * 1.15) * airDensity * 0.45 * max(skyUBO.fogControls.z, 0.0);
-    return max(dot(air + froxelBedrockExtinctionRGB(worldY), vec3(0.2126, 0.7152, 0.0722)), 1e-6);
+    float biomeDensity = worldUBO.skyType == 1 ? max(skyUBO.biomeFog.a, 0.0) : 0.0;
+    vec2 heights = skyUBO.biomeFogHeights.xy;
+    float heightProfile = clamp((heights.y - worldY) / max(heights.y - heights.x, 1.0), 0.0, 1.0);
+    vec3 biome = max(skyUBO.biomeFogChroma.rgb, vec3(0.0)) * biomeDensity * heightProfile;
+    return max(dot(air + biome, vec3(0.2126, 0.7152, 0.0722)), 1e-6);
+}
+
+// Last frame's camera moved too far, turned too much or changed dimension: nothing of its grid carries over.
+bool froxelHistoryUsable() {
+    if (worldUBO.skyType != lastWorldUBO.skyType) { return false; }
+    vec3 cameraDelta = vec3(worldUBO.cameraPos.xyz - lastWorldUBO.cameraPos.xyz);
+    if (any(isnan(cameraDelta)) || length(cameraDelta) > 8.0) { return false; }
+    vec3 forward = normalize(vec3(worldUBO.cameraEffectedViewMatInv * vec4(0.0, 0.0, -1.0, 0.0)));
+    vec3 previousForward = normalize(vec3(lastWorldUBO.cameraEffectedViewMatInv * vec4(0.0, 0.0, -1.0, 0.0)));
+    return dot(forward, previousForward) > 0.5;
 }
 
 #endif

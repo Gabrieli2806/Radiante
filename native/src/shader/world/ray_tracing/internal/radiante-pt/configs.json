@@ -1026,57 +1026,43 @@
             "storage_binding": 35
         },
         {
-            "name": "fog_sun_near",
+            "name": "froxel_light",
             "type": "intermediate",
             "shared": true,
             "dimension": "3d",
             "format": "R16G16B16A16_SFLOAT",
-            "width": 128,
-            "height": 64,
+            "width": 160,
+            "height": 90,
             "depth": 128,
-            "storage_binding": 40,
+            "storage_binding": 40
+        },
+        {
+            "name": "froxel_integral",
+            "type": "intermediate",
+            "shared": true,
+            "dimension": "3d",
+            "format": "R16G16B16A16_SFLOAT",
+            "width": 160,
+            "height": 90,
+            "depth": 64,
+            "storage_binding": 41,
             "sampled_binding": 42,
             "filter": "linear",
-            "address_mode": "repeat"
+            "address_mode": "clamp_to_edge"
         },
         {
-            "name": "fog_block_near",
+            "name": "froxel_transmission",
             "type": "intermediate",
             "shared": true,
             "dimension": "3d",
             "format": "R16G16B16A16_SFLOAT",
-            "width": 128,
-            "height": 64,
-            "depth": 128,
-            "storage_binding": 41,
-            "sampled_binding": 43,
-            "filter": "linear",
-            "address_mode": "repeat"
-        },
-        {
-            "name": "fog_sun_far",
-            "type": "intermediate",
-            "shared": true,
-            "dimension": "3d",
-            "format": "R16G16B16A16_SFLOAT",
-            "width": 128,
-            "height": 64,
-            "depth": 128,
+            "width": 160,
+            "height": 90,
+            "depth": 64,
             "storage_binding": 46,
             "sampled_binding": 47,
             "filter": "linear",
-            "address_mode": "repeat"
-        },
-        {
-            "name": "fog_block_far",
-            "type": "intermediate",
-            "shared": true,
-            "dimension": "3d",
-            "format": "R16G16B16A16_SFLOAT",
-            "width": 128,
-            "height": 64,
-            "depth": 128,
-            "storage_binding": 49
+            "address_mode": "clamp_to_edge"
         },
         {
             "name": "radiante_debug_view",
@@ -1132,7 +1118,7 @@
                                 "condition": "VPT_VOLUMETRIC_LIGHT_MODE == 1",
                                 "then": [
                                     {
-                                        "pass": "fog_volume_shift"
+                                        "pass": "froxel_carry"
                                     }
                                 ],
                                 "else": []
@@ -1144,6 +1130,25 @@
             },
             {
                 "pass": "world"
+            },
+            {
+                "if_else": {
+                    "condition": "VPT_FROXEL_FOG",
+                    "then": [
+                        {
+                            "if_else": {
+                                "condition": "VPT_VOLUMETRIC_LIGHT_MODE == 1",
+                                "then": [
+                                    {
+                                        "pass": "froxel_integrate"
+                                    }
+                                ],
+                                "else": []
+                            }
+                        }
+                    ],
+                    "else": []
+                }
             },
             {
                 "if_else": {
@@ -1357,23 +1362,21 @@
         },
         {
             "type": "compute",
-            "name": "fog_volume_shift",
+            "name": "froxel_carry",
             "inputs": {
                 "images": [
-                    "fog_sun_far"
+                    "froxel_light"
                 ]
             },
             "outputs": {
                 "images": [
-                    "fog_sun_near",
-                    "fog_block_near",
-                    "fog_block_far"
+                    "froxel_light"
                 ]
             },
-            "compute": "froxel/shift.comp",
-            "gx": "16",
-            "gy": "8",
-            "gz": "256"
+            "compute": "froxel/carry.comp",
+            "gx": "20",
+            "gy": "12",
+            "gz": "64"
         },
         {
             "type": "ray_tracing",
@@ -1388,9 +1391,8 @@
                     "volumetric_cloud_weather",
                     "volumetric_cloud_curl",
                     "volumetric_cloud_coverage_noise",
-                    "fog_sun_near",
-                    "fog_block_near",
-                    "fog_sun_far"
+                    "froxel_integral",
+                    "froxel_transmission"
                 ]
             },
             "outputs": {
@@ -1414,10 +1416,7 @@
                     "material_state",
                     "restir_reservoir",
                     "restir_gi_reservoir",
-                    "fog_sun_near",
-                    "fog_block_near",
-                    "fog_sun_far",
-                    "fog_block_far",
+                    "froxel_light",
                     "out:fog_transmission"
                 ]
             },
@@ -1544,6 +1543,25 @@
                     "shader": "world/world_no_volumetric.rmiss"
                 }
             ]
+        },
+        {
+            "type": "compute",
+            "name": "froxel_integrate",
+            "inputs": {
+                "images": [
+                    "froxel_light"
+                ]
+            },
+            "outputs": {
+                "images": [
+                    "froxel_integral",
+                    "froxel_transmission"
+                ]
+            },
+            "compute": "froxel/integrate.comp",
+            "gx": "20",
+            "gy": "12",
+            "gz": "1"
         },
         {
             "type": "compute",
