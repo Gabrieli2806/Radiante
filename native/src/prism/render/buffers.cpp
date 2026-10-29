@@ -261,6 +261,12 @@ void Buffers::setAndUploadSkyUniformBuffer(const gpu::Data::SkyUBO &ubo) {
     std::scoped_lock lock(mutex_);
     auto &buffer = ensureUniform(uniforms_[frame].sky, *framework, sizeof(ubo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
     write(*buffer, &ubo, sizeof(ubo));
+    cameraSubmersionType_ = ubo.cameraSubmersionType;
+}
+
+uint32_t Buffers::cameraSubmersionType() {
+    std::scoped_lock lock(mutex_);
+    return cameraSubmersionType_;
 }
 
 void Buffers::setAndUploadTextureMappingBuffer(const gpu::Data::TextureMapping &mapping) {

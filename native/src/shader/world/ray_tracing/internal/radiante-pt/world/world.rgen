@@ -714,6 +714,9 @@ void main() {
             } else {
                 waterMediumSegment(waterDistance, cameraWaterDensity, waterTransmittance, waterScatter);
             }
+            // By day what lies behind the water was lit by daylight that came down through the water above the camera
+            // first (underwaterDaylightColumn); the water's own glow already is (waterMediumIncomingLight).
+            waterTransmittance *= underwaterDaylightColumn();
 #endif
             // Lit by the sky above: the camera's water under a roof or in a cave does not glow with it.
             waterScatter *= mix(0.35, 1.0, volumetricSkyVisibility(eyePos, false));
@@ -775,7 +778,11 @@ void main() {
                             mix(0.2, 1.0, skyOverWater);
             // The deeper the camera, the less of the sky's light is left in the water around it: the colour the
             // view fades into darkens on the way down, sooner in water one sees less far in.
-            if (biomeWater) { ambient *= exp(-waterCameraDepth() * UNDERWATER_DEPTH_DIMMING / visibility); }
+            // By day that light has crossed the water above the camera at the water's own absorption (Beer-Lambert),
+            // which darkens it much sooner than the dimming kept for the night, whose look it leaves as it was.
+            float depthDimming = biomeWater ? exp(-waterCameraDepth() * UNDERWATER_DEPTH_DIMMING / visibility) : 1.0;
+            float dayColumn = dot(underwaterDaylightColumn(), vec3(0.2126, 0.7152, 0.0722));
+            ambient *= min(depthDimming, dayColumn);
             vec3 fogLight = fogTint * ambient * UNDERWATER_FOG_LIGHT;
             if (useTransparentSplit) {
                 transparentReflectionRadiance *= clearness;

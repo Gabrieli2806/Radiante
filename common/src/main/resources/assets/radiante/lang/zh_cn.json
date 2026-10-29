@@ -332,6 +332,8 @@
   "options.radiante.tunable.water_density.tooltip": "水下视线随距离消失的速度。越低越清澈。",
   "options.radiante.tunable.water_god_rays": "水下光束",
   "options.radiante.tunable.water_god_rays.tooltip": "身处水下时穿过水面的阳光光束。",
+  "options.radiante.tunable.underwater_camera_effects": "水下镜头效果",
+  "options.radiante.tunable.underwater_camera_effects.tooltip": "头部在水下时的轻微晃动、边缘柔化、暗角和淡淡的阳光焦散。越低越轻微，0% 关闭。",
   "options.radiante.apply": "应用",
   "options.radiante.apply.tooltip": "立即应用更改并保持界面打开。",
   "options.radiante.undo": "撤销",

@@ -31,6 +31,23 @@
 #ifndef UNDERWATER_DEPTH_DIMMING
 #    define UNDERWATER_DEPTH_DIMMING 0.5
 #endif
+// By day, the daylight that lights what the camera sees under water has come down through the water above it first
+// (Beer-Lambert, at the water's own absorption per block): this many blocks of it at the very surface, for the way
+// down to what is seen and back, plus the camera's depth below the surface; and how strongly that water absorbs
+// against the water's coefficients. The eye holds the exposure it had above water (exposure.comp), so without it the
+// view under a noon sky stayed as bright as the land above, a pale wash instead of a dim blue-green that darkens on
+// the way down. At night it is left out: the night look under water was already right, and the little light there is
+// is mostly the blocks' own near the camera.
+#ifndef UNDERWATER_DAY_COLUMN
+#    define UNDERWATER_DAY_COLUMN 2.0
+#endif
+#ifndef UNDERWATER_DAY_ABSORPTION
+#    define UNDERWATER_DAY_ABSORPTION 1.5
+#endif
+// The least of the daylight left, per channel, however deep: the floor of a deep ocean still shows by day.
+#ifndef UNDERWATER_DAY_MIN_LIGHT
+#    define UNDERWATER_DAY_MIN_LIGHT 0.03
+#endif
 
 // Lava and powder snow are as thick as vanilla's fog in them says: what gets through at the distance where vanilla's
 // fog ends (worldUBO.fogEnd), which vanilla sets for the camera's entity: a block in lava, five with Fire Resistance,
@@ -145,6 +162,21 @@ void applyFog(vec3 radiance,
     transmittance = exp(-opticalDepth);
     additiveRadiance = fogRadiance * (1.0 - transmittance) * fogGlassTint(t);
     foggedRadiance = radiance * transmittance + additiveRadiance;
+}
+
+// How much of the day it is for the light under water: 1 with the sun up in the overworld, 0 at night and elsewhere.
+float underwaterDaylight() {
+    return worldUBO.skyType == 1 ? smoothstep(-0.05, 0.15, celestialSunDirection().y) : 0.0;
+}
+
+// The share of the daylight left in the water the camera looks through (UNDERWATER_DAY_COLUMN), per channel: red goes
+// first, so the view turns blue-green as well as darker the deeper the camera is. 1 at night and out of water.
+vec3 underwaterDaylightColumn() {
+    if (skyUBO.cameraSubmersionType != 1) { return vec3(1.0); }
+    float column = UNDERWATER_DAY_COLUMN + waterCameraDepth();
+    vec3 left = exp(-waterMediumExtinction(1.0) * column * max(UNDERWATER_DAY_ABSORPTION, 0.0));
+    left = max(left, vec3(UNDERWATER_DAY_MIN_LIGHT));
+    return mix(vec3(1.0), left, underwaterDaylight());
 }
 
 bool finiteFloat(float value) {

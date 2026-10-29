@@ -9,6 +9,10 @@ All notable changes to this project are documented in this file.
   measures the water column and how far the water runs around the camera (eased as you swim). Looking up out of the
   water, only the water itself fogs the view now: the sky and the shore past the surface no longer vanish into sea
   blue. Shader packs can read the size with `radianteWaterDepth()` and `radianteWaterWidth()`.
+- Under water by day the view is no longer as bright as the land above: the daylight that lights what you see has
+  come down through the water over you, so it dims and turns blue-green the deeper you swim (red goes first). The
+  night look under water is unchanged. New setting **Underwater Camera Effects** (Sky & Water, 100%): with your head
+  under water, a gentle sway, soft darker edges and faint sun caustics near the surface; 0% turns them off.
 - A second built-in shader pack, **Pixelated Lighting**, listed next to Radiante PT under Shader Packs: pixelated
   shadows and reflections, after BetterRTX's preset of that name. Shadow edges from the sun, torches and held lights
   follow the texture's pixels, and reflections, water's included, are solid squares, one per texel, near objects too;
