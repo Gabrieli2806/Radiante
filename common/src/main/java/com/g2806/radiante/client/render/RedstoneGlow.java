@@ -26,10 +26,11 @@ public final class RedstoneGlow {
      */
     static final float SEEN_GLOW = Glow.ofLevel(6);
     /**
-     * Share of the full seen glow that any power above 0 keeps: with the glow linear in power, dust at power 1 to 3
-     * was too dim to tell from unpowered dust, which vanilla's darker colour for weak dust makes dimmer still.
+     * Share of the full seen glow that power 1 keeps, so the faintest powered dust still reads as lit. Kept small:
+     * at 0.3, with the glow's red saturating once tone mapped, a line fading from 15 to 1 looked the same from end to
+     * end.
      */
-    private static final float SEEN_FLOOR = 0.3f;
+    private static final float SEEN_FLOOR = 0.04f;
     /**
      * The light cast per unit of covered area at power 15 (radiance on the light-level scale of EmissionTiles, kind 0).
      * A straight line's sprite covers about a twelfth of its quad, so at power 15 it casts about 1.5 in its red: a
@@ -78,17 +79,22 @@ public final class RedstoneGlow {
         return Math.round(r * 255.0f) << 16 | Math.round(g * 255.0f) << 8 | Math.round(b * 255.0f);
     }
 
-    /** The glow seen on dust of this power, before its colour: none at 0, then from the floor up to SEEN_GLOW. */
+    /**
+     * The glow seen on dust of this power, before its colour: none at 0, then from the floor up to SEEN_GLOW along the
+     * square of the power, so the signal's fall along a line shows as a clear fade rather than a red that saturates
+     * long before the weak end.
+     */
     static float seenGlow(int power) {
         if (power <= 0) {
             return 0.0f;
         }
-        return SEEN_GLOW * (SEEN_FLOOR + (1.0f - SEEN_FLOOR) * power / 15.0f);
+        float f = power / 15.0f;
+        return SEEN_GLOW * (SEEN_FLOOR + (1.0f - SEEN_FLOOR) * f * f);
     }
 
     /**
-     * The light a dust quad of this power drawing this sprite casts, before its colour: linear in power, as vanilla's
-     * signal strength and the RTX Remix redstone glow have it, so a long weak line lights little; and in proportion to
+     * The light a dust quad of this power drawing this sprite casts, before its colour: along the square of the power,
+     * like the seen glow, so the floor light fades with the signal and a long weak line lights next to nothing; and in proportion to
      * how much of the quad the sprite covers, so a junction of five quads casts by the dust it shows, not five times
      * a line's light.
      */
@@ -96,7 +102,8 @@ public final class RedstoneGlow {
         if (power <= 0) {
             return 0.0f;
         }
-        return CAST_PER_COVERAGE * coverage(sprite) * power / 15.0f;
+        float f = power / 15.0f;
+        return CAST_PER_COVERAGE * coverage(sprite) * f * f;
     }
 
     private static float coverage(TextureAtlasSprite sprite) {
