@@ -65,7 +65,7 @@ enum Tunable {
     // How much a rain streak catches the light around it: the overcast sky over it.
     RAIN_STREAKS(null, "render_pipeline.module.ray_tracing.attribute.rain_streak_brightness", 0.01, 0, 200, 100,
         Format.PERCENT),
-    // How much of the open, flat ground puddles cover in steady rain (with Wet Ground in Rain on).
+    // How much standing water rain leaves on open flat block tops (with Wet Ground in Rain on); full from 50%.
     PUDDLES(null, "render_pipeline.module.ray_tracing.attribute.rain_puddles", 0.01, 0, 100, 50, Format.PERCENT),
     // How brightly a lightning flash lights the world in a thunderstorm.
     LIGHTNING_FLASH(null, "render_pipeline.module.ray_tracing.attribute.lightning_flash", 0.01, 0, 200, 100,

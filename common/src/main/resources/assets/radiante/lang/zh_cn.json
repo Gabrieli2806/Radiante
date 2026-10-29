@@ -328,7 +328,7 @@
   "options.radiante.tunable.rain_streaks": "雨丝亮度",
   "options.radiante.tunable.rain_streaks.tooltip": "雨丝反射阴天天光的程度。越高雨越明显；0% 则不可见。",
   "options.radiante.tunable.puddles": "水坑",
-  "options.radiante.tunable.puddles.tooltip": "持续降雨时，开阔平地被水坑覆盖的程度（需开启“雨天地面湿润”）。越高水坑越多越大；0% 则没有。",
+  "options.radiante.tunable.puddles.tooltip": "开启“雨天地面湿润”时，雨水在露天方块平整顶面上留下的积水量：下雨时为均匀水膜，雨停后约三分钟内逐片干涸。0% 仅保留湿润地面。",
   "options.radiante.tunable.lightning_flash": "闪电照明",
   "options.radiante.tunable.lightning_flash.tooltip": "雷暴中闪电照亮世界（带阴影）的强度。0% 仅保留闪电本身的光。",
   "options.radiante.tunable.water_clear_teal": "清澈青绿水",

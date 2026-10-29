@@ -15,8 +15,9 @@ All notable changes to this project are documented in this file.
 - Clouds in rain are heavy grey masses lit only by the overcast, darker underneath and in a storm; they took part of
   the full sun before and glowed against the dim sky.
 - Steady rain soaks the open ground over half a minute: darker and glossier while it falls, drying back after.
-- Puddles (Sky, Fog & Water): in steady rain, patches of open flat ground fill with standing water that mirrors the
-  sky and the lamps, with rain rings on them and on open water; they stand for two to three minutes after the rain stops.
+- Puddles (Sky, Fog & Water): while it rains, a film of standing water with rain rings covers the flat tops of open
+  full blocks and mirrors the sky and the lamps; once the rain stops it dries up in patches over about three
+  minutes. Slabs, stairs, roofs and leaves only darken a little.
 - Lightning Flash (Sky, Fog & Water): a thunderstorm's lightning now lights the world from the bolt's direction, with
   shadows, and lights up the clouds while the sky flashes; the bolt's own glow no longer lights a storm by night white. The overcast sky is heavier overhead and darker in a storm.
 - With Distant Horizons, its terrain under the chunks that are built is left out of the rays instead of being skipped

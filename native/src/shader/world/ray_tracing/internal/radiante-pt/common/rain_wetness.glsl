@@ -72,18 +72,16 @@ void vptApplyGroundWetness(inout LabPBRMat material, float wetness) {
 
 // ---- Puddles and rain ripples
 
-// How much of the open, flat ground puddles cover in steady rain, 0..1 (the Puddles setting).
+// How much standing water rain leaves on open, flat ground, 0..1 (the Puddles setting): full from 50 %.
 #ifndef VPT_RAIN_PUDDLES
 #    define VPT_RAIN_PUDDLES 0.5
 #endif
-// How large a puddle patch is, in blocks (the period of the coarser noise), and how soft its rim is.
+// How large a drying patch is, in blocks (the period of the coarser noise), and how soft its rim is.
 const float PUDDLE_SCALE = 10.0;
 const float PUDDLE_RIM = 0.03;
-// How far the noise threshold drops at full wetness and Puddles 100 %.
-const float PUDDLE_FILL = 1.1;
-// How long puddles stand after the rain eases off, in seconds: full for the first, gone by the second. The ground
-// itself dries sooner (its wetness falls with a time constant of 25 s).
-const float PUDDLE_LINGER_SECONDS = 45.0;
+// How long the film of water stands whole after the rain eases off, in seconds, and by when it has dried up patch
+// by patch. The ground under it dries sooner (its wetness falls with a time constant of 25 s).
+const float PUDDLE_LINGER_SECONDS = 10.0;
 const float PUDDLE_DRY_SECONDS = 180.0;
 // Ripples: rings per block across, how long one ring lives in seconds, and how steep its wave is.
 const float RIPPLE_CELLS = 2.5;
@@ -114,23 +112,29 @@ float vptRainValueNoise(vec2 p) {
                mix(vptRainHash(i + vec2(0.0, 1.0)), vptRainHash(i + vec2(1.0, 1.0)), f.x), f.y);
 }
 
-/** How much of a puddle stands here, 0..1, on an upward face under the open sky. Patches fixed to the
- *  world, from a noise; they spread as the ground soaks and shrink back as it dries after the rain, well after the
- *  ground itself. open: vptGroundOpen. */
+/** How much standing water there is here, 0..1, on the flat top of a full block under the open sky (open:
+ *  vptGroundOpen). While it rains, an even film over all of it, deepening as the ground soaks. Once the rain stops
+ *  it dries up in patches, by a noise fixed to the world, the last ones gone by PUDDLE_DRY_SECONDS. */
 float vptPuddle(vec3 position, float open) {
-    float amount = clamp(VPT_RAIN_PUDDLES, 0.0, 1.0);
-    // While it rains, as wet as the ground; once it has stopped, standing on for a minute or two (rainStoppedFor is
-    // 0 while it rains and huge before any rain).
-    float linger = 1.0 - smoothstep(PUDDLE_LINGER_SECONDS, PUDDLE_DRY_SECONDS, skyUBO.rainStoppedFor);
-    linger *= 1.0 - smoothstep(0.1, 0.2, skyUBO.rainGradient);
-    float wetness = open * max(skyUBO.rainWetness.x, linger);
-    if (amount <= 0.0 || wetness <= 0.3) { return 0.0; }
-    vec2 p = vptRainWorldXZ(position);
-    float n = 0.75 * vptRainValueNoise(p / PUDDLE_SCALE) + 0.25 * vptRainValueNoise(p / (PUDDLE_SCALE * 0.33) + 17.0);
-    // At the default (Puddles 50 %) and full rain, about three fifths of the open ground; less as it dries.
-    float fill = smoothstep(0.3, 1.0, wetness) * amount;
-    float threshold = 1.0 - PUDDLE_FILL * fill;
-    return smoothstep(threshold, threshold + PUDDLE_RIM, n);
+    float amount = clamp(VPT_RAIN_PUDDLES * 2.0, 0.0, 1.0);
+    if (amount <= 0.0 || open <= 0.0) { return 0.0; }
+    bool raining = skyUBO.rainGradient > 0.2;
+    // rainStoppedFor is 0 while it rains and huge before any rain.
+    if (!raining && skyUBO.rainStoppedFor > PUDDLE_DRY_SECONDS) { return 0.0; }
+    // While it rains: one film over all of it, as deep as the ground is soaked.
+    float soak = raining ? smoothstep(0.3, 0.9, skyUBO.rainWetness.x) : 1.0;
+    // After: the ground dries in patches, from where the noise is lowest, until none is left.
+    float drying = raining ? 0.0 : smoothstep(PUDDLE_LINGER_SECONDS, PUDDLE_DRY_SECONDS, skyUBO.rainStoppedFor);
+    float cover = 1.0;
+    if (drying > 0.0) {
+        vec2 p = vptRainWorldXZ(position);
+        float n = 0.75 * vptRainValueNoise(p / PUDDLE_SCALE) +
+                  0.25 * vptRainValueNoise(p / (PUDDLE_SCALE * 0.33) + 17.0);
+        // The noise runs about 0.15..0.85: the threshold sweeps across all of it.
+        float threshold = mix(0.1, 0.9, drying);
+        cover = smoothstep(threshold, threshold + PUDDLE_RIM, n);
+    }
+    return open * soak * cover * amount;
 }
 
 /** Standing water: as dark as soaked ground and smooth as water's surface, so it mirrors the sky and the lamps. */

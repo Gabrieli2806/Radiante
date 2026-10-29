@@ -328,7 +328,7 @@
   "options.radiante.tunable.rain_streaks": "Rain Streaks",
   "options.radiante.tunable.rain_streaks.tooltip": "How much rain streaks catch the light of the overcast sky. Higher makes the rain show more; 0% leaves it invisible.",
   "options.radiante.tunable.puddles": "Puddles",
-  "options.radiante.tunable.puddles.tooltip": "How much of the open, flat ground puddles cover in steady rain, with Wet Ground in Rain on. Higher gives more and larger puddles; 0% none.",
+  "options.radiante.tunable.puddles.tooltip": "How much standing water rain leaves on the flat tops of open blocks, with Wet Ground in Rain on: an even film while it rains, drying up in patches over about three minutes after. 0% leaves only wet ground.",
   "options.radiante.tunable.lightning_flash": "Lightning Flash",
   "options.radiante.tunable.lightning_flash.tooltip": "How brightly a lightning flash lights the world, with shadows, in a thunderstorm. 0% leaves only the bolt's own glow.",
   "options.radiante.tunable.water_clear_teal": "Clear Teal Water",

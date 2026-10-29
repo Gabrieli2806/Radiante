@@ -328,7 +328,7 @@
   "options.radiante.tunable.rain_streaks": "Líneas de Lluvia",
   "options.radiante.tunable.rain_streaks.tooltip": "Cuánto captan las líneas de lluvia la luz del cielo nublado. Más alto hace que la lluvia se vea más; 0% la deja invisible.",
   "options.radiante.tunable.puddles": "Charcos",
-  "options.radiante.tunable.puddles.tooltip": "Cuánto del suelo llano y abierto cubren los charcos con lluvia constante, con Suelo Mojado con Lluvia activado. Más alto da más charcos y más grandes; 0% ninguno.",
+  "options.radiante.tunable.puddles.tooltip": "Cuánta agua estancada deja la lluvia sobre las caras superiores planas de los bloques al aire libre, con Suelo Mojado con Lluvia activado: una película uniforme mientras llueve, que se seca por zonas en unos tres minutos. 0% deja solo el suelo mojado.",
   "options.radiante.tunable.lightning_flash": "Destello de Rayo",
   "options.radiante.tunable.lightning_flash.tooltip": "Con qué intensidad un rayo ilumina el mundo, con sombras, durante una tormenta. 0% deja solo el brillo del propio rayo.",
   "options.radiante.tunable.water_clear_teal": "Agua Turquesa Clara",
