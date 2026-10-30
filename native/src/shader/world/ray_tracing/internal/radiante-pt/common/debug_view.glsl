@@ -21,6 +21,8 @@
 #define RADIANTE_DEBUG_VIEW_DIRECT 12
 #define RADIANTE_DEBUG_VIEW_INDIRECT 13
 #define RADIANTE_DEBUG_VIEW_SHARC 14
+#define RADIANTE_DEBUG_VIEW_RAW_DIFFUSE 15
+#define RADIANTE_DEBUG_VIEW_RAW_SPECULAR 16
 
 // The image's bindings: set 5 in the ray tracing stage (storage), set 4 in the post stage (sampled).
 #define RADIANTE_DEBUG_VIEW_SAMPLED_BINDING 120

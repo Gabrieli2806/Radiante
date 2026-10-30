@@ -25,6 +25,13 @@ layout(set = 5, binding = RADIANTE_DEBUG_VIEW_STORAGE_BINDING, rgba16f) uniform 
 
 #include "common/debug_count.glsl"
 
+#if RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_RAW_DIFFUSE
+layout(set = 3, binding = 8, rgba16f) uniform readonly image2D rawDirectImage;
+layout(set = 3, binding = 9, rgba16f) uniform readonly image2D rawIndirectImage;
+#endif
+#if RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_RAW_SPECULAR
+layout(set = 3, binding = 10, rgba16f) uniform readonly image2D firstHitSpecularImage;
+#endif
 #if RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_DIRECT
 layout(set = 3, binding = 8, rgba16f) uniform readonly image2D firstHitDiffuseDirectLightImage;
 #endif
@@ -67,6 +74,10 @@ void main() {
     // Pixels moved since the last frame: red right, green down, grey still; 32 pixels reach full colour.
     vec2 motion = imageLoad(motionVectorImage, texel).xy;
     color = vec3(clamp(0.5 + motion / 64.0, 0.0, 1.0), 0.5);
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_RAW_DIFFUSE
+    color = radianteDebugLight(imageLoad(rawDirectImage, texel).rgb + imageLoad(rawIndirectImage, texel).rgb);
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_RAW_SPECULAR
+    color = radianteDebugLight(imageLoad(firstHitSpecularImage, texel).rgb);
 #elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_DIRECT
     color = radianteDebugLight(imageLoad(firstHitDiffuseDirectLightImage, texel).rgb);
 #elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_INDIRECT

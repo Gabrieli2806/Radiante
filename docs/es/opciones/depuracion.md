@@ -28,6 +28,7 @@ mientras **Avanzado** está activado.
 | Lluvia | Rojo: cuánto se moja la superficie. Verde: cuánto está abierta al cielo (con cualquier clima). Azul: agua estancada. Rojo y azul necesitan lluvia, y suben a medida que se acumula la humedad. El agua y el vidrio quedan en negro. |
 | Luz Directa, Luz Indirecta | La luz ruidosa sobre superficies difusas antes del denoiser, comprimida al rango de la pantalla: directa de las luces, o tras rebotar. Una superficie cuyo camino tomó el lóbulo especular en ese fotograma se ve negra, así que es normal ver ruido. La lluvia oculta el sol, así que la Luz Directa se oscurece con ella. |
 | Aporte de SHaRC | La luz que los caminos de cada píxel tomaron de la caché SHaRC, comprimida al rango de la pantalla, antes de la exposición, así que se ve tenue. Negro con SHaRC apagado, y casi negro al aire libre en terreno abierto, donde los rebotes se van al cielo y no consultan la caché; en interiores la mayoría de los píxeles la muestran. |
+| Difuso sin Filtrar, Especular sin Filtrar | Las señales ruidosas de la primera superficie antes del denoiser, comprimidas al rango de la pantalla. Con NRD son las señales que lee NRD; DLSS Ray Reconstruction lee la imagen completa, y estas muestran la misma luz separada. |
 
 Las vistas propias de un paquete de shaders aparecen después de estas, con sus nombres. La vista no
 se guarda, así que vuelve a estar desactivada la próxima vez que abras el juego.

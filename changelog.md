@@ -4,6 +4,7 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Debug views `raw_diffuse` and `raw_specular`: the noisy signals before the denoiser.
 - Debug views `direct`, `indirect` and `sharc`: the light on each pixel split by where it came from.
 - Debug view `rain`: per pixel wetness (red), open sky (green) and standing water (blue).
 - New Debug section in the Radiante settings, shown while Advanced is on: a debug view picker (with a pack's own

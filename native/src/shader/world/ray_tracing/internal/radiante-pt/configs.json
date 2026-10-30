@@ -78,6 +78,16 @@
             "name": "sharc",
             "define": "RADIANTE_DEBUG_VIEW",
             "value": 14
+        },
+        {
+            "name": "raw_diffuse",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 15
+        },
+        {
+            "name": "raw_specular",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 16
         }
     ],
     "attributes": [
@@ -1754,7 +1764,8 @@
                     "out:linear_depth",
                     "out:first_hit_base_emission",
                     "out:first_hit_diffuse_direct_light",
-                    "out:first_hit_diffuse_indirect_light"
+                    "out:first_hit_diffuse_indirect_light",
+                    "out:first_hit_specular"
                 ]
             },
             "outputs": {
