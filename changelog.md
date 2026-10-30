@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Bedrock's volumetric fog (default profile) carries the biome's fog on past its 50-block volume: distant lava,
+  lights and hills now fade into the fog with distance instead of keeping their full glow behind a fogged foreground.
 - Pixelated Lighting: puddles and rain rings come out in the texture's pixels, with hard edges. Shader packs can
   move where rain's marks are worked out with the new `hooks/rain_surface.glsl`.
 - In first person, the player now shows in mirror-like reflections (wet ground, puddles, water, windows) while First
