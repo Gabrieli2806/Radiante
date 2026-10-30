@@ -79,9 +79,10 @@ marked **(restart)** and, when you leave the screen, a notice lists the pending 
 | [Lighting](settings/lighting.md) | Brightness, bounced and sky light, block light sampling, ReSTIR, SER, held item light, first person shadow. |
 | [Sky & Water](settings/sky-fog-water.md) | Atmosphere, clouds, stars, sun, sun path, rain, glass, biome ambiance, volumetric fog, water. |
 | [Performance](settings/performance.md) | Light bounces, mirrors, glass, water texture, portal, rain, cache, checkerboard, parallax, Bedrock pack materials, fog quality, chunk building. |
-| [Other](settings/other.md) | Block outline, other mods' overlays, text backgrounds, parallax edges, debug logging. |
+| [Other](settings/other.md) | Block outline, other mods' overlays, text backgrounds, parallax edges. |
 | *The pack's name* | Only with a shader pack other than Radiante PT: that pack's own settings ([below](#the-packs-own-page)). |
 | [Addons](addons.md) | Only with an addon installed: its own options, under its name. |
+| [Debug](settings/debug.md) | Only with Advanced on: debug views, GPU timings, debug logging, bug report summary, log and pack folders. |
 
 A setting only shows when the pipeline, GPU or shader pack supports it: DLSS Mode only with
 RT-DLSS, Upscaling Mode only with RT-FSR or RT-XeSS, Reflex only on NVIDIA, frame generation not
@@ -136,8 +137,8 @@ the pack's shaders again.
 A pack kept as a folder reloads by itself when one of its files changes, for pack authors: it is
 checked in the background first, and an edit that does not compile leaves the picture as it was
 and shows the error here. `/radiante pack validate [name]` checks a pack without switching to it,
-and `/radiante debug view <view>` shows the albedo, normals, depth and other frame images instead of
-the picture (`off` goes back). See [Making a shader pack](shader-packs.md#working-on-a-pack-in-game).
+and `/radiante debug view <view>`, or the [Debug](settings/debug.md) section, shows the albedo, normals,
+depth and other frame images instead of the picture (`off` goes back). See [Making a shader pack](shader-packs.md#working-on-a-pack-in-game).
 
 Packs made for Radiance (the mod Radiante grew from) use the same format but an older renderer
 interface, and do not work as they are yet.
@@ -146,6 +147,6 @@ interface, and do not work as they are yet.
 
 **Advanced: OFF / ON**, at the bottom, shows the fine-tuning controls of each section in folding
 groups under its main ones (exposure and tone, camera effects, light, clouds, atmosphere, water,
-fog, stars, sun and moon path, denoiser, renderer, upscaler, debug views, other pipeline settings).
+fog, stars, sun and moon path, denoiser, renderer, upscaler, other pipeline settings), and adds the [Debug](settings/debug.md) section.
 Their values apply whether or not they are shown. They are the pipeline's own parameters: change
 them one at a time, and use **Undo** or **Reset to Defaults** to come back.

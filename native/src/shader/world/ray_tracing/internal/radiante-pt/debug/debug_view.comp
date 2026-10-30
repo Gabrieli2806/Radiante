@@ -4,7 +4,8 @@
 // Fills radiante_debug_view with the chosen debug view (common/debug_view.glsl), from the guide images the ray
 // generation shader wrote this frame, as display colours. Runs after the world pass, only while a view is chosen. The
 // surface flags are written by the closest-hit shader itself (pt/pt_shade_default.glsl), so here they only get the
-// sky, which no hit shader sees.
+// sky, which no hit shader sees. The heat maps come from the counts the ray tracing stage kept
+// (common/debug_count.glsl).
 
 #include "common/shared.hpp"
 #include "common/debug_view.glsl"
@@ -21,6 +22,8 @@ layout(set = 5, binding = RADIANTE_DEBUG_VIEW_STORAGE_BINDING, rgba16f) uniform 
 #ifndef RADIANTE_DEBUG_VIEW
 #    define RADIANTE_DEBUG_VIEW 0
 #endif
+
+#include "common/debug_count.glsl"
 
 void main() {
     ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
@@ -54,6 +57,9 @@ void main() {
 #elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_FLAGS
     if (!sky) { return; }
     color = vec3(0.0);
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_ANYHIT || RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_BOUNCES
+    // This frame's count, cleared for the next.
+    color = radianteDebugHeat(imageAtomicExchange(radianteDebugCountImage, texel, 0u));
 #endif
     imageStore(radianteDebugViewImage, texel, vec4(color, 1.0));
 }

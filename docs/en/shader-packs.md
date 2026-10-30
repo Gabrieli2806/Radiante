@@ -192,7 +192,9 @@ Put the pack in `radiante/shaderpacks/` as a folder, not a zip, and choose it.
   active one without a name) without switching to it, and prints the report in the chat.
 - **Debug views**: `/radiante debug view <view>` shows one of the frame's images instead of the picture: `albedo`,
   `normal`, `roughness`, `metallic`, `emission`, `depth`, `motion` (motion vectors) or `flags` (the kind of surface:
-  water, lava, glass, leaves, plants...). `/radiante debug view off` goes back; without a view it lists them. The view
+  water, lava, glass, leaves, plants...). The heat maps `anyhit` and `bounces` show any-hit runs per pixel on the
+  camera ray and rays past it, blue at 1 to red at 16 or more. `/radiante debug view off` goes back; without a view it
+  lists them. The view
   is not saved.
 - Your own debug views: list them in `configs.json`, `"debug_views": [{"name": "wetness", "define": "MY_DEBUG_WET"}]`.
   The define is 0, and 1 (or `"value"`) while that view is chosen, so `#if MY_DEBUG_WET` in any shader shows what you

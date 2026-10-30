@@ -72,6 +72,7 @@ enum OptionImpact {
         Map.entry("options.radiante.chunk_building_total_batches", VARIES),
         Map.entry("options.radiante.mod_overlays", LOW),
         Map.entry("options.radiante.debug_logging", LOW),
+        Map.entry("options.radiante.debug_view", VARIES),
         Map.entry("options.radiante.tunable.dof_range", LOW),
         Map.entry("options.radiante.tunable.motion_blur_strength", LOW),
         Map.entry("options.radiante.tunable.glass_reflections", LOW),

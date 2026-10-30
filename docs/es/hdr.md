@@ -41,6 +41,7 @@ controles están en la sección [Imagen](opciones/imagen.md), entre Nitidez de F
 
 ## Vista de Depuración HDR
 
+En la sección [Depuración](opciones/depuracion.md) (con Avanzado activado), mientras la Salida HDR está activada.
 Tiñe de azul todo lo que se muestra en rango SDR (menús, texto de la interfaz). Lo que conserva su
 color normal es exactamente lo que se está mostrando en HDR real. Sirve para confirmar que el mundo
 sí está usando el rango HDR y no solo pareciendo más brillante — no se guarda entre sesiones,

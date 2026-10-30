@@ -48,6 +48,16 @@
             "name": "flags",
             "define": "RADIANTE_DEBUG_VIEW",
             "value": 8
+        },
+        {
+            "name": "anyhit",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 9
+        },
+        {
+            "name": "bounces",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 10
         }
     ],
     "attributes": [
@@ -1161,6 +1171,14 @@
             "storage_binding": 121,
             "filter": "linear",
             "address_mode": "clamp_to_edge"
+        },
+        {
+            "name": "radiante_debug_count",
+            "type": "intermediate",
+            "format": "R32_UINT",
+            "width": "if(RADIANTE_DEBUG_VIEW, RENDER_WIDTH, 1)",
+            "height": "if(RADIANTE_DEBUG_VIEW, RENDER_HEIGHT, 1)",
+            "storage_binding": 122
         }
     ],
     "execution": {
@@ -1719,7 +1737,8 @@
             },
             "outputs": {
                 "images": [
-                    "radiante_debug_view"
+                    "radiante_debug_view",
+                    "radiante_debug_count"
                 ]
             },
             "compute": "debug/debug_view.comp",

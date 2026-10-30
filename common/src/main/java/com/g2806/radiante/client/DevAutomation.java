@@ -382,6 +382,12 @@ public final class DevAutomation {
             RadianteClient.LOGGER.info("[dev] shader pack {} rebuilt {}", path, changed && applyPipelineChange(true));
             return;
         }
+        if (action.startsWith("section=")) {
+            // section=DEBUG: the settings screen on that section, for a screenshot of it.
+            minecraft.gui.setScreen(com.g2806.radiante.client.gui.RadianteOptionsScreen.showingSection(
+                minecraft.gui.screen(), minecraft.options, action.substring(8)));
+            return;
+        }
         if (action.startsWith("settings=")) {
             minecraft.gui.setScreen(com.g2806.radiante.client.gui.RadianteOptionsScreen.showingPreset(minecraft.gui.screen(),
                 minecraft.options, com.g2806.radiante.client.pipeline.Presets.valueOf(action.substring(9))));
@@ -410,6 +416,17 @@ public final class DevAutomation {
         } else if (action.startsWith("cmd=/")) {
             minecraft.player.connection.sendCommand(action.substring(5));
             RadianteClient.LOGGER.info("[dev] command {}", action.substring(4));
+        } else if (action.startsWith("ccmd=/")) {
+            // A client command (/radiante ...), which cmd= sends past to the server; on Fabric, by its dispatcher.
+            try {
+                var dispatcher = (com.mojang.brigadier.CommandDispatcher<Object>) Class.forName(
+                    "net.fabricmc.fabric.api.client.command.v2.ClientCommands").getMethod("getActiveDispatcher")
+                    .invoke(null);
+                int result = dispatcher.execute(action.substring(6), minecraft.getConnection().getSuggestionsProvider());
+                RadianteClient.LOGGER.info("[dev] client command {}: {}", action.substring(5), result);
+            } catch (ReflectiveOperationException | com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+                RadianteClient.LOGGER.warn("[dev] client command {} failed", action.substring(5), e);
+            }
         } else if (action.startsWith("break=")) {
             String[] v = action.substring(6).split(",");
             minecraft.level.destroyBlockProgress(-4242, new net.minecraft.core.BlockPos(Integer.parseInt(v[0]),
@@ -543,6 +560,8 @@ public final class DevAutomation {
                 case "dlss" -> com.g2806.radiante.client.pipeline.Pipeline.setDlssMode(
                     com.g2806.radiante.client.pipeline.Pipeline.DLSS_MODES.get(Integer.parseInt(parts[1])));
                 case "fog" -> com.g2806.radiante.client.pipeline.Pipeline.setVolumetricFog(Boolean.parseBoolean(parts[1]));
+                // view:<debug view>, or view:off.
+                case "view" -> com.g2806.radiante.client.pipeline.Pipeline.setDebugView(parts[1]);
                 // preset:<preset key>, e.g. the NRD + FSR pipeline.
                 case "preset" -> {
                     com.g2806.radiante.client.pipeline.Pipeline.switchToPresetMode(parts[1]);

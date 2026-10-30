@@ -1547,6 +1547,11 @@ final class SettingsLayout {
     /** The section shown; kept while the game runs, so the screen reopens on it. */
     private static RadianteOptionsScreen.Category selected = RadianteOptionsScreen.Category.QUALITY;
 
+    /** Development: the section the next screen opens on. */
+    static void select(RadianteOptionsScreen.Category category) {
+        selected = category;
+    }
+
     private RadianteOptionsScreen.Category sectionInView() {
         return selected;
     }

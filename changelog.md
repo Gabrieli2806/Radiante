@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- New Debug section in the Radiante settings, shown while Advanced is on: a debug view picker (with a pack's own
+  views), SHaRC Debug Mode, HDR Debug View and Debug Logging moved there, GPU Timings in F3, a Bug Report Summary that
+  copies versions, GPU and settings, and buttons for the logs and shader packs folders. New heat map debug views:
+  `anyhit` (any-hit shader runs per pixel on the camera ray, blue 1 to red 16+, for finding hidden faces and stacked
+  surfaces) and `bounces` (rays per pixel past the camera ray).
 - Fog Veil Dimming (Sky & Water, 25%): the light shafts' hazy air now also dims what is behind it, by a share of
   the light it scatters, so distant lava, lights and land fade into the fog instead of keeping their full glow under a
   pale veil. In full rain the air still dims the distance though the sun is gone.

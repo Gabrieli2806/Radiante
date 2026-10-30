@@ -38,7 +38,10 @@ indexBuffer;
 layout(location = 0) rayPayloadInEXT MainRay mainRay;
 hitAttributeEXT vec2 attribs;
 
+#include "common/debug_count.glsl"
+
 void main() {
+    RADIANTE_DEBUG_COUNT_ANYHIT();
     uint instanceID = gl_InstanceCustomIndexEXT;
     uint geometryID = gl_GeometryIndexEXT;
     uint geometryBufferIndex = getGeometryBufferIndex(instanceID, geometryID);

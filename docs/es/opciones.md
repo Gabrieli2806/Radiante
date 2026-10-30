@@ -82,7 +82,8 @@ marca **(reinicio)** y, al salir de la pantalla, un aviso lista los cambios pend
 | [Iluminación](opciones/iluminacion.md) | Brillos, luz rebotada y del cielo, muestreo de luces de bloque, ReSTIR, SER, luz del objeto en mano, sombra en primera persona. |
 | [Cielo y Agua](opciones/cielo-niebla-agua.md) | Atmósfera, nubes, estrellas, sol, trayectoria del sol, lluvia, vidrio, ambiente de bioma, niebla volumétrica, agua. |
 | [Rendimiento](opciones/rendimiento.md) | Rebotes de luz, espejos, vidrio, textura del agua, portal, lluvia, caché, tablero, parallax, materiales de packs Bedrock, calidad de niebla, construcción de chunks. |
-| [Otros](opciones/otros.md) | Contorno de bloque, overlays de otros mods, fondo de textos, bordes de parallax, registro de depuración. |
+| [Otros](opciones/otros.md) | Contorno de bloque, overlays de otros mods, fondo de textos, bordes de parallax. |
+| [Depuración](opciones/depuracion.md) | Solo con Avanzado activado: vistas de depuración, tiempos de GPU, registro de depuración, resumen para reportes, carpetas de registros y de paquetes. |
 | *El nombre del paquete* | Solo con un paquete de shaders que no sea Radiante PT: los ajustes propios de ese paquete ([abajo](#la-página-del-paquete)). |
 | [Complementos](complementos.md) | Solo con un complemento instalado: sus propias opciones, bajo su nombre. |
 
@@ -142,7 +143,7 @@ vuelven a compilar los shaders del paquete.
 Un paquete guardado como carpeta se recarga solo cuando cambia uno de sus archivos, para quien
 hace paquetes: antes se comprueba en segundo plano, y un cambio que no compila deja la imagen como
 estaba y muestra el error aquí. `/radiante pack validate [nombre]` comprueba un paquete sin cambiar
-a él, y `/radiante debug view <vista>` muestra el albedo, las normales, la profundidad y otras
+a él, y `/radiante debug view <vista>`, o la sección [Depuración](opciones/depuracion.md), muestra el albedo, las normales, la profundidad y otras
 imágenes del fotograma en lugar de la imagen final (`off` vuelve). Mira
 [Hacer un paquete de shaders](paquetes-de-shaders.md#trabajar-en-un-paquete-dentro-del-juego).
 
@@ -153,6 +154,6 @@ interfaz del renderizador más antigua, y de momento no funcionan tal cual.
 
 **Avanzado: NO / SÍ**, abajo, muestra los controles finos de cada sección en grupos plegables bajo
 los principales (exposición y tono, efectos de cámara, luz, nubes, atmósfera, agua, niebla,
-estrellas, trayectoria del sol y la luna, denoiser, renderizador, escalador, vistas de depuración,
-otros ajustes del pipeline). Sus valores se aplican se muestren o no. Son los parámetros propios
+estrellas, trayectoria del sol y la luna, denoiser, renderizador, escalador, otros ajustes del
+pipeline), y añade la sección [Depuración](opciones/depuracion.md). Sus valores se aplican se muestren o no. Son los parámetros propios
 del pipeline: cámbialos de uno en uno, y usa **Deshacer** o **Restablecer valores** para volver.

@@ -125,6 +125,7 @@
 #include "pt/pt_sharc.glsl"
 #include "pt/pt_primary.glsl"
 #include "pt/pt_restir_gi.glsl"
+#include "common/debug_count.glsl"
 #include "pt/pt_bounce.glsl"
 // Hook points a pack extending radiante-pt replaces; empty here. The ray generation shader names its uniforms as the
 // hit shaders do, so they read the same worldUBO and skyUBO.

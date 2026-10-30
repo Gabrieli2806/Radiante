@@ -54,6 +54,10 @@ public class RadianteOptionsScreen extends Screen {
     private boolean pendingChunkAuto = Options.chunkBuildingAuto;
     private boolean pendingCollectEmission = Options.collectChunkEmission;
     private boolean pendingDebugLogging = Options.debugLogging;
+    /** The debug view chosen on the Debug section and not applied yet; null when untouched. */
+    private String pendingDebugView;
+    /** The GPU pass timings on the F3 screen as chosen on the Debug section and not applied yet; null when untouched. */
+    private Boolean pendingGpuTimings;
     private boolean pendingBiomeAmbiance = Options.biomeAmbiance;
     private boolean pendingFirstPersonShadow = Options.firstPersonShadow;
     private int pendingBiomeAmbianceStrength = Options.biomeAmbianceStrength;
@@ -92,7 +96,9 @@ public class RadianteOptionsScreen extends Screen {
         /** The settings of the shader pack in use (PackSettingsPage), named after it; only with a pack other than Radiante PT. */
         PACK,
         /** Other mods' options (RadianteAddons); only there when one registered. */
-        ADDONS;
+        ADDONS,
+        /** Developer utilities; only while Advanced is on. */
+        DEBUG;
 
         String key() {
             return "options.radiante.category." + name().toLowerCase(java.util.Locale.ROOT);
@@ -205,6 +211,9 @@ public class RadianteOptionsScreen extends Screen {
         this.pendingFogSamples = previous.pendingFogSamples;
         this.pendingDepthOfField = previous.pendingDepthOfField;
         this.pendingReflex = previous.pendingReflex;
+        this.pendingDebugLogging = previous.pendingDebugLogging;
+        this.pendingDebugView = previous.pendingDebugView;
+        this.pendingGpuTimings = previous.pendingGpuTimings;
         this.pendingTunables = previous.pendingTunables;
         this.pendingToneMethod = previous.pendingToneMethod;
         this.scroll = previous.layout != null ? previous.layout.scroll() : previous.scroll;
@@ -373,6 +382,13 @@ public class RadianteOptionsScreen extends Screen {
         if (!com.g2806.radiante.client.RadianteClient.isNativeLoaded()) {
             return new UnsupportedHardwareScreen(parent);
         }
+        return new RadianteOptionsScreen(parent, options);
+    }
+
+    /** Development: opens the settings on a section. */
+    public static RadianteOptionsScreen showingSection(Screen parent, net.minecraft.client.Options options,
+        String section) {
+        SettingsLayout.select(Category.valueOf(section));
         return new RadianteOptionsScreen(parent, options);
     }
 
@@ -1097,6 +1113,9 @@ public class RadianteOptionsScreen extends Screen {
         this.packImpacts.clear();
         for (Category section : Category.values()) {
             this.page.clear();
+            if (section == Category.DEBUG && !Options.advancedSettings) {
+                continue;
+            }
             if (section == Category.PACK) {
                 // A pack whose settings cannot be laid out loses its page, not the screen.
                 try {
@@ -1128,10 +1147,13 @@ public class RadianteOptionsScreen extends Screen {
                 case SKY_AND_WATER -> addSkyAndWaterOptions(clouds);
                 case PERFORMANCE -> addPerformanceOptions();
                 case OTHER -> addOtherOptions();
+                case DEBUG -> addDebugOptions();
                 case PACK, ADDONS -> {
                 }
             }
-            List<SettingsLayout.Group> groups = new ArrayList<>(AdvancedOptions.groups(section, this.pendingAdvanced));
+            // The Debug section only opens with Advanced on, so its attributes are plain rows (addDebugOptions).
+            List<SettingsLayout.Group> groups = section == Category.DEBUG ? new ArrayList<>()
+                : new ArrayList<>(AdvancedOptions.groups(section, this.pendingAdvanced));
             if (section == Category.SKY_AND_WATER) {
                 groups.add(0, skyPathGroup());
             }
@@ -1578,10 +1600,76 @@ public class RadianteOptionsScreen extends Screen {
                 value -> stage("textBackgrounds", value)),
             OptionInstance.createBoolean("options.radiante.parallax_transparent_edges",
                 tooltip("options.radiante.parallax_transparent_edges"), staged("parallaxTransparentEdges", Options.parallaxTransparentEdges),
-                value -> stage("parallaxTransparentEdges", value)),
+                value -> stage("parallaxTransparentEdges", value)));
+    }
+
+    /**
+     * The Debug section: what shows the renderer's inner workings, and what gets its state out of the game for a bug
+     * report. None of it changes the look for good: the debug view and the HDR one are not saved.
+     */
+    private void addDebugOptions() {
+        addRows(debugViewRow());
+        for (SettingsLayout.Group group : AdvancedOptions.groups(Category.DEBUG, this.pendingAdvanced)) {
+            this.page.addAll(group.options());
+        }
+        // Tints the SDR parts of the picture, so it says nothing while the output is not HDR.
+        if (staged("hdrOutput", Options.hdrOutput)) {
+            addRows(OptionInstance.createBoolean("options.radiante.hdr_debug_view",
+                tooltip("options.radiante.hdr_debug_view"), staged("hdrDebugView", Options.hdrDebugView),
+                value -> stage("hdrDebugView", value)));
+        }
+        addRows(OptionInstance.createBoolean("options.radiante.gpu_timings", tooltip("options.radiante.gpu_timings"),
+                this.pendingGpuTimings != null ? this.pendingGpuTimings : RadianteDebugEntries.gpuTimingsShown(),
+                value -> this.pendingGpuTimings = value),
             OptionInstance.createBoolean("options.radiante.debug_logging",
                 tooltip("options.radiante.debug_logging"), this.pendingDebugLogging,
-                value -> this.pendingDebugLogging = value));
+                value -> this.pendingDebugLogging = value),
+            actionRow("options.radiante.debug_report", () -> {
+                DebugReport.copy(this.minecraft);
+                net.minecraft.client.gui.components.toasts.SystemToast.addOrUpdate(this.minecraft.gui.toastManager(),
+                    net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
+                    Component.translatable("options.radiante.debug_report.done"), null);
+            }),
+            actionRow("options.radiante.open_logs", () -> com.mojang.blaze3d.Blaze3D.openPath(
+                this.minecraft.gameDirectory.toPath().resolve("logs"))),
+            actionRow("options.radiante.open_shader_packs", () -> {
+                java.nio.file.Path folder = com.g2806.radiante.client.pipeline.ShaderPackLibrary.folder();
+                if (folder != null) {
+                    com.mojang.blaze3d.Blaze3D.openPath(folder);
+                }
+            }));
+    }
+
+    /** The picker of debug views: off, and the ones the pack in use lists, its own among them. */
+    private OptionInstance<String> debugViewRow() {
+        String current = this.pendingDebugView != null ? this.pendingDebugView : Pipeline.debugView();
+        List<String> views = new ArrayList<>();
+        views.add(Pipeline.DEBUG_VIEW_OFF);
+        views.addAll(Pipeline.availableDebugViews());
+        if (!views.contains(current)) {
+            views.add(current);
+        }
+        String key = "options.radiante.debug_view";
+        return new OptionInstance<>(key, value -> {
+            Component view = AdvancedOptions.known(key + ".value." + value + ".tooltip");
+            return net.minecraft.client.gui.components.Tooltip.create(view == null
+                ? Component.translatable(key + ".tooltip")
+                : Component.empty().append(Component.translatable(key + ".tooltip")).append("\n\n").append(view));
+        }, (caption, value) -> {
+            Component name = AdvancedOptions.known(key + ".value." + value);
+            return Component.empty().append(caption).append(": ")
+                .append(name != null ? name : Component.literal(AdvancedOptions.pretty(value)));
+        }, new OptionInstance.Enum<>(List.copyOf(views), com.mojang.serialization.Codec.STRING), current,
+            value -> this.pendingDebugView = value);
+    }
+
+    /**
+     * A row that does something instead of holding a value: a click flips a switch nobody sees, and the switch shows
+     * the action's name whichever way it stands.
+     */
+    private static OptionInstance<Boolean> actionRow(String key, Runnable action) {
+        Component word = Component.translatable(key + ".action");
+        return OptionInstance.createBoolean(key, tooltip(key), (caption, value) -> word, false, value -> action.run());
     }
 
     /**
@@ -1605,10 +1693,7 @@ public class RadianteOptionsScreen extends Screen {
         addRows(toggle, nitsSlider("options.radiante.hdr_peak", 400, 4000, staged("hdrPeakNits", Options.hdrPeakNits),
                 value -> stage("hdrPeakNits", value)),
             nitsSlider("options.radiante.hdr_paper_white", 80, 400, staged("hdrPaperWhiteNits", Options.hdrPaperWhiteNits),
-                value -> stage("hdrPaperWhiteNits", value)),
-            OptionInstance.createBoolean("options.radiante.hdr_debug_view",
-                tooltip("options.radiante.hdr_debug_view"), staged("hdrDebugView", Options.hdrDebugView),
-                value -> stage("hdrDebugView", value)));
+                value -> stage("hdrPaperWhiteNits", value)));
     }
 
     private static OptionInstance<Integer> nitsSlider(String key, int min, int max, int current,
@@ -1957,6 +2042,9 @@ public class RadianteOptionsScreen extends Screen {
         if (this.pendingDebugLogging != Options.debugLogging) {
             Options.setDebugLogging(this.pendingDebugLogging, false);
         }
+        if (this.pendingGpuTimings != null) {
+            RadianteDebugEntries.setGpuTimingsShown(this.pendingGpuTimings);
+        }
         if (FrameGeneration.maxGeneratedFrames() <= 0) {
             this.pendingGeneratedFrames = 0;
         }
@@ -2057,6 +2145,9 @@ public class RadianteOptionsScreen extends Screen {
         }
         if (this.pendingUpscalerMode != null && upscalerModes() != null) {
             changed |= Pipeline.setModuleValue(upscalerModule(), upscalerAttribute(), this.pendingUpscalerMode);
+        }
+        if (this.pendingDebugView != null) {
+            changed |= Pipeline.setDebugView(this.pendingDebugView);
         }
         for (java.util.Map.Entry<String, String> advanced : this.pendingAdvanced.entrySet()) {
             String[] target = advanced.getKey().split("\n", 2);

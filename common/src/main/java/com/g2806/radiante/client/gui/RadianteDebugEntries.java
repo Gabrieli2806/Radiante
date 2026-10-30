@@ -12,6 +12,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.debug.DebugScreenDisplayer;
 import net.minecraft.client.gui.components.debug.DebugScreenEntry;
+import net.minecraft.client.gui.components.debug.DebugScreenEntryStatus;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.chunk.LevelChunk;
@@ -32,6 +33,16 @@ public final class RadianteDebugEntries {
     public static final List<Identifier> ALL = List.of(UPSCALER, GPU_TIME, REFLEX, FRAME_GENERATION, HDR);
 
     private RadianteDebugEntries() {
+    }
+
+    /** Whether the F3 screen lists the GPU's pass timings, the same choice as in the debug options screen (F3 + F6). */
+    static boolean gpuTimingsShown() {
+        return Minecraft.getInstance().debugEntries.getStatus(GPU_TIME) != DebugScreenEntryStatus.NEVER;
+    }
+
+    static void setGpuTimingsShown(boolean shown) {
+        Minecraft.getInstance().debugEntries.setStatus(GPU_TIME,
+            shown ? DebugScreenEntryStatus.IN_OVERLAY : DebugScreenEntryStatus.NEVER);
     }
 
     public static void register() {

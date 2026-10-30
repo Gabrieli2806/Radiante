@@ -173,6 +173,7 @@ void traceSecondary(inout MainRay rayState,
         if (b == startBounce && VPT_CAPTURE_VOLUMETRIC_CLOUD_INDIRECT != 0 && allowIndirectCloudMiss) {
             missId = VPT_WORLD_MISS_INDEX;
         }
+        RADIANTE_DEBUG_COUNT_BOUNCE();
         // The first bounce (reflections and refraction seen straight from the camera, water among them) is traced as
         // usual; the later, scattered ones are reordered.
         // Known issue: with reordering, water can come out white. Experimental, off by default.

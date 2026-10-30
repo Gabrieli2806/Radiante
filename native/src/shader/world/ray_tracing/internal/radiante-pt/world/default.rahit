@@ -45,7 +45,10 @@ indexBuffer;
 layout(location = 0) rayPayloadInEXT MainRay mainRay;
 hitAttributeEXT vec2 attribs;
 
+#include "common/debug_count.glsl"
+
 void main() {
+    RADIANTE_DEBUG_COUNT_ANYHIT();
     if (VPT_LOD_COVERED(ubo)) {
         ignoreIntersectionEXT;
         return;

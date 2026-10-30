@@ -199,7 +199,9 @@ Pon el paquete en `radiante/shaderpacks/` como carpeta, no como zip, y elígelo.
   la carpeta (el activo si no das nombre) sin cambiar a él, y escribe el informe en el chat.
 - **Vistas de depuración**: `/radiante debug view <vista>` muestra una de las imágenes del fotograma en lugar de la
   imagen final: `albedo`, `normal`, `roughness`, `metallic`, `emission`, `depth`, `motion` (vectores de movimiento) o
-  `flags` (el tipo de superficie: agua, lava, cristal, hojas, plantas...). `/radiante debug view off` vuelve a la
+  `flags` (el tipo de superficie: agua, lava, cristal, hojas, plantas...). Los mapas de calor `anyhit` y `bounces`
+  muestran las ejecuciones any-hit por píxel en el rayo de cámara y los rayos tras él, de azul con 1 a rojo con 16 o más.
+  `/radiante debug view off` vuelve a la
   normal; sin vista, las lista. La vista no se guarda.
 - Tus propias vistas: lístalas en `configs.json`,
   `"debug_views": [{"name": "wetness", "define": "MY_DEBUG_WET"}]`. El define vale 0, y 1 (o `"value"`) mientras esa

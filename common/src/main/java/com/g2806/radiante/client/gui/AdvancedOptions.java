@@ -27,7 +27,7 @@ import net.minecraft.network.chat.Component;
 final class AdvancedOptions {
 
     /** The modules whose attributes are offered, in the order their groups appear. */
-    private static final String[] MODULES = {
+    static final String[] MODULES = {
         Pipeline.RAY_TRACING_MODULE_NAME,
         Pipeline.TONE_MAPPING_MODULE_NAME,
         Pipeline.POST_RENDER_MODULE_NAME,
@@ -133,7 +133,7 @@ final class AdvancedOptions {
             return new String[] {"QUALITY", "upscaler"};
         }
         if (name.contains("debug")) {
-            return new String[] {"OTHER", "debug"};
+            return new String[] {"DEBUG", "debug"};
         }
         if (name.contains("cloud")) {
             return new String[] {"SKY_AND_WATER", "clouds"};

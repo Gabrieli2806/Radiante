@@ -157,6 +157,7 @@ VkFormat parseFormat(const std::string &value) {
         {"r16g16_sfloat", VK_FORMAT_R16G16_SFLOAT},
         {"r16g16b16a16_sfloat", VK_FORMAT_R16G16B16A16_SFLOAT},
         {"r32_sfloat", VK_FORMAT_R32_SFLOAT},
+        {"r32_uint", VK_FORMAT_R32_UINT},
         {"r32g32_sfloat", VK_FORMAT_R32G32_SFLOAT},
         {"r32g32_uint", VK_FORMAT_R32G32_UINT},
         {"r32g32b32a32_sfloat", VK_FORMAT_R32G32B32A32_SFLOAT},

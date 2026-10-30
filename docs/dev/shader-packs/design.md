@@ -231,7 +231,7 @@ the frame's images at fixed bindings whatever a pass lists as inputs: 0 `out:ldr
 image, 3 `out:motion_vector`, 4 `out:normal_roughness`, 5 the bloom. A pack's textures are in set 4 at their
 `sampled_binding` (`post_motion`: 4). A pass that writes `out:ldr` must not sample set 3 binding 0: copy the picture to
 `post_motion` first (`post_render/post_copy.frag` reads set 3 binding 0), as `post_hook_copy` and Inkwell's
-`inkwell_copy` do. Bindings 120 and 121 of the runtime resources' set are Radiante PT's debug view image: a pack that
+`inkwell_copy` do. Bindings 120 to 122 of the runtime resources' set are Radiante PT's debug view images: a pack that
 extends it must not use them.
 
 ### Post passes: live settings and bloom
@@ -387,7 +387,9 @@ is chosen. The view is an attribute of the ray tracing module that Java adds to 
 `extends`, so a pack keeps Radiante PT's views and adds its own.
 
 Radiante PT's views share `RADIANTE_DEBUG_VIEW` (`common/debug_view.glsl`): `albedo` 1, `normal` 2, `roughness` 3,
-`metallic` 4, `emission` 5, `depth` 6, `motion` 7, `flags` 8. While one is chosen, the compute pass
+`metallic` 4, `emission` 5, `depth` 6, `motion` 7, `flags` 8, and the heat maps `anyhit` 9 and `bounces` 10
+(`common/debug_count.glsl`: the any-hit shaders and the bounce loop add to the atomic image `radiante_debug_count`,
+binding 122, which `debug_view_capture` turns into colour and clears). While one is chosen, the compute pass
 `debug_view_capture` (after the world pass) turns the guide images the ray generation shader wrote into display
 colours in `radiante_debug_view` (render resolution; one texel while no view is chosen, sized by
 `if(RADIANTE_DEBUG_VIEW, RENDER_WIDTH, 1)`), the closest-hit shader writes the surface flags there itself, and
