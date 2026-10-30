@@ -126,6 +126,12 @@
 #include "pt/pt_primary.glsl"
 #include "pt/pt_restir_gi.glsl"
 #include "common/debug_count.glsl"
+// The SHaRC debug view (common/debug_view.glsl): the light the cache gave each pixel's paths.
+#if defined(RADIANTE_DEBUG_VIEW) && RADIANTE_DEBUG_VIEW == 14
+#    include "common/debug_view.glsl"
+layout(set = 5, binding = RADIANTE_DEBUG_VIEW_STORAGE_BINDING, rgba16f) uniform writeonly image2D radianteDebugViewImage;
+vec3 g_radianteDebugSharc = vec3(0.0);
+#endif
 #include "pt/pt_bounce.glsl"
 // Hook points a pack extending radiante-pt replaces; empty here. The ray generation shader names its uniforms as the
 // hit shaders do, so they read the same worldUBO and skyUBO.
@@ -1334,6 +1340,11 @@ void main() {
         specHitDepth = isFirstHitSpecular ? (hasSecondHit ? distFirstToSecond : INF_DISTANCE) : 0.0;
     }
     imageStore(fogImage, ivec2(pixel), vec4(composeFogAdditive, composeFogTransmittance));
+#if defined(RADIANTE_DEBUG_VIEW) && RADIANTE_DEBUG_VIEW == 14
+    vec3 radianteDebugSharcLight = max(g_radianteDebugSharc, vec3(0.0));
+    imageStore(radianteDebugViewImage, ivec2(pixel),
+               vec4(radianteDebugDisplay(radianteDebugSharcLight / (1.0 + radianteDebugSharcLight)), 1.0));
+#endif
     imageStore(fogTransmissionImage, ivec2(pixel), vec4(composeFogTransmissionRGB, 1.0));
     imageStore(postStarCloudTransmittanceImage, ivec2(pixel), vec4(postStarCloudTransmittance));
     imageStore(specularHitDepthImage, ivec2(pixel), vec4(specHitDepth, vec3(1.0)));

@@ -25,6 +25,8 @@ there while **Advanced** is on.
 | Any-hit Heat Map | How many times an any-hit shader ran per pixel on the camera ray: blue is 1, through cyan, green and yellow to red at 16 or more; black is none. Hot areas cost frame time: stacked translucent surfaces, or hidden faces the ray crosses, such as Distant Horizons terrain under the real chunks. On GPUs with opacity micromaps most leaves and terrain are settled without an any-hit shader, so they read black. |
 | Bounces Heat Map | How many rays each pixel traced after the camera ray, on the same scale. Shows where paths run long, such as between mirrors. |
 | Rain | Red: how wet the surface is. Green: how open it is to the sky (works in any weather). Blue: standing water. Red and blue need rain, and rise as the wetness builds up. Water and glass stay black. |
+| Direct Light, Indirect Light | The noisy light on diffuse surfaces before the denoiser, compressed to the screen's range: straight from the lights, or after bouncing. A surface whose path took the mirror lobe this frame reads black, so expect noise. Rain hides the sun, so Direct Light goes dark in it. |
+| SHaRC Contribution | The light each pixel's paths took from the SHaRC cache, compressed to the screen's range, before exposure, so it reads dim. Black with SHaRC off, and nearly black outdoors on open ground, where bounces leave for the sky and never ask the cache; indoors most pixels show it. |
 
 A shader pack's own views are listed after these, under their own names. The view is not saved, so
 it is off again the next time you open the game.

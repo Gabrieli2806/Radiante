@@ -63,6 +63,21 @@
             "name": "rain",
             "define": "RADIANTE_DEBUG_VIEW",
             "value": 11
+        },
+        {
+            "name": "direct",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 12
+        },
+        {
+            "name": "indirect",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 13
+        },
+        {
+            "name": "sharc",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 14
         }
     ],
     "attributes": [
@@ -1737,7 +1752,9 @@
                     "out:normal_roughness",
                     "out:motion_vector",
                     "out:linear_depth",
-                    "out:first_hit_base_emission"
+                    "out:first_hit_base_emission",
+                    "out:first_hit_diffuse_direct_light",
+                    "out:first_hit_diffuse_indirect_light"
                 ]
             },
             "outputs": {

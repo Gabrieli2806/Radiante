@@ -25,6 +25,19 @@ layout(set = 5, binding = RADIANTE_DEBUG_VIEW_STORAGE_BINDING, rgba16f) uniform 
 
 #include "common/debug_count.glsl"
 
+#if RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_DIRECT
+layout(set = 3, binding = 8, rgba16f) uniform readonly image2D firstHitDiffuseDirectLightImage;
+#endif
+#if RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_INDIRECT
+layout(set = 3, binding = 9, rgba16f) uniform readonly image2D firstHitDiffuseIndirectLightImage;
+#endif
+
+// HDR light into the screen's range, so a torch and the sun both read.
+vec3 radianteDebugLight(vec3 light) {
+    light = max(light, vec3(0.0));
+    return radianteDebugDisplay(light / (1.0 + light));
+}
+
 void main() {
     ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
     if (any(greaterThanEqual(texel, imageSize(radianteDebugViewImage)))) { return; }
@@ -54,7 +67,12 @@ void main() {
     // Pixels moved since the last frame: red right, green down, grey still; 32 pixels reach full colour.
     vec2 motion = imageLoad(motionVectorImage, texel).xy;
     color = vec3(clamp(0.5 + motion / 64.0, 0.0, 1.0), 0.5);
-#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_FLAGS || RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_RAIN
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_DIRECT
+    color = radianteDebugLight(imageLoad(firstHitDiffuseDirectLightImage, texel).rgb);
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_INDIRECT
+    color = radianteDebugLight(imageLoad(firstHitDiffuseIndirectLightImage, texel).rgb);
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_FLAGS || RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_RAIN ||            \
+    RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_SHARC
     if (!sky) { return; }
     color = vec3(0.0);
 #elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_ANYHIT || RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_BOUNCES

@@ -214,6 +214,9 @@ void traceSecondary(inout MainRay rayState,
                 if (SharcGetCachedRadiance(sharcParameters, sharcHitData, cachedRadiance, false)) {
                     sharcCacheHit = true;
                     rayState.radiance += cachedRadiance * rayState.throughput;
+#if defined(RADIANTE_DEBUG_VIEW) && RADIANTE_DEBUG_VIEW == 14
+                    g_radianteDebugSharc += cachedRadiance * rayState.throughput;
+#endif
                     break;
                 }
             }
