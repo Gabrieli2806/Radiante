@@ -27,6 +27,8 @@ public final class BedrockRtxValues {
 
     /** The Bedrock RTX values, grouped by the part of the renderer they belong to. */
     public static final List<CompatParameter> PARAMETERS = List.of(
+        new CompatParameter("hands", null, RT + "hand_samples", "3", ParameterStatus.APPROXIMATE,
+            "Radiante's existing hand-lighting sample count; not a measured Bedrock RTX value"),
         // ---- mode
         new CompatParameter("mode", null, Pipeline.BEDROCK_ORIGINAL_ATTRIBUTE, TRUE, ParameterStatus.MATCHES_BEDROCK,
             "Bedrock RTX's own sky, sunlight, exposure and materials"),

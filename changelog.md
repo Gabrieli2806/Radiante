@@ -25,6 +25,11 @@ All notable changes to this project are documented in this file.
 - With Distant Horizons, its terrain under the chunks that are built is left out of the rays instead of being skipped
   by each one: rays near the ground crossed it under the real terrain and paid for every face they passed. In a forest
   at an 8 chunk render distance radiante-pt's trace took 2.4 ms less (17.6 to 15.2 ms).
+- First-person hand primary rays use conservative bounds from the current animated geometry, with padded projection
+  and full-screen fallback when bounds cannot be trusted.
+- Hand Lighting Samples (Performance → Advanced → Renderer, 1–8, default 3) controls the indirect-lighting
+  samples for first-person hands and held items. Lower values are faster with more noise; higher values are smoother.
+
 - Volumetric fog (Froxel style, and Bedrock's fog volume) holds still while you look around: its light now lives in
   two grids fixed to the world around the camera (half-block cells to 32 blocks, two-block cells to 128) instead of a
   grid cut along the view, and each pixel marches its ray through them. Turning the camera used to re-cut the air into

@@ -2,6 +2,7 @@
 
 #include "prism/render/chunks.hpp"
 #include "prism/render/entities.hpp"
+#include "prism/render/hand_primary_bounds.hpp"
 #include "prism/render/render_framework.hpp"
 #include "prism/render/renderer.hpp"
 #include "prism/render/world.hpp"
@@ -16,7 +17,7 @@
 static_assert(offsetof(gpu::Data::WorldUBO, windTime) == 692); // BufferProxy.WIND_OFFSET
 static_assert(offsetof(gpu::Data::WorldUBO, offHandLightPos) == 704);
 static_assert(offsetof(gpu::Data::WorldUBO, packParams) == 736);
-static_assert(sizeof(gpu::Data::WorldUBO) == 736 + 16 * PRISM_PACK_PARAM_COUNT);
+static_assert(sizeof(gpu::Data::WorldUBO) == 736 + 16 * PRISM_PACK_PARAM_COUNT + 16);
 
 namespace {
 
@@ -184,6 +185,7 @@ void Buffers::setAndUploadWorldUniformBuffer(gpu::Data::WorldUBO &ubo) {
 
     // What the world, the chunks and the entities publish is read before taking the lock: they take theirs, then
     // call in here.
+    ubo.handPrimaryBounds = hand_primary::fullScreen();
     ubo.entityLightCount = 0;
     ubo.entityLightAddressLo = 0;
     ubo.entityLightAddressHi = 0;

@@ -67,6 +67,11 @@ struct Entity : public SharedObject<Entity> {
     std::shared_ptr<gpu::DeviceLocalBuffer> positionBuffer;
     std::shared_ptr<gpu::DeviceLocalBuffer> materialBuffer;
 
+    // Final float positions uploaded to the BLAS, before its instance transform; projected at TLAS preparation.
+    // Retained with cached entities; only HAND_MASK entities need these.
+    std::vector<glm::vec3> handPositions;
+    bool handBoundsValid = false;
+
     uint32_t geometryCount = 0;
     std::shared_ptr<std::vector<std::string>> geometryGroupNames;
     std::shared_ptr<std::vector<std::string>> geometryContentNames;
