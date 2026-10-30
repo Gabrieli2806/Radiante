@@ -305,6 +305,10 @@ struct WorldUBO {
     // number in x (an int, a bool as 0 or 1, a choice as its index), a vec3 in xyz. Buffers::setPackParams copies
     // them in every frame, so changing one needs no shader rebuild.
     T_VEC4 packParams[PRISM_PACK_PARAM_COUNT];
+
+    // Native-only, appended so Java's prefix and the pack parameter offsets remain unchanged.
+    // xy=min, zw=max in NDC; overwritten with this frame's HAND_MASK instance envelope during TLAS preparation.
+    T_VEC4 handPrimaryBounds;
 };
 
 struct SkyUBO {

@@ -814,6 +814,13 @@
             "default_value": "4.0",
             "runtime": true,
             "define": "VPT_POST_DOF_MAX_RADIUS"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.hand_samples",
+            "type": "int_range:1-8",
+            "default_value": "3",
+            "runtime": true,
+            "define": "VPT_HAND_SAMPLES"
         }
     ],
     "textures": [

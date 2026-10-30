@@ -3,6 +3,7 @@
 #include "prism/render/buffers.hpp"
 #include "prism/render/chunks.hpp"
 #include "prism/render/entities.hpp"
+#include "prism/render/hand_primary_bounds.hpp"
 #include "prism/render/opacity_micromaps.hpp"
 #include "prism/render/render_framework.hpp"
 #include "prism/render/renderer.hpp"
@@ -529,6 +530,7 @@ void WorldPrepareContext::addEntityInstances(WorldPrepare &prepare,
     const auto *ubo =
         static_cast<const gpu::Data::WorldUBO *>(Renderer::instance().buffers()->worldUniformBuffer()->mappedPtr());
 
+    glm::vec4 handBounds(2.0f, 2.0f, -2.0f, -2.0f);
     uint32_t instanceIndex = static_cast<uint32_t>(cache.instances.size());
     uint32_t geometryBase = static_cast<uint32_t>(cache.indexAddresses.size());
     uint32_t sbtOffset = static_cast<uint32_t>(cache.hitGroupNames.size());
@@ -538,6 +540,15 @@ void WorldPrepareContext::addEntityInstances(WorldPrepare &prepare,
         const VkTransformMatrixKHR transform = entityTransform(*entity, cameraPos, ubo);
         tlasBuilder_->add(transform, instanceIndex, static_cast<uint8_t>(entity->rayTracingFlag), sbtOffset,
                           VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR, entity->blas->address());
+
+        if ((entity->rayTracingFlag & hand_primary::mask) != 0) {
+            const glm::vec4 bounds = entity->handBoundsValid
+                ? hand_primary::projectPoints(entity->handPositions,
+                    ubo->cameraEffectedViewMat * toMatrix(transform), ubo->cameraProjMat, ubo->handFovScale)
+                : hand_primary::fullScreen();
+            handBounds = {glm::min(glm::vec2(handBounds), glm::vec2(bounds)),
+                          glm::max(glm::vec2(handBounds.z, handBounds.w), glm::vec2(bounds.z, bounds.w))};
+        }
 
         const uint32_t geometryCount = entity->geometryCount;
         const auto *groupNames = entity->geometryGroupNames.get();
@@ -568,6 +579,16 @@ void WorldPrepareContext::addEntityInstances(WorldPrepare &prepare,
         sbtOffset += geometryCount + 1;
         instanceIndex++;
     }
+    static const bool profileHandBounds = std::getenv("RADIANTE_HAND_BOUNDS_PROFILE") != nullptr;
+    if (profileHandBounds && ubo->frameCounter % 300 == 0) {
+        std::cout << "[hand bounds] frame=" << ubo->frameCounter << " ndc=" << handBounds.x << "," << handBounds.y
+                  << "," << handBounds.z << "," << handBounds.w << " jitter=" << ubo->cameraJitter.x << ","
+                  << ubo->cameraJitter.y << std::endl;
+    }
+    // This is the current frame slot, before submission, using exactly the transforms just put in its TLAS.
+    // uploadToBuffer flushes non-coherent memory too. Never read back geometry from the GPU.
+    Renderer::instance().buffers()->worldUniformBuffer()->uploadToBuffer(
+        &handBounds, sizeof(handBounds), offsetof(gpu::Data::WorldUBO, handPrimaryBounds));
 }
 
 void WorldPrepareContext::stageTables(const WorldPrepare::ChunkCache &cache,

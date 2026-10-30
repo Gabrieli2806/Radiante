@@ -787,5 +787,7 @@
   "screen.radiante.shader_packs.hint.pick": "Pick a pack to see it here.",
   "screen.radiante.shader_packs.hint.use": "Pick Use, or click it again, to switch to it. The shaders are compiled again.",
   "screen.radiante.shader_packs.hint.in_use": "This is the pack the game uses now.",
-  "screen.radiante.shader_packs.crashed": "The game closed while this pack was being tried (a crash, or the GPU stopped responding). Radiante PT was put back. Check the game log or crash report."
+  "screen.radiante.shader_packs.crashed": "The game closed while this pack was being tried (a crash, or the GPU stopped responding). Radiante PT was put back. Check the game log or crash report.",
+  "render_pipeline.module.ray_tracing.attribute.hand_samples": "Hand Lighting Samples",
+  "render_pipeline.module.ray_tracing.attribute.hand_samples.tooltip": "Indirect-lighting samples for first-person hands and held items. Higher is smoother but costs more GPU time; lower is faster but noisier."
 }

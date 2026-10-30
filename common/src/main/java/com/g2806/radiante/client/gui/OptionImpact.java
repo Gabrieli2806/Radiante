@@ -23,6 +23,7 @@ enum OptionImpact {
     }
 
     private static final Map<String, OptionImpact> BY_OPTION = Map.ofEntries(
+        Map.entry("render_pipeline.module.ray_tracing.attribute.hand_samples", HIGH),
         Map.entry("options.radiante.quality", VARIES),
         Map.entry("options.radiante.preset", HIGH),
         Map.entry("options.radiante.dlss_mode", HIGH),
@@ -83,6 +84,9 @@ enum OptionImpact {
         Map.entry("options.radiante.tunable.water_clear_teal", LOW));
 
     static OptionImpact of(String optionKey) {
+        if (optionKey != null && BY_OPTION.containsKey(optionKey)) {
+            return BY_OPTION.get(optionKey);
+        }
         // Advanced rows without a translation have a literal caption and so no key: nothing is known of their cost.
         if (optionKey == null || !optionKey.startsWith("options.radiante.")) {
             return null;

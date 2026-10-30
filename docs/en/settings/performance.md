@@ -34,6 +34,14 @@ Defaults are radiante-pt's, the Bedrock RTX look ([bedrock-rtx.md](../bedrock-rt
 | **Chunk Batches** | 1 – 64 | What Automatic picks for your CPU | How many of those builds may be in flight on the GPU at once. Higher loads faster on strong GPUs and uses more video memory; lower it if you see hitches or run out of VRAM. |
 | **Block Emission** | On / Off | On | Blocks that give off light (torches, lava, glowstone...) light up the world around them. Off saves some performance, but light sources then only glow themselves — Block Light Sampling and ReSTIR (in [Lighting](lighting.md)) need it. |
 
+## Advanced hand lighting
+
+Enable **Advanced** and open **Renderer** to find **Hand Lighting Samples** (1–8, default **3**).
+It controls indirect-lighting samples for both first-person hands and held items. Lower values reduce GPU work
+but add noise, especially on maps and large held items; higher values smooth the lighting at greater cost.
+Apply changes using the usual Apply button. The value is saved with the shader pack settings and updates at
+runtime without recompiling shaders. World lighting samples and bounce limits are unchanged.
+
 ## Why the Chunk Threads maximum is half your cores
 
 It is not an arbitrary number: on a 24-thread CPU, measuring with 20 building threads dropped the
