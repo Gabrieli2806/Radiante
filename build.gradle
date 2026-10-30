@@ -147,7 +147,7 @@ file('examples/shaderpacks').listFiles()?.findAll { it.isDirectory() && new File
 // - Folders are linked: each loader's folder holds a junction (a symbolic link off Windows) to run-shared's.
 // - Files are copied, as the game replaces them whole when it saves them, which would break a link: into the loader's
 //   folder before the client starts, when run-shared's copy is newer, and back after it closes.
-ext.sharedRunFolders = ['saves', 'resourcepacks', 'shaderpacks', 'screenshots', 'replay_recordings',
+ext.sharedRunFolders = ['saves', 'resourcepacks', 'shaderpacks', 'replay_recordings',
 						'radiante/shaderpacks', 'radiante/bedrock_packs', 'radiante/addons']
 ext.sharedRunFiles = ['options.txt', 'servers.dat', 'hotbar.nbt', 'command_history.txt',
 					  'radiante/options.properties', 'radiante/pipeline.yaml', 'radiante/presets.json']
@@ -177,24 +177,30 @@ ext.copyIfNewer = { File from, File to ->
 	}
 }
 
+// Links a game folder's folder to a shared one; a folder with files of its own is left alone.
+ext.linkRunFolder = { File link, File target ->
+	target.mkdirs()
+	link.parentFile.mkdirs()
+	if (isLinkedFolder(link)) return
+	if (link.isDirectory()) {
+		if (link.list().length > 0) {
+			logger.warn("${link} has files of its own, so it is not linked to ${target}")
+			return
+		}
+		link.delete()
+	}
+	linkFolder(link, target)
+}
+
 // Before a dev client starts: links its folder's shared folders and brings the shared files in.
 ext.shareRunIn = { File gameDir ->
 	File shared = file('run-shared')
 	for (String path : sharedRunFolders) {
 		File target = new File(shared, path)
-		File link = new File(gameDir, path)
-		target.mkdirs()
-		link.parentFile.mkdirs()
-		if (isLinkedFolder(link)) continue
-		if (link.isDirectory()) {
-			if (link.list().length > 0) {
-				logger.warn("${link} has files of its own, so it is not linked to ${target}")
-				continue
-			}
-			link.delete()
-		}
-		linkFolder(link, target)
+		linkRunFolder(new File(gameDir, path), target)
 	}
+	// Every loader's screenshots land in the repo's screenshots folder, next to its art and promo subfolders.
+	linkRunFolder(new File(gameDir, 'screenshots'), file('screenshots'))
 	for (String path : sharedRunFiles) {
 		copyIfNewer(new File(shared, path), new File(gameDir, path))
 	}

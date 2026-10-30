@@ -70,3 +70,8 @@ forge/*.launch
 /tools/bedrock-rtx/
 /tools
 /issues
+
+# The dev clients' game screenshots land in screenshots/; only its subfolders (art, promo...) are kept in git.
+/screenshots/*
+!/screenshots/*/
+!/screenshots/README.md
