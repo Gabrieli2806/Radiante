@@ -60,3 +60,8 @@ rootProject.packNatives(tasks.jar)
 jar {
 	archiveFileName.set("${rootProject.archives_base_name}-neoforge-${project.version}+${rootProject.minecraft_version}.jar")
 }
+
+// The same worlds as the Fabric client (see shareSaves in the root build).
+tasks.matching { it.name == 'runClient' }.configureEach {
+	doFirst { rootProject.shareSaves(rootProject.file('run-neoforge')) }
+}

@@ -94,3 +94,8 @@ jar {
 		into 'META-INF/jarjar'
 	}
 }
+
+// The same worlds as the Fabric client (see shareSaves in the root build).
+tasks.matching { it.name == 'runClient' }.configureEach {
+	doFirst { rootProject.shareSaves(rootProject.file('run-forge')) }
+}

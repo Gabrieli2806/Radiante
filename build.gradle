@@ -141,6 +141,35 @@ file('examples/shaderpacks').listFiles()?.findAll { it.isDirectory() && new File
 	shaderPackExamples.configure { dependsOn zip }
 }
 
+// For the Forge and NeoForge dev clients: their game folder's saves is a link to Fabric's run/saves, so every loader
+// opens the same worlds while each keeps its own options, renderer and log. Made only where saves is missing or empty;
+// a folder with worlds in it is left alone. Minecraft's session lock keeps two clients out of the same world.
+ext.shareSaves = { File gameDir ->
+	File shared = file('run/saves')
+	File saves = new File(gameDir, 'saves')
+	shared.mkdirs()
+	gameDir.mkdirs()
+	if (java.nio.file.Files.isSymbolicLink(saves.toPath()) || isJunction(saves)) return
+	if (saves.isDirectory()) {
+		if (saves.list().length > 0) {
+			logger.warn("${saves} has worlds of its own, so it is not linked to ${shared}")
+			return
+		}
+		saves.delete()
+	}
+	if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+		// A junction needs no administrator rights or Developer Mode, unlike a symbolic link.
+		providers.exec { commandLine 'cmd', '/c', 'mklink', '/J', saves.absolutePath, shared.absolutePath }.result.get()
+	} else {
+		java.nio.file.Files.createSymbolicLink(saves.toPath(), shared.toPath())
+	}
+}
+
+// A Windows junction reads as a plain folder to isSymbolicLink; its real path lies elsewhere.
+ext.isJunction = { File f ->
+	f.exists() && f.toPath().toRealPath() != f.toPath().toAbsolutePath().normalize()
+}
+
 // For the loader modules: the jar takes the compressed natives instead of the plain ones.
 ext.packNatives = { Jar jar ->
 	jar.dependsOn compressNatives
