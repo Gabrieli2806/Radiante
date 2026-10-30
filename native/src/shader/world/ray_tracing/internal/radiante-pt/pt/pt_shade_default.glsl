@@ -97,6 +97,10 @@ indexBuffer;
 #include "common/constants.glsl"
 #include "common/water_medium.glsl"
 #include "common/rain_wetness.glsl"
+#if defined(RADIANTE_DEBUG_VIEW) && RADIANTE_DEBUG_VIEW == 11
+// The rain debug view's values for this surface: wetness, open sky, standing water (pt_material.glsl).
+vec3 g_radianteDebugRain = vec3(0.0);
+#endif
 #include "common/seamless_glass.glsl"
 // A pack's water waves (hooks/water_waves.glsl); nothing in radiante-pt.
 #include "hooks/water_waves.glsl"
@@ -142,13 +146,18 @@ vec3 hookTexelCentre(vec2 uv, vec3 worldPos) {
 }
 
 // The surface flags debug view (common/debug_view.glsl, RADIANTE_DEBUG_VIEW 8, chosen with /radiante debug view
-// flags): what kind of surface the camera sees, written here because only the hit shaders read the vertex data.
-// Compiled out unless that view is chosen.
+// flags): what kind of surface the camera sees, written here because only the hit shaders read the vertex data. The
+// rain view (11) likewise, from what the material worked out. Compiled out unless one of them is chosen.
 #ifdef RADIANTE_DEBUG_VIEW
-#    if RADIANTE_DEBUG_VIEW == 8
+#    if RADIANTE_DEBUG_VIEW == 8 || RADIANTE_DEBUG_VIEW == 11
 #        include "common/debug_view.glsl"
-#        define PT_DEBUG_VIEW_FLAGS 1
 layout(set = 5, binding = RADIANTE_DEBUG_VIEW_STORAGE_BINDING, rgba16f) uniform writeonly image2D radianteDebugViewImage;
+#    endif
+#    if RADIANTE_DEBUG_VIEW == 8
+#        define PT_DEBUG_VIEW_FLAGS 1
+#    endif
+#    if RADIANTE_DEBUG_VIEW == 11
+#        define PT_DEBUG_VIEW_RAIN 1
 #    endif
 #endif
 
@@ -463,6 +472,12 @@ void ptShadeDefault(bool viewMark) {
                                                   isHeldSurface(packedData), isUnlitSurface(packedData),
                                                   isLayerSurface(packedData), isBlendSurface(packedData));
         imageStore(radianteDebugViewImage, ivec2(gl_LaunchIDEXT.xy), vec4(radianteDebugDisplay(flagsColor), 1.0));
+    }
+#endif
+
+#ifdef PT_DEBUG_VIEW_RAIN
+    if (bounce == 0u) {
+        imageStore(radianteDebugViewImage, ivec2(gl_LaunchIDEXT.xy), vec4(g_radianteDebugRain, 1.0));
     }
 #endif
 

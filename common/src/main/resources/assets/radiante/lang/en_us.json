@@ -633,6 +633,8 @@
   "options.radiante.open_logs.action": "Open Folder",
   "options.radiante.open_shader_packs": "Shader Packs",
   "options.radiante.open_shader_packs.tooltip": "Opens the folder shader packs are loaded from.",
+  "options.radiante.debug_view.value.rain": "Rain",
+  "options.radiante.debug_view.value.rain.tooltip": "Red: how wet the surface is. Green: how open it is to the sky. Blue: standing water. Needs rain to show red and blue.",
   "options.radiante.open_shader_packs.action": "Open Folder",
   "render_pipeline.module.ray_tracing.attribute.seamless_glass_scope.tooltip": "Which glass Seamless Glass joins: blocks and panes, only blocks, or only panes.",
   "options.radiante.blocked.bedrock_fog": "No effect right now: Bedrock's fog does not use it. Works with Bedrock Volumetric Fog off under Advanced.",

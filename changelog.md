@@ -4,6 +4,7 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Debug view `rain`: per pixel wetness (red), open sky (green) and standing water (blue).
 - New Debug section in the Radiante settings, shown while Advanced is on: a debug view picker (with a pack's own
   views), SHaRC Debug Mode, HDR Debug View and Debug Logging moved there, GPU Timings in F3, a Bug Report Summary that
   copies versions, GPU and settings, and buttons for the logs and shader packs folders. New heat map debug views:

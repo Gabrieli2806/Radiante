@@ -24,6 +24,7 @@ mientras **Avanzado** está activado.
 | Tipos de Superficie | Un color por tipo de superficie que ve la cámara: agua, lava, vidrio, hojas, plantas... |
 | Mapa de Calor Any-hit | Cuántas veces se ejecutó un shader any-hit por píxel en el rayo de cámara: azul es 1, pasando por cian, verde y amarillo hasta rojo con 16 o más; negro es ninguna. Las zonas calientes cuestan tiempo de fotograma: superficies translúcidas apiladas o caras ocultas que cruza el rayo, como el terreno de Distant Horizons bajo los chunks reales. En GPUs con micromapas de opacidad, la mayoría de las hojas y el terreno se resuelven sin shader any-hit, así que se ven negros. |
 | Mapa de Calor de Rebotes | Cuántos rayos trazó cada píxel tras el rayo de cámara, en la misma escala. Muestra dónde los caminos se alargan, por ejemplo entre espejos. |
+| Lluvia | Rojo: cuánto se moja la superficie. Verde: cuánto está abierta al cielo (con cualquier clima). Azul: agua estancada. Rojo y azul necesitan lluvia, y suben a medida que se acumula la humedad. El agua y el vidrio quedan en negro. |
 
 Las vistas propias de un paquete de shaders aparecen después de estas, con sus nombres. La vista no
 se guarda, así que vuelve a estar desactivada la próxima vez que abras el juego.

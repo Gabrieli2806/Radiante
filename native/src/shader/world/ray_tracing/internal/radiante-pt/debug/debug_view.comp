@@ -54,7 +54,7 @@ void main() {
     // Pixels moved since the last frame: red right, green down, grey still; 32 pixels reach full colour.
     vec2 motion = imageLoad(motionVectorImage, texel).xy;
     color = vec3(clamp(0.5 + motion / 64.0, 0.0, 1.0), 0.5);
-#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_FLAGS
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_FLAGS || RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_RAIN
     if (!sky) { return; }
     color = vec3(0.0);
 #elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_ANYHIT || RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_BOUNCES

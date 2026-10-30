@@ -17,6 +17,7 @@
 #define RADIANTE_DEBUG_VIEW_FLAGS 8
 #define RADIANTE_DEBUG_VIEW_ANYHIT 9
 #define RADIANTE_DEBUG_VIEW_BOUNCES 10
+#define RADIANTE_DEBUG_VIEW_RAIN 11
 
 // The image's bindings: set 5 in the ray tracing stage (storage), set 4 in the post stage (sampled).
 #define RADIANTE_DEBUG_VIEW_SAMPLED_BINDING 120

@@ -633,6 +633,8 @@
   "options.radiante.open_logs.action": "Abrir Carpeta",
   "options.radiante.open_shader_packs": "Paquetes de Shaders",
   "options.radiante.open_shader_packs.tooltip": "Abre la carpeta de la que se cargan los paquetes de shaders.",
+  "options.radiante.debug_view.value.rain": "Lluvia",
+  "options.radiante.debug_view.value.rain.tooltip": "Rojo: cuánto se moja la superficie. Verde: cuánto está abierta al cielo. Azul: agua estancada. Rojo y azul necesitan lluvia.",
   "options.radiante.open_shader_packs.action": "Abrir Carpeta",
   "render_pipeline.module.ray_tracing.attribute.seamless_glass_scope.tooltip": "Qué cristal une Cristal continuo: bloques y paneles, solo bloques o solo paneles.",
   "options.radiante.blocked.bedrock_fog": "Sin efecto ahora: la niebla de Bedrock no lo usa. Funciona con Niebla Volumétrica de Bedrock desactivada en Avanzado.",

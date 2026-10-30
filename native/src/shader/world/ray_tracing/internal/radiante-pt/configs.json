@@ -58,6 +58,11 @@
             "name": "bounces",
             "define": "RADIANTE_DEBUG_VIEW",
             "value": 10
+        },
+        {
+            "name": "rain",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 11
         }
     ],
     "attributes": [

@@ -480,6 +480,9 @@ void sampleSurfaceState(bool useTexture,
         // Grass and earth: the surfaces the biome tints.
         float porous = any(lessThan(colorLayer, vec3(0.98))) ? 1.0 : 0.0;
         float puddle = open > 0.0 && fullTop ? vptRainPuddleEdge(vptPuddle(rainPos, open, porous)) : 0.0;
+#if defined(RADIANTE_DEBUG_VIEW) && RADIANTE_DEBUG_VIEW == 11
+        g_radianteDebugRain = vec3(wetness, open, puddle);
+#endif
         if (puddle > 0.0) {
             vptApplyPuddle(mat, puddle, porous);
             // Flat water, so the mirror image is sharp: the rings are kept faint on it, as their changing slope
