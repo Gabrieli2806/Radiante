@@ -458,22 +458,27 @@ void sampleSurfaceState(bool useTexture,
 
     // Rain soaks the ground under open sky: darker, glossy, and the bumps of the normal map drown.
     if (!useWaterMaterial && !isFftWaterSurface && !g_hitIsGlass && !isRainStreak) {
-        float open = vptGroundOpen(worldPos, baseGeoNormal);
+        vec2 groundRain = vptGroundRain(worldPos, baseGeoNormal);
+        float open = groundRain.x;
         // Water stands only on the flat top of a full block: a slab, a stair's step, a path block. Elsewhere, and on
         // leaves, the rain only darkens a little: on a roof of stairs and slabs the full film read as sheets of
         // glass broken at every step.
         float topHeight = float(fract(worldUBO.cameraPos.y + double(worldPos.y)));
         bool fullTop = alphaMode == ALPHA_MODE_OPAQUE && (topHeight < 0.002 || topHeight > 0.998);
-        float wetness = open * skyUBO.rainWetness.x * (fullTop ? 1.0 : (alphaMode == ALPHA_MODE_OPAQUE ? 0.5 : 0.3));
+        // The ground darkens well before water stands on it: the wetness rises over a couple of minutes.
+        float wetness = groundRain.y * sqrt(max(skyUBO.rainWetness.x, 0.0)) *
+                        (fullTop ? 1.0 : (alphaMode == ALPHA_MODE_OPAQUE ? 0.5 : 0.3));
         if (wetness > 0.0) {
             vptApplyGroundWetness(mat, wetness);
             shadingNormal = normalizeF(mix(shadingNormal, geometricNormal, wetness * 0.7), geometricNormal);
         }
         // A film of standing water over it all while it rains, drying up in patches after (vptPuddle).
         vec3 rainPos = vptRainSurfacePosition(worldPos);
-        float puddle = open > 0.0 && fullTop ? vptRainPuddleEdge(vptPuddle(rainPos, open)) : 0.0;
+        // Grass and earth: the surfaces the biome tints.
+        float porous = any(lessThan(colorLayer, vec3(0.98))) ? 1.0 : 0.0;
+        float puddle = open > 0.0 && fullTop ? vptRainPuddleEdge(vptPuddle(rainPos, open, porous)) : 0.0;
         if (puddle > 0.0) {
-            vptApplyPuddle(mat, puddle);
+            vptApplyPuddle(mat, puddle, porous);
             // Flat water, so the mirror image is sharp: the rings are kept faint on it, as their changing slope
             // from frame to frame left the denoiser only a blurred image of the sky to show.
             shadingNormal = vptApplyRainRipples(normalizeF(mix(shadingNormal, geometricNormal, puddle),

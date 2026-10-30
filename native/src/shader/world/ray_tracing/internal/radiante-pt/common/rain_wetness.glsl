@@ -16,22 +16,45 @@ bool vptRainColumnBlocks(ivec4 data, int surfaceBlockY) {
     return data.a == 0 || (data.r + 256 * data.g - 32768) > surfaceBlockY;
 }
 
-/** How open to the rain an upward face is here, 0..1, whatever the weather: 1 on the top of its column, fading
- *  towards a wall or overhang and at the edge of the texture. */
-float vptGroundOpen(vec3 position, vec3 outwardNormal) {
-    float rain = 1.0;
+// How damp sheltered ground gets at most (beside a wall, at the rim of a tree's shade), against open ground, and how
+// far in from the open the rain blown under a roof or a canopy reaches, in blocks.
+const float SHELTER_DAMP = 0.45;
+const float SHELTER_REACH = 2.0;
+
+/** How the rain reaches an upward face here, whatever the weather. x: how open it is to the sky, 0..1, for standing
+ *  water: 1 on the top of its column, fading towards a wall or overhang and at the edge of the texture. y: how damp
+ *  it gets, 0..1: as x in the open but never under SHELTER_DAMP there, and under cover the rain blown in from the
+ *  open columns around, fading over SHELTER_REACH blocks. It was cut hard at the edge of the open sky before. */
+vec2 vptGroundRain(vec3 position, vec3 outwardNormal) {
     uint textureId = uint(skyUBO.rainWetness.y + 0.5);
-    if (textureId == 0u || outwardNormal.y < 0.5) { return 0.0; }
+    if (textureId == 0u || outwardNormal.y < 0.5) { return vec2(0.0); }
     // The texture covers 256 blocks each way.
-    if (max(abs(position.x), abs(position.z)) > 238.0) { return 0.0; }
+    if (max(abs(position.x), abs(position.z)) > 238.0) { return vec2(0.0); }
     ivec3 cameraCell = ivec3(floor(worldUBO.cameraPos.xyz));
     vec3 relativePosition = position + vec3(worldUBO.cameraPos.xyz - dvec3(cameraCell));
     ivec2 column = cameraCell.xz + ivec2(floor(relativePosition.xz));
     int surfaceBlockY = cameraCell.y + int(floor(relativePosition.y - 0.001));
     ivec4 center = vptRainColumn(column, textureId);
-    if (center.b == 0 || vptRainColumnBlocks(center, surfaceBlockY)) { return 0.0; }
-
+    if (center.b == 0) { return vec2(0.0); }
+    float fade = (1.0 - smoothstep(220.0, 238.0, max(abs(position.x), abs(position.z)))) *
+                 smoothstep(0.5, 0.95, outwardNormal.y);
     vec2 withinColumn = fract(relativePosition.xz);
+
+    if (vptRainColumnBlocks(center, surfaceBlockY)) {
+        // Under cover: how near the closest open column is.
+        float nearest = 1e3;
+        for (int dz = -2; dz <= 2; dz++) {
+            for (int dx = -2; dx <= 2; dx++) {
+                if (dx == 0 && dz == 0) { continue; }
+                if (vptRainColumnBlocks(vptRainColumn(column + ivec2(dx, dz), textureId), surfaceBlockY)) { continue; }
+                vec2 away = max(abs(withinColumn - (vec2(dx, dz) + 0.5)) - 0.5, vec2(0.0));
+                nearest = min(nearest, length(away));
+            }
+        }
+        float blownIn = 1.0 - smoothstep(0.0, SHELTER_REACH, nearest);
+        return vec2(0.0, SHELTER_DAMP * blownIn * blownIn * fade);
+    }
+
     ivec2 nearestSide = ivec2(step(vec2(0.5), withinColumn)) * 2 - 1;
     vec2 edge = min(withinColumn, vec2(1.0) - withinColumn);
     float edgeDistanceSquared = 0.25;
@@ -41,8 +64,12 @@ float vptGroundOpen(vec3 position, vec3 outwardNormal) {
         edgeDistanceSquared = min(edgeDistanceSquared, edge.y * edge.y);
     if (vptRainColumnBlocks(vptRainColumn(column + nearestSide, textureId), surfaceBlockY))
         edgeDistanceSquared = min(edgeDistanceSquared, dot(edge, edge));
-    rain *= 1.0 - smoothstep(220.0, 238.0, max(abs(position.x), abs(position.z)));
-    return rain * smoothstep(0.0, 0.5, sqrt(edgeDistanceSquared)) * smoothstep(0.5, 0.95, outwardNormal.y);
+    float open = smoothstep(0.0, 0.5, sqrt(edgeDistanceSquared));
+    return vec2(open, mix(SHELTER_DAMP, 1.0, open)) * fade;
+}
+
+float vptGroundOpen(vec3 position, vec3 outwardNormal) {
+    return vptGroundRain(position, outwardNormal).x;
 }
 
 float vptGroundWetness(vec3 position, vec3 outwardNormal) {
@@ -82,6 +109,14 @@ const float PUDDLE_RIM = 0.03;
 // How long the film of water stands whole after the rain eases off, in seconds, and by when it has dried up patch
 // by patch. The ground under it dries sooner (its wetness falls with a time constant of 25 s).
 const float PUDDLE_LINGER_SECONDS = 10.0;
+// The ground's wetness (RainExposure, rising with a time constant of 50 s in rain) at which the first water stands,
+// and at which it has spread into one film.
+const float PUDDLE_WET_START = 0.15;
+const float PUDDLE_WET_FULL = 0.95;
+// On grass and earth (a surface tinted by the biome): how much less of it holds standing water, and how rough that
+// water is.
+const float PUDDLE_POROUS_BIAS = 0.3;
+const float PUDDLE_POROUS_ROUGHNESS = 0.07;
 const float PUDDLE_DRY_SECONDS = 180.0;
 // Ripples: rings per block across, how long one ring lives in seconds, and how steep its wave is.
 const float RIPPLE_CELLS = 2.5;
@@ -113,35 +148,35 @@ float vptRainValueNoise(vec2 p) {
 }
 
 /** How much standing water there is here, 0..1, on the flat top of a full block under the open sky (open:
- *  vptGroundOpen). While it rains, an even film over all of it, deepening as the ground soaks. Once the rain stops
- *  it dries up in patches, by a noise fixed to the world, the last ones gone by PUDDLE_DRY_SECONDS. */
-float vptPuddle(vec3 position, float open) {
+ *  vptGroundOpen; porous: 1 on grass and earth). As the rain goes on it gathers in patches, by a noise fixed to the
+ *  world, that grow and merge into one film; once the rain stops it dries up in patches the other way round, the
+ *  last ones gone by PUDDLE_DRY_SECONDS. */
+float vptPuddle(vec3 position, float open, float porous) {
     float amount = clamp(VPT_RAIN_PUDDLES * 2.0, 0.0, 1.0);
     if (amount <= 0.0 || open <= 0.0) { return 0.0; }
     bool raining = skyUBO.rainGradient > 0.2;
     // rainStoppedFor is 0 while it rains and huge before any rain.
     if (!raining && skyUBO.rainStoppedFor > PUDDLE_DRY_SECONDS) { return 0.0; }
-    // While it rains: one film over all of it, as deep as the ground is soaked.
-    float soak = raining ? smoothstep(0.3, 0.9, skyUBO.rainWetness.x) : 1.0;
-    // After: the ground dries in patches, from where the noise is lowest, until none is left.
-    float drying = raining ? 0.0 : smoothstep(PUDDLE_LINGER_SECONDS, PUDDLE_DRY_SECONDS, skyUBO.rainStoppedFor);
-    float cover = 1.0;
-    if (drying > 0.0) {
-        vec2 p = vptRainWorldXZ(position);
-        float n = 0.75 * vptRainValueNoise(p / PUDDLE_SCALE) +
-                  0.25 * vptRainValueNoise(p / (PUDDLE_SCALE * 0.33) + 17.0);
-        // The noise runs about 0.15..0.85: the threshold sweeps across all of it.
-        float threshold = mix(0.1, 0.9, drying);
-        cover = smoothstep(threshold, threshold + PUDDLE_RIM, n);
-    }
-    return open * soak * cover * amount;
+    // How far the water has spread, 0..1: while it rains, with the ground's soaking (a couple of minutes to the
+    // whole film); after, back down as it dries.
+    float spread = raining ? smoothstep(PUDDLE_WET_START, PUDDLE_WET_FULL, skyUBO.rainWetness.x) :
+                             1.0 - smoothstep(PUDDLE_LINGER_SECONDS, PUDDLE_DRY_SECONDS, skyUBO.rainStoppedFor);
+    if (spread <= 0.0) { return 0.0; }
+    vec2 p = vptRainWorldXZ(position);
+    // High noise is where water gathers: it pools there first and dries there last.
+    float n = 0.75 * vptRainValueNoise(p / PUDDLE_SCALE) + 0.25 * vptRainValueNoise(p / (PUDDLE_SCALE * 0.33) + 17.0);
+    // The noise runs about 0.15..0.85: the threshold sweeps across all of it. Grass and earth soak water up, so less
+    // of it stands there.
+    float threshold = mix(0.9, 0.1, spread) + PUDDLE_POROUS_BIAS * porous;
+    return open * smoothstep(threshold, threshold + PUDDLE_RIM, n) * amount;
 }
 
 /** Standing water: as dark as soaked ground and smooth as water's surface, so it mirrors the sky and the lamps. */
-void vptApplyPuddle(inout LabPBRMat material, float puddle) {
+void vptApplyPuddle(inout LabPBRMat material, float puddle, float porous) {
     if (puddle <= 0.0 || material.transmission > 0.0) { return; }
     material.albedo *= 1.0 - 0.45 * puddle * (1.0 - material.metallic);
-    material.roughness = mix(material.roughness, 0.01, puddle);
+    // Water among grass blades is broken up: glossy there, a mirror on stone.
+    material.roughness = mix(material.roughness, mix(0.01, PUDDLE_POROUS_ROUGHNESS, porous), puddle);
     material.f0 = mix(material.f0, max(material.f0, vec3(0.02)), puddle);
 }
 

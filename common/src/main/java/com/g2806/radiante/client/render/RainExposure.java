@@ -66,9 +66,10 @@ public final class RainExposure {
         }
         if (!minecraft.isPaused()) {
             float rain = world.getRainLevel(1.0f);
-            // Soaks over half a minute of steady rain (95 % at 30 s), dries over about as long; the puddles stand on
-            // for minutes after (rain_wetness.glsl).
-            wetness += (rain - wetness) * (1.0f - (float) Math.exp(-dt / (rain > wetness ? 10.0f : 25.0f)));
+            // Soaks over a couple of minutes of steady rain (95 % at 150 s): the ground darkens within seconds (the
+            // shaders follow the square root) while water gathers in patches that merge into one film by the end
+            // (rain_wetness.glsl). Dries faster, the puddles standing on for minutes after.
+            wetness += (rain - wetness) * (1.0f - (float) Math.exp(-dt / (rain > wetness ? 50.0f : 25.0f)));
             if (wetness < 0.0001f) {
                 wetness = 0.0f;
             }
