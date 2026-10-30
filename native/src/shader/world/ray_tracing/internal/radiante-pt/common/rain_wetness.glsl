@@ -20,24 +20,60 @@ bool vptRainColumnBlocks(ivec4 data, int surfaceBlockY) {
 // far in from the open the rain blown under a roof or a canopy reaches, in blocks.
 const float SHELTER_DAMP = 0.45;
 const float SHELTER_REACH = 2.0;
+// Ground under leaves: the rain drips through them, so it is never quite dry there.
+const float LEAF_DAMP = 0.3;
+// How far apart the columns are that are read to blend the rain across a biome's edge, in blocks: the wetness fades
+// over about twice that.
+const float BIOME_BLEND_STEP = 4.0;
 
-/** How the rain reaches an upward face here, whatever the weather. x: how open it is to the sky, 0..1, for standing
- *  water: 1 on the top of its column, fading towards a wall or overhang and at the edge of the texture. y: how damp
- *  it gets, 0..1: as x in the open but never under SHELTER_DAMP there, and under cover the rain blown in from the
- *  open columns around, fading over SHELTER_REACH blocks. It was cut hard at the edge of the open sky before. */
+#ifndef VPT_RAIN_WET_WALLS
+#    define VPT_RAIN_WET_WALLS 0.5
+#endif
+
+/** How much of the rain falls here, 0..1, from the biomes of the columns around: a wet area fades out over a few
+ *  blocks into a desert or a snowy biome instead of stopping at the biome's edge. */
+float vptRainBiome(ivec2 column, uint textureId) {
+    float rains = 0.0;
+    for (int dz = -1; dz <= 1; dz++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            ivec2 at = column + ivec2(dx, dz) * int(BIOME_BLEND_STEP);
+            rains += vptRainColumn(at, textureId).b > 0 ? 1.0 : 0.0;
+        }
+    }
+    return smoothstep(0.0, 1.0, rains / 9.0);
+}
+
+/** How the rain reaches a face here, whatever the weather.
+ *  x: how open an upward face is to the sky, 0..1, for standing water: 1 on the top of its column, fading towards a
+ *  wall or overhang and at the edge of the texture.
+ *  y: how damp the face gets, 0..1. Upward faces: as x in the open but never under SHELTER_DAMP there; under cover
+ *  the rain blown in from the open columns around, fading over SHELTER_REACH blocks, and under leaves never less
+ *  than LEAF_DAMP. Walls and other upright faces: VPT_RAIN_WET_WALLS where the column in front of them is open to
+ *  the sky at their height. Undersides stay dry. Both fade over a few blocks at the edge of a biome where it rains
+ *  (vptRainBiome). It was cut hard at the edge of the open sky and of the biome before, and only floors got wet. */
 vec2 vptGroundRain(vec3 position, vec3 outwardNormal) {
     uint textureId = uint(skyUBO.rainWetness.y + 0.5);
-    if (textureId == 0u || outwardNormal.y < 0.5) { return vec2(0.0); }
+    if (textureId == 0u || outwardNormal.y < -0.3) { return vec2(0.0); }
     // The texture covers 256 blocks each way.
     if (max(abs(position.x), abs(position.z)) > 238.0) { return vec2(0.0); }
     ivec3 cameraCell = ivec3(floor(worldUBO.cameraPos.xyz));
     vec3 relativePosition = position + vec3(worldUBO.cameraPos.xyz - dvec3(cameraCell));
     ivec2 column = cameraCell.xz + ivec2(floor(relativePosition.xz));
+    float biome = vptRainBiome(column, textureId);
+    if (biome <= 0.0) { return vec2(0.0); }
+    float fade = (1.0 - smoothstep(220.0, 238.0, max(abs(position.x), abs(position.z)))) * biome;
+
+    if (outwardNormal.y < 0.5) {
+        // An upright face: wet where the air in front of it is open to the sky at its height.
+        ivec2 front = cameraCell.xz + ivec2(floor(relativePosition.xz + outwardNormal.xz * 0.5));
+        int faceBlockY = cameraCell.y + int(floor(relativePosition.y));
+        if (vptRainColumnBlocks(vptRainColumn(front, textureId), faceBlockY)) { return vec2(0.0); }
+        return vec2(0.0, clamp(VPT_RAIN_WET_WALLS, 0.0, 1.0) * fade);
+    }
+    fade *= smoothstep(0.5, 0.95, outwardNormal.y);
+
     int surfaceBlockY = cameraCell.y + int(floor(relativePosition.y - 0.001));
     ivec4 center = vptRainColumn(column, textureId);
-    if (center.b == 0) { return vec2(0.0); }
-    float fade = (1.0 - smoothstep(220.0, 238.0, max(abs(position.x), abs(position.z)))) *
-                 smoothstep(0.5, 0.95, outwardNormal.y);
     vec2 withinColumn = fract(relativePosition.xz);
 
     if (vptRainColumnBlocks(center, surfaceBlockY)) {
@@ -52,7 +88,9 @@ vec2 vptGroundRain(vec3 position, vec3 outwardNormal) {
             }
         }
         float blownIn = 1.0 - smoothstep(0.0, SHELTER_REACH, nearest);
-        return vec2(0.0, SHELTER_DAMP * blownIn * blownIn * fade);
+        // A column whose top is leaves (RainExposure marks it): the rain drips through.
+        float leaves = center.b > 0 && center.b < 200 ? LEAF_DAMP : 0.0;
+        return vec2(0.0, max(SHELTER_DAMP * blownIn * blownIn, leaves) * fade);
     }
 
     ivec2 nearestSide = ivec2(step(vec2(0.5), withinColumn)) * 2 - 1;
@@ -83,12 +121,18 @@ const float WET_GROUND_ROUGHNESS = 0.32;
 // How rough it is while the rain is still falling on it, and how much soaked ground darkens (rough, non-metal).
 const float WET_GROUND_RAINING_ROUGHNESS = 0.14;
 const float WET_GROUND_DARKENING = 0.5;
+// The Wetness setting: how strongly wet surfaces darken and shine, 1 at 100 %.
+#ifndef VPT_RAIN_WETNESS_STRENGTH
+#    define VPT_RAIN_WETNESS_STRENGTH 1.0
+#endif
 
 /** Water fills the pores: rough, non-metal surfaces darken the most, and everything turns glossy. */
 void vptApplyGroundWetness(inout LabPBRMat material, float wetness) {
     if (wetness <= 0.0 || material.transmission > 0.0) { return; }
+    float strength = max(VPT_RAIN_WETNESS_STRENGTH, 0.0);
     float absorbency = (1.0 - material.metallic) * clamp(material.roughness * 2.0, 0.0, 1.0);
-    material.albedo *= 1.0 - WET_GROUND_DARKENING * wetness * absorbency;
+    material.albedo *= 1.0 - min(WET_GROUND_DARKENING * strength, 0.9) * wetness * absorbency;
+    wetness = min(wetness * strength, 1.0);
     // Glossy, not a mirror: the standing water of a puddle (vptApplyPuddle) is what mirrors the world. At 0.08 all the
     // open ground mirrored the sky as one sheet of water, and the puddles had nothing to stand out from.
     // Water still running on it while it rains: glossier then, drying back to merely glossy once it stops.
@@ -108,7 +152,12 @@ const float PUDDLE_SCALE = 10.0;
 const float PUDDLE_RIM = 0.03;
 // How long the film of water stands whole after the rain eases off, in seconds, and by when it has dried up patch
 // by patch. The ground under it dries sooner (its wetness falls with a time constant of 25 s).
-const float PUDDLE_LINGER_SECONDS = 10.0;
+// The Drying Time setting, in seconds: when the last puddle has dried up after the rain. The film stands whole for
+// the first PUDDLE_LINGER_SHARE of it.
+#ifndef VPT_RAIN_DRYING_TIME
+#    define VPT_RAIN_DRYING_TIME 180.0
+#endif
+const float PUDDLE_LINGER_SHARE = 0.055;
 // The ground's wetness (RainExposure, rising with a time constant of 50 s in rain) at which the first water stands,
 // and at which it has spread into one film.
 const float PUDDLE_WET_START = 0.15;
@@ -117,7 +166,6 @@ const float PUDDLE_WET_FULL = 0.95;
 // water is.
 const float PUDDLE_POROUS_BIAS = 0.45;
 const float PUDDLE_POROUS_ROUGHNESS = 0.18;
-const float PUDDLE_DRY_SECONDS = 180.0;
 // Ripples: rings per block across, how long one ring lives in seconds, and how steep its wave is.
 const float RIPPLE_CELLS = 2.5;
 const float RIPPLE_LIFETIME = 0.9;
@@ -150,17 +198,18 @@ float vptRainValueNoise(vec2 p) {
 /** How much standing water there is here, 0..1, on the flat top of a full block under the open sky (open:
  *  vptGroundOpen; porous: 1 on grass and earth). As the rain goes on it gathers in patches, by a noise fixed to the
  *  world, that grow and merge into one film; once the rain stops it dries up in patches the other way round, the
- *  last ones gone by PUDDLE_DRY_SECONDS. */
+ *  last ones gone by VPT_RAIN_DRYING_TIME. */
 float vptPuddle(vec3 position, float open, float porous) {
     float amount = clamp(VPT_RAIN_PUDDLES * 2.0, 0.0, 1.0);
     if (amount <= 0.0 || open <= 0.0) { return 0.0; }
     bool raining = skyUBO.rainGradient > 0.2;
     // rainStoppedFor is 0 while it rains and huge before any rain.
-    if (!raining && skyUBO.rainStoppedFor > PUDDLE_DRY_SECONDS) { return 0.0; }
+    float dryingTime = max(VPT_RAIN_DRYING_TIME, 1.0);
+    if (!raining && skyUBO.rainStoppedFor > dryingTime) { return 0.0; }
     // How far the water has spread, 0..1: while it rains, with the ground's soaking (a couple of minutes to the
     // whole film); after, back down as it dries.
     float spread = raining ? smoothstep(PUDDLE_WET_START, PUDDLE_WET_FULL, skyUBO.rainWetness.x) :
-                             1.0 - smoothstep(PUDDLE_LINGER_SECONDS, PUDDLE_DRY_SECONDS, skyUBO.rainStoppedFor);
+                             1.0 - smoothstep(dryingTime * PUDDLE_LINGER_SHARE, dryingTime, skyUBO.rainStoppedFor);
     if (spread <= 0.0) { return 0.0; }
     vec2 p = vptRainWorldXZ(position);
     // High noise is where water gathers: it pools there first and dries there last.

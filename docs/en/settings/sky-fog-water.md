@@ -31,6 +31,10 @@ Defaults are radiante-pt's, the Bedrock RTX look ([bedrock-rtx.md](../bedrock-rt
 | **Vanilla Sun/Moon Rotation** | On / Off | On | Keeps the sun and moon squares lined up with their path as in vanilla, instead of turning as they cross the sky. |
 | **Wet Ground in Rain** | On / Off | On | Surfaces under open sky darken and shine while it rains, and dry slowly after. |
 | **Puddles** | 0% – 100% | 50% | How much standing water rain leaves on the flat tops of open full blocks, with Wet Ground in Rain on: gathering in patches that merge into one film with rain rings over a couple of minutes of rain, then drying up in patches over about three minutes. Full from 50%; 0% leaves only wet ground. |
+| **Wetness** | 0% – 200% | 100% | How strongly wet surfaces darken and shine in rain. 0% leaves them looking dry. |
+| **Wet Walls** | 0% – 100% | 50% | How wet walls, tree trunks and other upright faces open to the rain get, against the ground. Undersides stay dry. |
+| **Wet-Up Time** | 10 – 600 s | 150 s | How long steady rain takes to soak the open ground through: it darkens within seconds, then standing water gathers in patches that merge into one film by the end. |
+| **Drying Time** | 30 – 600 s | 180 s | How long the ground takes to dry after the rain; puddles dry up in patches and the last is gone by then. |
 | **Lightning Flash** | 0% – 200% | 100% | How brightly a lightning flash lights the world in a thunderstorm, from the bolt's direction and with shadows. 0% leaves only the bolt's own glow. Off with the game's *Hide Lightning Flashes* accessibility option. |
 | **Wind** | On / Off | Off | Leaves, grass, flowers, crops, saplings, sugar cane, vines and lily pads sway in the wind within about 48 blocks of you, harder in rain and thunder; seagrass and kelp sway slowly with the current. The geometry itself moves, so shadows, reflections and light through the leaves move with it. Switching it reloads the world's geometry. In a dense forest it costs about 0.6 ms a frame on an RTX 5070; off, nothing. |
 | **Wind Strength** | 0% – 200% | 100% | How far the wind moves leaves and plants while Wind is on. 0% holds them still. |

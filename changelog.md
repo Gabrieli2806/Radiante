@@ -17,6 +17,9 @@ All notable changes to this project are documented in this file.
 - Rain soaks the ground over a couple of minutes: it darkens within seconds, then water gathers in patches that
   grow and merge into one film; sheltered ground near the open (beside walls, at the rim of a tree) gets damp with
   rain blown in, fading over two blocks instead of stopping at a hard line.
+- Rain wets walls, tree trunks and leaves open to it too (less than the ground), fades out over a few blocks at the
+  edge of a biome where it does not rain, and the ground under leaves stays damp. New settings in Sky, Fog & Water:
+  Wetness, Wet Walls, Wet-Up Time and Drying Time.
 - Puddles (Sky, Fog & Water): in steady rain, standing water with rain rings covers the flat tops of open full
   blocks and mirrors the sky and the lamps (less of it, and less of a mirror, on grass and earth); once the rain stops it dries up in patches over about three
   minutes. Slabs, stairs, roofs and leaves only darken a little.

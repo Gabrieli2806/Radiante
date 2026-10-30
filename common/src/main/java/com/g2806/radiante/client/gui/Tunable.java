@@ -67,6 +67,17 @@ enum Tunable {
         Format.PERCENT),
     // How much standing water rain leaves on open flat block tops (with Wet Ground in Rain on); full from 50%.
     PUDDLES(null, "render_pipeline.module.ray_tracing.attribute.rain_puddles", 0.01, 0, 100, 50, Format.PERCENT),
+    // How long steady rain takes to soak the ground through, and how long the ground takes to dry after it, in seconds.
+    RAIN_WET_UP_TIME(null, "render_pipeline.module.ray_tracing.attribute.rain_wet_up_time", 1.0, 10, 600, 150,
+        Format.SECONDS),
+    RAIN_DRYING_TIME(null, "render_pipeline.module.ray_tracing.attribute.rain_drying_time", 1.0, 30, 600, 180,
+        Format.SECONDS),
+    // How strongly wet surfaces darken and shine.
+    RAIN_WETNESS(null, "render_pipeline.module.ray_tracing.attribute.rain_wetness_strength", 0.01, 0, 200, 100,
+        Format.PERCENT),
+    // How wet walls and other upright faces open to the rain get, against the ground.
+    RAIN_WET_WALLS(null, "render_pipeline.module.ray_tracing.attribute.rain_wet_walls", 0.01, 0, 100, 50,
+        Format.PERCENT),
     // How brightly a lightning flash lights the world in a thunderstorm.
     LIGHTNING_FLASH(null, "render_pipeline.module.ray_tracing.attribute.lightning_flash", 0.01, 0, 200, 100,
         Format.PERCENT),
@@ -107,7 +118,7 @@ enum Tunable {
         Format.PERCENT);
 
     /** NUMBER is a whole number, written without a decimal point; BLOCKS is a distance in blocks. */
-    enum Format { PERCENT, EV, NUMBER, BLOCKS }
+    enum Format { PERCENT, EV, NUMBER, BLOCKS, SECONDS }
 
     final String module;
     final String attribute;

@@ -1027,6 +1027,8 @@ public class RadianteOptionsScreen extends Screen {
                     String.valueOf(Math.round(value * tunable.unit)));
                 case BLOCKS -> Component.translatable("options.radiante.blocks_value", caption,
                     String.valueOf(Math.round(value * tunable.unit)));
+                case SECONDS -> Component.translatable("options.radiante.seconds_value", caption,
+                    String.valueOf(Math.round(value * tunable.unit)));
                 case PERCENT -> Component.translatable("options.percent_value", caption, value);
             },
             new OptionInstance.IntRange(tunable.min, tunable.max, false), current, value -> {
@@ -1391,7 +1393,9 @@ public class RadianteOptionsScreen extends Screen {
             OptionInstance.createBoolean("options.radiante.rain_wetness",
                 tooltip("options.radiante.rain_wetness"), staged("rainWetness", Options.rainWetness),
                 value -> stage("rainWetness", value)),
-            tunable(Tunable.PUDDLES, false), tunable(Tunable.LIGHTNING_FLASH, false),
+            tunable(Tunable.RAIN_WETNESS, false), tunable(Tunable.RAIN_WET_WALLS, false),
+            tunable(Tunable.PUDDLES, false), tunable(Tunable.RAIN_WET_UP_TIME, false),
+            tunable(Tunable.RAIN_DRYING_TIME, false), tunable(Tunable.LIGHTNING_FLASH, false),
             packToggle(Pipeline.WIND_ATTRIBUTE, "options.radiante.wind"), tunable(Tunable.WIND_STRENGTH, false),
             seamlessGlass, seamlessScope,
             OptionInstance.createBoolean("options.radiante.biome_ambiance",

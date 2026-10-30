@@ -534,6 +534,34 @@
             "define": "VPT_RAIN_PUDDLES"
         },
         {
+            "name": "render_pipeline.module.ray_tracing.attribute.rain_wet_up_time",
+            "type": "float_range:10.0-600.0",
+            "default_value": "150.0",
+            "runtime": true,
+            "define": "VPT_RAIN_WET_UP_TIME"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.rain_drying_time",
+            "type": "float_range:30.0-600.0",
+            "default_value": "180.0",
+            "runtime": true,
+            "define": "VPT_RAIN_DRYING_TIME"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.rain_wetness_strength",
+            "type": "float_range:0.0-2.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "VPT_RAIN_WETNESS_STRENGTH"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.rain_wet_walls",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "VPT_RAIN_WET_WALLS"
+        },
+        {
             "name": "render_pipeline.module.ray_tracing.attribute.lightning_flash",
             "type": "float_range:0.0-2.0",
             "default_value": "1.0",

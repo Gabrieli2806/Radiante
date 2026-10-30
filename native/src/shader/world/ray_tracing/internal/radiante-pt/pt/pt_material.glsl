@@ -465,9 +465,12 @@ void sampleSurfaceState(bool useTexture,
         // glass broken at every step.
         float topHeight = float(fract(worldUBO.cameraPos.y + double(worldPos.y)));
         bool fullTop = alphaMode == ALPHA_MODE_OPAQUE && (topHeight < 0.002 || topHeight > 0.998);
-        // The ground darkens well before water stands on it: the wetness rises over a couple of minutes.
-        float wetness = groundRain.y * sqrt(max(skyUBO.rainWetness.x, 0.0)) *
-                        (fullTop ? 1.0 : (alphaMode == ALPHA_MODE_OPAQUE ? 0.5 : 0.3));
+        // The ground darkens well before water stands on it: the wetness rises over a couple of minutes. Upright
+        // faces carry their share already (vptGroundRain); leaves and other cut-out faces take less.
+        bool upward = baseGeoNormal.y >= 0.5;
+        float faceShare = upward ? (fullTop ? 1.0 : (alphaMode == ALPHA_MODE_OPAQUE ? 0.5 : 0.3)) :
+                                   (alphaMode == ALPHA_MODE_OPAQUE ? 1.0 : 0.6);
+        float wetness = groundRain.y * sqrt(max(skyUBO.rainWetness.x, 0.0)) * faceShare;
         if (wetness > 0.0) {
             vptApplyGroundWetness(mat, wetness);
             shadingNormal = normalizeF(mix(shadingNormal, geometricNormal, wetness * 0.7), geometricNormal);
