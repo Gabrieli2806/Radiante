@@ -277,7 +277,7 @@ void traceTransparent(inout MainRay transparentRay,
  * traceSecondary, several times from the same first hit, averaged. For the held item and hand: they sit right in
  * front of the camera, big on screen, and a map or a block held up shows every speck of one-sample noise that the
  * upscaler has not yet smoothed over. The first hit and its direct light are shared; only the bounces after it are
- * taken again. The pixels are few, so the extra paths cost little.
+ * taken again. The sample count is configurable because large held items can cover much of the screen.
  */
 void traceSecondaryAveraged(int samples,
                             int startBounce,

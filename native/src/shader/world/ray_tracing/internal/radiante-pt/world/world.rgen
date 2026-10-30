@@ -7,6 +7,11 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
 #extension GL_EXT_control_flow_attributes : require
 
+// 0: baseline; 1: optimized; 2: envelope; 3: baseline hand hits green inside the bounds, red outside.
+#ifndef VPT_HAND_PRIMARY_BOUNDS
+#    define VPT_HAND_PRIMARY_BOUNDS 1
+#endif
+
 #ifndef USE_SHARC
 #    define USE_SHARC 0
 #endif
@@ -313,7 +318,17 @@ void main() {
     FirstHitPayload handFirstHit;
     // Only while the hands are drawn (bit 1 of isFirstPerson): with none to find, this second camera ray per pixel cost
     // a quarter of a millisecond at 1280x720 for nothing (spectator, F1, third person).
-    if ((worldUBO.isFirstPerson & 2u) != 0u) {
+    // ndc already includes the exact temporal jitter used by handDirection. Two additional pixels cover
+    // projection roundoff and edge samples at any internal resolution/aspect ratio. Animation needs no prediction:
+    // the envelope encloses the very same fully posed triangles and transforms used by this frame's TLAS.
+    vec2 handPadding = 4.0 / resolution;
+    bool inHandBounds = all(greaterThanEqual(ndc, worldUBO.handPrimaryBounds.xy - handPadding)) &&
+                        all(lessThanEqual(ndc, worldUBO.handPrimaryBounds.zw + handPadding));
+    bool predictedHandBounds = inHandBounds;
+#if VPT_HAND_PRIMARY_BOUNDS == 0 || VPT_HAND_PRIMARY_BOUNDS == 3
+    inHandBounds = true;
+#endif
+    if ((worldUBO.isFirstPerson & 2u) != 0u && inHandBounds) {
         tracePrimary(eyePos, handDirection, rayFlags, 1, handRay, handFirstHit);
     } else {
         handFirstHit = worldFirstHit;
@@ -1353,6 +1368,13 @@ void main() {
 #endif
         return;
     }
+#if VPT_HAND_PRIMARY_BOUNDS == 2
+    // Diagnostic build only; do not use this view for image quality comparisons.
+    mainRay.radiance = inHandBounds ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+#elif VPT_HAND_PRIMARY_BOUNDS == 3
+    // Trace every hand ray: a red actual hand hit falsifies conservativeness, even where mode 1 would skip it.
+    mainRay.radiance = isHand != 0 ? (predictedHandBounds ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)) : vec3(0.0);
+#endif
     imageStore(outputImage, ivec2(pixel), vec4(mainRay.radiance + nightVisionAmbient, 1.0));
 #endif
 }

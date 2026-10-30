@@ -1,4 +1,5 @@
 #include "prism/render/entities.hpp"
+#include "prism/render/hand_primary_bounds.hpp"
 
 #include "prism/render/buffers.hpp"
 #include "prism/render/chunks.hpp"
@@ -848,7 +849,17 @@ std::shared_ptr<Entity> Entities::State::gatherTraced(const EntitiesBuildTask &t
     for (int i = 0; i < input.geometryCount; i++) {
         const size_t geometry = input.firstGeometry + i;
         if (!triangulate(task, geometry, placement, triangles)) continue;
-        if (entity == nullptr) entity = makeEntity(input, task.coordinate, prebuiltBLAS);
+        if (entity == nullptr) {
+            entity = makeEntity(input, task.coordinate, prebuiltBLAS);
+            entity->handBoundsValid = true;
+        }
+        if ((input.rayTracingFlag & hand_primary::mask) != 0) {
+            for (const auto &vertex : triangles.vertices) {
+                const glm::vec3 p(gpu::Vertex::makePositionVertex(vertex).pos);
+                if (!hand_primary::finite(p)) entity->handBoundsValid = false;
+                entity->handPositions.push_back(p);
+            }
+        }
 
         if (collectLights) {
             if (const Emission *source = emission.get(); source != nullptr) {

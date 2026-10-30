@@ -798,5 +798,7 @@
   "screen.radiante.shader_packs.hint.pick": "选择一个光影包，在这里查看。",
   "screen.radiante.shader_packs.hint.use": "点击“使用”或再次点击它以切换。着色器会重新编译。",
   "screen.radiante.shader_packs.hint.in_use": "这是游戏当前使用的光影包。",
-  "screen.radiante.shader_packs.crashed": "试用此光影包时游戏关闭了（崩溃或 GPU 停止响应），已恢复 Radiante PT。请查看游戏日志或崩溃报告。"
+  "screen.radiante.shader_packs.crashed": "试用此光影包时游戏关闭了（崩溃或 GPU 停止响应），已恢复 Radiante PT。请查看游戏日志或崩溃报告。",
+  "render_pipeline.module.ray_tracing.attribute.hand_samples": "手部光照采样数",
+  "render_pipeline.module.ray_tracing.attribute.hand_samples.tooltip": "第一人称手部和手持物品的间接光照采样数。提高可减少噪点，但会增加 GPU 耗时；降低可提升速度，但噪点更多。"
 }

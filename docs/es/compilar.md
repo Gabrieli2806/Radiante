@@ -63,6 +63,14 @@ El script compila en `native/build/linux-release` (o en `RADIANTE_BUILD_DIR`) e 
 Ubuntu 22.04 compila en un sistema con glibc 2.35 (o comprueba con
 `objdump -T libprismrt.so | grep -oE 'GLIBC_2\.[0-9]+' | sort -Vu | tail -1`).
 
+## Comparar los rayos de las manos
+
+Para comparar sin conexión, cambia `VPT_HAND_PRIMARY_BOUNDS` en `world/world.rgen`: `0` traza los rayos originales
+a pantalla completa, `1` activa los límites de geometría (predeterminado), `2` muestra la envolvente y `3` traza
+todos los rayos de las manos y marca los impactos reales en verde dentro de la envolvente o en rojo fuera de ella.
+Reconstruye la parte nativa y después Gradle tras cambiar el modo. Los modos de diagnóstico comprueban la cobertura;
+no sirven para comparar la calidad de imagen ni el rendimiento.
+
 ## Un jar para los dos sistemas
 
 Un jar compilado en un solo sistema trae solo su renderizador. Para uno que funcione en ambos, pon

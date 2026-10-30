@@ -34,6 +34,15 @@ Los valores por defecto son los de radiante-pt, el aspecto Bedrock RTX ([bedrock
 | **Lotes de Chunks** | 1 – 64 | Lo que elige Automática para tu CPU | Cuántas de esas construcciones pueden estar en curso en la GPU a la vez. Más alto carga más rápido en GPUs potentes y usa más memoria de vídeo; bájalo si notas tirones o te quedas sin VRAM. |
 | **Emisión de Bloques** | Activado / Desactivado | Activado | Los bloques que emiten luz (antorchas, lava, piedra luminosa…) iluminan el mundo a su alrededor. Desactivarlo ahorra algo de rendimiento, pero entonces las fuentes de luz solo brillan ellas mismas — Muestreo de Luz de Bloques y ReSTIR (en [Iluminación](iluminacion.md)) lo necesitan. |
 
+## Iluminación avanzada de las manos
+
+Activa **Avanzado** y abre **Renderizador** para encontrar **Muestras de iluminación de las manos**
+(1–8, por defecto **3**). Controla las muestras de iluminación indirecta de ambas manos y los objetos
+en primera persona. Menos muestras reducen el trabajo de la GPU pero añaden ruido, sobre todo en mapas
+y objetos grandes; más muestras suavizan la iluminación y cuestan más rendimiento.
+Guarda el cambio con Aplicar. El valor se conserva en los ajustes del paquete de shaders y se actualiza
+sin recompilar shaders. Las muestras de iluminación del mundo y el límite de rebotes no cambian.
+
 ## Por qué el máximo de Hilos de Chunks es la mitad de tus núcleos
 
 No es un número arbitrario: en una CPU de 24 hilos, medir con 20 hilos de construcción bajó los FPS
