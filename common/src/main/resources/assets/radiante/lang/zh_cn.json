@@ -622,7 +622,7 @@
   "options.radiante.debug_view.value.bounces": "反弹热力图",
   "options.radiante.debug_view.value.bounces.tooltip": "相机光线之后每像素的光线数：蓝色为 1，红色为 16 及以上。显示路径较长的位置。",
   "options.radiante.gpu_timings": "F3 中的 GPU 耗时",
-  "options.radiante.gpu_timings.tooltip": "在 F3 屏幕上列出每个渲染通道的耗时。与 F3 + F6 中的选项相同。",
+  "options.radiante.gpu_timings.tooltip": "在 F3 屏幕上列出每个渲染通道的耗时和场景数据（TLAS 实例、实体 BLAS、待处理区块、显存）。",
   "options.radiante.debug_report": "错误报告摘要",
   "options.radiante.debug_report.tooltip": "将版本、GPU 和所有管线设置复制到剪贴板，并写入游戏日志。",
   "options.radiante.debug_report.action": "复制",

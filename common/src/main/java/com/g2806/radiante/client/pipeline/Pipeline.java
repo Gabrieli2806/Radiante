@@ -1982,6 +1982,9 @@ public class Pipeline {
     /** GPU time of the world pipeline over the last 60 frames, with its main stages; empty before the first. */
     public static native String gpuStats();
 
+    /** TLAS instances, entity BLAS built last frame, the renderer's device memory used and its budget in MB. */
+    public static native long[] sceneStats();
+
     public static final int PREWARM_IDLE = 0;
     public static final int PREWARM_RUNNING = 1;
     public static final int PREWARM_DONE = 2;

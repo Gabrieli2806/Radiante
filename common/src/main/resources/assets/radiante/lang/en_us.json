@@ -623,7 +623,7 @@
   "options.radiante.debug_view.value.bounces": "Bounces Heat Map",
   "options.radiante.debug_view.value.bounces.tooltip": "Rays per pixel after the camera ray: blue is 1, red is 16 or more. Shows where paths run long.",
   "options.radiante.gpu_timings": "GPU Timings in F3",
-  "options.radiante.gpu_timings.tooltip": "Lists the time of each render pass on the F3 screen. The same choice as in F3 + F6.",
+  "options.radiante.gpu_timings.tooltip": "Lists each render pass's time and the scene's counts (TLAS instances, entity BLAS, sections pending, VRAM) on the F3 screen.",
   "options.radiante.debug_report": "Bug Report Summary",
   "options.radiante.debug_report.tooltip": "Copies versions, GPU and every pipeline setting to the clipboard, and writes them to the game log.",
   "options.radiante.debug_report.action": "Copy",

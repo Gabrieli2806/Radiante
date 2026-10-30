@@ -29,8 +29,9 @@ public final class RadianteDebugEntries {
     public static final Identifier FRAME_GENERATION = Identifier.fromNamespaceAndPath("radiante", "frame_generation");
     public static final Identifier HDR = Identifier.fromNamespaceAndPath("radiante", "hdr");
     public static final Identifier GPU_TIME = Identifier.fromNamespaceAndPath("radiante", "gpu_time");
+    public static final Identifier SCENE = Identifier.fromNamespaceAndPath("radiante", "scene");
     /** Shown in the overlay until the player hides them. */
-    public static final List<Identifier> ALL = List.of(UPSCALER, GPU_TIME, REFLEX, FRAME_GENERATION, HDR);
+    public static final List<Identifier> ALL = List.of(UPSCALER, GPU_TIME, SCENE, REFLEX, FRAME_GENERATION, HDR);
 
     private RadianteDebugEntries() {
     }
@@ -40,9 +41,11 @@ public final class RadianteDebugEntries {
         return Minecraft.getInstance().debugEntries.getStatus(GPU_TIME) != DebugScreenEntryStatus.NEVER;
     }
 
+    /** The GPU's timings and the scene's counts go together: the renderer's numbers on F3. */
     static void setGpuTimingsShown(boolean shown) {
-        Minecraft.getInstance().debugEntries.setStatus(GPU_TIME,
-            shown ? DebugScreenEntryStatus.IN_OVERLAY : DebugScreenEntryStatus.NEVER);
+        DebugScreenEntryStatus status = shown ? DebugScreenEntryStatus.IN_OVERLAY : DebugScreenEntryStatus.NEVER;
+        Minecraft.getInstance().debugEntries.setStatus(GPU_TIME, status);
+        Minecraft.getInstance().debugEntries.setStatus(SCENE, status);
     }
 
     public static void register() {
@@ -62,6 +65,15 @@ public final class RadianteDebugEntries {
                         displayer.addLine(line);
                     }
                 }
+            }
+        });
+        DebugScreenEntriesInvoker.radiante$register(SCENE, new Entry() {
+            @Override
+            void lines(DebugScreenDisplayer displayer) {
+                long[] stats = Pipeline.sceneStats();
+                displayer.addLine(String.format(Locale.ROOT, "Scene: %d TLAS instances, %d entity BLAS/frame, %d sections pending",
+                    stats[0], stats[1], com.g2806.radiante.client.render.ChunkManager.pendingBuilds()));
+                displayer.addLine(String.format(Locale.ROOT, "Renderer VRAM: %d / %d MB", stats[2], stats[3]));
             }
         });
         DebugScreenEntriesInvoker.radiante$register(REFLEX, new Entry() {

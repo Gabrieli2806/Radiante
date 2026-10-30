@@ -1,4 +1,5 @@
 #include "prism/render/modules/world/ray_tracing/submodules/world_prepare.hpp"
+#include "prism/render/scene_stats.hpp"
 
 #include "prism/render/buffers.hpp"
 #include "prism/render/chunks.hpp"
@@ -399,6 +400,7 @@ void WorldPrepareContext::render() {
     if (tlasBuilder_ == nullptr) tlasBuilder_ = gpu::TlasBuilder::create(physicalDevice, device, vma);
     tlasBuilder_->clear();
     tlasBuilder_->reserve(instanceCount);
+    SceneStats::tlasInstances.store(static_cast<uint32_t>(instanceCount), std::memory_order_relaxed);
     entityHitGroupNames_.clear();
     entityBlasOffsets_.clear();
     entityIndexAddresses_.clear();

@@ -292,6 +292,11 @@ public final class ChunkManager {
     }
 
     /** Bumped whenever the renderer's slots are replaced; geometry uploaded under an older one is gone. */
+    /** Section builds queued and not finished, for F3. */
+    public static int pendingBuilds() {
+        return pendingBuilds.get();
+    }
+
     public static int generation() {
         return generation;
     }

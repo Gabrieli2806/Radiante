@@ -623,7 +623,7 @@
   "options.radiante.debug_view.value.bounces": "Mapa de Calor de Rebotes",
   "options.radiante.debug_view.value.bounces.tooltip": "Rayos por píxel tras el rayo de cámara: azul es 1, rojo es 16 o más. Muestra dónde los caminos se alargan.",
   "options.radiante.gpu_timings": "Tiempos de GPU en F3",
-  "options.radiante.gpu_timings.tooltip": "Muestra el tiempo de cada pase de render en la pantalla F3. La misma opción que en F3 + F6.",
+  "options.radiante.gpu_timings.tooltip": "Muestra el tiempo de cada pase de render y los datos de la escena (instancias TLAS, BLAS de entidades, secciones pendientes, VRAM) en la pantalla F3.",
   "options.radiante.debug_report": "Resumen para Reportes",
   "options.radiante.debug_report.tooltip": "Copia versiones, GPU y todos los ajustes del pipeline al portapapeles, y los escribe en el registro del juego.",
   "options.radiante.debug_report.action": "Copiar",
