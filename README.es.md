@@ -148,7 +148,7 @@ native/build-windows.bat
 `C:\rtb\radiante`, o en `RADIANTE_BUILD_DIR` si está definido. El paso de instalación copia `prismrt.dll`, los
 shaders y los módulos a `common/src/main/resources/radiante-native/`, que no está en git: vuelve a compilar la parte
 nativa al cambiar de rama. `./gradlew.bat :fabric:runClient`, `:neoforge:runClient` o `:forge:runClient` lanza un
-cliente de desarrollo; cada uno usa su propia carpeta (`run/` Fabric, `run-neoforge/`, `run-forge/`), así que pueden
+cliente de desarrollo; cada uno usa su propia carpeta (`run-fabric/`, `run-neoforge/`, `run-forge/`, que comparten mundos, packs y ajustes en `run-shared/`), así que pueden
 correr a la vez.
 
 #### Qué compilar según el cambio
@@ -267,7 +267,7 @@ Reportes de errores, ajustes de shaders y pull requests son bienvenidos. Los err
   inicio siguen ejecutándose gracias a `LevelRendererSkipMixin`), restaura ese comportamiento vanilla para que
   cualquier mod que dependa de él se beneficie, en vez de tratar a X por nombre. Solo recurre a un parche
   específico cuando no exista una solución general, y mantenlo opcional (reflexión, sin dependencia dura).
-- Prueba en un mundo con prefijo `Radiante*` dentro de `run/saves/` (un superflat nuevo suele bastar) — nunca
+- Prueba en un mundo con prefijo `Radiante*` dentro de `run-shared/saves/` (un superflat nuevo suele bastar) — nunca
   apuntes una ejecución de prueba/desarrollo a un mundo que realmente juegas. `-PquickPlay="<mundo>"` entra
   directo a uno.
 - Antes de abrir un PR: recompila los nativos (`native/build-windows.bat` o `native/build-linux.sh`), corre

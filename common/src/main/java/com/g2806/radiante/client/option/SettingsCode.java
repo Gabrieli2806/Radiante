@@ -228,7 +228,7 @@ public final class SettingsCode {
     }
 
     /** True when {@code value} is one the attribute's declared type allows. */
-    static boolean allowed(String type, String value) {
+    public static boolean allowed(String type, String value) {
         if (value.length() > 256) {
             return false;
         }

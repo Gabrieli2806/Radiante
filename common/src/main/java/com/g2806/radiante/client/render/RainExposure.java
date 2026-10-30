@@ -31,6 +31,38 @@ public final class RainExposure {
     /** Columns re-read each frame round the ring, so roofs built or broken show up within a few seconds. */
     private static final int REFRESH_PER_FRAME = 6;
 
+    /** The Wet-Up Time and Drying Time settings, read from radiante-pt's attributes. */
+    private static final Setting WET_UP = new Setting("render_pipeline.module.ray_tracing.attribute.rain_wet_up_time", 150.0f);
+    private static final Setting DRYING = new Setting("render_pipeline.module.ray_tracing.attribute.rain_drying_time", 180.0f);
+
+    /** A pack attribute in seconds, looked up again about once a second: it is read every frame. */
+    private static final class Setting {
+        private final String attribute;
+        private final float fallback;
+        private float value;
+        private long readAt;
+
+        Setting(String attribute, float fallback) {
+            this.attribute = attribute;
+            this.fallback = fallback;
+            this.value = fallback;
+        }
+
+        float seconds() {
+            long now = System.nanoTime();
+            if (now - this.readAt > 1_000_000_000L) {
+                this.readAt = now;
+                String text = com.g2806.radiante.client.pipeline.Pipeline.getShaderPackValue(this.attribute);
+                try {
+                    this.value = text == null ? this.fallback : Float.parseFloat(text.trim());
+                } catch (NumberFormatException notANumber) {
+                    this.value = this.fallback;
+                }
+            }
+            return this.value;
+        }
+    }
+
     private static final LevelChunk[] chunks = new LevelChunk[TILES * TILES];
     private static final int[] tileX = new int[TILES * TILES];
     private static final int[] tileZ = new int[TILES * TILES];
@@ -66,8 +98,12 @@ public final class RainExposure {
         }
         if (!minecraft.isPaused()) {
             float rain = world.getRainLevel(1.0f);
-            // Wets in a couple of seconds, dries over half a minute.
-            wetness += (rain - wetness) * (1.0f - (float) Math.exp(-dt / (rain > wetness ? 2.0f : 25.0f)));
+            // Soaks over the Wet-Up Time of steady rain (95 % by then, 150 s by default): the ground darkens within
+            // seconds (the shaders follow the square root) while water gathers in patches that merge into one film
+            // by the end (rain_wetness.glsl). Dries over a seventh of the Drying Time, the puddles standing on until
+            // the end of it.
+            float seconds = rain > wetness ? WET_UP.seconds() / 3.0f : DRYING.seconds() / 7.0f;
+            wetness += (rain - wetness) * (1.0f - (float) Math.exp(-dt / Math.max(seconds, 0.5f)));
             if (wetness < 0.0001f) {
                 wetness = 0.0f;
             }
@@ -138,7 +174,10 @@ public final class RainExposure {
                     pixels.put(offset + 1, (byte) (height >>> 8));
                     boolean rains = world.getBiome(pos).value().getPrecipitationAt(pos, world.getSeaLevel())
                         == Biome.Precipitation.RAIN;
-                    pixels.put(offset + 2, (byte) (rains ? 255 : 0));
+                    // 128 where the column's top is leaves (the rain drips through to the ground below), 255 where
+                    // it is anything else.
+                    boolean leaves = chunk.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) < y;
+                    pixels.put(offset + 2, (byte) (rains ? (leaves ? 128 : 255) : 0));
                     pixels.put(offset + 3, (byte) 255);
                 }
             }

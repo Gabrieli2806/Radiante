@@ -82,7 +82,9 @@ marca **(reinicio)** y, al salir de la pantalla, un aviso lista los cambios pend
 | [Iluminación](opciones/iluminacion.md) | Brillos, luz rebotada y del cielo, muestreo de luces de bloque, ReSTIR, SER, luz del objeto en mano, sombra en primera persona. |
 | [Cielo y Agua](opciones/cielo-niebla-agua.md) | Atmósfera, nubes, estrellas, sol, trayectoria del sol, lluvia, vidrio, ambiente de bioma, niebla volumétrica, agua. |
 | [Rendimiento](opciones/rendimiento.md) | Rebotes de luz, espejos, vidrio, textura del agua, portal, lluvia, caché, tablero, parallax, materiales de packs Bedrock, calidad de niebla, construcción de chunks. |
-| [Otros](opciones/otros.md) | Contorno de bloque, overlays de otros mods, fondo de textos, bordes de parallax, registro de depuración. |
+| [Otros](opciones/otros.md) | Contorno de bloque, overlays de otros mods, fondo de textos, bordes de parallax. |
+| [Depuración](opciones/depuracion.md) | Solo con Avanzado activado: vistas de depuración, tiempos de GPU, registro de depuración, resumen para reportes, carpetas de registros y de paquetes. |
+| *El nombre del paquete* | Solo con un paquete de shaders que no sea Radiante PT: los ajustes propios de ese paquete ([abajo](#la-página-del-paquete)). |
 | [Complementos](complementos.md) | Solo con un complemento instalado: sus propias opciones, bajo su nombre. |
 
 Un ajuste solo aparece si el pipeline, la GPU o el shader pack lo admiten: Modo DLSS solo con
@@ -97,10 +99,61 @@ cambia entre ellos con un clic, copia uno como código para compartir o importa 
 hayan enviado. Un preset lleva luz, cielo, niebla, agua, tono y efectos de cámara; el escalador,
 la generación de fotogramas y el HDR no cambian.
 
+## Paquetes de shaders
+
+**Paquetes de shaders**, junto a Presets, elige el trazador de rayos: el **Radiante PT** incluido
+(el predeterminado), el **Pixelated Lighting** incluido (Radiante PT con sombras y reflejos
+pixelados, en los píxeles de la textura mientras la luz sigue suave, como el preset de BetterRTX con ese nombre) o un
+paquete que hayas añadido. Los paquetes incluidos aparecen marcados como tales y vuelven en cada
+inicio, así que no se pueden quitar. Los paquetes van en `radiante/shaderpacks/`
+dentro de la carpeta del juego (**Abrir carpeta** la abre), como `.zip` o como carpeta, con el
+`configs.json` del paquete arriba del todo: un zip de una carpeta que contiene el paquete (como el
+"Download ZIP" de GitHub) aparece con ese problema. Es la carpeta propia de Radiante, no la
+`shaderpacks/` del juego, que Iris y OptiFine usan para otro tipo de paquetes.
+
+La lista muestra el icono, el nombre, la versión, el autor y la licencia de cada paquete, cuando
+el paquete los da. Haz clic en un paquete y pulsa **Usar** (o doble clic, o Enter) para cambiar:
+los shaders se compilan como con cualquier otro cambio. Si el paquete no carga o un shader no
+compila, Radiante vuelve a Radiante PT y muestra bajo la lista qué falló (los mensajes del
+compilador, con archivo y línea); **Copiar error** lo copia para el autor del paquete. Si el juego se cierra mientras se prueba un
+paquete (un cierre inesperado o la GPU deja de responder), el siguiente inicio vuelve a Radiante
+PT y lo indica aquí. Cada paquete
+guarda sus ajustes en un archivo a su lado (`<paquete>.zip.txt`), así que cambiar de uno a otro
+los conserva. La mayoría de los ajustes de Radiante son de Radiante PT; otro paquete muestra los
+que comparte con Radiante PT donde siempre están, y los suyos en una página propia.
+
+### La página del paquete
+
+Con un paquete que no sea Radiante PT, la barra lateral tiene una sección más, con el nombre y el
+icono del paquete. Contiene los ajustes que añade el paquete:
+
+- **Preajuste del paquete** arriba, si el paquete tiene preajustes: combinaciones de sus ajustes
+  hechas por su autor. Elegir una los cambia todos; si luego cambias uno, pone **Personalizado**.
+- Los ajustes bajo los títulos que elige el paquete (Cielo, Nubes, Etalonaje...), que se pliegan
+  como los de un complemento. Los controles más finos del paquete solo aparecen con **Avanzado**
+  activado.
+- Algunos ajustes solo aparecen mientras otro tiene cierto valor (la cantidad de nubes mientras
+  las nubes del paquete están activadas, por ejemplo).
+- El panel muestra la descripción que da el paquete de cada ajuste y, si el paquete lo indica, su
+  **Impacto en rendimiento**.
+
+Los cambios se aplican con **Aplicar** o **Listo** como el resto: unos cambian al momento y otros
+vuelven a compilar los shaders del paquete.
+
+Un paquete guardado como carpeta se recarga solo cuando cambia uno de sus archivos, para quien
+hace paquetes: antes se comprueba en segundo plano, y un cambio que no compila deja la imagen como
+estaba y muestra el error aquí. `/radiante pack validate [nombre]` comprueba un paquete sin cambiar
+a él, y `/radiante debug view <vista>`, o la sección [Depuración](opciones/depuracion.md), muestra el albedo, las normales, la profundidad y otras
+imágenes del fotograma en lugar de la imagen final (`off` vuelve). Mira
+[Hacer un paquete de shaders](paquetes-de-shaders.md#trabajar-en-un-paquete-dentro-del-juego).
+
+Los paquetes hechos para Radiance (el mod del que nació Radiante) usan el mismo formato pero una
+interfaz del renderizador más antigua, y de momento no funcionan tal cual.
+
 ## Avanzado
 
 **Avanzado: NO / SÍ**, abajo, muestra los controles finos de cada sección en grupos plegables bajo
 los principales (exposición y tono, efectos de cámara, luz, nubes, atmósfera, agua, niebla,
-estrellas, trayectoria del sol y la luna, denoiser, renderizador, escalador, vistas de depuración,
-otros ajustes del pipeline). Sus valores se aplican se muestren o no. Son los parámetros propios
+estrellas, trayectoria del sol y la luna, denoiser, renderizador, escalador, otros ajustes del
+pipeline), y añade la sección [Depuración](opciones/depuracion.md). Sus valores se aplican se muestren o no. Son los parámetros propios
 del pipeline: cámbialos de uno en uno, y usa **Deshacer** o **Restablecer valores** para volver.

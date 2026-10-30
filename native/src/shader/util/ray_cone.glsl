@@ -67,4 +67,21 @@ float lodWithCone(sampler2D tex, vec2 uv, float coneRadiusWorld, vec3 dposdu, ve
     return level;
 }
 
+// The cone's spread after it scatters off a surface (Akenine-Moller et al. 2021, "Improved Shader and Texture Level
+// of Detail Using Ray Cones", section 4). Blocks are flat, so the curvature term is zero; what widens the cone is the
+// lobe the bounce was drawn from. A rough lobe sends the next ray anywhere within its width, so the footprint it has
+// to cover where it lands is that width, not a pixel's: without this a diffuse bounce read the full-size texture far
+// away and the light it brought back sparkled from frame to frame. A GGX lobe's half-width is about its alpha
+// (roughness squared); a diffuse lobe is given RAY_CONE_DIFFUSE_SPREAD, a cone narrower than the hemisphere so the
+// textures it lands on stay recognisable in the light they bounce. Lobe 0 is diffuse, 1 reflection, 2 refraction.
+#ifndef RAY_CONE_DIFFUSE_SPREAD
+#    define RAY_CONE_DIFFUSE_SPREAD 0.25
+#endif
+float coneSpreadAfterScatter(float spread, float roughness, uint lobeType) {
+    float alpha = clamp(roughness, 0.0, 1.0);
+    alpha *= alpha;
+    float widen = lobeType == 0u ? RAY_CONE_DIFFUSE_SPREAD : 2.0 * alpha;
+    return min(spread + widen, 1.0);
+}
+
 #endif

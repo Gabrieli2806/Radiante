@@ -19,8 +19,10 @@
 #define INV_TWO_PI 0.15915494309189533
 #define INV_4_PI 0.07957747154594766
 
-// Slots in WorldUBO.packParams: shader pack settings the shaders read live instead of having them compiled in.
-#define PRISM_PACK_PARAM_COUNT 64
+// Slots in WorldUBO.packParams: shader pack settings the shaders read live instead of having them compiled in. Radiante
+// PT takes about 60; 256 leaves a pack that extends it room for its own. 4 KB of the world uniform, well inside the
+// 16 KB every Vulkan device allows a uniform buffer.
+#define PRISM_PACK_PARAM_COUNT 256
 
 #ifdef __cplusplus
 namespace gpu {
@@ -298,11 +300,15 @@ struct WorldUBO {
     T_VEC4 offHandLightPos;
     T_VEC4 offHandLightColor;
 
-    // ---- Shader pack settings (736..1759), never written by Java
+    // ---- Shader pack settings (736..4831), never written by Java
     // The pack's settings marked "runtime" in its configs.json, one slot each in the order the pack lists them: a
     // number in x (an int, a bool as 0 or 1, a choice as its index), a vec3 in xyz. Buffers::setPackParams copies
     // them in every frame, so changing one needs no shader rebuild.
     T_VEC4 packParams[PRISM_PACK_PARAM_COUNT];
+
+    // Native-only, appended so Java's prefix and the pack parameter offsets remain unchanged.
+    // xy=min, zw=max in NDC; overwritten with this frame's HAND_MASK instance envelope during TLAS preparation.
+    T_VEC4 handPrimaryBounds;
 };
 
 struct SkyUBO {
@@ -345,7 +351,8 @@ struct SkyUBO {
     // distant things orange; Radiante's own grey haze uses (1, 1, 1).
     T_VEC4 biomeFogChroma;
     // x: world height below which the haze is at full density, y: height where it has thinned to nothing. Radiante's
-    // own haze never thins, so both sit far above the world.
+    // own haze never thins, so both sit far above the world. z: how open the camera is to the sky (its sky light,
+    // 0..1, eased), set with or without Biome Ambiance: the air's own haze (aerial perspective) follows it. w unused.
     T_VEC4 biomeFogHeights;
 
     // Water as a medium for the biomes at the camera, from a converted Bedrock pack when it has one, otherwise derived
@@ -380,6 +387,34 @@ struct SkyUBO {
     // The Sun/Moon Rotation settings, each sprite turned around its own centre: xy (cos, sin) of the sun's angle,
     // zw the moon's; (1, 0) is vanilla's.
     T_VEC4 spriteRotation;
+
+    // ---- The weather and the biome for shader packs (304..335), read through radiante-pt's common/pack_world.glsl;
+    // radiante-pt reads the downfall, the thunder and the wetness for how hazy the air is (aerialDensityScale in
+    // common/biome_haze.glsl). BiomeClimate on the Java side.
+    // The biome at the camera, eased over a couple of seconds so effects fade across a border. x: its temperature,
+    // y: its downfall, z: how snowy (1 where snow falls at the camera's height), w: how dry (1 where nothing falls).
+    T_VEC4 biomeClimate;
+    // The thunder, 0..1, as the client level's getThunderLevel (already faded in and out by the game).
+    T_FLOAT thunderGradient;
+    // FNV-1a hash of the biome's id ("minecraft:snowy_plains") at the camera, and of the one before it; 0 without a
+    // world. biomeIdBlend: how far the change from the previous biome has come, 0..1, eased like biomeClimate.
+    T_UINT biomeId;
+    T_UINT previousBiomeId;
+    T_FLOAT biomeIdBlend;
+
+    // ---- The air after rain for shader packs (336..343), PackWeather on the Java side; radiante-pt reads the wetness
+    // too (aerialDensityScale).
+    // Iris's wetness: the rain smoothed, rising with a half-life of a minute and falling with one of twenty seconds.
+    T_FLOAT wetness;
+    // Seconds since the rain eased off after wetting the air: 0 while it rains, 1e6 before any rain.
+    T_FLOAT rainStoppedFor;
+    // ---- The body of water the camera is in (344..351), WaterBody on the Java side, eased; both 0 out of water.
+    // Read by radiante-pt so that a pool looks clearer than the sea, and by packs through common/pack_world.glsl.
+    // Depth: the height of the water column at the eye, floor to surface, in blocks (capped at 64).
+    T_FLOAT waterBodyDepth;
+    // Width: how far the water runs across at eye level, averaged over four directions, in blocks (1 for a 1x1 pool,
+    // at most 49).
+    T_FLOAT waterBodyWidth;
 };
 
 // Per-texture lookup from an atlas texture to its PBR companions. specular, normal and rawMer are texture ids,

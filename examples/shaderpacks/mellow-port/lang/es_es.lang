@@ -1,0 +1,67 @@
+# Mellow port: its own settings, groups, descriptions and presets; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.mellow_sky=Colores del cielo
+render_pipeline.module.ray_tracing.attribute.mellow_cloud_style=Estilo de nubes
+render_pipeline.module.ray_tracing.attribute.mellow_cloud_amount=Cantidad de nubes
+render_pipeline.module.ray_tracing.attribute.mellow_cloud_opacity=Opacidad de nubes
+render_pipeline.module.ray_tracing.attribute.mellow_cloud_speed=Velocidad de nubes
+render_pipeline.module.ray_tracing.attribute.mellow_cloud_shadows=Sombras de nubes
+render_pipeline.module.ray_tracing.attribute.mellow_stars=Estrellas
+render_pipeline.module.ray_tracing.attribute.mellow_aurora=Aurora
+render_pipeline.module.ray_tracing.attribute.mellow_aurora_style=Estilo de aurora (0 Mellow, 1 Realista)
+render_pipeline.module.ray_tracing.attribute.mellow_aurora_everywhere=Aurora en todas partes
+render_pipeline.module.ray_tracing.attribute.mellow_aurora_light=Luz de la aurora
+render_pipeline.module.ray_tracing.attribute.mellow_rainbow=Arcoíris
+render_pipeline.module.ray_tracing.attribute.mellow_sun_tint=Color del sol
+render_pipeline.module.ray_tracing.attribute.mellow_fog=Niebla atmosférica
+render_pipeline.module.ray_tracing.attribute.mellow_water=Color del agua
+render_pipeline.module.ray_tracing.attribute.mellow_vibrance=Intensidad
+render_pipeline.module.ray_tracing.attribute.mellow_saturation=Saturación
+render_pipeline.module.ray_tracing.attribute.mellow_contrast=Contraste
+render_pipeline.module.ray_tracing.attribute.mellow_lut=Aspecto de color (LUT)
+render_pipeline.module.ray_tracing.attribute.mellow_round_sun=Sol redondo
+render_pipeline.module.ray_tracing.attribute.mellow_water_normals=Normales del agua
+render_pipeline.module.ray_tracing.attribute.mellow_water_normal_strength=Fuerza de las normales del agua
+render_pipeline.module.ray_tracing.attribute.mellow_water_normal_speed=Velocidad de las normales del agua
+render_pipeline.module.ray_tracing.attribute.mellow_water_normal_size=Tamaño de las normales del agua
+render_pipeline.module.ray_tracing.attribute.mellow_torch_colour=Color de las antorchas
+render_pipeline.module.ray_tracing.attribute.mellow_end_sky=Cielo del End
+
+mellow.group.sky=Cielo
+mellow.group.clouds=Nubes
+mellow.group.water=Agua
+mellow.group.grade=Etalonaje
+
+mellow.desc.sky=Cuánto de los colores del cielo de Mellow sustituye a los de Radiante PT. Menos deja más del cielo original.
+mellow.desc.sun_tint=Calienta la luz del sol hacia el tono dorado de Mellow. Menos la deja neutra.
+mellow.desc.fog=La neblina de Mellow en el aire. Se ve con la Luz volumétrica activada; más es más espesa.
+mellow.desc.stars=Brillo de las estrellas de Mellow, que sustituyen a las de Radiante PT. 0 las oculta.
+mellow.desc.aurora=Intensidad de la aurora en biomas nevados. 0 la quita.
+mellow.desc.aurora_style=La banda verde suave de Mellow (0), o cortinas de luz que se pliegan y ondulan, verdes abajo y rojas arriba, con rayos (1). La realista cuesta algo más de noche.
+mellow.desc.aurora_everywhere=Muestra la aurora en todos los biomas, no solo en los nevados.
+mellow.desc.aurora_light=Cuánto ilumina la aurora la nieve, el agua y el suelo bajo ella, tiñéndolos de verde. Más alto, más brillante; 0 quita su luz.
+mellow.desc.rainbow=Intensidad del arcoíris opuesto a un sol bajo tras la lluvia, durante un minuto o dos mientras el aire sigue húmedo. 0 lo quita.
+mellow.desc.cloud_style=0: sin nubes de Mellow, 1: nubes planas pintadas, 2: nubes volumétricas (cuestan más).
+mellow.desc.cloud_amount=Cuánto cielo cubren las nubes. La lluvia y las tormentas añaden más.
+mellow.desc.cloud_opacity=Lo sólidas que se ven las nubes. Menos deja ver más cielo.
+mellow.desc.cloud_shadows=Lo oscuras que son las sombras de las nubes en el suelo. 0 las quita.
+mellow.desc.cloud_speed=La velocidad a la que se mueven las nubes. 0 las detiene.
+mellow.desc.water=Cuánto del color del agua de Mellow sustituye al de Radiante PT.
+mellow.desc.vibrance=Sube los colores apagados más que los intensos. 1 los deja como están.
+mellow.desc.saturation=Intensidad de todos los colores. 1 los deja como están.
+mellow.desc.contrast=Separación entre luces y sombras. 1 deja la imagen como está.
+mellow.desc.lut=Un aspecto de color sobre la imagen final: 0 no, 1 Vintage, 2 Mellow, 3 Punchy.
+
+mellow.preset.mellow=Mellow
+mellow.preset.mellow.desc=El aspecto del propio paquete, como lo trae Mellow.
+mellow.preset.clear=Cielos despejados
+mellow.preset.clear.desc=Menos nubes y más finas, neblina más ligera.
+mellow.preset.vivid=Vivo
+mellow.preset.vivid.desc=Colores más intensos, sol más cálido y el aspecto Punchy.
+mellow.preset.subtle=Sutil
+mellow.preset.subtle.desc=La mitad de los colores de Mellow sobre los de Radiante PT, sin realce de color.
+
+mellow.group.light=Luz
+mellow.desc.round_sun=Dibuja el sol y la luna como discos redondos, como puede Mellow. Apagado deja los cuadrados.
+mellow.desc.end_sky=El cielo y la niebla del End de Mellow en lugar de los de Radiante PT.
+mellow.desc.water_normals=Las ondas de Mellow en la superficie del agua. Apagado deja las olas de Radiante PT.
+mellow.desc.torch_colour=Calienta la luz de los bloques hacia el naranja de las antorchas de Mellow. 0 deja los colores de Radiante PT.

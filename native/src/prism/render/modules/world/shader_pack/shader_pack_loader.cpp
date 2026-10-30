@@ -1,11 +1,9 @@
 #include "prism/render/modules/world/shader_pack/shader_pack_internal.hpp"
+#include "prism/render/modules/world/shader_pack/shader_pack_extends.hpp"
 
 #include "prism/render/renderer.hpp"
+#include "prism/util/logging.hpp"
 
-#include "mz.h"
-#include "mz_strm.h"
-#include "mz_zip.h"
-#include "mz_zip_rw.h"
 
 #include <algorithm>
 #include <cctype>
@@ -14,6 +12,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <unordered_set>
+#include <vector>
 
 using json = nlohmann::json;
 
@@ -158,6 +157,7 @@ VkFormat parseFormat(const std::string &value) {
         {"r16g16_sfloat", VK_FORMAT_R16G16_SFLOAT},
         {"r16g16b16a16_sfloat", VK_FORMAT_R16G16B16A16_SFLOAT},
         {"r32_sfloat", VK_FORMAT_R32_SFLOAT},
+        {"r32_uint", VK_FORMAT_R32_UINT},
         {"r32g32_sfloat", VK_FORMAT_R32G32_SFLOAT},
         {"r32g32_uint", VK_FORMAT_R32G32_UINT},
         {"r32g32b32a32_sfloat", VK_FORMAT_R32G32B32A32_SFLOAT},
@@ -222,47 +222,14 @@ std::string extractionFolderName(const fs::path &zipPath) {
     return name.str();
 }
 
-struct ZipReaderDeleter {
-    void operator()(void *reader) const {
-        mz_zip_reader_delete(&reader);
-    }
-};
-
-bool extractZip(const fs::path &zipPath, const fs::path &destination, std::string &error) {
-    // Extracted afresh every time: what an earlier extraction left could be from another version of the zip.
-    std::error_code fileError;
-    fs::remove_all(destination, fileError);
-    fs::create_directories(destination, fileError);
-    if (fileError) {
-        error = "failed to prepare temp dir: " + destination.string();
-        return false;
-    }
-
-    std::unique_ptr<void, ZipReaderDeleter> reader(mz_zip_reader_create());
-    if (reader == nullptr) {
-        error = "failed to create zip reader";
-        return false;
-    }
-    if (mz_zip_reader_open_file(reader.get(), zipPath.string().c_str()) != MZ_OK) {
-        error = "failed to open zip file";
-        return false;
-    }
-    const int32_t extracted = mz_zip_reader_save_all(reader.get(), destination.string().c_str());
-    const int32_t closed = mz_zip_reader_close(reader.get());
-    if (extracted != MZ_OK) {
-        error = "failed to extract zip file " + zipPath.string() + " (minizip error " + std::to_string(extracted) +
-                (extracted == MZ_SUPPORT_ERROR ? ", compression method not built in" : "") + ")";
-        return false;
-    }
-    if (closed != MZ_OK) {
-        error = "failed to close zip file";
-        return false;
-    }
-    return true;
+// Where zips are extracted and packs that extend another are staged; a check's folder below it is its own.
+fs::path tempRoot(const std::string &folder) {
+    const fs::path root = Renderer::folderPath / "temp/shaders/world/ray_tracing";
+    return folder.empty() ? root : root / folder;
 }
 
 // The folder the pack's files are in: the pack itself, or where its zip was extracted. Empty on failure.
-fs::path packRoot(const fs::path &path, std::string &error) {
+fs::path packRoot(const fs::path &path, std::string &error, const std::string &tempFolder = {}) {
     if (path.empty()) {
         error = "shader pack path is empty";
         return {};
@@ -277,8 +244,8 @@ fs::path packRoot(const fs::path &path, std::string &error) {
         error = "shader pack must be a directory or zip: " + path.string();
         return {};
     }
-    const fs::path destination = Renderer::folderPath / "temp/shaders/world/ray_tracing" / extractionFolderName(path);
-    if (!extractZip(path, destination, error)) return {};
+    const fs::path destination = tempRoot(tempFolder) / extractionFolderName(path);
+    if (!shader_pack::extractPackZip(path, destination, error)) return {};
     return destination;
 }
 
@@ -1134,6 +1101,31 @@ PackConfig parseConfigFile(const fs::path &root, const std::string &language) {
         pack.postRenderExecution = parseExecution(*execution, "root.execution_post");
     }
 
+    if (const json *views = field(config, Loader::KEY_DEBUG_VIEWS)) {
+        const std::string context = at("root", Loader::KEY_DEBUG_VIEWS);
+        if (!views->is_array()) fail(context + " must be an array");
+        std::unordered_set<std::string> names;
+        for (size_t i = 0; i < views->size(); i++) {
+            const json &entry = (*views)[i];
+            const std::string entryContext = at(context, i);
+            if (!entry.is_object()) fail(entryContext + " must be an object");
+            Loader::DebugViewConfig view;
+            view.name = requireString(entry, Loader::KEY_NAME, entryContext);
+            view.define = requireString(entry, Loader::KEY_DEFINE, entryContext);
+            if (const json *value = field(entry, Loader::KEY_VALUE)) {
+                view.value = scalarText(*value, at(entryContext, Loader::KEY_VALUE));
+            }
+            if (view.name.empty() || view.name == "off" || view.name.find_first_of(" \t") != std::string::npos) {
+                fail(at(entryContext, Loader::KEY_NAME) + " must be one word other than off");
+            }
+            if (!ExpressionEvaluator::isValidIdentifier(view.define)) {
+                fail(at(entryContext, Loader::KEY_DEFINE) + " must be a define name");
+            }
+            if (!names.insert(view.name).second) fail(entryContext + ": " + view.name + " is listed twice");
+            pack.debugViews.push_back(std::move(view));
+        }
+    }
+
     // Without a script a stage runs its passes in the order the pack lists them.
     auto addDefaultCommands = [&](Loader::ExecutionConfig &execution, Loader::Stage stage) {
         if (!execution.commands.empty()) return;
@@ -1179,16 +1171,52 @@ std::string ShaderPackLoader::toLower(std::string value) {
 
 ShaderPackLoader::LoadResult
 ShaderPackLoader::load(const fs::path &path, const fs::path &builtInPath, const std::string &language) {
+    return load(path, builtInPath, language, LoadOptions{});
+}
+
+ShaderPackLoader::LoadResult ShaderPackLoader::load(const fs::path &path,
+                                                    const fs::path &builtInPath,
+                                                    const std::string &language,
+                                                    const LoadOptions &options) {
     LoadResult result;
+    auto underRendererFolder = [](const fs::path &packPath) {
+        return packPath.empty() || packPath.is_absolute() ? packPath : Renderer::folderPath / packPath;
+    };
+    const fs::path fallbackPath = underRendererFolder(builtInPath);
+    // A pack that names a base in "extends" is put together in a folder of its own first: the base's files, the
+    // pack's over them, configs.json and the lang files merged (shader_pack_extends.hpp). The folder's name is the
+    // same for the same pack every time, so the SPIR-V cache keeps its shaders.
+    auto stageIfExtending = [&](const fs::path &root, const fs::path &packPath) -> fs::path {
+        const fs::path configPath = root / "configs.json";
+        if (!fs::exists(configPath)) return root;
+        std::ifstream stream(configPath);
+        const json config = json::parse(stream, nullptr, false);
+        if (config.is_discarded() || !config.is_object()) return root; // parseConfigFile says what is wrong
+        const auto base = shader_pack::readExtends(config);
+        if (!base.has_value()) return root;
+        shader_pack::checkExtendsBase(*base);
+        if (fs::weakly_canonical(packPath) == fs::weakly_canonical(fallbackPath)) {
+            fail("the built-in pack cannot extend itself");
+        }
+        std::string error;
+        const fs::path baseRoot = packRoot(fallbackPath, error, options.tempFolder);
+        if (baseRoot.empty()) fail("extends: the base pack could not be read: " + error);
+        const fs::path stage = tempRoot(options.tempFolder) / (extractionFolderName(packPath) + "_extended");
+        shader_pack::stageExtendedPack(baseRoot, root, stage);
+        radiante::out() << "[ShaderPack] " << packPath.filename().string() << " extends " << base->id
+                        << ", staged in " << stage.string() << std::endl;
+        return stage;
+    };
+
     auto tryLoad = [&](const fs::path &packPath) {
         std::string error;
-        const fs::path root = packRoot(packPath, error);
+        const fs::path root = packRoot(packPath, error, options.tempFolder);
         if (root.empty()) {
             result.error = error;
             return false;
         }
         try {
-            result.shaderPack = parseConfigFile(root, language);
+            result.shaderPack = parseConfigFile(stageIfExtending(root, packPath), language);
         } catch (const std::exception &exception) {
             result.error = exception.what();
             return false;
@@ -1196,15 +1224,29 @@ ShaderPackLoader::load(const fs::path &path, const fs::path &builtInPath, const 
         result.success = true;
         return true;
     };
-    auto underRendererFolder = [](const fs::path &packPath) {
-        return packPath.empty() || packPath.is_absolute() ? packPath : Renderer::folderPath / packPath;
-    };
-
-    const fs::path fallbackPath = underRendererFolder(builtInPath);
     const fs::path requestedPath = underRendererFolder(path.empty() ? builtInPath : path);
     if (tryLoad(requestedPath)) return result;
-    if (!path.empty() && requestedPath != fallbackPath) tryLoad(fallbackPath);
+    if (options.fallBack && !path.empty() && requestedPath != fallbackPath) {
+        // Said where Java reads it (RendererProxy.drainNativeErrors): without it a pack whose configs.json is wrong
+        // ran as the built-in one without a word, and the shader pack screen could not say why.
+        radiante::err() << "[ShaderPack] " << requestedPath.string() << " could not be loaded: " << result.error
+                        << "; using the built-in pack" << std::endl;
+        tryLoad(fallbackPath);
+    }
     return result;
+}
+
+bool ShaderPackLoader::addDebugViewDefinitions(const std::vector<DebugViewConfig> &views,
+                                               const std::string &view,
+                                               std::unordered_map<std::string, std::string> &definitions) {
+    for (const auto &candidate : views) definitions.try_emplace(candidate.define, "0");
+    if (view.empty() || view == "off") return true;
+    for (const auto &candidate : views) {
+        if (candidate.name != view) continue;
+        definitions[candidate.define] = candidate.value;
+        return true;
+    }
+    return false;
 }
 
 std::string ShaderPackLoader::buildExecutionSource(const std::vector<VariableConfig> &variables,

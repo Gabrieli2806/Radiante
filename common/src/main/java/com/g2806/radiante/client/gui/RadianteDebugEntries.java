@@ -13,6 +13,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.debug.DebugGroups;
 import net.minecraft.client.gui.components.debug.DebugScreenDisplayer;
 import net.minecraft.client.gui.components.debug.DebugScreenEntry;
+import net.minecraft.client.gui.components.debug.DebugScreenEntryStatus;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
@@ -31,14 +32,27 @@ public final class RadianteDebugEntries {
     public static final ResourceKey<DebugScreenEntry> FRAME_GENERATION = key("frame_generation");
     public static final ResourceKey<DebugScreenEntry> HDR = key("hdr");
     public static final ResourceKey<DebugScreenEntry> GPU_TIME = key("gpu_time");
+    public static final ResourceKey<DebugScreenEntry> SCENE = key("scene");
     /** Shown in the overlay until the player hides them. */
-    public static final List<ResourceKey<DebugScreenEntry>> ALL = List.of(UPSCALER, GPU_TIME, REFLEX, FRAME_GENERATION, HDR);
+    public static final List<ResourceKey<DebugScreenEntry>> ALL = List.of(UPSCALER, GPU_TIME, SCENE, REFLEX, FRAME_GENERATION, HDR);
 
     private RadianteDebugEntries() {
     }
 
     private static ResourceKey<DebugScreenEntry> key(String name) {
         return ResourceKey.create(ClientRegistries.DEBUG_SCREEN_ENTRY, Identifier.fromNamespaceAndPath("radiante", name));
+    }
+
+    /** Whether the F3 screen lists the GPU's pass timings, the same choice as in the debug options screen (F3 + F6). */
+    static boolean gpuTimingsShown() {
+        return Minecraft.getInstance().debugEntries.getStatus(GPU_TIME) != DebugScreenEntryStatus.NEVER;
+    }
+
+    /** The GPU's timings and the scene's counts go together: the renderer's numbers on F3. */
+    static void setGpuTimingsShown(boolean shown) {
+        DebugScreenEntryStatus status = shown ? DebugScreenEntryStatus.IN_OVERLAY : DebugScreenEntryStatus.NEVER;
+        Minecraft.getInstance().debugEntries.setStatus(GPU_TIME, status);
+        Minecraft.getInstance().debugEntries.setStatus(SCENE, status);
     }
 
     /** Called while Minecraft fills the debug entry registry (DebugScreenEntriesMixin). */
@@ -57,6 +71,15 @@ public final class RadianteDebugEntries {
                 if (stats != null && !stats.isEmpty()) {
                     displayer.addToGroup(DebugGroups.MISC, wrapGpuStats("PrismRT GPU: " + stats));
                 }
+            }
+        });
+        Registry.register(registry, SCENE, new Entry() {
+            @Override
+            void lines(DebugScreenDisplayer displayer) {
+                long[] stats = Pipeline.sceneStats();
+                displayer.addToGroup(DebugGroups.MISC, String.format(Locale.ROOT, "Scene: %d TLAS instances, %d entity BLAS/frame, %d sections pending",
+                    stats[0], stats[1], com.g2806.radiante.client.render.ChunkManager.pendingBuilds()));
+                displayer.addToGroup(DebugGroups.MISC, String.format(Locale.ROOT, "Renderer VRAM: %d / %d MB", stats[2], stats[3]));
             }
         });
         Registry.register(registry, REFLEX, new Entry() {

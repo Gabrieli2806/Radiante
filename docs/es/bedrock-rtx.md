@@ -63,6 +63,12 @@ el brillo de Bedrock, activo por defecto; es lo que pone luces puntuales):
   bloques que el pack marca como luz estática (lava, luces de rana, lámparas de redstone) conservan
   el brillo de su textura; su color todavía no se aplica.
 
+El polvo de redstone brilla según su potencia, con pack o sin él: nada con potencia 0, y más
+brillante y de un rojo más claro hasta la potencia 15, con el color de vanilla para esa potencia;
+también ilumina un poco el suelo a su alrededor (una línea recta da como un cuarto de una antorcha
+de redstone). La emisión que un pack da a las texturas del polvo no se usa, así que el polvo sin
+potencia nunca brilla.
+
 ### Qué convierte exactamente
 
 Bedrock describe cada textura con un "texture set": una textura de color, un mapa MER(S)
@@ -113,6 +119,8 @@ Bedrock que actives reemplaza todo esto.
 Otros aspectos llegan como shader packs. Las versiones anteriores tenían un perfil de render
 **Realista**; si estaba elegido él o **Personalizado**, los ajustes que ponía vuelven a estos valores
 por defecto una vez, en el primer inicio tras la actualización, y el resto de ajustes se conserva.
+El aspecto Realista es ahora el shader pack de ejemplo `realistic` del repositorio
+(`examples/shaderpacks/`).
 
 ## Archivos de una instalación de Bedrock
 

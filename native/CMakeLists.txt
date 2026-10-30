@@ -86,6 +86,9 @@ endif()
 
 set(PRISM_BUILT_IN_SHADER_PACKS radiante-pt)
 message(STATUS "Built-in shader packs: ${PRISM_BUILT_IN_SHADER_PACKS}")
+# Packs that extend radiante-pt and come with Radiante, from examples/shaderpacks/<name>: zipped as they are next to
+# radiante-pt.zip, and listed as built-in by the Java side (ShaderPackLibrary.BUILT_IN_EXTRAS).
+set(PRISM_BUILT_IN_EXTENDING_PACKS pixelated-lighting)
 
 # FidelityFX Upscaler (FSR3 Upscaler only)
 option(PRISM_ENABLE_FFX_UPSCALER "Enable FidelityFX Upscaler support" ON)

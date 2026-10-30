@@ -62,6 +62,25 @@ enum Tunable {
     // How much of a rain streak shows: thin, nearly clear falling water at the default, an opaque sheet at 100%.
     RAIN_OPACITY(null, "render_pipeline.module.ray_tracing.attribute.rain_opacity", 0.01, 0, 100, 0,
         Format.PERCENT),
+    // How much a rain streak catches the light around it: the overcast sky over it.
+    RAIN_STREAKS(null, "render_pipeline.module.ray_tracing.attribute.rain_streak_brightness", 0.01, 0, 200, 100,
+        Format.PERCENT),
+    // How much standing water rain leaves on open flat block tops (with Wet Ground in Rain on); full from 50%.
+    PUDDLES(null, "render_pipeline.module.ray_tracing.attribute.rain_puddles", 0.01, 0, 100, 50, Format.PERCENT),
+    // How long steady rain takes to soak the ground through, and how long the ground takes to dry after it, in seconds.
+    RAIN_WET_UP_TIME(null, "render_pipeline.module.ray_tracing.attribute.rain_wet_up_time", 1.0, 10, 600, 150,
+        Format.SECONDS),
+    RAIN_DRYING_TIME(null, "render_pipeline.module.ray_tracing.attribute.rain_drying_time", 1.0, 30, 600, 180,
+        Format.SECONDS),
+    // How strongly wet surfaces darken and shine.
+    RAIN_WETNESS(null, "render_pipeline.module.ray_tracing.attribute.rain_wetness_strength", 0.01, 0, 200, 100,
+        Format.PERCENT),
+    // How wet walls and other upright faces open to the rain get, against the ground.
+    RAIN_WET_WALLS(null, "render_pipeline.module.ray_tracing.attribute.rain_wet_walls", 0.01, 0, 100, 50,
+        Format.PERCENT),
+    // How brightly a lightning flash lights the world in a thunderstorm.
+    LIGHTNING_FLASH(null, "render_pipeline.module.ray_tracing.attribute.lightning_flash", 0.01, 0, 200, 100,
+        Format.PERCENT),
     // How far the wind moves leaves and plants, while Wind is on.
     WIND_STRENGTH(null, Pipeline.WIND_STRENGTH_ATTRIBUTE, 0.01, 0, 200, 100, Format.PERCENT),
     STARS(Pipeline.POST_RENDER_MODULE_NAME, "render_pipeline.module.post_render.attribute.star_count", 100.0, 1, 200,
@@ -69,9 +88,21 @@ enum Tunable {
     BOUNCE_LIGHT(null, "render_pipeline.module.ray_tracing.attribute.bounce_light_boost", 0.01, 50, 200, 150,
         Format.PERCENT),
     SKY_LIGHT(null, "render_pipeline.module.ray_tracing.attribute.sky_light_boost", 0.01, 50, 400, 180, Format.PERCENT),
+    // How much sun leaves and plants let through from behind, and how far round ice and snow it wraps.
+    TRANSLUCENCY(null, "render_pipeline.module.ray_tracing.attribute.translucency", 0.01, 0, 200, 100, Format.PERCENT),
     SUN_GLOW(null, "render_pipeline.module.ray_tracing.attribute.sun_glow", 0.0008, 0, 300, 100, Format.PERCENT),
     LIGHT_SHAFTS(null, "render_pipeline.module.ray_tracing.attribute.light_shafts", 0.00015, 0, 400, 100,
         Format.PERCENT),
+    // How much the light shafts' air dims what is behind it, as a share of the light it scatters: distant lava and
+    // lights fade into the fog instead of keeping their whole glow under a pale veil.
+    FOG_VEIL_DIMMING(null, "render_pipeline.module.ray_tracing.attribute.fog_veil_dimming", 0.01, 0, 100, 25,
+        Format.PERCENT),
+    // The air's own haze over the distance: far terrain (Distant Horizons' too) fading into the sky behind it.
+    AERIAL_PERSPECTIVE(null, "render_pipeline.module.ray_tracing.attribute.aerial_perspective", 0.01, 0, 400, 100,
+        Format.PERCENT),
+    // How far from the camera the haze begins: nothing nearer, faded in over the next half of that distance.
+    AERIAL_PERSPECTIVE_START(null, "render_pipeline.module.ray_tracing.attribute.aerial_perspective_start", 1.0, 0,
+        1024, 128, Format.BLOCKS),
     WATER_WAVES(null, "render_pipeline.module.ray_tracing.attribute.water_wave_strength", 0.0035, 0, 400, 100,
         Format.PERCENT),
     WATER_DENSITY(null, "render_pipeline.module.ray_tracing.attribute.water_density", 0.01, 0, 400, 100,
@@ -91,7 +122,7 @@ enum Tunable {
         Format.PERCENT);
 
     /** NUMBER is a whole number, written without a decimal point; BLOCKS is a distance in blocks. */
-    enum Format { PERCENT, EV, NUMBER, BLOCKS }
+    enum Format { PERCENT, EV, NUMBER, BLOCKS, SECONDS }
 
     final String module;
     final String attribute;

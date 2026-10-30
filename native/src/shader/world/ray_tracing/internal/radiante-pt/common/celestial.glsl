@@ -28,6 +28,31 @@ float endFlashIntensity() {
     return clamp(strength, 0.0, 1.0);
 }
 
+// Lightning in a thunderstorm (Overworld): while the sky flashes, the bolt lights the world like a sun from its own
+// direction, with shadows, through the sun's shadow ray, and the whole overcast sky glows with it. The Java side
+// (LightningFlash) uploads its strength in rainWetness.z, 0..1 (0 with the "Hide Lightning Flashes" accessibility
+// option), and the bolt's bearing from the camera in rainWetness.w (radians, from +x towards +z).
+#ifndef VPT_LIGHTNING_FLASH
+#    define VPT_LIGHTNING_FLASH 1.0
+#endif
+// The flash's light at full strength, a cold blue; the sun's default is 8. The bolt's own glow lights the land
+// around it already, and with the eye opened up for the dark, a brighter flash turned a storm by night white.
+const vec3 LIGHTNING_RADIANCE = vec3(0.45, 0.55, 0.8);
+// How high the flash's light comes from: the bolt stands a long way off, lighting the land from above its horizon.
+const float LIGHTNING_ELEVATION = 0.75;
+
+float lightningFlash() {
+    if (worldUBO.skyType != 1) { return 0.0; }
+    float strength = skyUBO.rainWetness.z;
+    if (isnan(strength) || isinf(strength)) { return 0.0; }
+    return clamp(strength, 0.0, 1.0) * max(VPT_LIGHTNING_FLASH, 0.0);
+}
+
+vec3 lightningDirection() {
+    float bearing = skyUBO.rainWetness.w;
+    return normalize(vec3(cos(bearing), LIGHTNING_ELEVATION, sin(bearing)));
+}
+
 // Direction towards the moon. Its path can lean and turn apart from the sun's (the Moon Path settings), so it is
 // uploaded on its own; it keeps the hour opposite the sun's, so it is up exactly while the sun is down. Opposite the
 // sun when unknown, as it is with the moon following the sun's path.

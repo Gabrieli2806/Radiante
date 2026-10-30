@@ -4,6 +4,117 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- A/B Capture in the Debug section: a screenshot with the settings and GPU timings saved beside it.
+- F3 now also shows TLAS instances, entity BLAS per frame, sections pending and the renderer's VRAM use.
+- Debug views `fog_inscatter` and `fog_transmittance`: the fog on its own.
+- Debug views `raw_diffuse` and `raw_specular`: the noisy signals before the denoiser.
+- Debug views `direct`, `indirect` and `sharc`: the light on each pixel split by where it came from.
+- Debug view `rain`: per pixel wetness (red), open sky (green) and standing water (blue).
+- New Debug section in the Radiante settings, shown while Advanced is on: a debug view picker (with a pack's own
+  views), SHaRC Debug Mode, HDR Debug View and Debug Logging moved there, GPU Timings in F3, a Bug Report Summary that
+  copies versions, GPU and settings, and buttons for the logs and shader packs folders. New heat map debug views:
+  `anyhit` (any-hit shader runs per pixel on the camera ray, blue 1 to red 16+, for finding hidden faces and stacked
+  surfaces) and `bounces` (rays per pixel past the camera ray).
+- Fog Veil Dimming (Sky & Water, 25%): the light shafts' hazy air now also dims what is behind it, by a share of
+  the light it scatters, so distant lava, lights and land fade into the fog instead of keeping their full glow under a
+  pale veil. In full rain the air still dims the distance though the sun is gone.
+- Bedrock's volumetric fog (default profile) carries the biome's fog on past its 50-block volume: distant lava,
+  lights and hills now fade into the fog with distance instead of keeping their full glow behind a fogged foreground.
+- Pixelated Lighting: puddles and rain rings come out in the texture's pixels, with hard edges. Shader packs can
+  move where rain's marks are worked out with the new `hooks/rain_surface.glsl`.
+- In first person, the player now shows in mirror-like reflections (wet ground, puddles, water, windows) while First
+  Person Shadow is on, as in third person. Before, only their shadow showed.
+- Rain is cleaner and cheaper. Rain streaks are no longer shaded as surfaces: the camera sees through them with a
+  faint glint of the overcast sky (Rain Streaks slider), so the
+  denoiser and upscaler stop taking the flickering streaks for the ground behind them, which smeared and sparkled
+  through every storm. Bounced rays and the radiance cache no longer meet rain at all.
+- Clouds in rain are heavy grey masses lit only by the overcast, darker underneath and in a storm; they took part of
+  the full sun before and glowed against the dim sky.
+- Rain soaks the ground over a couple of minutes: it darkens within seconds, then water gathers in patches that
+  grow and merge into one film; sheltered ground near the open (beside walls, at the rim of a tree) gets damp with
+  rain blown in, fading over two blocks instead of stopping at a hard line.
+- Rain wets walls, tree trunks and leaves open to it too (less than the ground), fades out over a few blocks at the
+  edge of a biome where it does not rain, and the ground under leaves stays damp. New settings in Sky, Fog & Water:
+  Wetness, Wet Walls, Wet-Up Time and Drying Time.
+- Puddles (Sky, Fog & Water): in steady rain, standing water with rain rings covers the flat tops of open full
+  blocks and mirrors the sky and the lamps (less of it, and less of a mirror, on grass and earth); once the rain stops it dries up in patches over about three
+  minutes. Slabs, stairs, roofs and leaves only darken a little.
+- Lightning Flash (Sky, Fog & Water): a thunderstorm's lightning now lights the world from the bolt's direction, with
+  shadows, and lights up the clouds while the sky flashes; the bolt's own glow no longer lights a storm by night white. The overcast sky is heavier overhead and darker in a storm.
+- With Distant Horizons, its terrain under the chunks that are built is left out of the rays instead of being skipped
+  by each one: rays near the ground crossed it under the real terrain and paid for every face they passed. In a forest
+  at an 8 chunk render distance radiante-pt's trace took 2.4 ms less (17.6 to 15.2 ms).
+- First-person hand primary rays use conservative bounds from the current animated geometry, with padded projection
+  and full-screen fallback when bounds cannot be trusted.
+- Hand Lighting Samples (Performance → Advanced → Renderer, 1–8, default 3) controls the indirect-lighting
+  samples for first-person hands and held items. Lower values are faster with more noise; higher values are smoother.
+
+- Volumetric fog (Froxel style, and Bedrock's fog volume) holds still while you look around: its light now lives in
+  two grids fixed to the world around the camera (half-block cells to 32 blocks, two-block cells to 128) instead of a
+  grid cut along the view, and each pixel marches its ray through them. Turning the camera used to re-cut the air into
+  other cells, so light shafts and the fog's shape shifted with the view; now the same view gives the same fog however
+  you got there.
+- ReSTIR Bounced Light (Lighting, off): experimental ReSTIR GI for the first bounce of light off what the camera sees.
+  Each pixel keeps its bounce's sample in a reservoir and merges it with last frame's and its neighbours' (a
+  visibility ray checks a neighbour's sample), for less noise in rooms and caves lit by bounced light. Off by default:
+  behind DLSS Ray Reconstruction the gain is small and the light reads a few percent darker.
+- Bounced light no longer reads the full-size texture far away: the ray cone that picks a texture's level of detail
+  now widens with the lobe a bounce is drawn from (diffuse or rough), so light bounced off distant foliage and
+  textured ground stops sparkling.
+- On a device Radiante does not support yet (macOS, Windows on ARM such as Snapdragon laptops, 32-bit Java, Android
+  launchers), or when its renderer's library fails to load, the game no longer crashes: it starts with Minecraft's own
+  renderer, a one-time screen names the device and says why, and Radiante's settings show that message instead.
+- Aerial Perspective Start (Sky & Water, 128 blocks): no distance haze nearer than this; it fades in over the next
+  half of that distance and is counted from there, not from the camera, so nearby land and buildings stay clear.
+- Translucency (Lighting, 100%): leaves and small plants let the sun and moon through from behind, tinted by their
+  colour and brightest looking towards the light, so a tree glows against a low sun instead of standing dark; ice and
+  snow take the light a little past their shadowed edge, with a blue tint. No extra rays. Shader packs can set how much
+  per surface with `surface.mat.subSurface` in `hookSurface`, and test ice and snow with `isFrostSurface`.
+- Volumetric fog's light shafts (Bedrock's fog volume) no longer break up into drifting cloudy blotches while the
+  camera moves: the froxel light is filtered over its neighbours before it is integrated, so a window's shaft stays a
+  smooth beam.
+- Glow lichen glows and lights much less (level 2 instead of its light level 7): spread over a cave wall it lit the
+  cave like a room of torches.
+- Powered redstone dust glows by its power level, as in Bedrock RTX: none at power 0, then up to power 15 in vanilla's
+  colour for that power, and it casts a faint red light next to it (a straight line far under a redstone
+  torch). Before, dust looked the same powered or not. A Bedrock pack's emission for the dust textures no longer makes
+  unpowered dust glow.
+- Lit redstone torches glow again, and powered repeaters and comparators glow on their torches (and the lit line of
+  the repeater's top) like a redstone torch: repeaters and comparators draw the torch's lit texture without giving any
+  light, and that had taken the texture off the glowing ones.
+- Water under the camera now depends on the body of water, not only on the biome: with the head in a pool or a small
+  pond the view reaches further and the water is lighter, while lakes and the sea keep the biome's look. Radiante
+  measures the water column and how far the water runs around the camera (eased as you swim). Looking up out of the
+  water, only the water itself fogs the view now: the sky and the shore past the surface no longer vanish into sea
+  blue. Shader packs can read the size with `radianteWaterDepth()` and `radianteWaterWidth()`.
+- Under water by day the view is no longer as bright as the land above: the daylight that lights what you see has
+  come down through the water over you, so it dims and turns blue-green the deeper you swim (red goes first). The
+  night look under water is unchanged.
+- Fog you can see. With the defaults the air had no haze at all: Bedrock's fog volume only carries the biome's fog,
+  which is zero with Biome Ambiance off (the default), and turning Volumetric Fog on or off changed only the last few
+  blocks before the render distance. Now:
+  - **Aerial Perspective** (Sky & Water, 100%): far terrain, Distant Horizons' included, fades towards the sky behind
+    it, about an eighth of the way at 16 chunks and two fifths at 64 at sea level, thicker in rain, thunder and humid
+    biomes, thinner over deserts and from mountain tops, none in caves. Worked out per pixel from the distance, so it
+    is free and has no noise, and near chunks and LODs fade alike. It makes up the floor under Biome Ambiance's haze
+    instead of stacking on it.
+  - Bedrock's fog volume (the default fog) now shows light shafts through leaves, windows and skylights, so
+    Volumetric Fog on looks different from off; Light Shafts and Volumetric Fog Strength work with it again.
+  - Less noise in the volumetric fog: each fog cell is lit at points spread evenly through it over time instead of at
+    random, keeps a longer history, reads it back smoothly as the camera moves, and lets a rare bright sample in
+    gently; torch glow in the fog looks at four lights instead of two. The Radiante fog style's march starts its
+    steps on a fine, even pattern instead of white noise.
+- A second built-in shader pack, **Pixelated Lighting**, listed next to Radiante PT under Shader Packs: pixelated
+  shadows and reflections, after BetterRTX's preset of that name. Shadow edges from the sun, torches and held lights
+  follow the texture's pixels, and reflections, water's included, are solid squares, one per texel, near objects too;
+  the light itself (its angle, a torch's falloff, bounce light, glow) stays smooth, and what is seen through water and
+  glass stays sharp. Natural colours by default; the old example's retro palette is an option (Retro Palette, off).
+  Settings: Texels per Block, Pixelated Shadows, Shadow Softness (hard sun and moon shadows, so their edges step in
+  texel squares), Pixelated Reflections (water read as one flat facet per texel) and the palette. It replaces the Pixel Light
+  example: a pipeline that used `shaderpacks/pixel-light.zip` switches to the built-in pack, at its new defaults.
+- Shader packs: a new hook, `hooks/ray_origins.glsl` (`hookShadowOffset`, `hookReflectionOffset`), to start a hit's
+  shadow rays and reflection rays somewhere else than where it is lit; the camera's reflections off water, glass and
+  mirrors follow. Radiante PT compiles to the same shaders as before.
 - Renderer profiles are gone: radiante-pt's defaults are now the Bedrock RTX (Enhanced) look, all in one, so the
   Renderer Profile selector, the Realistic and Custom profiles and the "set by the profile" notes are removed. Every
   setting the profile used to hold (exposure, Bedrock's tone curve, glass, water, fog, low-light boost...) is a plain
@@ -11,12 +122,92 @@ All notable changes to this project are documented in this file.
   Bedrock pack provides them. Tone Mapping offers Bedrock RTX's curve, and the Bedrock picture style matches the
   defaults. Low-Light Boost, Glass Reflections and Water Murkiness read 100% at the Bedrock value. A player who had
   Realistic or Custom gets the settings those profiles set put back to the defaults once, on the first start; other
-  settings are kept. Realistic's values are recorded in
-  [docs/dev/realistic-profile-values.md](docs/dev/realistic-profile-values.md) for a shader pack.
-- Without a Bedrock pack, the Bedrock RTX (Enhanced) profile now has built-in defaults for the fog and water of every
-  biome and for the glow and cast light of each light block, laid over the pixels Radiante finds glowing in vanilla's
-  texture. Textures, normal maps and other materials still need a pack. Realistic and Custom are unchanged, and an
-  enabled Bedrock pack replaces all of it. See [docs/dev/bedrock-defaults.md](docs/dev/bedrock-defaults.md).
+  settings are kept. Realistic's look comes back as an example shader pack (below).
+- Without a Bedrock pack, Radiante now has built-in defaults for the fog and water of every biome and for the glow and
+  cast light of each light block, laid over the pixels Radiante finds glowing in vanilla's texture. Textures, normal
+  maps and other materials still need a pack, and an enabled Bedrock pack replaces all of it. See
+  [docs/dev/bedrock-defaults.md](docs/dev/bedrock-defaults.md).
+- Shader packs can tell how wet the air is after rain: `radianteWetness()` (Iris's `wetness`, with its default
+  half-lives) and `radianteRainStoppedFor()`, seconds since the rain stopped, in `common/pack_world.glsl`. Radiante PT
+  reads neither. Mellow port 0.8.0: the rainbow now comes after rain and stays for a minute or two while the air is
+  still wet, strongest just after, instead of only the few seconds the rain takes to stop.
+- Shader packs: a new hook, `hooks/sky_emission.glsl` (`hookSkyEmission(direction, seen)`), for light glowing in the
+  sky that every ray reaching it sees, so it lights the world too; `seen` lets a pack give bounced rays a cheap,
+  smooth version. Radiante PT compiles to the same shaders as before. Mellow port 0.7.0 uses it: the aurora now
+  faintly lights snow, water and the ground in its colour and shows in rough reflections (Aurora Light), and a
+  rainbow, primary and secondary, opposite a low sun in light rain, mostly as it stops (Rainbow).
+- Mellow port 0.6.0: a realistic aurora, now the default (Aurora Style; Mellow's own is still there): folded,
+  rippling curtains with a sharp lower edge and rays, green below and red above, drifting and shimmering slowly,
+  fading at the horizon and under the moon and hidden by clouds. Still only in snowy biomes unless Aurora Everywhere.
+- Shader packs get more hook points, each in a file of its own so older packs keep compiling: the sun's and moon's
+  discs (`hooks/celestial.glsl`), radiante-pt's water waves and caustics (`water_waves`, strength, speed and size),
+  any water's surface for a pack's own normals or foam (`water_surface`), the view from under water (`underwater_fog`
+  in the path tracer, `underwater` on the finished picture), the Nether's and the End's sky and fog
+  (`dimension_sky`) and the colour of block light, cast, held and seen (`block_light`). `common/pack_world.glsl` adds
+  the time of day read off the sun (`radianteSunAngle()`, `radianteDayWeights()`, the moon's phase). With its own
+  hooks Radiante PT compiles to the same shaders as before; packs need no change. Wind stays the renderer's: a pack
+  can only turn it on or set its strength by default. The Mellow port (0.5.0) uses them: Mellow's round sun (off, as
+  in Mellow), its water normals and their settings, its warm torch light, its underwater colour and End sky, and
+  Radiante's wind on for its waving plants; the example pack adds a ripple under water and a thicker Nether haze.
+- Shader packs get a settings page of their own: with a pack other than Radiante PT in use, Radiante's settings have
+  a section named after the pack, with its icon, holding the settings the pack adds (Radiante PT's stay where they
+  are, and the pack's no longer land among Radiante's advanced settings). Packs can group and order them, put some
+  behind Advanced, describe them, mark their performance impact, set a slider's step and hide a setting while another
+  has a given value (`group`, `order`, `advanced`, `description`, `performance_impact`, `step`, `visible_when` on an
+  attribute), and offer presets of their settings as a row at the top of the page (`presets`). Packs' setting names
+  from their `lang` files now show everywhere. A pack built on Radiante PT starts Radiante PT's settings at Radiante
+  PT's defaults, or at its own where it gives one a new default. The example packs (Mellow port, Pixel Light, Inkwell,
+  the example pack) use all of it, in English, Spanish and Chinese.
+- Shader pack development: a pack kept as a folder in `radiante/shaderpacks/` reloads by itself when one of its files
+  is saved. It is checked first (loaded and compiled in the background while the game runs); an edit that does not
+  compile is not used, the picture stays as it was, and the error shows in a popup and on the Shader Packs screen.
+  New client commands: `/radiante pack validate [name]` checks a pack without switching to it and prints the report in
+  the chat, `/radiante pack reload` reloads the active folder pack, and `/radiante debug view <view>` shows the
+  albedo, normals, roughness, metallic, emission, depth, motion vectors or kind of surface instead of the picture
+  (`off` goes back; not saved). Packs can declare their own debug views (`debug_views` in `configs.json`).
+- Shader packs get far more live settings: 256 `"runtime": true` slots instead of 64 (Radiante PT used 62 of them), and
+  they now work in post passes and the post grade hook too (`common/pack_post.glsl`). A pack can ask for Radiante's
+  bloom pyramid (`RADIANTE_POST_BLOOM`) and read it there, for bloom, glow and lens flares; it is drawn only for a pack
+  that asks. Radiante PT renders as before. Example packs: Pixel Light's palette and dither and the Mellow port's grade
+  change live; the example pack gains bloom, a lens flare with colour fringes, a live grade strength and a debug view
+  of its own.
+- Shader packs can react to the weather and the biome: `common/pack_world.glsl` in Radiante PT gives hooks the thunder
+  strength, and the temperature, downfall, snowy, dry and rainy weights and id of the biome at the camera, faded over
+  a couple of seconds across a border (`radianteThunder()`, `radianteBiomeSnowy()`, `radianteBiomeIs(...)`), also in
+  the post grade hook. Radiante PT itself is unchanged. The Mellow port uses them: its aurora shows in snowy biomes
+  and is on by default again, as in Mellow, thunder darkens its sky, sun and clouds, and a pale garden fogs up at night.
+- Shader Packs screen (button beside Presets in Radiante's settings): lists the built-in Radiante PT and the packs in
+  `radiante/shaderpacks/` (zip or folder, with icon, name, version, author and licence from the pack's manifest),
+  opens the folder, and switches packs with the usual background rebuild. A pack that does not load or compile is
+  replaced by Radiante PT again, and the renderer's messages (the compiler's, or why `configs.json` was rejected) are
+  shown under the list with a button to copy them; the renderer now logs why a pack's `configs.json` was rejected
+  instead of quietly loading the built-in pack. Zips that wrap the pack in a folder are flagged in the list. Iris and OptiFine packs put in that folder
+  are listed as such, with a note that they belong to Iris. A pack
+  that takes the game down while it is being tried is replaced by Radiante PT
+  at the next start. A setting value a pack does not offer (radiante-pt's Bedrock water carried into another pack
+  with the same setting) goes back to that pack's default instead of breaking its shaders.
+- A new example shader pack, Realistic (`examples/shaderpacks/realistic`): the old Realistic profile as a pack built
+  on Radiante PT. It gives Radiante PT's settings the profile's values as defaults (less bounce and sky light lift,
+  softer shafts and sun glow, finer teal water) and adds the profile's contrast (1.08) and saturation (0.92) as two
+  live settings over the finished picture, with Realistic and Neutral presets. The profile's bloom intensity and
+  exposure speeds belong to tone mapping, which a pack cannot set, and are not carried; see
+  [docs/dev/realistic-profile-values.md](docs/dev/realistic-profile-values.md).
+- Shader pack authors: a guide (`docs/en/shader-packs.md`, `docs/es/paquetes-de-shaders.md`), an example pack in
+  `examples/shaderpacks/` that holds only the files it changes and is built on top of Radiante PT with
+  `./gradlew shaderPackExamples`, and the design and roadmap for pack support in `docs/dev/shader-packs/`.
+- Shader packs can build on Radiante PT instead of copying it: `"extends": "radiante-pt@1"` in the manifest, and the
+  pack holds only its own files; Radiante PT's files go under it and `configs.json` and the lang files are merged
+  (attributes, textures, buffers and passes by name, new passes placed with `before`/`after`). Radiante PT gains six
+  hook points a pack replaces (`hooks/surface.glsl`, `direct_light`, `water`, `sky`, `fog`, `post_grade`); with its
+  own empty hooks it compiles to the same shaders as before, so nothing changes in the built-in pack. Three more
+  hooks let a pack bring its own clouds and night sky: a cloud layer drawn after the rain and over the sun and moon
+  (`hooks/clouds.glsl`), the shadow of those clouds on the world (`cloud_shadow`) and stars (`stars`), also empty in
+  Radiante PT. The example
+  pack is rewritten on them, and a second example, Inkwell, gives a comic-book look (banded light, poster colours,
+  ink outlines, flat sky). Packs made for another base, a newer `api_version` or another Radiante version
+  (`requires.radiante`) are listed with the reason. Every pack zip is now extracted entry by entry, refusing paths
+  that leave the pack, symbolic links and more than 20000 files or 512 MB actually written. Packs that copied
+  Radiante PT's files keep working as before.
 - Bedrock `.mcaddon` files (and `.mcpack` files holding several packs) in the resource pack folder are listed and
   converted like a `.mcpack`: the resource packs inside are found (pack folders at any depth, nested `.mcpack`
   files), a pack's first subpack is laid over it, and behavior/script packs are skipped with a line in the log, since

@@ -29,6 +29,9 @@ struct VptPackedLight {
     vec4 sourceIDData;
 };
 
+// The colour of the lights through a pack's hooks/block_light.glsl (nothing in radiante-pt).
+#include "common/block_light_hook.glsl"
+
 // One of the lights Bedrock RTX adds at a few small light blocks - torches, lanterns, end rods (radiance.w 2): a
 // sphere at p0Area.xyz of radius normal.x whose radiance.rgb is its strength, falling off with the square of the
 // distance to its centre, without a direction of its own. The point a surface aims its shadow ray at is on the half

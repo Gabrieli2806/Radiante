@@ -21,6 +21,7 @@ Los valores por defecto son los de radiante-pt, el aspecto Bedrock RTX ([bedrock
 | **Agua Turquesa Clara** | 0% – 100% | 0% | Cuánto se acerca el agua de cada bioma a un agua turquesa y clara: el rojo se absorbe en pocos bloques mientras el verde y el azul llegan a decenas, así que se ve el fondo y los rayos de luz a lo lejos. 0% es el agua del propio pack. |
 | **Transparencia del Portal** | 0% – 100% | 50% | Cuánto de la transparencia del resource pack conserva un portal del Nether. 100% es como lo dibuja el pack, 0% es opaco. |
 | **Opacidad de la Lluvia** | 0% – 100% | 0% | Cuánto se ve cada trazo de lluvia. Bajo es agua cayendo fina y casi transparente que atrapa la luz; 100% es la textura de lluvia del pack como una lámina opaca. |
+| **Líneas de Lluvia** | 0% – 200% | 100% | Cuánto captan las líneas de lluvia la luz del cielo nublado sobre ellas. 0% deja la lluvia invisible. |
 | **Caché en Rebotes Profundos** | Activado / Desactivado | Activado | Tras el primer rebote, la luz sale de la caché de radiancia en vez de seguir trazando, y las superficies rebotadas no buscan luces de bloque, como Bedrock RTX. Mucho más rápido con muchas luces; la luz rebotada puede verse algo más suave. |
 | **Un rebote + caché** | Activado / Desactivado | Desactivado | Como Bedrock RTX: solo se traza un rebote de luz en todo, y el resto sale de la caché de radiancia donde cae. La mayor ganancia; la luz indirecta en zonas sin caché se ve algo más oscura por un momento. |
 | **Tablero en vidrio/agua** | Activado / Desactivado | Desactivado | El agua y el vidrio trazan su reflejo o su refracción por píxel, alternando en tablero de ajedrez, en vez de ambos: un rayo por píxel en lugar de dos, como Bedrock RTX. Apagado por defecto, porque la imagen a resolución completa de Bedrock necesita ambos. |
@@ -32,6 +33,15 @@ Los valores por defecto son los de radiante-pt, el aspecto Bedrock RTX ([bedrock
 | **Tamaño de Lote de Chunks** | 1 – 64 | Lo que elige Automática para tu CPU | Cuántas secciones de chunk se envían a la GPU en una sola construcción de la estructura de aceleración. Más alto llena el mundo más rápido pero puede causar picos de tiempo de fotograma al cargar; más bajo es más suave pero tarda más en ponerse al día. |
 | **Lotes de Chunks** | 1 – 64 | Lo que elige Automática para tu CPU | Cuántas de esas construcciones pueden estar en curso en la GPU a la vez. Más alto carga más rápido en GPUs potentes y usa más memoria de vídeo; bájalo si notas tirones o te quedas sin VRAM. |
 | **Emisión de Bloques** | Activado / Desactivado | Activado | Los bloques que emiten luz (antorchas, lava, piedra luminosa…) iluminan el mundo a su alrededor. Desactivarlo ahorra algo de rendimiento, pero entonces las fuentes de luz solo brillan ellas mismas — Muestreo de Luz de Bloques y ReSTIR (en [Iluminación](iluminacion.md)) lo necesitan. |
+
+## Iluminación avanzada de las manos
+
+Activa **Avanzado** y abre **Renderizador** para encontrar **Muestras de iluminación de las manos**
+(1–8, por defecto **3**). Controla las muestras de iluminación indirecta de ambas manos y los objetos
+en primera persona. Menos muestras reducen el trabajo de la GPU pero añaden ruido, sobre todo en mapas
+y objetos grandes; más muestras suavizan la iluminación y cuestan más rendimiento.
+Guarda el cambio con Aplicar. El valor se conserva en los ajustes del paquete de shaders y se actualiza
+sin recompilar shaders. Las muestras de iluminación del mundo y el límite de rebotes no cambian.
 
 ## Por qué el máximo de Hilos de Chunks es la mitad de tus núcleos
 

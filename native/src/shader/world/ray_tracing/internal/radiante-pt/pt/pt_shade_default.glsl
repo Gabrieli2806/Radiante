@@ -97,7 +97,16 @@ indexBuffer;
 #include "common/constants.glsl"
 #include "common/water_medium.glsl"
 #include "common/rain_wetness.glsl"
+#if defined(RADIANTE_DEBUG_VIEW) && RADIANTE_DEBUG_VIEW == 11
+// The rain debug view's values for this surface: wetness, open sky, standing water (pt_material.glsl).
+vec3 g_radianteDebugRain = vec3(0.0);
+#endif
 #include "common/seamless_glass.glsl"
+// A pack's water waves (hooks/water_waves.glsl); nothing in radiante-pt.
+#include "hooks/water_waves.glsl"
+#ifndef RADIANTE_HOOK_WATER_WAVES_DEFAULT
+#    include "common/fft_water_shaped.glsl"
+#endif
 #include "common/bedrock_water.glsl"
 
 #ifndef VPT_BOUNCE_LIGHT_BOOST
@@ -117,6 +126,47 @@ layout(location = 1) rayPayloadEXT ShadowRay shadowRay;
 #include "pt/pt_material.glsl"
 #include "pt/pt_parallax.glsl"
 #include "pt/pt_deferred_shadow.glsl"
+// What the surface hook may ask about the texel a hit lies in, and the view it may change: set just before
+// hookSurface runs. g_hookViewDir is the direction towards the viewer the surface is shaded with (its reflections and
+// highlights); a hook that moves surface.worldPos can point it at the new position. Unused, they compile away.
+bool g_hookHasTexel;
+vec2 g_hookTexelSize;
+vec2 g_hookPlaneUv;
+vec3 g_hookPlanePos;
+vec3 g_hookDPdu;
+vec3 g_hookDPdv;
+vec3 g_hookViewDir;
+
+// The centre of the texture's texel at uv, on the face's plane, in camera-relative world space; worldPos when the
+// surface has no texture. Follows the texture as it lies on the face: cross plants, vines, rotated or inset quads.
+vec3 hookTexelCentre(vec2 uv, vec3 worldPos) {
+    if (!g_hookHasTexel) { return worldPos; }
+    vec2 centreUv = (floor(uv * g_hookTexelSize) + 0.5) / g_hookTexelSize;
+    return basePlaneWorldPosAtUv(centreUv, g_hookPlaneUv, g_hookPlanePos, g_hookDPdu, g_hookDPdv);
+}
+
+// The surface flags debug view (common/debug_view.glsl, RADIANTE_DEBUG_VIEW 8, chosen with /radiante debug view
+// flags): what kind of surface the camera sees, written here because only the hit shaders read the vertex data. The
+// rain view (11) likewise, from what the material worked out. Compiled out unless one of them is chosen.
+#ifdef RADIANTE_DEBUG_VIEW
+#    if RADIANTE_DEBUG_VIEW == 8 || RADIANTE_DEBUG_VIEW == 11
+#        include "common/debug_view.glsl"
+layout(set = 5, binding = RADIANTE_DEBUG_VIEW_STORAGE_BINDING, rgba16f) uniform writeonly image2D radianteDebugViewImage;
+#    endif
+#    if RADIANTE_DEBUG_VIEW == 8
+#        define PT_DEBUG_VIEW_FLAGS 1
+#    endif
+#    if RADIANTE_DEBUG_VIEW == 11
+#        define PT_DEBUG_VIEW_RAIN 1
+#    endif
+#endif
+
+// Hook points a pack extending radiante-pt replaces (hooks/*.glsl); empty here. surface.glsl before direct_light.glsl,
+// so the direct light hook can read what the surface hook keeps in its own globals.
+#include "hooks/water_surface.glsl"
+#include "hooks/surface.glsl"
+#include "hooks/direct_light.glsl"
+#include "hooks/cloud_shadow.glsl"
 #include "pt/pt_direct.glsl"
 #include "pt/pt_media.glsl"
 #include "pt/pt_glass.glsl"
@@ -139,6 +189,23 @@ const float BEDROCK_MIRROR_ROUGHNESS = 0.01;
 // came out grainy.) One of the ray generation's own output images carries it, at this pixel; the ray generation
 // clears it before its camera rays and writes it anew after.
 layout(set = 3, binding = 12, rgba16f) uniform image2D nrdRecordEmissionImage; // first_hit_base_emission
+#endif
+
+#ifndef RADIANTE_HOOK_RAY_ORIGINS_DEFAULT
+// A pack's reflection origin (hooks/ray_origins.glsl): a reflection leaving the point `shadedPos` towards `direction`
+// starts hookReflectionOffset() away instead, turned by as much as the view of the moved point reflects off `normal`
+// differently from the view of the hit, so every pixel given the same offset reflects the same way (a glossy lobe's
+// spread around that direction is kept). Left as it is when the turn would take it to the other side of the surface.
+void ptHookMoveReflection(inout vec3 origin, inout vec3 direction, vec3 shadedPos, vec3 normal) {
+    vec3 offset = hookReflectionOffset();
+    if (!(dot(offset, offset) > 0.0)) { return; }
+    vec3 incident = normalize(g_hit.rayDir);
+    vec3 movedIncident = normalize(shadedPos + offset - g_hit.rayOrigin);
+    vec3 moved = direction + reflect(movedIncident, normal) - reflect(incident, normal);
+    if (dot(moved, moved) < 1e-8 || dot(moved, normal) * dot(direction, normal) <= 0.0) { return; }
+    origin += offset;
+    direction = normalize(moved);
+}
 #endif
 
 // The old closest-hit main(), unchanged in order, reading the hit through g_hit and handing its results back
@@ -249,6 +316,8 @@ void ptShadeDefault(bool viewMark) {
         }
         hasFftWaterSurface = useRealisticWaterSurface && isWaterMaterial && abs(planeGeoNormal.y) > 0.75;
 
+        if (ptRainPassThrough(textureID, textureUV, colorLayerValue)) { return; }
+
 #if !defined(VPT_BEDROCK_ORIGINAL) || VPT_BEDROCK_ORIGINAL == 0
         if (ptWaterSidePassThrough(isWaterMaterial, planeGeoNormal, baseGeoNormal, bounce)) { return; }
 #endif
@@ -358,7 +427,69 @@ void ptShadeDefault(bool viewMark) {
         surface.geometricNormal = plantNormal;
     }
 #endif
+#ifndef RADIANTE_HOOK_WATER_SURFACE_DEFAULT
+    // A pack's water (hooks/water_surface.glsl), with the height of the waves where they bend the surface.
+    if (isWaterMaterial) {
+        vec3 waterPos = surface.worldPos + vec3(worldUBO.cameraPos.xyz);
+        float waveHeight = 0.0;
+        if (hasFftWaterSurface) {
+            vec3 waterUp = planeGeoNormal.y >= 0.0 ? planeGeoNormal : -planeGeoNormal;
+            vec2 waveCoord = fftWaterSurfaceCoord(waterPos, dPduWorld, dPdvWorld, waterUp);
+#    ifdef RADIANTE_HOOK_WATER_WAVES_DEFAULT
+            waveHeight = sampleFftWater(waveCoord, worldUBO.gameTime).height;
+#    else
+            waveHeight = sampleFftWaterShaped(waveCoord, worldUBO.gameTime, fftWaterWaveShape()).height;
+#    endif
+        }
+        hookWaterSurface(surface, waterPos, waveHeight);
+    }
+#endif
+    g_hookHasTexel = useTexture;
+    g_hookTexelSize = useTexture ? vec2(textureSize(textures[nonuniformEXT(textureID)], 0)) : vec2(1.0);
+    g_hookPlaneUv = textureUV;
+    g_hookPlanePos = planeHitWorldPos;
+    g_hookDPdu = dPduWorld;
+    g_hookDPdv = dPdvWorld;
+    g_hookViewDir = viewDir;
+    hookSurface(surface, packedData, bounce);
+    // What the sun lets through it from behind (translucentBackLight), after the pack's hookSurface, which may set
+    // surface.mat.subSurface to say how much.
+    if (isLeavesSurface(packedData)) {
+        ptSetTranslucency(PT_TRANSLUCENCY_LEAVES, surface.mat.subSurface, TRANSLUCENCY_LEAVES);
+    } else if (isPlantSurface(packedData)) {
+        ptSetTranslucency(PT_TRANSLUCENCY_FOLIAGE, surface.mat.subSurface, TRANSLUCENCY_PLANT);
+    } else if (isFrostSurface(packedData)) {
+        ptSetTranslucency(PT_TRANSLUCENCY_FROST, surface.mat.subSurface, TRANSLUCENCY_FROST);
+    } else {
+        ptSetTranslucency(surface.mat.subSurface > 0.0 ? PT_TRANSLUCENCY_FOLIAGE : PT_TRANSLUCENCY_NONE,
+                          surface.mat.subSurface, 0.0);
+    }
+#ifdef PT_DEBUG_VIEW_FLAGS
+    if (bounce == 0u) {
+        vec3 flagsColor = radianteDebugFlagsColor(isWaterSurface(packedData), isLavaSurface(packedData),
+                                                  isGlassSurface(packedData), isPaneSurface(packedData),
+                                                  isLeavesSurface(packedData), isPlantSurface(packedData),
+                                                  isHeldSurface(packedData), isUnlitSurface(packedData),
+                                                  isLayerSurface(packedData), isBlendSurface(packedData));
+        imageStore(radianteDebugViewImage, ivec2(gl_LaunchIDEXT.xy), vec4(radianteDebugDisplay(flagsColor), 1.0));
+    }
+#endif
 
+#ifdef PT_DEBUG_VIEW_RAIN
+    if (bounce == 0u) {
+        imageStore(radianteDebugViewImage, ivec2(gl_LaunchIDEXT.xy), vec4(g_radianteDebugRain, 1.0));
+    }
+#endif
+
+#ifndef RADIANTE_HOOK_RAY_ORIGINS_DEFAULT
+    // Where the pack's reflections of the surface the camera sees start (hooks/ray_origins.glsl): handed to the ray
+    // generation (pt_primary.glsl), which traces the reflection of water and glass, in the material image's fourth
+    // layer, as an offset from the camera ray's hit, small enough for half floats wherever the surface is.
+    if (bounce == 0u || rayCameraPath(mainRay)) {
+        imageStore(rayMaterialStateImage, rayMaterialStateCoord(3),
+                   vec4(surface.worldPos + hookReflectionOffset() - hitWorldPos, 0.0));
+    }
+#endif
     mainRay.normal = surface.shadingNormal;
     ptStoreMaterial(surface.albedoValue, surface.mat.f0, surface.mat.roughness, surface.mat.metallic,
                     surface.mat.transmission, surface.mat.ior, surface.mat.emission);
@@ -400,6 +531,9 @@ void ptShadeDefault(bool viewMark) {
         mainRay.coneWidth += mainRay.hitT * mainRay.coneSpread;
         mainRay.origin = hitWorldPos + mirrorNormal * 0.002;
         mainRay.direction = reflect(incident, mirrorNormal);
+#ifndef RADIANTE_HOOK_RAY_ORIGINS_DEFAULT
+        ptHookMoveReflection(mainRay.origin, mainRay.direction, surface.worldPos, mirrorNormal);
+#endif
         // A pass-through that carries on along the reflection itself: no separate reflection is asked for.
         ptClearReflectionRequest();
         mainRay.hasPrevScenePos = 0u;
@@ -412,7 +546,7 @@ void ptShadeDefault(bool viewMark) {
     }
 
     SampledSurface currentSurface = surface;
-    vec3 currentViewDir = viewDir;
+    vec3 currentViewDir = g_hookViewDir;
     // What the camera's own hand holds up against a wall is lit from the open side of it (see ptHandLightPos).
     bool handShifted = false;
     // The light held in the hand sits inside the held item, where it is: its own ray to the surface starts from the
@@ -449,16 +583,27 @@ void ptShadeDefault(bool viewMark) {
                 0.0 : 1.0;
         // (The experimental profile desaturates the glow seen as Bedrock does, as much as the light it casts.)
         bool keepGlowColour = bounce == 0u && localBounce == 0 && VPT_BEDROCK_SPECULAR == 0;
+#ifdef RADIANTE_HOOK_BLOCK_LIGHT_DEFAULT
         vec3 emissionRadiance =
             blockEmissionWeight * emissionFactor *
             worldUBO.emissionBrightness *
             (keepGlowColour ? currentSurface.tint : vptEmissiveColour(currentSurface.tint)) *
             seenEmission * mainRay.throughput;
+#else
+        // The glow through a pack's hooks/block_light.glsl, only where there is one: the hook sees the glow's
+        // colour, as it sees a light's.
+        vec3 glowColour = keepGlowColour ? currentSurface.tint : vptEmissiveColour(currentSurface.tint);
+        if (seenEmission > 0.0) { hookBlockLight(glowColour, RADIANTE_BLOCK_LIGHT_GLOW); }
+        vec3 emissionRadiance = blockEmissionWeight * emissionFactor * worldUBO.emissionBrightness * glowColour *
+                                seenEmission * mainRay.throughput;
+#endif
         // A glow given as negative (the beacon beam's core) is seen, not cast (transparent_only.rchit).
         float vertexGlow = albedoEmission;
         if (vertexGlow < 0.0) {
             vertexGlow = (bounce == 0u || rayCameraPath(mainRay) || g_viewBounce) ? -vertexGlow : 0.0;
         }
+        // A glow that is also in the light list (powered redstone dust) is not counted twice, as glowing texels.
+        if (isGlowLightSurface(packedData)) { vertexGlow *= blockEmissionWeight; }
         emissionRadiance += currentSurface.tint * vertexGlow * mainRay.throughput;
         mainRay.radiance += emissionRadiance;
 #if VPT_NRD_SIGNALS
@@ -646,6 +791,9 @@ void ptShadeDefault(bool viewMark) {
             return;
         }
 
+        // The next hit's texture level comes from a cone as wide as the lobe this bounce was drawn from (ray_cone.glsl).
+        mainRay.coneSpread = coneSpreadAfterScatter(mainRay.coneSpread, currentSurface.mat.roughness, lobeType);
+
         vec3 throughputBefore = mainRay.throughput;
         mainRay.throughput *= bsdf / max(pdf, 1e-4);
         // Bedrock RTX fills a room from a single patch of sunlight: light off rough surfaces carries on stronger than
@@ -672,6 +820,12 @@ void ptShadeDefault(bool viewMark) {
                                                                                            -currentSurface.geometricNormal;
                 mainRay.origin = currentSurface.worldPos + exitNormal * 0.0002;
             }
+#ifndef RADIANTE_HOOK_RAY_ORIGINS_DEFAULT
+            // The reflection lobe only: diffuse bounces and refraction leave from the shaded point.
+            if (lobeType == 1u && !handShifted) {
+                ptHookMoveReflection(mainRay.origin, sampleDir, currentSurface.worldPos, currentSurface.shadingNormal);
+            }
+#endif
             mainRay.direction = sampleDir;
             raySetStop(mainRay, false);
             return;

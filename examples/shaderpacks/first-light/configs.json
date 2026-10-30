@@ -1,0 +1,213 @@
+{
+    "radiante": {
+        "display_name": "First Light",
+        "version": "1.0.0",
+        "author": "G2806",
+        "license": "GPL-3.0",
+        "description": "The look of the first Minecraft RTX showcases (Gamescom 2019, the 2020 Xbox Series X DXR demo): dark interiors lit only by sun and emissive blocks, hard sun shadows, thick god rays, a deep blue sky, vivid block light, mirror water, bloom and punchy contrast.",
+        "icon": "pack.png",
+        "api_version": 0,
+        "extends": "radiante-pt@1"
+    },
+    "attributes": [
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.fl_light_colour",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "FL_LIGHT_COLOUR",
+            "group": "first_light.group.light",
+            "order": 10,
+            "step": 0.05,
+            "description": "first_light.desc.light_colour"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.fl_light_strength",
+            "type": "float_range:0.5-3.0",
+            "default_value": "1.3",
+            "runtime": true,
+            "define": "FL_LIGHT_STRENGTH",
+            "group": "first_light.group.light",
+            "order": 11,
+            "step": 0.1,
+            "description": "first_light.desc.light_strength"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.fl_god_rays",
+            "type": "float_range:0.0-2.0",
+            "default_value": "0.6",
+            "runtime": true,
+            "define": "FL_GOD_RAYS",
+            "group": "first_light.group.atmosphere",
+            "order": 12,
+            "step": 0.05,
+            "description": "first_light.desc.god_rays"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.fl_dusk_fog",
+            "type": "float_range:0.0-2.0",
+            "default_value": "0.8",
+            "runtime": true,
+            "define": "FL_DUSK_FOG",
+            "group": "first_light.group.atmosphere",
+            "order": 13,
+            "step": 0.1,
+            "description": "first_light.desc.dusk_fog",
+            "visible_when": {
+                "attribute": "fl_god_rays",
+                "not_equals": 0
+            }
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.fl_sky_blue",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "FL_SKY_BLUE",
+            "group": "first_light.group.atmosphere",
+            "order": 14,
+            "step": 0.05,
+            "description": "first_light.desc.sky_blue"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.fl_polish",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.4",
+            "runtime": true,
+            "define": "FL_POLISH",
+            "group": "first_light.group.surfaces",
+            "order": 15,
+            "step": 0.05,
+            "description": "first_light.desc.polish"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.fl_water_mirror",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.6",
+            "runtime": true,
+            "define": "FL_WATER_MIRROR",
+            "group": "first_light.group.surfaces",
+            "order": 16,
+            "step": 0.05,
+            "description": "first_light.desc.water_mirror"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.fl_bloom",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.35",
+            "runtime": true,
+            "define": "FL_BLOOM",
+            "group": "first_light.group.post",
+            "order": 17,
+            "step": 0.05,
+            "description": "first_light.desc.bloom",
+            "performance_impact": "low"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.fl_contrast",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.35",
+            "runtime": true,
+            "define": "FL_CONTRAST",
+            "group": "first_light.group.post",
+            "order": 18,
+            "step": 0.05,
+            "description": "first_light.desc.contrast"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.fl_saturation",
+            "type": "float_range:0.5-1.5",
+            "default_value": "1.2",
+            "runtime": true,
+            "define": "FL_SATURATION",
+            "group": "first_light.group.post",
+            "order": 19,
+            "step": 0.05,
+            "description": "first_light.desc.saturation"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.bedrock_volumetric_fog",
+            "default_value": "render_pipeline.false"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.light_shafts",
+            "default_value": "0.035"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.basic_radiance",
+            "default_value": "0.0"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.exposure_day_max",
+            "default_value": "1.6"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.sun_glow",
+            "default_value": "0.12"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.water_wave_strength",
+            "default_value": "0.2"
+        }
+    ],
+    "presets": [
+        {
+            "name": "first_light.preset.first_light",
+            "description": "first_light.preset.first_light.desc",
+            "values": {
+                "fl_light_colour": 0.5,
+                "fl_light_strength": 1.3,
+                "fl_god_rays": 0.6,
+                "fl_dusk_fog": 0.8,
+                "fl_sky_blue": 0.5,
+                "fl_polish": 0.4,
+                "fl_water_mirror": 0.6,
+                "fl_bloom": 0.35,
+                "fl_contrast": 0.35,
+                "fl_saturation": 1.2
+            }
+        },
+        {
+            "name": "first_light.preset.gamescom",
+            "description": "first_light.preset.gamescom.desc",
+            "values": {
+                "fl_light_colour": 0.8,
+                "fl_light_strength": 1.5,
+                "fl_god_rays": 1.0,
+                "fl_dusk_fog": 1.0,
+                "fl_sky_blue": 0.7,
+                "fl_polish": 0.5,
+                "fl_water_mirror": 0.7,
+                "fl_bloom": 0.45,
+                "fl_contrast": 0.45,
+                "fl_saturation": 1.3
+            }
+        },
+        {
+            "name": "first_light.preset.softer",
+            "description": "first_light.preset.softer.desc",
+            "values": {
+                "fl_light_colour": 0.3,
+                "fl_light_strength": 1.1,
+                "fl_god_rays": 0.3,
+                "fl_dusk_fog": 0.5,
+                "fl_sky_blue": 0.3,
+                "fl_polish": 0.25,
+                "fl_water_mirror": 0.4,
+                "fl_bloom": 0.2,
+                "fl_contrast": 0.15,
+                "fl_saturation": 1.08
+            }
+        }
+    ],
+    "execution_post": {
+        "global_variables": [
+            {
+                "RADIANTE_HOOK_POST_GRADE": true
+            },
+            {
+                "RADIANTE_POST_BLOOM": true
+            }
+        ]
+    }
+}

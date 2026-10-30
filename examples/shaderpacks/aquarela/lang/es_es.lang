@@ -1,0 +1,46 @@
+# Aquarela: its own settings, groups, descriptions and presets; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.aquarela_brush=Tamaño del pincel
+render_pipeline.module.ray_tracing.attribute.aquarela_wobble=Pulso de la mano
+render_pipeline.module.ray_tracing.attribute.aquarela_edges=Bordes oscuros
+render_pipeline.module.ray_tracing.attribute.aquarela_bleed=Color corrido
+render_pipeline.module.ray_tracing.attribute.aquarela_paper=Textura del papel
+render_pipeline.module.ray_tracing.attribute.aquarela_granulation=Granulación
+render_pipeline.module.ray_tracing.attribute.aquarela_border=Margen de papel
+render_pipeline.module.ray_tracing.attribute.aquarela_grain_size=Tamaño del grano
+render_pipeline.module.ray_tracing.attribute.aquarela_pigment=Densidad del pigmento
+render_pipeline.module.ray_tracing.attribute.aquarela_saturation=Saturación
+render_pipeline.module.ray_tracing.attribute.aquarela_lift=Sombras aclaradas
+render_pipeline.module.ray_tracing.attribute.aquarela_warmth=Calidez del papel
+render_pipeline.module.ray_tracing.attribute.aquarela_sky=Aguadas en el cielo
+render_pipeline.module.ray_tracing.attribute.aquarela_soft_light=Luz suave
+render_pipeline.module.ray_tracing.attribute.aquarela_cool_shadows=Sombras frías
+render_pipeline.module.ray_tracing.attribute.aquarela_glow=Resplandor
+
+aquarela.group.paint=Pintura
+aquarela.group.paper=Papel
+aquarela.group.colour=Color
+aquarela.group.light=Luz
+
+aquarela.desc.brush=Funde la imagen en pinceladas planas que siguen las formas. El radio en píxeles: más alto da pinceladas más anchas y cuesta más; 0 lo quita.
+aquarela.desc.wobble=Los bordes tiemblan un poco, como trazados a mano. Más alto tiembla más; 0 los deja rectos.
+aquarela.desc.edges=Bordes más oscuros donde la pintura se acumuló al borde de una aguada. Más alto es más oscuro; 0 los quita.
+aquarela.desc.bleed=En algunas zonas el color se corre sobre los bordes, como en papel mojado. Más alto se extiende más; 0 deja todos los bordes secos.
+aquarela.desc.paper=El grano del papel de grano fino y cómo absorbe la pintura de forma desigual. Más alto muestra más papel; 0 es liso.
+aquarela.desc.granulation=El pigmento se posa en el grano del papel en las aguadas más oscuras. Más alto es más moteado; 0 lo quita.
+aquarela.desc.border=Un margen de papel sin pintar alrededor de la imagen, con el borde irregular. Más alto es más ancho; 0 pinta hasta el marco.
+aquarela.desc.grain_size=Tamaño del grano del papel. Más alto es más grueso.
+aquarela.desc.pigment=Lo densa que es la pintura. Más bajo da aguadas finas y ligeras; más alto, más densas y oscuras.
+aquarela.desc.saturation=Cuánto color conserva la pintura. Más bajo es más pastel; 1 deja los colores de Radiante.
+aquarela.desc.lift=Las sombras más oscuras pasan a ser una aguada gris fría en lugar de negro. Más alto es más claro; 0 deja el negro.
+aquarela.desc.warmth=El blanco es el color del papel. Más alto es un crema más cálido; 0 es blanco puro.
+aquarela.desc.sky=El cielo que ves, pintado en aguadas suaves de dos azules; la luz que da sigue siendo la de Radiante. 0 lo quita.
+aquarela.desc.soft_light=La luz del sol envuelve más las superficies mates, para una luz más suave y plana. 0 es la luz de Radiante PT.
+aquarela.desc.cool_shadows=Sombras pintadas en azules fríos y luces un poco más cálidas. 0 lo quita.
+aquarela.desc.glow=Un resplandor suave alrededor de lo brillante, del bloom de Radiante. Más alto brilla más; 0 lo quita.
+
+aquarela.preset.aquarela=Aquarela
+aquarela.preset.aquarela.desc=El aspecto del propio paquete: aguadas ligeras sobre papel cálido.
+aquarela.preset.sketchbook=Cuaderno de bocetos
+aquarela.preset.sketchbook.desc=Aguadas más finas y pálidas, más papel y un margen sin pintar más ancho.
+aquarela.preset.gouache=Gouache
+aquarela.preset.gouache.desc=Pintura densa y saturada, bordes nítidos y poco papel a la vista.

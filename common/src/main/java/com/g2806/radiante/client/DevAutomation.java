@@ -364,7 +364,28 @@ public final class DevAutomation {
             return;
         }
         if (action.equals("settings")) {
-            minecraft.gui.setScreen(new com.g2806.radiante.client.gui.RadianteOptionsScreen(minecraft.gui.screen(), minecraft.options));
+            minecraft.gui.setScreen(com.g2806.radiante.client.gui.RadianteOptionsScreen.create(minecraft.gui.screen(), minecraft.options));
+            return;
+        }
+        if (action.equals("shaderpacks")) {
+            // The shader pack list, as the settings' Shader Packs button opens it; back to the settings when left.
+            var options = minecraft.options;
+            minecraft.gui.setScreen(new com.g2806.radiante.client.gui.ShaderPacksScreen(
+                () -> new com.g2806.radiante.client.gui.RadianteOptionsScreen(null, options)));
+            return;
+        }
+        if (action.startsWith("shaderpack=")) {
+            // shaderpack=shaderpacks/<pack>.zip (or "builtin"): switches pack at once, for comparing packs in one view.
+            String path = action.substring(11);
+            boolean changed = com.g2806.radiante.client.pipeline.Pipeline.selectShaderPack(path.equals("builtin")
+                ? com.g2806.radiante.client.pipeline.Pipeline.builtInShaderPackPath() : path);
+            RadianteClient.LOGGER.info("[dev] shader pack {} rebuilt {}", path, changed && applyPipelineChange(true));
+            return;
+        }
+        if (action.startsWith("section=")) {
+            // section=DEBUG: the settings screen on that section, for a screenshot of it.
+            minecraft.gui.setScreen(com.g2806.radiante.client.gui.RadianteOptionsScreen.showingSection(
+                minecraft.gui.screen(), minecraft.options, action.substring(8)));
             return;
         }
         if (action.startsWith("settings=")) {
@@ -395,14 +416,32 @@ public final class DevAutomation {
         } else if (action.startsWith("cmd=/")) {
             minecraft.player.connection.sendCommand(action.substring(5));
             RadianteClient.LOGGER.info("[dev] command {}", action.substring(4));
+        } else if (action.startsWith("window=")) {
+            // window=WxH: resizes the window, for what a resize does to the renderer's images.
+            String[] size = action.substring(7).split("x");
+            minecraft.getWindow().setWindowed(Integer.parseInt(size[0]), Integer.parseInt(size[1]));
+            RadianteClient.LOGGER.info("[dev] window {}", action.substring(7));
+        } else if (action.startsWith("ccmd=/")) {
+            // A client command (/radiante ...), which cmd= sends past to the server; on Fabric, by its dispatcher.
+            try {
+                var dispatcher = (com.mojang.brigadier.CommandDispatcher<Object>) Class.forName(
+                    "net.fabricmc.fabric.api.client.command.v2.ClientCommands").getMethod("getActiveDispatcher")
+                    .invoke(null);
+                int result = dispatcher.execute(action.substring(6), minecraft.getConnection().getSuggestionsProvider());
+                RadianteClient.LOGGER.info("[dev] client command {}: {}", action.substring(5), result);
+            } catch (ReflectiveOperationException | com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+                RadianteClient.LOGGER.warn("[dev] client command {} failed", action.substring(5), e);
+            }
         } else if (action.startsWith("break=")) {
             String[] v = action.substring(6).split(",");
             minecraft.level.destroyBlockProgress(-4242, new net.minecraft.core.BlockPos(Integer.parseInt(v[0]),
                 Integer.parseInt(v[1]), Integer.parseInt(v[2])), Integer.parseInt(v[3]));
         } else if (action.startsWith("fps=")) {
             // Frames drawn in the last second, for comparing settings from a fixed camera.
-            RadianteClient.LOGGER.info("[dev] fps {} {} presented {}", action.substring(4), minecraft.getFps(),
-                com.g2806.radiante.client.render.FrameGeneration.presentedFrameRate());
+            // The GPU's own time per pass (timestamps) as well, which does not move with what the CPU is doing.
+            RadianteClient.LOGGER.info("[dev] fps {} {} presented {} gpu {}", action.substring(4), minecraft.getFps(),
+                com.g2806.radiante.client.render.FrameGeneration.presentedFrameRate(),
+                com.g2806.radiante.client.pipeline.Pipeline.gpuStats());
         } else if (action.startsWith("rainmv=")) {
             com.g2806.radiante.client.render.EntityManager.rainMotion = Boolean.parseBoolean(action.substring(7));
         } else if (action.startsWith("hold=") || action.startsWith("release=")) {
@@ -526,6 +565,8 @@ public final class DevAutomation {
                 case "dlss" -> com.g2806.radiante.client.pipeline.Pipeline.setDlssMode(
                     com.g2806.radiante.client.pipeline.Pipeline.DLSS_MODES.get(Integer.parseInt(parts[1])));
                 case "fog" -> com.g2806.radiante.client.pipeline.Pipeline.setVolumetricFog(Boolean.parseBoolean(parts[1]));
+                // view:<debug view>, or view:off.
+                case "view" -> com.g2806.radiante.client.pipeline.Pipeline.setDebugView(parts[1]);
                 // preset:<preset key>, e.g. the NRD + FSR pipeline.
                 case "preset" -> {
                     com.g2806.radiante.client.pipeline.Pipeline.switchToPresetMode(parts[1]);
@@ -635,7 +676,7 @@ public final class DevAutomation {
                                             net.minecraft.client.CameraType.FIRST_PERSON);
             RadianteClient.LOGGER.info("[dev] camera {}", value);
         } else if (action.equals("options")) {
-            minecraft.gui.setScreen(new com.g2806.radiante.client.gui.RadianteOptionsScreen(null, minecraft.options));
+            minecraft.gui.setScreen(com.g2806.radiante.client.gui.RadianteOptionsScreen.create(null, minecraft.options));
             RadianteClient.LOGGER.info("[dev] options screen");
         } else if (action.equals("warmup")) {
             com.g2806.radiante.client.gui.PipelineWarmUp.force();

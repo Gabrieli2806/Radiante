@@ -182,6 +182,12 @@ class ToneMappingModule : public WorldModule, public SharedObject<ToneMappingMod
         return settings_.autoExposure;
     }
 
+    // The bloom pyramid's result for a frame slot (half the picture's size, the exposed HDR picture blurred), for a
+    // shader pack's post passes; null when the pyramid does not run. It runs with the Bloom setting on, or for a pack
+    // that sets the execution_post global RADIANTE_POST_BLOOM (kPackBloomVariable) to true; only the setting adds it
+    // to the picture here.
+    std::shared_ptr<gpu::DeviceLocalImage> bloomImage(uint32_t frameIndex) const;
+
   private:
     // The module's attributes (modules/tone_mapping.yaml), at the values used when a pipeline does not set them.
     struct Settings {
@@ -261,8 +267,14 @@ class ToneMappingModule : public WorldModule, public SharedObject<ToneMappingMod
     void record(uint32_t frameIndex, gpu::CommandBuffer &commandBuffer);
     void recordBedrockCurve(Frame &frame, gpu::CommandBuffer &commandBuffer);
     void recordBloom(Frame &frame, gpu::CommandBuffer &commandBuffer);
+    // Whether the bloom pyramid is drawn: for the Bloom setting or for the shader pack's post passes.
+    bool runsBloom() const {
+        return settings_.bloomEnabled || packBloom_;
+    }
 
     Settings settings_;
+    // The shader pack asked for the bloom pyramid (RADIANTE_POST_BLOOM), read at each build.
+    bool packBloom_ = false;
     std::vector<Frame> frames_;
     std::vector<std::shared_ptr<WorldModuleContext>> contexts_;
     uint32_t width_ = 0;

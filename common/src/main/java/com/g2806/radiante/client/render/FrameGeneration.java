@@ -65,6 +65,9 @@ public final class FrameGeneration {
 
     /** Waits for the present thread to show the frames it still holds; nothing to wait for without a renderer. */
     public static void waitPresentIdle() {
+        if (!com.g2806.radiante.client.RadianteClient.isNativeLoaded()) {
+            return;
+        }
         try {
             FrameGenerationProxy.waitPresentIdle();
         } catch (UnsatisfiedLinkError ignored) {

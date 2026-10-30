@@ -44,7 +44,6 @@ entera, con consideraciones de pantalla, en [hdr.md](../hdr.md) — resumen ráp
 | Salida HDR | Activado/Desactivado | Desactivado |
 | Brillo Máximo HDR | 400 – 4000 nits | 1000 nits |
 | Blanco de Papel HDR | 80 – 400 nits | 200 nits |
-| Vista de Depuración HDR | Activado/Desactivado | Desactivado (no se guarda) |
 
-Activar o desactivar la Salida HDR necesita reiniciar el juego; los sliders de brillo se aplican con
+La Vista de Depuración HDR está en la sección [Depuración](depuracion.md). Activar o desactivar la Salida HDR necesita reiniciar el juego; los sliders de brillo se aplican con
 el resto de los ajustes, sin reiniciar.

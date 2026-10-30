@@ -1,0 +1,51 @@
+# Neon Dusk: its own settings, groups, descriptions and presets; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.neon_sky_mode=天空外观
+render_pipeline.module.ray_tracing.attribute.neon_sky_strength=霓虹天空
+render_pipeline.module.ray_tracing.attribute.neon_sky_light=天光色调
+render_pipeline.module.ray_tracing.attribute.neon_sun=复古太阳
+render_pipeline.module.ray_tracing.attribute.neon_sun_size=复古太阳大小
+render_pipeline.module.ray_tracing.attribute.neon_sun_height=复古太阳高度
+render_pipeline.module.ray_tracing.attribute.neon_grid=地平线网格
+render_pipeline.module.ray_tracing.attribute.neon_stars=霓虹星星
+render_pipeline.module.ray_tracing.attribute.neon_light_colour=霓虹灯光颜色
+render_pipeline.module.ray_tracing.attribute.neon_light_strength=灯光强度
+render_pipeline.module.ray_tracing.attribute.neon_sun_tint=日月光色调
+render_pipeline.module.ray_tracing.attribute.neon_wet=湿润地面
+render_pipeline.module.ray_tracing.attribute.neon_puddles=水洼
+render_pipeline.module.ray_tracing.attribute.neon_haze=霓虹薄雾
+render_pipeline.module.ray_tracing.attribute.neon_bloom=泛光
+render_pipeline.module.ray_tracing.attribute.neon_fringe=色彩边纹
+render_pipeline.module.ray_tracing.attribute.neon_grade=青品调色
+render_pipeline.module.ray_tracing.attribute.neon_saturation=饱和度
+
+neon.group.sky=天空
+neon.group.lights=灯光
+neon.group.surfaces=表面
+neon.group.atmosphere=大气
+neon.group.post=后期处理
+
+neon.desc.sky_mode=0 跟随真实的昼夜，1 全天保持品红色黄昏，2 全天紫色夜晚。只改变外观：太阳仍从它真实的位置照亮世界。
+neon.desc.sky_strength=视线中霓虹天空取代 Radiante 天空的程度。0 保留 Radiante 的天空。
+neon.desc.sky_light=天空照向世界的光带上霓虹色调的程度。越高阴影越偏色；亮度仍是 Radiante 的。
+neon.desc.sun=条纹大太阳的亮度。0 隐藏它。
+neon.desc.sun_size=复古太阳的大小，以半径的度数计。
+neon.desc.sun_height=固定外观时复古太阳在日落方向的高度，以度计。越低越沉到地平线后。
+neon.desc.grid=地平线上发光的网格和线条，在世界边缘之外和远处水面上可见。0 关闭。
+neon.desc.stars=夜晚外观上的粉色、青色和白色星星，白天也有。0 关闭。
+neon.desc.light_colour=把方块光推向霓虹色：暖光变品红，冷光和绿光变青色，白光变紫罗兰。0 保持原色。
+neon.desc.light_strength=方块光、其辉光和手持光源的亮度。越高房间越亮，泛光越多。
+neon.desc.sun_tint=按外观给阳光上色（白天粉色，黄昏桃色，夜晚紫罗兰），月光为青色。强度不变。
+neon.desc.wet=朝上的地面变暗并有光泽，无论是否下雨，灯光会在其上反射。0 保持干燥。
+neon.desc.puddles=湿润地面中如镜面般光滑的水洼所占比例。
+neon.desc.haze=朝向太阳为粉色、背向为青色的薄雾，带有光束和灯光光晕。需要开启体积光，并关闭 Bedrock 体积雾（本光影包默认如此）。
+neon.desc.bloom=明亮灯光和太阳周围的辉光。越高辉光越大。
+neon.desc.fringe=辉光上和屏幕角落处的品红与青色边纹。0 关闭。
+neon.desc.grade=阴影偏青、高光偏品红，更柔和的对比曲线和更暗的角落。0 关闭。
+neon.desc.saturation=最终画面的色彩强度。1 保持不变。
+
+neon.preset.dusk=霓虹黄昏
+neon.preset.dusk.desc=光影包本身的外观：全天品红色黄昏，复古太阳低悬在日落方向。
+neon.preset.midnight=午夜
+neon.preset.midnight.desc=全天深紫色夜晚，有星星，更亮的霓虹，湿透的街道和更浓的薄雾。
+neon.preset.daylight=白昼霓虹
+neon.preset.daylight.desc=真实的昼夜，更柔和的霓虹天空，更轻的调色和更干的地面。

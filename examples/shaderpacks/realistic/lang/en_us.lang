@@ -1,0 +1,13 @@
+# Realistic: its own settings, a group, descriptions and presets; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.realistic_contrast=Contrast
+render_pipeline.module.ray_tracing.attribute.realistic_saturation=Saturation
+
+realistic.group.grade=Picture
+
+realistic.desc.contrast=Separation between light and dark about middle grey, on top of tone mapping. Higher is punchier, 1 leaves the picture as it is. Changes without a rebuild.
+realistic.desc.saturation=How colourful the picture is, on top of tone mapping. Lower is more muted, 1 leaves the colours as they are. Changes without a rebuild.
+
+realistic.preset.realistic=Realistic
+realistic.preset.realistic.desc=The pack's own grade: a little more contrast and a little less colour.
+realistic.preset.neutral=Neutral
+realistic.preset.neutral.desc=No grade on top of tone mapping; the rest of the pack stays.

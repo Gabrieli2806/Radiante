@@ -44,8 +44,9 @@ para el compilador de shaders de FidelityFX: asigna el worktree a una ruta corta
 (`subst W: <worktree>`) y pon en `RADIANTE_BUILD_DIR` una carpeta de compilación propia.
 
 Para probar: `./gradlew.bat :fabric:runClient` (o `:neoforge:runClient`, `:forge:runClient`). Cada
-uno usa su propia carpeta: `run/` (Fabric), `run-neoforge/` y `run-forge/`, así que pueden correr a
-la vez.
+uno usa su propia carpeta: `run-fabric/`, `run-neoforge/` y `run-forge/`, así que pueden correr a
+la vez. Comparten `run-shared/`: mundos, resource packs, shader packs, los ajustes de Radiante, `options.txt` y la
+lista de servidores (los mods y sus configs son de cada loader).
 
 ## Linux
 
@@ -61,6 +62,14 @@ El script compila en `native/build/linux-release` (o en `RADIANTE_BUILD_DIR`) e 
 `-DVulkan_LIBRARY=/usr/lib/x86_64-linux-gnu/libvulkan.so.1`. Para que el resultado cargue en
 Ubuntu 22.04 compila en un sistema con glibc 2.35 (o comprueba con
 `objdump -T libprismrt.so | grep -oE 'GLIBC_2\.[0-9]+' | sort -Vu | tail -1`).
+
+## Comparar los rayos de las manos
+
+Para comparar sin conexión, cambia `VPT_HAND_PRIMARY_BOUNDS` en `world/world.rgen`: `0` traza los rayos originales
+a pantalla completa, `1` activa los límites de geometría (predeterminado), `2` muestra la envolvente y `3` traza
+todos los rayos de las manos y marca los impactos reales en verde dentro de la envolvente o en rojo fuera de ella.
+Reconstruye la parte nativa y después Gradle tras cambiar el modo. Los modos de diagnóstico comprueban la cobertura;
+no sirven para comparar la calidad de imagen ni el rendimiento.
 
 ## Un jar para los dos sistemas
 

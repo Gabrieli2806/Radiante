@@ -84,6 +84,9 @@ struct Chunk1 : public SharedObject<Chunk1> {
     int x = 0;
     int y = 0;
     int z = 0;
+    // The blocks its geometry spans along x and z, in world coordinates (max exclusive): a Distant Horizons section is
+    // wider than a section, and world_prepare leaves it out where the near terrain covers all of it.
+    int minX = 0, maxX = 0, minZ = 0, maxZ = 0;
     // Builds are numbered as Java hands them over (latestVersion is the next number). A slot only swaps in a build
     // newer than the one it shows, so a slow build never replaces a later one.
     int64_t latestVersion = 0;

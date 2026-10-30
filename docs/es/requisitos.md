@@ -13,7 +13,10 @@
 | Minecraft | 26.3 (también 26.2 y snapshots de 26.4, ver [Loader](#loader)) | igual |
 
 El mismo jar sirve para los dos sistemas: trae el renderizador de Windows (`prismrt.dll`) y el de
-Linux (`libprismrt.so`) y elige el correcto al arrancar. macOS no está soportado.
+Linux (`libprismrt.so`) y elige el correcto al arrancar. macOS, Windows en ARM (Snapdragon y otros portátiles
+ARM64), Java de 32 bits y los launchers de Android no están soportados: ahí el juego arranca con el renderizador
+de Minecraft y una pantalla, una sola vez, avisa de que este dispositivo aún no es compatible. Lo mismo pasa si la
+biblioteca del renderizador no se puede cargar en un sistema soportado (`logs/latest.log` tiene el motivo).
 
 En Linux hay detalles propios (launchers en Flatpak, Wayland, glibc): ver [Linux](linux.md).
 

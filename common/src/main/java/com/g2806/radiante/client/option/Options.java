@@ -349,7 +349,11 @@ public class Options {
         }
     }
 
+    /** Set once the file was read: before that (or without the native renderer) the defaults must not overwrite it. */
+    private static boolean read;
+
     public static void readOptions() {
+        read = true;
         Path path = RadianteClient.radianceDir.resolve(OPTION_PROPERTIES);
         if (!Files.exists(path)) {
             applyChunkBuildingAuto();
@@ -391,6 +395,9 @@ public class Options {
     }
 
     public static void overwriteConfig() {
+        if (!read) {
+            return;
+        }
         Path path = RadianteClient.radianceDir.resolve(OPTION_PROPERTIES);
         Properties props = new Properties();
         for (Entry entry : ENTRIES) {

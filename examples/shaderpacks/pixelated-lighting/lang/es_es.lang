@@ -1,0 +1,24 @@
+# Pixelated Lighting: its own settings, groups, descriptions and presets; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.pixel_light_texels=Texeles por bloque
+render_pipeline.module.ray_tracing.attribute.pixel_light_shadows=Sombras pixeladas
+render_pipeline.module.ray_tracing.attribute.pixel_light_shadow_softness=Suavidad de las sombras
+render_pipeline.module.ray_tracing.attribute.pixel_light_reflections=Reflejos pixelados
+render_pipeline.module.ray_tracing.attribute.pixel_light_palette=Paleta retro
+render_pipeline.module.ray_tracing.attribute.pixel_light_dither=Tramado
+
+pixel_light.group.light=Píxeles
+pixel_light.group.palette=Paleta retro
+
+pixel_light.desc.texels=Las sombras y los reflejos caen por texel, como mucho tantos por lado de bloque. 16 son los píxeles de la textura; menos es más grueso; 0 lo quita.
+pixel_light.desc.shadows=Los bordes de las sombras siguen los píxeles de la textura: cada texel está en sombra o no. La luz en sí sigue suave.
+pixel_light.desc.shadow_softness=Qué tan suaves son las sombras del sol y la luna. Más bajo da sombras más duras donde se ven los cuadros de los texeles; 1 es la suavidad de Radiante PT.
+pixel_light.desc.reflections=Los reflejos, también los del agua, salen en cuadros sólidos, uno por texel. Lo que se ve a través del agua y el cristal sigue nítido.
+pixel_light.desc.palette=Ajusta cada canal de color a este número de niveles, como una consola antigua. 0 deja los colores naturales.
+pixel_light.desc.dither=Escalones a cuadros entre niveles vecinos de la paleta en lugar de bandas. 0 lo quita.
+
+pixel_light.preset.pixelated=Iluminación pixelada
+pixel_light.preset.pixelated.desc=El aspecto del propio paquete: sombras y reflejos en los píxeles de la textura, colores naturales.
+pixel_light.preset.chunky=Grueso
+pixel_light.preset.chunky.desc=Sombras y reflejos en cuadros de dos píxeles de textura.
+pixel_light.preset.retro=Retro
+pixel_light.preset.retro.desc=Sombras y reflejos pixelados y una paleta de doce niveles con tramado.

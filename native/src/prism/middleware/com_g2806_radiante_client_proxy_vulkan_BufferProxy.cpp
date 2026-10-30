@@ -10,7 +10,7 @@ namespace jni = prism::jni;
 // Java fills these blocks in buffers of its own (BufferProxy.java) sized by these numbers, which must follow any change
 // to the structs.
 static_assert(offsetof(gpu::Data::WorldUBO, packParams) == 736, "BufferProxy.WORLD_UBO_SIZE");
-static_assert(sizeof(gpu::Data::SkyUBO) == 304, "BufferProxy.SKY_UBO_SIZE");
+static_assert(sizeof(gpu::Data::SkyUBO) == 352, "BufferProxy.SKY_UBO_SIZE");
 static_assert(sizeof(gpu::Data::TextureMapping) == 4096 * 16, "BufferProxy.TEXTURE_MAPPING_ENTRIES");
 
 extern "C" {

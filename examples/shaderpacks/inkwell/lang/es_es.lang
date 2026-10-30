@@ -1,0 +1,25 @@
+# Inkwell: its own settings, groups, descriptions and presets; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.inkwell_bands=Bandas de luz
+render_pipeline.module.ray_tracing.attribute.inkwell_cel=Sombreado cel
+render_pipeline.module.ray_tracing.attribute.inkwell_poster_levels=Colores de póster
+render_pipeline.module.ray_tracing.attribute.inkwell_outline=Contornos de tinta
+render_pipeline.module.ray_tracing.attribute.inkwell_flat_sky=Cielo plano
+render_pipeline.module.ray_tracing.attribute.inkwell_paper=Papel
+
+inkwell.group.light=Luz
+inkwell.group.colour=Color
+inkwell.group.ink=Tinta
+
+inkwell.desc.bands=La luz del sol llega en este número de escalones planos en lugar de un degradado. Menos es más marcado.
+inkwell.desc.cel=Cuánto se usa la luz en bandas; 0 es el sombreado de Radiante PT. Cambia sin recompilar.
+inkwell.desc.poster_levels=Cada color de las texturas se ajusta a pocos niveles por canal, como las tintas planas de un cómic. 0 deja los colores.
+inkwell.desc.flat_sky=Un cielo de dos tonos, crema en el horizonte y azul arriba, con el brillo del propio cielo.
+inkwell.desc.paper=Un tono de papel cálido y un grano fino sobre la imagen. 0 lo quita.
+inkwell.desc.outline=Grosor de las líneas de tinta en siluetas y bordes de bloques. 0 las quita.
+
+inkwell.preset.comic=Cómic
+inkwell.preset.comic.desc=El aspecto del propio paquete.
+inkwell.preset.manga=Manga
+inkwell.preset.manga.desc=Dos bandas de luz, menos tintas, líneas más gruesas y más papel.
+inkwell.preset.storybook=Cuento
+inkwell.preset.storybook.desc=Bandas más suaves, los colores de las texturas y el cielo como son, líneas finas.

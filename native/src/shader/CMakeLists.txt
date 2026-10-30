@@ -68,7 +68,13 @@ foreach(RT_PACK_NAME ${PRISM_BUILT_IN_SHADER_PACKS})
         message(FATAL_ERROR "Built-in shader pack is missing configs.json: ${RT_INTERNAL_ROOT_DIR}/${RT_PACK_NAME}")
     endif()
 endforeach()
-message(STATUS "Installing ray tracing built-in shader packs: ${PRISM_BUILT_IN_SHADER_PACKS}")
+set(RT_EXTENDING_PACKS_DIR "${PROJECT_SOURCE_DIR}/../examples/shaderpacks")
+foreach(RT_PACK_NAME ${PRISM_BUILT_IN_EXTENDING_PACKS})
+    if(NOT EXISTS "${RT_EXTENDING_PACKS_DIR}/${RT_PACK_NAME}/configs.json")
+        message(FATAL_ERROR "Built-in shader pack is missing configs.json: ${RT_EXTENDING_PACKS_DIR}/${RT_PACK_NAME}")
+    endif()
+endforeach()
+message(STATUS "Installing ray tracing built-in shader packs: ${PRISM_BUILT_IN_SHADER_PACKS} ${PRISM_BUILT_IN_EXTENDING_PACKS}")
 
 install(CODE "
     file(MAKE_DIRECTORY \"${ZIP_INSTALL_DEST}\")
@@ -88,6 +94,31 @@ install(CODE "
         file(COPY \"${RT_UTIL_SRC_DIR}/\" DESTINATION \"\${RT_PACK_STAGING_DIR}/util\")
         file(COPY \"${RT_COMMON_SRC_DIR}/\" DESTINATION \"\${RT_PACK_STAGING_DIR}/common\")
         file(COPY \"${RT_SHARC_SRC_DIR}/\" DESTINATION \"\${RT_PACK_STAGING_DIR}/extern/sharc/include\")
+        file(REMOVE \"\${RT_PACK_OUTPUT}\")
+
+        execute_process(
+            COMMAND \"${CMAKE_COMMAND}\" -E tar \"cf\" \"\${RT_PACK_OUTPUT}\" --format=zip .
+            WORKING_DIRECTORY \"\${RT_PACK_STAGING_DIR}\"
+            RESULT_VARIABLE ZIP_RESULT
+            OUTPUT_VARIABLE ZIP_STDOUT
+            ERROR_VARIABLE ZIP_STDERR
+        )
+
+        if(NOT ZIP_RESULT EQUAL 0)
+            message(FATAL_ERROR \"Failed to create \${RT_PACK_NAME}.zip (code=\${ZIP_RESULT})\\nstdout: \${ZIP_STDOUT}\\nstderr: \${ZIP_STDERR}\")
+        endif()
+    endforeach()
+
+    # Packs that extend radiante-pt are zipped as they are, without the example's README: the loader puts
+    # radiante-pt under them when it loads them.
+    foreach(RT_PACK_NAME ${PRISM_BUILT_IN_EXTENDING_PACKS})
+        set(RT_PACK_STAGING_DIR \"${RT_ZIP_STAGING_DIR}/extending/\${RT_PACK_NAME}\")
+        set(RT_PACK_OUTPUT \"${ZIP_INSTALL_DEST}/\${RT_PACK_NAME}.zip\")
+
+        file(REMOVE_RECURSE \"\${RT_PACK_STAGING_DIR}\")
+        file(MAKE_DIRECTORY \"\${RT_PACK_STAGING_DIR}\")
+        file(COPY \"${RT_EXTENDING_PACKS_DIR}/\${RT_PACK_NAME}/\" DESTINATION \"\${RT_PACK_STAGING_DIR}\"
+             PATTERN \"README.md\" EXCLUDE)
         file(REMOVE \"\${RT_PACK_OUTPUT}\")
 
         execute_process(

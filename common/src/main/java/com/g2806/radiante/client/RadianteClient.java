@@ -47,12 +47,26 @@ public final class RadianteClient {
 
     public static Path radianceDir;
     private static boolean nativeLoaded = false;
+    /** Set once loading was tried, so a failed load is not tried (and logged) again on every call. */
+    private static boolean nativeAttempted = false;
+    /** Why the native renderer is not loaded: UNSUPPORTED_PLATFORM or NATIVE_LOAD_FAILED; null while it is fine. */
+    private static RadianteRenderer.Failure nativeFailure;
+    /** The operating system and CPU as detected, for the warning screen. */
+    private static String platform = "";
 
     private RadianteClient() {
     }
 
     public static void init() {
         ensureNativeLoaded();
+        if (!nativeLoaded) {
+            // Nothing that reaches the native renderer may run: the game goes on with Minecraft's own renderer, and
+            // only the warning screen, the key bindings and the settings entry (which then explains why) remain.
+            DevAutomation.register();
+            LOGGER.info("Radiante {} running on {} without its renderer ({})", RadiantePlatform.INSTANCE.modVersion(),
+                RadiantePlatform.INSTANCE.loaderName(), nativeFailure);
+            return;
+        }
         com.g2806.radiante.client.compat.physicsmod.PhysicsModCompat.init();
         com.g2806.radiante.client.compat.vivecraft.VivecraftCompat.init();
         com.g2806.radiante.client.compat.journeymap.JourneyMapCompat.init();
@@ -65,7 +79,12 @@ public final class RadianteClient {
     }
 
     public static void onEndClientTick(Minecraft minecraft) {
+        if (!nativeLoaded) {
+            tickWithoutRenderer(minecraft);
+            return;
+        }
         logNativeErrors();
+        com.g2806.radiante.client.gui.ShaderPackTrial.tick(minecraft);
 
         // The warning has to wait for a screen to exist, so it goes up on the first menu after startup.
         if (!RadianteRenderer.isActive()
@@ -127,36 +146,101 @@ public final class RadianteClient {
         }
 
         com.g2806.radiante.client.gui.BackgroundRebuild.tick(minecraft);
+        com.g2806.radiante.client.gui.ShaderPackHotReload.tick(minecraft);
         com.g2806.radiante.client.gui.PipelineWarmUp.tick(minecraft);
         com.g2806.radiante.client.compat.distanthorizons.DistantHorizonsCompat.tick();
         DevAutomation.tick(minecraft);
     }
 
     /**
+     * The client tick when the native renderer could not be loaded: the warning on the first menu and the two key
+     * bindings, none of which touches native code.
+     */
+    private static void tickWithoutRenderer(Minecraft minecraft) {
+        if (minecraft.gui.screen() instanceof net.minecraft.client.gui.screens.TitleScreen title
+            && com.g2806.radiante.client.gui.UnsupportedHardwareScreen.shouldShow()) {
+            minecraft.gui.setScreen(new com.g2806.radiante.client.gui.UnsupportedHardwareScreen(title));
+        }
+        while (RadianteKeys.OPEN_SETTINGS.consumeClick()) {
+            if (minecraft.gui.screen() == null && !RadianteKeys.OPEN_SETTINGS.isUnbound()) {
+                minecraft.gui.setScreen(RadianteOptionsScreen.create(null, minecraft.options));
+            }
+        }
+        while (RadianteKeys.TOGGLE_RAY_TRACING.consumeClick()) {
+            if (!RadianteKeys.TOGGLE_RAY_TRACING.isUnbound()) {
+                sendStatus(minecraft, "message.radiante.ray_tracing_unavailable");
+            }
+        }
+        DevAutomation.tick(minecraft);
+    }
+
+    /** True when the native renderer is loaded; loads it first if nothing has tried yet. Never throws. */
+    public static boolean isNativeAvailable() {
+        ensureNativeLoaded();
+        return nativeLoaded;
+    }
+
+    /** True when the native renderer is loaded, without trying to load it. */
+    public static boolean isNativeLoaded() {
+        return nativeLoaded;
+    }
+
+    /** UNSUPPORTED_PLATFORM or NATIVE_LOAD_FAILED when the native renderer could not be loaded, otherwise null. */
+    public static RadianteRenderer.Failure nativeFailure() {
+        return nativeFailure;
+    }
+
+    /** The detected operating system and CPU architecture, such as "Windows 11 (aarch64)". */
+    public static String platform() {
+        return platform;
+    }
+
+    /**
      * Extracts and loads the native renderer. Safe to call repeatedly; the Vulkan backend mixins call
-     * it before the instance is created in case the client entrypoint has not run yet.
+     * it before the instance is created in case the client entrypoint has not run yet. It never throws: on a
+     * platform without a build of the renderer, or when the library does not load, the reason is kept for the
+     * warning screen and the game goes on with Minecraft's own renderer.
      */
     public static synchronized void ensureNativeLoaded() {
-        if (nativeLoaded) {
+        if (nativeLoaded || nativeAttempted) {
             return;
         }
+        nativeAttempted = true;
 
-        String osName = System.getProperty("os.name").toLowerCase();
-        boolean windows = osName.contains("windows");
-        if (!windows && !osName.contains("linux")) {
-            throw new IllegalStateException("Radiante supports Windows and Linux only (detected " + osName + ")");
+        String osName = String.valueOf(System.getProperty("os.name"));
+        String arch = String.valueOf(System.getProperty("os.arch")).toLowerCase(java.util.Locale.ROOT);
+        platform = osName + " (" + arch + ")";
+        // For testing this path on a machine that does run the renderer: -Dradiante.simulateUnsupported=platform|load.
+        String simulate = System.getProperty("radiante.simulateUnsupported", "");
+        String os = osName.toLowerCase(java.util.Locale.ROOT);
+        boolean windows = os.contains("windows");
+        boolean x64 = arch.equals("amd64") || arch.equals("x86_64");
+        // Only x86-64 builds of the renderer exist: Windows on ARM (Snapdragon), macOS, Android launchers and
+        // 32-bit Java have none.
+        if ((!windows && !os.contains("linux")) || !x64 || simulate.equals("platform")) {
+            nativeFailure = RadianteRenderer.Failure.UNSUPPORTED_PLATFORM;
+            LOGGER.warn("Radiante's renderer has no build for {}; Minecraft's own renderer is used instead "
+                + "(Radiante runs on Windows and Linux, x86-64)", platform);
+            return;
         }
-        if (!windows && !"amd64".equals(System.getProperty("os.arch"))
-            && !"x86_64".equals(System.getProperty("os.arch"))) {
-            throw new IllegalStateException("Radiante on Linux needs an x86-64 CPU (detected "
-                + System.getProperty("os.arch") + ")");
+        try {
+            if (simulate.equals("load")) {
+                throw new UnsatisfiedLinkError("simulated by -Dradiante.simulateUnsupported=load");
+            }
+            loadNatives(windows);
+        } catch (RuntimeException | LinkageError e) {
+            nativeFailure = RadianteRenderer.Failure.NATIVE_LOAD_FAILED;
+            LOGGER.error("Radiante's native renderer could not be loaded on {}; Minecraft's own renderer is used "
+                + "instead", platform, e);
         }
+    }
 
+    private static void loadNatives(boolean windows) {
         radianceDir = RadiantePlatform.INSTANCE.gameDir().resolve("radiante");
         try {
             Files.createDirectories(radianceDir);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new UncheckedIOException(e);
         }
 
         CacheTrim.run(radianceDir);
@@ -198,7 +282,6 @@ public final class RadianteClient {
             LOGGER.info("Radiante unpacked {} native libraries in {} ms", unpackedNatives,
                 (System.nanoTime() - unpackStart) / 1_000_000L);
         }
-        nativeLoaded = true;
 
         RendererProxy.initFolderPath(radianceDir.toAbsolutePath().toString());
         Pipeline.initFolderPath(radianceDir);
@@ -206,6 +289,8 @@ public final class RadianteClient {
         // On by default; a missing entry in an older config leaves the renderer's copy of the flag unset otherwise.
         Options.setDebugLogging(Options.debugLogging, false);
         Pipeline.reloadAllModuleEntries();
+        // Only now: a failure above leaves the renderer out entirely rather than half set up.
+        nativeLoaded = true;
         LOGGER.info("Radiante native renderer loaded from {}", radianceDir);
     }
 
@@ -243,6 +328,7 @@ public final class RadianteClient {
         String info = RendererProxy.drainNativeInfo();
         if (info != null) {
             for (String line : info.split("\n")) {
+                com.g2806.radiante.client.gui.ShaderPackTrial.onNativeLine(line, false);
                 if (!line.isBlank()) {
                     LOGGER.info("[native] {}", line);
                 }
@@ -253,6 +339,8 @@ public final class RadianteClient {
             return;
         }
         for (String line : errors.split("\n")) {
+            // Before repeats are folded: a shader pack's compile report is kept whole.
+            com.g2806.radiante.client.gui.ShaderPackTrial.onNativeLine(line, true);
             if (line.isBlank()) {
                 continue;
             }

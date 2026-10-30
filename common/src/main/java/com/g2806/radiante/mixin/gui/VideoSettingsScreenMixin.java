@@ -31,7 +31,7 @@ public abstract class VideoSettingsScreenMixin extends OptionsSubScreen {
 
         Screen self = this;
         Button button = Button.builder(RadianteOptionsScreen.TITLE,
-            ignored -> this.minecraft.gui.setScreen(new RadianteOptionsScreen(self, this.options))).build();
+            ignored -> this.minecraft.gui.setScreen(RadianteOptionsScreen.create(self, this.options))).build();
 
         // The button stays on the screen when ray tracing cannot run, greyed out and carrying the reason, so the
         // settings do not simply vanish with no explanation of where they went.
@@ -41,8 +41,16 @@ public abstract class VideoSettingsScreenMixin extends OptionsSubScreen {
             boolean onOpenGl = com.g2806.radiante.client.option.Options.useOpenGl
                 || this.options.preferredGraphicsBackend().get() == PreferredGraphicsApi.OPENGL;
             button.active = false;
-            button.setTooltip(Tooltip.create(Component.translatable(
-                onOpenGl ? "options.radiante.unavailable.opengl" : "options.radiante.unavailable.hardware")));
+            // The renderer has no build for this device, or did not load: neither is about the graphics card.
+            var nativeFailure = com.g2806.radiante.client.RadianteClient.nativeFailure();
+            Component reason = nativeFailure == RadianteRenderer.Failure.UNSUPPORTED_PLATFORM
+                ? Component.translatable("options.radiante.unavailable.platform",
+                    com.g2806.radiante.client.RadianteClient.platform())
+                : nativeFailure == RadianteRenderer.Failure.NATIVE_LOAD_FAILED
+                ? Component.translatable("options.radiante.unavailable.native_load_failed")
+                : Component.translatable(
+                    onOpenGl ? "options.radiante.unavailable.opengl" : "options.radiante.unavailable.hardware");
+            button.setTooltip(Tooltip.create(reason));
         }
 
         this.list.addBig(button);

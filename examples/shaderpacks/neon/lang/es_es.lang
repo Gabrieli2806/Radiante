@@ -1,0 +1,51 @@
+# Neon Dusk: its own settings, groups, descriptions and presets; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.neon_sky_mode=Aspecto del cielo
+render_pipeline.module.ray_tracing.attribute.neon_sky_strength=Cielo neón
+render_pipeline.module.ray_tracing.attribute.neon_sky_light=Tinte de la luz del cielo
+render_pipeline.module.ray_tracing.attribute.neon_sun=Sol retro
+render_pipeline.module.ray_tracing.attribute.neon_sun_size=Tamaño del sol retro
+render_pipeline.module.ray_tracing.attribute.neon_sun_height=Altura del sol retro
+render_pipeline.module.ray_tracing.attribute.neon_grid=Cuadrícula del horizonte
+render_pipeline.module.ray_tracing.attribute.neon_stars=Estrellas neón
+render_pipeline.module.ray_tracing.attribute.neon_light_colour=Color neón de las luces
+render_pipeline.module.ray_tracing.attribute.neon_light_strength=Intensidad de las luces
+render_pipeline.module.ray_tracing.attribute.neon_sun_tint=Tinte del sol y la luna
+render_pipeline.module.ray_tracing.attribute.neon_wet=Suelo mojado
+render_pipeline.module.ray_tracing.attribute.neon_puddles=Charcos
+render_pipeline.module.ray_tracing.attribute.neon_haze=Bruma neón
+render_pipeline.module.ray_tracing.attribute.neon_bloom=Resplandor
+render_pipeline.module.ray_tracing.attribute.neon_fringe=Franjas de color
+render_pipeline.module.ray_tracing.attribute.neon_grade=Gradación turquesa y magenta
+render_pipeline.module.ray_tracing.attribute.neon_saturation=Saturación
+
+neon.group.sky=Cielo
+neon.group.lights=Luces
+neon.group.surfaces=Superficies
+neon.group.atmosphere=Atmósfera
+neon.group.post=Posprocesado
+
+neon.desc.sky_mode=0 sigue el día y la noche reales, 1 deja un atardecer magenta todo el día, 2 una noche morada. Solo el aspecto: el sol sigue iluminando el mundo desde donde está de verdad.
+neon.desc.sky_strength=Cuánto del cielo neón sustituye al de Radiante donde miras. 0 deja el cielo de Radiante.
+neon.desc.sky_light=Cuánto toma el tono neón la luz que el cielo da al mundo. Más alto tiñe más la sombra; su brillo sigue siendo el de Radiante.
+neon.desc.sun=Brillo del gran sol a franjas. 0 lo oculta.
+neon.desc.sun_size=Tamaño del sol retro, en grados de radio.
+neon.desc.sun_height=Altura del sol retro sobre el ocaso con un aspecto fijo, en grados. Más bajo lo hunde tras el horizonte.
+neon.desc.grid=La cuadrícula y la línea brillantes del horizonte, visibles tras el borde del mundo y sobre el agua lejana. 0 las quita.
+neon.desc.stars=Estrellas rosas, cian y blancas sobre el aspecto de noche, también de día. 0 las quita.
+neon.desc.light_colour=Lleva la luz de los bloques al neón: las cálidas a magenta, las frías y verdes a cian, las blancas a violeta. 0 deja sus colores.
+neon.desc.light_strength=Brillo de las luces de bloques, su resplandor y las luces en la mano. Más alto ilumina más las salas y da más resplandor.
+neon.desc.sun_tint=Tiñe la luz del sol con el aspecto (rosa de día, melocotón al atardecer, violeta de noche) y la de la luna de cian. La intensidad no cambia.
+neon.desc.wet=El suelo que mira hacia arriba se oscurece y brilla, llueva o no, y las luces se reflejan en él. 0 lo deja seco.
+neon.desc.puddles=Cuánto del suelo mojado son charcos lisos como un espejo.
+neon.desc.haze=Bruma rosa hacia el sol y cian al lado contrario, con rayos de luz y halos en las luces. Necesita la luz volumétrica, y la Niebla Volumétrica de Bedrock apagada (por defecto en el paquete).
+neon.desc.bloom=Resplandor alrededor de las luces brillantes y el sol. Más alto es un resplandor mayor.
+neon.desc.fringe=Bordes magenta y cian en el resplandor y hacia las esquinas de la pantalla. 0 los quita.
+neon.desc.grade=Sombras hacia el turquesa, luces altas hacia el magenta, una curva de contraste más suave y esquinas más oscuras. 0 la quita.
+neon.desc.saturation=Intensidad del color de la imagen final. 1 la deja igual.
+
+neon.preset.dusk=Neon Dusk
+neon.preset.dusk.desc=El aspecto del propio paquete: un atardecer magenta todo el día con el sol retro bajo sobre el ocaso.
+neon.preset.midnight=Medianoche
+neon.preset.midnight.desc=Una noche morada profunda todo el día, estrellas, neón más brillante, calles empapadas y más bruma.
+neon.preset.daylight=Neón de día
+neon.preset.daylight.desc=El día y la noche reales con un cielo neón más suave, una gradación más ligera y el suelo más seco.

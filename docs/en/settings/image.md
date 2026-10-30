@@ -43,7 +43,6 @@ with display considerations, in [hdr.md](../hdr.md) — quick summary:
 | HDR Output | On/Off | Off |
 | HDR Peak Brightness | 400 – 4000 nits | 1000 nits |
 | HDR Paper White | 80 – 400 nits | 200 nits |
-| HDR Debug View | On/Off | Off (not saved) |
 
-Turning HDR Output on or off needs a game restart; the brightness sliders apply with the rest of
+HDR Debug View is in the [Debug](debug.md) section. Turning HDR Output on or off needs a game restart; the brightness sliders apply with the rest of
 the settings, without one.

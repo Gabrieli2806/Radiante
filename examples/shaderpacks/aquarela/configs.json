@@ -1,0 +1,349 @@
+{
+    "radiante": {
+        "display_name": "Aquarela",
+        "version": "1.0.0",
+        "author": "G2806",
+        "license": "GPL-3.0",
+        "description": "The world as a watercolour, lit by Radiante's path tracing: flat brushed washes that follow the shapes, darker edges where the paint pooled, colour bleeding wet in wet, cold-press paper with granulation, an airy pastel palette on warm paper, a sky of soft washes and gentle light.",
+        "icon": "pack.png",
+        "api_version": 0,
+        "extends": "radiante-pt@1"
+    },
+    "attributes": [
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aquarela_brush",
+            "type": "int_range:0-8",
+            "default_value": "4",
+            "runtime": true,
+            "define": "AQUARELA_BRUSH",
+            "group": "aquarela.group.paint",
+            "order": 10,
+            "description": "aquarela.desc.brush",
+            "performance_impact": "medium"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aquarela_wobble",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "AQUARELA_WOBBLE",
+            "group": "aquarela.group.paint",
+            "order": 11,
+            "step": 0.05,
+            "description": "aquarela.desc.wobble"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aquarela_edges",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "AQUARELA_EDGES",
+            "group": "aquarela.group.paint",
+            "order": 12,
+            "step": 0.05,
+            "description": "aquarela.desc.edges"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aquarela_bleed",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.35",
+            "runtime": true,
+            "define": "AQUARELA_BLEED",
+            "group": "aquarela.group.paint",
+            "order": 13,
+            "step": 0.05,
+            "description": "aquarela.desc.bleed",
+            "performance_impact": "low"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aquarela_paper",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "AQUARELA_PAPER",
+            "group": "aquarela.group.paper",
+            "order": 20,
+            "step": 0.05,
+            "description": "aquarela.desc.paper",
+            "performance_impact": "low"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aquarela_granulation",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "AQUARELA_GRANULATION",
+            "group": "aquarela.group.paper",
+            "order": 21,
+            "step": 0.05,
+            "description": "aquarela.desc.granulation"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aquarela_border",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.2",
+            "runtime": true,
+            "define": "AQUARELA_BORDER",
+            "group": "aquarela.group.paper",
+            "order": 22,
+            "step": 0.05,
+            "description": "aquarela.desc.border"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aquarela_grain_size",
+            "type": "float_range:0.5-2.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "AQUARELA_GRAIN_SIZE",
+            "group": "aquarela.group.paper",
+            "order": 23,
+            "step": 0.1,
+            "advanced": true,
+            "description": "aquarela.desc.grain_size"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aquarela_pigment",
+            "type": "float_range:0.5-1.5",
+            "default_value": "0.85",
+            "runtime": true,
+            "define": "AQUARELA_PIGMENT",
+            "group": "aquarela.group.colour",
+            "order": 30,
+            "step": 0.05,
+            "description": "aquarela.desc.pigment"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aquarela_saturation",
+            "type": "float_range:0.0-1.5",
+            "default_value": "0.8",
+            "runtime": true,
+            "define": "AQUARELA_SATURATION",
+            "group": "aquarela.group.colour",
+            "order": 31,
+            "step": 0.05,
+            "description": "aquarela.desc.saturation"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aquarela_lift",
+            "type": "float_range:0.0-0.4",
+            "default_value": "0.12",
+            "runtime": true,
+            "define": "AQUARELA_LIFT",
+            "group": "aquarela.group.colour",
+            "order": 32,
+            "step": 0.02,
+            "description": "aquarela.desc.lift"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aquarela_warmth",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "AQUARELA_WARMTH",
+            "group": "aquarela.group.colour",
+            "order": 33,
+            "step": 0.05,
+            "description": "aquarela.desc.warmth"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aquarela_sky",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.7",
+            "runtime": true,
+            "define": "AQUARELA_SKY",
+            "group": "aquarela.group.light",
+            "order": 40,
+            "step": 0.05,
+            "description": "aquarela.desc.sky"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aquarela_soft_light",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.4",
+            "runtime": true,
+            "define": "AQUARELA_SOFT_LIGHT",
+            "group": "aquarela.group.light",
+            "order": 41,
+            "step": 0.05,
+            "description": "aquarela.desc.soft_light"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aquarela_cool_shadows",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.4",
+            "runtime": true,
+            "define": "AQUARELA_COOL_SHADOWS",
+            "group": "aquarela.group.light",
+            "order": 42,
+            "step": 0.05,
+            "description": "aquarela.desc.cool_shadows"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aquarela_glow",
+            "type": "float_range:0.0-0.5",
+            "default_value": "0.15",
+            "runtime": true,
+            "define": "AQUARELA_GLOW",
+            "group": "aquarela.group.light",
+            "order": 43,
+            "step": 0.05,
+            "description": "aquarela.desc.glow",
+            "performance_impact": "low"
+        }
+    ],
+    "presets": [
+        {
+            "name": "aquarela.preset.aquarela",
+            "description": "aquarela.preset.aquarela.desc",
+            "values": {
+                "aquarela_brush": 4,
+                "aquarela_wobble": 0.5,
+                "aquarela_edges": 0.5,
+                "aquarela_bleed": 0.35,
+                "aquarela_paper": 0.5,
+                "aquarela_granulation": 0.5,
+                "aquarela_border": 0.2,
+                "aquarela_grain_size": 1.0,
+                "aquarela_pigment": 0.85,
+                "aquarela_saturation": 0.8,
+                "aquarela_lift": 0.12,
+                "aquarela_warmth": 0.5,
+                "aquarela_sky": 0.7,
+                "aquarela_soft_light": 0.4,
+                "aquarela_cool_shadows": 0.4,
+                "aquarela_glow": 0.15
+            }
+        },
+        {
+            "name": "aquarela.preset.sketchbook",
+            "description": "aquarela.preset.sketchbook.desc",
+            "values": {
+                "aquarela_brush": 3,
+                "aquarela_wobble": 0.6,
+                "aquarela_edges": 0.35,
+                "aquarela_bleed": 0.5,
+                "aquarela_paper": 0.85,
+                "aquarela_granulation": 0.35,
+                "aquarela_border": 0.45,
+                "aquarela_grain_size": 1.2,
+                "aquarela_pigment": 0.65,
+                "aquarela_saturation": 0.65,
+                "aquarela_lift": 0.2,
+                "aquarela_warmth": 0.7,
+                "aquarela_sky": 0.8,
+                "aquarela_soft_light": 0.5,
+                "aquarela_cool_shadows": 0.3,
+                "aquarela_glow": 0.1
+            }
+        },
+        {
+            "name": "aquarela.preset.gouache",
+            "description": "aquarela.preset.gouache.desc",
+            "values": {
+                "aquarela_brush": 5,
+                "aquarela_wobble": 0.3,
+                "aquarela_edges": 0.2,
+                "aquarela_bleed": 0.15,
+                "aquarela_paper": 0.3,
+                "aquarela_granulation": 0.15,
+                "aquarela_border": 0.1,
+                "aquarela_grain_size": 1.0,
+                "aquarela_pigment": 1.25,
+                "aquarela_saturation": 1.05,
+                "aquarela_lift": 0.06,
+                "aquarela_warmth": 0.3,
+                "aquarela_sky": 0.5,
+                "aquarela_soft_light": 0.3,
+                "aquarela_cool_shadows": 0.5,
+                "aquarela_glow": 0.2
+            }
+        }
+    ],
+    "textures": [
+        {
+            "name": "aquarela_flow",
+            "type": "intermediate",
+            "format": "R16G16B16A16_SFLOAT",
+            "scale": 0.25,
+            "sampled_binding": 60,
+            "filter": "linear",
+            "address_mode": "clamp_to_edge"
+        },
+        {
+            "name": "aquarela_wash",
+            "type": "intermediate",
+            "format": "R16G16B16A16_SFLOAT",
+            "scale": 1,
+            "sampled_binding": 61,
+            "filter": "linear",
+            "address_mode": "clamp_to_edge"
+        }
+    ],
+    "passes": [
+        {
+            "type": "full_screen",
+            "stage": "post_render",
+            "name": "aquarela_structure",
+            "fragment": "post_render/aquarela_structure.frag",
+            "inputs": {
+                "images": [
+                    "out:ldr"
+                ]
+            },
+            "target": "aquarela_flow"
+        },
+        {
+            "type": "full_screen",
+            "stage": "post_render",
+            "name": "aquarela_brush",
+            "fragment": "post_render/aquarela_brush.frag",
+            "inputs": {
+                "images": [
+                    "out:ldr",
+                    "aquarela_flow"
+                ]
+            },
+            "target": "aquarela_wash"
+        },
+        {
+            "type": "full_screen",
+            "stage": "post_render",
+            "name": "aquarela_paper",
+            "fragment": "post_render/aquarela_paper.frag",
+            "inputs": {
+                "images": [
+                    "aquarela_wash"
+                ]
+            },
+            "target": "out:ldr"
+        }
+    ],
+    "execution_post": {
+        "global_variables": [
+            {
+                "RADIANTE_POST_BLOOM": true
+            }
+        ],
+        "commands": [
+            {
+                "base": true
+            },
+            {
+                "if_else": {
+                    "condition": "RADIANTE_DEBUG_VIEW == 0",
+                    "then": [
+                        {
+                            "pass": "aquarela_structure"
+                        },
+                        {
+                            "pass": "aquarela_brush"
+                        },
+                        {
+                            "pass": "aquarela_paper"
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+}

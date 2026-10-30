@@ -376,8 +376,9 @@ first-hit direct and indirect diffuse, specular, emission, refraction, and fog i
   the pack's `post_render` stage: stars, depth of field, motion blur. Text, name tags, particles and rain are traced
   in the world, not drawn afterwards.
 
-Fog and clouds are mostly in the path tracer: volumetric fog per pixel (`pt_volumetric.glsl`) or as froxels
-(`froxel/integrate.comp`, `froxel/carry.comp`), and volumetric clouds resolved over time
+Fog and clouds are mostly in the path tracer: volumetric fog per pixel (`pt_volumetric.glsl`) or through
+two grids of light fixed to the world around the camera (`common/froxel_fog.glsl`; moved with the camera by
+`froxel/shift.comp`, relit by the world pass in `pt_froxel.glsl`, and marched per pixel by `froxel/march.comp`), and volumetric clouds resolved over time
 (`volumetric_cloud/temporal.comp`) and composited by `volumetric_cloud/apply.comp`, which also hands the cloud
 transmittance to the star pass.
 
@@ -413,7 +414,7 @@ When the player changes a setting, Java (`Pipeline.pushRuntimeChanges`) first tr
 
 A value applied live is also written into the blueprint, so the next rebuild keeps it.
 
-**`WorldUBO.packParams`** is an array of `PRISM_PACK_PARAM_COUNT` (64) `vec4`s at the end of the world uniform
+**`WorldUBO.packParams`** is an array of `PRISM_PACK_PARAM_COUNT` (256) `vec4`s at the end of the world uniform
 (`native/src/common/shared.hpp`). For a `"runtime": true` attribute, the shader pack loader does not compile the
 value in: the define becomes a read such as `int(worldUBO.packParams[N].x)` or `vec3(worldUBO.packParams[N].xyz)`.
 The shader text is then the same for every value, nothing recompiles, and the SPIR-V cache stays valid. Bools,

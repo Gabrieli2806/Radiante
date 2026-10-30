@@ -162,6 +162,11 @@ public final class ChunkManager {
         return state.is(BlockTags.LEAVES);
     }
 
+    /** Ice of every kind and snow, which the sun lights a little past the edge of its light (PBRVertexWriter.frost). */
+    private static boolean isFrost(BlockState state) {
+        return state.is(BlockTags.ICE) || state.is(BlockTags.SNOW);
+    }
+
     private static final int VERTEX_FORMAT_PBR = 12;
     public static final int GEOMETRY_TYPE_WORLD_SOLID = 1;
     public static final int GEOMETRY_TYPE_WORLD_TRANSPARENT = 2;
@@ -287,6 +292,11 @@ public final class ChunkManager {
     }
 
     /** Bumped whenever the renderer's slots are replaced; geometry uploaded under an older one is gone. */
+    /** Section builds queued and not finished, for F3. */
+    public static int pendingBuilds() {
+        return pendingBuilds.get();
+    }
+
     public static int generation() {
         return generation;
     }
@@ -404,6 +414,10 @@ public final class ChunkManager {
     private static long[] readyKeys = new long[256];
 
     public static void onSectionChanged(long sectionNode) {
+        // Nothing drains the list while the renderer is off for good, so it would only grow.
+        if (!RadianteRenderer.isActive()) {
+            return;
+        }
         synchronized (CHANGED) {
             CHANGED.add(sectionNode);
         }
@@ -644,7 +658,15 @@ public final class ChunkManager {
                     instance.scaleColor(1.0f / shade);
                 }
             }
-            PBRVertexWriter quadWriter = scratch.writer(quad.materialInfo().layer(), atlasId);
+            // Powered dust's own quads (not the overlay drawn over it) glow by its power and cast light from the face
+            // turned toward its block, the one lying open on the floor or wall it is on.
+            PBRVertexWriter quadWriter = scratch.dustPower > 0 && RedstoneGlow.isDust(quad)
+                ? scratch.glowWriter(quad.materialInfo().layer(), atlasId)
+                    .albedoEmission(RedstoneGlow.seenGlow(scratch.dustPower))
+                    .castColor(RedstoneGlow.castColor(scratch.dustPower))
+                    .castLight(facesInward(quad) ? RedstoneGlow.castLight(scratch.dustPower, quad.materialInfo().sprite())
+                        : 0.0f)
+                : scratch.writer(quad.materialInfo().layer(), atlasId);
             // A second face on the plane of one already written (the grass block's tinted side overlay over its side
             // texture) would tie with it for every ray: the tracer showed the untinted base on some blocks and the
             // overlay on others. Lifted a hair, the overlay always wins, as it is drawn over the base in vanilla.
@@ -680,9 +702,13 @@ public final class ChunkManager {
             }
             scratch.blockIsGlass = isGlass(blockState);
             scratch.blockIsBlend = isBlend(blockState);
-            scratch.blockIsUnlit = EmissionTiles.isUnlit(blockState);
+            scratch.dustPower = RedstoneGlow.power(blockState);
+            // Dust glows by its power alone (RedstoneGlow): marked unlit, a pack's emission map for its sprites
+            // does not make it glow at every power.
+            scratch.blockIsUnlit = EmissionTiles.isUnlit(blockState) || scratch.dustPower >= 0;
             scratch.blockIsPlant = isPlant(blockState);
             scratch.blockIsLeaves = isLeaves(blockState);
+            scratch.blockIsFrost = isFrost(blockState);
             scratch.blockIsPane = scratch.blockIsGlass && isGlassPane(blockState);
             scratch.windKind = PBRVertexWriter.WIND_NONE;
             if (windOn) {
@@ -702,6 +728,7 @@ public final class ChunkManager {
                 scratch.blockIsUnlit = false;
                 scratch.blockIsPlant = false;
                 scratch.blockIsLeaves = false;
+                scratch.blockIsFrost = false;
                 scratch.blockIsPane = false;
                 // The water round seagrass and kelp stays where it is.
                 scratch.windKind = PBRVertexWriter.WIND_NONE;
@@ -710,9 +737,10 @@ public final class ChunkManager {
                 fluidRenderer.tesselate(region, pos, fluidOutput, blockState, fluidState);
                 scratch.blockIsGlass = isGlass(blockState);
                 scratch.blockIsBlend = isBlend(blockState);
-                scratch.blockIsUnlit = EmissionTiles.isUnlit(blockState);
+                scratch.blockIsUnlit = EmissionTiles.isUnlit(blockState) || scratch.dustPower >= 0;
                 scratch.blockIsPlant = isPlant(blockState);
                 scratch.blockIsLeaves = isLeaves(blockState);
+                scratch.blockIsFrost = isFrost(blockState);
                 scratch.blockIsPane = scratch.blockIsGlass && isGlassPane(blockState);
                 scratch.windKind = blockWind;
                 // Water with water or solid blocks on every side draws no face, and never asks for a writer: when
@@ -932,7 +960,8 @@ public final class ChunkManager {
         SectionCompileScratch scratch, int atlasId, boolean important) {
         List<ChunkSectionLayer> layers = new ArrayList<>();
         List<PBRVertexWriter> layerWriters = new ArrayList<>();
-        for (EnumMap<ChunkSectionLayer, PBRVertexWriter> writers : List.of(scratch.writers, scratch.unlitWriters)) {
+        for (EnumMap<ChunkSectionLayer, PBRVertexWriter> writers
+            : List.of(scratch.writers, scratch.unlitWriters, scratch.glowWriters)) {
             for (Map.Entry<ChunkSectionLayer, PBRVertexWriter> entry : writers.entrySet()) {
                 entry.getValue().finish();
                 if (entry.getValue().vertexCount() > 0) {
@@ -993,6 +1022,11 @@ public final class ChunkManager {
          */
         private final EnumMap<ChunkSectionLayer, PBRVertexWriter> unlitWriters =
             new EnumMap<>(ChunkSectionLayer.class);
+        /** Powered redstone dust (see glowWriter), apart for the same reason. */
+        private final EnumMap<ChunkSectionLayer, PBRVertexWriter> glowWriters =
+            new EnumMap<>(ChunkSectionLayer.class);
+        /** The power of the redstone dust being written, or -1 when the block is not dust; see RedstoneGlow. */
+        private int dustPower = -1;
         /** The markers of Bedrock's point lights (BedrockPointLights), apart from any surface. */
         private PBRVertexWriter pointLightWriter;
         private ModelBlockRenderer blockRenderer;
@@ -1020,6 +1054,8 @@ public final class ChunkManager {
         private float windScale;
         /** The block being written is leaves; see PBRVertexWriter.leaves. */
         private boolean blockIsLeaves;
+        /** The block being written is ice or snow; see PBRVertexWriter.frost. */
+        private boolean blockIsFrost;
         private boolean blockIsPane;
         private boolean paneCapUp;
         private boolean paneCapDown;
@@ -1030,6 +1066,9 @@ public final class ChunkManager {
                 writer.reset();
             }
             for (PBRVertexWriter writer : this.unlitWriters.values()) {
+                writer.reset();
+            }
+            for (PBRVertexWriter writer : this.glowWriters.values()) {
                 writer.reset();
             }
             if (this.pointLightWriter != null) {
@@ -1070,9 +1109,26 @@ public final class ChunkManager {
                 writer = new PBRVertexWriter(4096);
                 writers.put(layer, writer);
             }
-            writer.textureId(atlasId).alphaMode(alphaModeOf(layer)).coordinate(0).water(false).lava(false).glass(this.blockIsGlass).plant(this.blockIsPlant).leaves(this.blockIsLeaves)
+            writer.textureId(atlasId).alphaMode(alphaModeOf(layer)).coordinate(0).water(false).lava(false).glass(this.blockIsGlass).plant(this.blockIsPlant).leaves(this.blockIsLeaves).frost(this.blockIsFrost)
                 .glassPane(this.blockIsPane, this.paneCapUp, this.paneCapDown).blend(this.blockIsBlend)
                 .unlit(this.blockIsUnlit).wind(this.windKind, this.windBaseY, this.windRise, this.windScale);
+            this.current = writer;
+            return writer;
+        }
+
+        /**
+         * The writer of powered redstone dust's glowing quads: unlit, so no emission map lights them, and a glow light
+         * whose glow and cast light the caller sets per quad (RedstoneGlow).
+         */
+        PBRVertexWriter glowWriter(ChunkSectionLayer layer, int atlasId) {
+            PBRVertexWriter writer = this.glowWriters.get(layer);
+            if (writer == null) {
+                writer = new PBRVertexWriter(1024);
+                this.glowWriters.put(layer, writer);
+            }
+            writer.textureId(atlasId).alphaMode(alphaModeOf(layer)).coordinate(0).water(false).lava(false).glass(false)
+                .plant(false).leaves(false).frost(false).glassPane(false, false, false).blend(false).unlit(true).glowLight(true)
+                .wind(PBRVertexWriter.WIND_NONE, 0.0f, 0.0f, 0.0f);
             this.current = writer;
             return writer;
         }

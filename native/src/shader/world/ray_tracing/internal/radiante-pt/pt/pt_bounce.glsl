@@ -156,6 +156,10 @@ void traceSecondary(inout MainRay rayState,
                     (leavingLobeType == 2u || (leavingLobeType == 1u && rayLoadMaterial(rayState).roughness < 0.08));
         resetMainRay(rayState, b);
         prepareSecondary(b, isHand, len, mask);
+        // In first person a mirror-like view (wet ground, a puddle, water, a window) shows the player, as it does in
+        // third person: their body is in the scene only while First Person Shadow is on. Light gathered by rough
+        // bounces still leaves it out, so the body seen from within does not darken what is around the camera.
+        if (viewChain && isHand == 0 && worldUBO.isFirstPerson > 0) { mask |= PLAYER_MASK; }
         // What such a ray ends in is seen, not gathered as light; see the miss shader and the water medium.
         if (viewChain) { rayState.pad0 = RAY_VIEW_BOUNCE_MARK; }
 
@@ -169,6 +173,7 @@ void traceSecondary(inout MainRay rayState,
         if (b == startBounce && VPT_CAPTURE_VOLUMETRIC_CLOUD_INDIRECT != 0 && allowIndirectCloudMiss) {
             missId = VPT_WORLD_MISS_INDEX;
         }
+        RADIANTE_DEBUG_COUNT_BOUNCE();
         // The first bounce (reflections and refraction seen straight from the camera, water among them) is traced as
         // usual; the later, scattered ones are reordered.
         // Known issue: with reordering, water can come out white. Experimental, off by default.
@@ -183,6 +188,9 @@ void traceSecondary(inout MainRay rayState,
         if (b == startBounce) {
             secondHitDistance = rayState.hitT;
             hasSecondHit = rayState.hitT != INF_DISTANCE;
+#if VPT_RESTIR_GI != 0
+            g_restirGiSecondNormal = hasSecondHit ? rayState.normal : vec3(0.0);
+#endif
         }
 
         if (rayState.hitT != INF_DISTANCE) {
@@ -206,6 +214,9 @@ void traceSecondary(inout MainRay rayState,
                 if (SharcGetCachedRadiance(sharcParameters, sharcHitData, cachedRadiance, false)) {
                     sharcCacheHit = true;
                     rayState.radiance += cachedRadiance * rayState.throughput;
+#if defined(RADIANTE_DEBUG_VIEW) && RADIANTE_DEBUG_VIEW == 14
+                    g_radianteDebugSharc += cachedRadiance * rayState.throughput;
+#endif
                     break;
                 }
             }
@@ -270,7 +281,7 @@ void traceTransparent(inout MainRay transparentRay,
  * traceSecondary, several times from the same first hit, averaged. For the held item and hand: they sit right in
  * front of the camera, big on screen, and a map or a block held up shows every speck of one-sample noise that the
  * upscaler has not yet smoothed over. The first hit and its direct light are shared; only the bounces after it are
- * taken again. The pixels are few, so the extra paths cost little.
+ * taken again. The sample count is configurable because large held items can cover much of the screen.
  */
 void traceSecondaryAveraged(int samples,
                             int startBounce,

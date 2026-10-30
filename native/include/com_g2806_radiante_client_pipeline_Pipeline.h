@@ -91,6 +91,14 @@ JNIEXPORT void JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_prewarmS
 JNIEXPORT jstring JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_gpuStats
   (JNIEnv *, jclass);
 
+/*
+ * Class:     com_g2806_radiante_client_pipeline_Pipeline
+ * Method:    sceneStats
+ * Signature: ()[J
+ */
+JNIEXPORT jlongArray JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_sceneStats
+  (JNIEnv *, jclass);
+
 #ifdef __cplusplus
 }
 #endif

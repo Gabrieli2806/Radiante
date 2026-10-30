@@ -56,4 +56,31 @@ vec3 bedrockWaterNormal(vec3 pos, vec3 n, vec3 viewDir, float footprint, bool fr
     return side * normalize(tangent * local.x + bitangent * local.y + n * local.z);
 }
 
+#ifndef RADIANTE_HOOK_WATER_WAVES_DEFAULT
+// bedrockWaterNormal on ripples a pack shaped (hooks/water_waves.glsl): shape is its strength (the slope), speed
+// (the drift) and size (the texture's scale), (1, 1, 1) for radiante-pt's own. Only compiled when a pack replaces
+// the hook (included before this file), so radiante-pt's shaders stay as they were.
+vec3 bedrockWaterNormalShaped(vec3 pos, vec3 n, vec3 viewDir, float footprint, bool fromBelow, vec3 shape) {
+    float cosView = max(abs(dot(n, viewDir)), 0.001);
+    if (fromBelow && cosView < 0.6594) { return n; }
+    float t = clamp((footprint * VPT_BEDROCK_WATER_FOOTPRINT_SCALE / cosView - 0.01) / 0.02, 0.0, 1.0);
+    float detail = 1.0 - t * t * (3.0 - 2.0 * t);
+    if (detail <= 0.0) { return n; }
+
+    float side = n.y < 0.0 ? -1.0 : 1.0;
+    n *= side;
+    vec3 tangent = n.y < 0.99 ? normalize(vec3(n.z, 0.0, -n.x)) : vec3(1.0, 0.0, 0.0);
+    vec3 bitangent = cross(n, tangent);
+    vec3 p = vec3(pos.x, pos.y * 0.1, pos.z);
+    vec2 coord = vec2(dot(p, tangent), dot(p, bitangent)) / max(shape.z, 1e-3);
+
+    float seconds = bedrockWaterSeconds() * shape.y;
+    vec3 sum = bedrockWaterLayer(coord, 0.6, vec2(0.025, 0.05), 0.3, seconds) +
+               bedrockWaterLayer(coord, 0.3, vec2(0.0325, 0.035), 0.5, seconds) +
+               bedrockWaterLayer(coord, 0.61, vec2(-0.025, -0.05), 0.3, seconds);
+    vec3 local = normalize(vec3(sum.xy * detail * shape.x, sum.z));
+    return side * normalize(tangent * local.x + bitangent * local.y + n * local.z);
+}
+
+#endif
 #endif

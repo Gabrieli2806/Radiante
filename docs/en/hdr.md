@@ -40,6 +40,7 @@ brighter than white, instead of clipping to flat white as they would in SDR. The
 
 ## HDR Debug View
 
+In the [Debug](settings/debug.md) section (Advanced on), while HDR Output is on.
 Tints blue everything shown in SDR range (menus, interface text). Whatever keeps its normal colour
 is exactly what is being shown in real HDR. Useful to confirm the world is actually using the HDR
 range and not just looking brighter — it is not saved between sessions, so it turns off again every

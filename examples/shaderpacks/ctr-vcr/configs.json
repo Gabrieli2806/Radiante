@@ -1,0 +1,254 @@
+{
+    "radiante": {
+        "display_name": "CTR VCR (Radiante port)",
+        "version": "1.0.0",
+        "author": "G2806, from CTR VCR by millennIumAMbiguity",
+        "license": "GPL-3.0 (CTR VCR parts Apache-2.0, LICENSE-CTRVCR)",
+        "description": "An old CRT playing a VHS tape over Radiante's path-traced light: screen curve, scanlines, tape colour smear, bloom, grain, static and a rolling tear. A port of the Apache-2.0 Iris pack CTR VCR by millennIumAMbiguity.",
+        "icon": "pack.png",
+        "api_version": 0,
+        "extends": "radiante-pt@1"
+    },
+    "attributes": [
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.ctrvcr_distortion",
+            "type": "float_range:0.0-0.3",
+            "default_value": "0.05",
+            "runtime": true,
+            "define": "CTRVCR_DISTORTION",
+            "group": "ctrvcr.group.screen",
+            "order": 10,
+            "step": 0.01,
+            "description": "ctrvcr.desc.distortion"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.ctrvcr_scanlines",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "CTRVCR_SCANLINES",
+            "group": "ctrvcr.group.screen",
+            "order": 11,
+            "step": 0.05,
+            "description": "ctrvcr.desc.scanlines"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.ctrvcr_scanline_size",
+            "type": "int_range:0-8",
+            "default_value": "0",
+            "runtime": true,
+            "define": "CTRVCR_SCANLINE_SIZE",
+            "group": "ctrvcr.group.screen",
+            "order": 12,
+            "description": "ctrvcr.desc.scanline_size",
+            "advanced": true,
+            "visible_when": {
+                "attribute": "ctrvcr_scanlines",
+                "not_equals": 0
+            }
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.ctrvcr_dark_edges",
+            "type": "float_range:0.0-25.0",
+            "default_value": "0.0",
+            "runtime": true,
+            "define": "CTRVCR_DARK_EDGES",
+            "group": "ctrvcr.group.screen",
+            "order": 13,
+            "step": 1.0,
+            "description": "ctrvcr.desc.dark_edges"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.ctrvcr_blur",
+            "type": "float_range:0.0-0.05",
+            "default_value": "0.01",
+            "runtime": true,
+            "define": "CTRVCR_BLUR",
+            "group": "ctrvcr.group.tape",
+            "order": 20,
+            "step": 0.002,
+            "description": "ctrvcr.desc.blur"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.ctrvcr_bloom",
+            "type": "float_range:0.0-0.1",
+            "default_value": "0.009",
+            "runtime": true,
+            "define": "CTRVCR_BLOOM",
+            "group": "ctrvcr.group.tape",
+            "order": 21,
+            "step": 0.001,
+            "description": "ctrvcr.desc.bloom",
+            "performance_impact": "low"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.ctrvcr_grain",
+            "type": "float_range:0.0-2.0",
+            "default_value": "0.3",
+            "runtime": true,
+            "define": "CTRVCR_GRAIN",
+            "group": "ctrvcr.group.tape",
+            "order": 22,
+            "step": 0.05,
+            "description": "ctrvcr.desc.grain"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.ctrvcr_static",
+            "type": "float_range:0.0-0.05",
+            "default_value": "0.001",
+            "runtime": true,
+            "define": "CTRVCR_STATIC",
+            "group": "ctrvcr.group.tape",
+            "order": 23,
+            "step": 0.001,
+            "description": "ctrvcr.desc.static"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.ctrvcr_tear",
+            "type": "float_range:0.0-0.3",
+            "default_value": "0.08",
+            "runtime": true,
+            "define": "CTRVCR_TEAR",
+            "group": "ctrvcr.group.tape",
+            "order": 24,
+            "step": 0.01,
+            "description": "ctrvcr.desc.tear"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.ctrvcr_tint_green",
+            "type": "float_range:0.8-1.3",
+            "default_value": "1.1",
+            "runtime": true,
+            "define": "CTRVCR_TINT_GREEN",
+            "group": "ctrvcr.group.colour",
+            "order": 30,
+            "step": 0.02,
+            "description": "ctrvcr.desc.tint_green"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.ctrvcr_saturation",
+            "type": "float_range:0.0-2.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "CTRVCR_SATURATION",
+            "group": "ctrvcr.group.colour",
+            "order": 31,
+            "step": 0.05,
+            "description": "ctrvcr.desc.saturation"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.ctrvcr_black_white",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.0",
+            "runtime": true,
+            "define": "CTRVCR_BLACK_WHITE",
+            "group": "ctrvcr.group.colour",
+            "order": 32,
+            "step": 0.05,
+            "description": "ctrvcr.desc.black_white"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.ctrvcr_color_levels",
+            "type": "int_range:0-64",
+            "default_value": "0",
+            "runtime": true,
+            "define": "CTRVCR_COLOR_LEVELS",
+            "group": "ctrvcr.group.colour",
+            "order": 33,
+            "description": "ctrvcr.desc.color_levels",
+            "advanced": true
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.ctrvcr_warm_light",
+            "type": "float_range:0.0-1.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "CTRVCR_WARM_LIGHT",
+            "group": "ctrvcr.group.colour",
+            "order": 34,
+            "step": 0.05,
+            "description": "ctrvcr.desc.warm_light"
+        }
+    ],
+    "presets": [
+        {
+            "name": "ctrvcr.preset.default",
+            "description": "ctrvcr.preset.default.desc",
+            "values": {
+                "ctrvcr_distortion": 0.05,
+                "ctrvcr_scanlines": 0.5,
+                "ctrvcr_dark_edges": 0.0,
+                "ctrvcr_blur": 0.01,
+                "ctrvcr_bloom": 0.009,
+                "ctrvcr_grain": 0.3,
+                "ctrvcr_static": 0.001,
+                "ctrvcr_tear": 0.08,
+                "ctrvcr_tint_green": 1.1,
+                "ctrvcr_saturation": 1.0,
+                "ctrvcr_black_white": 0.0,
+                "ctrvcr_color_levels": 0
+            }
+        },
+        {
+            "name": "ctrvcr.preset.clean",
+            "description": "ctrvcr.preset.clean.desc",
+            "values": {
+                "ctrvcr_distortion": 0.04,
+                "ctrvcr_scanlines": 0.35,
+                "ctrvcr_dark_edges": 2.0,
+                "ctrvcr_blur": 0.004,
+                "ctrvcr_bloom": 0.006,
+                "ctrvcr_grain": 0.1,
+                "ctrvcr_static": 0.0,
+                "ctrvcr_tear": 0.0,
+                "ctrvcr_tint_green": 1.0,
+                "ctrvcr_saturation": 1.1,
+                "ctrvcr_black_white": 0.0,
+                "ctrvcr_color_levels": 0
+            }
+        },
+        {
+            "name": "ctrvcr.preset.worn",
+            "description": "ctrvcr.preset.worn.desc",
+            "values": {
+                "ctrvcr_distortion": 0.08,
+                "ctrvcr_scanlines": 0.6,
+                "ctrvcr_dark_edges": 6.0,
+                "ctrvcr_blur": 0.025,
+                "ctrvcr_bloom": 0.02,
+                "ctrvcr_grain": 0.8,
+                "ctrvcr_static": 0.01,
+                "ctrvcr_tear": 0.15,
+                "ctrvcr_tint_green": 1.15,
+                "ctrvcr_saturation": 0.8,
+                "ctrvcr_black_white": 0.0,
+                "ctrvcr_color_levels": 0
+            }
+        },
+        {
+            "name": "ctrvcr.preset.mono",
+            "description": "ctrvcr.preset.mono.desc",
+            "values": {
+                "ctrvcr_distortion": 0.06,
+                "ctrvcr_scanlines": 0.55,
+                "ctrvcr_dark_edges": 4.0,
+                "ctrvcr_blur": 0.012,
+                "ctrvcr_bloom": 0.012,
+                "ctrvcr_grain": 0.45,
+                "ctrvcr_static": 0.003,
+                "ctrvcr_tear": 0.08,
+                "ctrvcr_tint_green": 1.0,
+                "ctrvcr_saturation": 1.0,
+                "ctrvcr_black_white": 1.0,
+                "ctrvcr_color_levels": 0
+            }
+        }
+    ],
+    "execution_post": {
+        "global_variables": [
+            {
+                "RADIANTE_HOOK_POST_GRADE": true
+            }
+        ]
+    }
+}

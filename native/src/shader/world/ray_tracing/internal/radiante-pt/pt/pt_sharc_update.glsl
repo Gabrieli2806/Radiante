@@ -23,11 +23,13 @@ void traceSharcUpdate(
         mainRay.throughput = vec3(1.0);
         mainRay.radiance = vec3(0.0);
 
-        uint mask = WORLD_MASK | PLAYER_MASK | FISHING_BOBBER_MASK | WEATHER_MASK | PARTICLE_MASK | CLOUD_MASK;
+        // No rain (WEATHER_MASK), as for the view's bounces (prepareSecondaryBase): its random streaks only
+        // speckled the cache.
+        uint mask = WORLD_MASK | PLAYER_MASK | FISHING_BOBBER_MASK | PARTICLE_MASK | CLOUD_MASK;
         if (b > 1) {
             mask = WORLD_MASK | PLAYER_MASK | FISHING_BOBBER_MASK | CLOUD_MASK;
         } else if (b == 0 && worldUBO.isFirstPerson > 0) {
-            mask = WORLD_MASK | FISHING_BOBBER_MASK | WEATHER_MASK | PARTICLE_MASK | CLOUD_MASK;
+            mask = WORLD_MASK | FISHING_BOBBER_MASK | PARTICLE_MASK | CLOUD_MASK;
         }
         float len = (b <= 1) ? 1000.0 : 384.0;
 

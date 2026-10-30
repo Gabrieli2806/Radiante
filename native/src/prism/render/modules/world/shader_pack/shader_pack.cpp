@@ -23,16 +23,26 @@ ShaderPack::BuildConfig ShaderPack::buildConfigFromRayTracingAttributes(const st
             config.shaderPackPath = value;
         } else if (key == "render_pipeline.module.ray_tracing.attribute.use_sharc") {
             config.shouldUseSharc = value == "render_pipeline.true";
+        } else if (key == "render_pipeline.module.ray_tracing.attribute.debug_view") {
+            config.debugView = value;
         }
     }
     return config;
 }
 
 bool ShaderPack::initialize(const BuildConfig &config, std::string &error) {
+    return initialize(config, error, ShaderPackLoader::LoadOptions{});
+}
+
+bool ShaderPack::initialize(const BuildConfig &config,
+                            std::string &error,
+                            const ShaderPackLoader::LoadOptions &options) {
     const fs::path builtIn = builtInShaderPackPath();
-    ShaderPackLoader::LoadResult loaded = ShaderPackLoader::load(config.shaderPackPath, builtIn, config.language);
-    if (loaded.success && loaded.shaderPack.requiresEmission && !Renderer::options.collectChunkEmission) {
-        loaded = ShaderPackLoader::load(builtIn, builtIn, config.language);
+    ShaderPackLoader::LoadResult loaded =
+        ShaderPackLoader::load(config.shaderPackPath, builtIn, config.language, options);
+    if (options.fallBack && loaded.success && loaded.shaderPack.requiresEmission &&
+        !Renderer::options.collectChunkEmission) {
+        loaded = ShaderPackLoader::load(builtIn, builtIn, config.language, options);
     }
     if (!loaded.success) {
         error = loaded.error;
@@ -42,6 +52,11 @@ bool ShaderPack::initialize(const BuildConfig &config, std::string &error) {
     shaderPack_ = std::move(loaded.shaderPack);
     staticAttributeValues_ = config.staticAttributes;
     shaderAttributes_ = ShaderPackLoader::buildAttributeDefinitions(shaderPack_.attributes, staticAttributeValues_);
+    // A view this pack does not have (asked for under another pack) shows nothing: every view's define stays 0.
+    debugView_ = config.debugView;
+    if (!ShaderPackLoader::addDebugViewDefinitions(shaderPack_.debugViews, debugView_, shaderAttributes_)) {
+        radiante::err() << "[ShaderPack] no debug view named " << debugView_ << " in this pack" << std::endl;
+    }
 
     // What the runtime attributes start at in WorldUBO.packParams: the values this build was asked for.
     runtimeValues_.fill(glm::vec4(0.0f));
@@ -84,6 +99,22 @@ void ShaderPack::rebuildAttributeNumbers() {
     for (auto &[name, value] : numbers) {
         if (names.insert(name).second) attributeNumbers_.push_back({.name = std::move(name), .value = value});
     }
+    // The debug views' defines too, so an execution script runs a view's passes only while it is chosen and a
+    // texture can be sized by it (Radiante PT's radiante_debug_view is one texel otherwise).
+    std::unordered_map<std::string, std::string> views;
+    ShaderPackLoader::addDebugViewDefinitions(shaderPack_.debugViews, debugView_, views);
+    for (const auto &[name, value] : views) {
+        if (!names.insert(name).second) continue;
+        double number = 0.0;
+        try {
+            number = std::stod(value);
+        } catch (const std::exception &) { number = 1.0; }
+        attributeNumbers_.push_back({.name = name, .value = number});
+    }
+}
+
+const std::unordered_map<std::string, std::string> &ShaderPack::shaderAttributes() const {
+    return shaderAttributes_;
 }
 
 const ShaderPackLoader::ShaderPack &ShaderPack::shaderPack() const {

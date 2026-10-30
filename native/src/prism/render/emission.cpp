@@ -358,6 +358,40 @@ void collectEmissiveQuadLights(const Emission &emission,
             });
             continue;
         }
+        // A glow given per vertex that casts light too (powered redstone dust, RedstoneGlow.java): the quad's two
+        // triangles are lights of their own, of the dust's colour times the light Java worked out for the quad from
+        // its power and how much of it the sprite covers. Its texture's emission (it is unlit) plays no part.
+        if ((v0.alphaMode & gpu::Vertex::alphaModeGlowLightFlag) != 0u) {
+            const float cast = v0.postBase.y;
+            if (!(cast > 0.0f)) continue;
+            // postBase.z carries the light's colour as 0xRRGGBB (RedstoneGlow.castColor): dust is drawn with sprites
+            // already coloured per power and no tint, so the vertex colour would cast white light.
+            const uint32_t packed = std::bit_cast<uint32_t>(v0.postBase.z);
+            const glm::vec3 tint = glm::vec3(float((packed >> 16u) & 0xFFu), float((packed >> 8u) & 0xFFu),
+                                             float(packed & 0xFFu)) / 255.0f;
+            const std::array<std::array<const PBRVertex *, 3>, 2> triangles = {{{&v0, &v1, &v2}, {&v0, &v2, &v3}}};
+            uint64_t pieceIndex = 0;
+            for (const auto &triangle : triangles) {
+                const glm::vec3 &p0 = triangle[0]->pos;
+                const glm::vec3 &p1 = triangle[1]->pos;
+                const glm::vec3 &p2 = triangle[2]->pos;
+                const float area = triangleArea(p0, p1, p2);
+                if (area <= 1e-6f) continue;
+                lightInfos.push_back(LightInfo{
+                    .p0 = p0,
+                    .p1 = p1,
+                    .p2 = p2,
+                    .p3 = p2,
+                    .normal = glm::normalize(glm::cross(p1 - p0, p2 - p0)),
+                    .radiance = tint * cast,
+                    .area = area,
+                    .kind = 0.0f,
+                    .textureID = v0.textureID,
+                    .stableID = hashCombine64(quadLightStableId(ownerId, geometryIndex, quadIndex, 0u), pieceIndex++),
+                });
+            }
+            continue;
+        }
         if (v0.useTexture == 0 || v1.useTexture == 0 || v2.useTexture == 0 || v3.useTexture == 0) continue;
         // A light block in a state that gives no light (unlit redstone ore) draws the sprite its lit state glows
         // with; it would otherwise cast light from it everywhere.
