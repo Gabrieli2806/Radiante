@@ -4,6 +4,9 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Fog Veil Dimming (Sky & Water, 25%): the light shafts' hazy air now also dims what is behind it, by a share of
+  the light it scatters, so distant lava, lights and land fade into the fog instead of keeping their full glow under a
+  pale veil. In full rain the air still dims the distance though the sun is gone.
 - Bedrock's volumetric fog (default profile) carries the biome's fog on past its 50-block volume: distant lava,
   lights and hills now fade into the fog with distance instead of keeping their full glow behind a fogged foreground.
 - Pixelated Lighting: puddles and rain rings come out in the texture's pixels, with hard edges. Shader packs can

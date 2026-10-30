@@ -348,6 +348,8 @@
   "options.radiante.tunable.sun_glow.tooltip": "The halo around the sun.",
   "options.radiante.tunable.light_shafts": "Light Shafts",
   "options.radiante.tunable.light_shafts.tooltip": "Beams of light through windows, skylights and leaves. Needs Volumetric Fog.",
+  "options.radiante.tunable.fog_veil_dimming": "Fog Veil Dimming",
+  "options.radiante.tunable.fog_veil_dimming.tooltip": "How much the hazy air near you dims what is behind it. Higher fades distant lava, lights and land into the fog; lower keeps their full glow behind it.",
   "options.radiante.tunable.aerial_perspective": "Aerial Perspective",
   "options.radiante.tunable.aerial_perspective.tooltip": "Haze over the distance: far terrain, Distant Horizons' too, fades into the sky behind it, more in rain and humid biomes. Higher is hazier; 0% turns it off. No effect on performance.",
   "options.radiante.tunable.aerial_perspective_start": "Aerial Perspective Start",

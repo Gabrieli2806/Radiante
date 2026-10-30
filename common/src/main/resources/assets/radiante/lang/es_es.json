@@ -348,6 +348,8 @@
   "options.radiante.tunable.sun_glow.tooltip": "El halo alrededor del sol.",
   "options.radiante.tunable.light_shafts": "Rayos de Luz",
   "options.radiante.tunable.light_shafts.tooltip": "Haces de luz por ventanas, claraboyas y hojas. Requiere Niebla Volumétrica.",
+  "options.radiante.tunable.fog_veil_dimming": "Atenuación del Velo de Niebla",
+  "options.radiante.tunable.fog_veil_dimming.tooltip": "Cuánto oscurece el aire brumoso cercano lo que hay detrás. Más funde en la niebla la lava, las luces y el terreno lejanos; menos mantiene todo su brillo.",
   "options.radiante.tunable.aerial_perspective": "Perspectiva Aérea",
   "options.radiante.tunable.aerial_perspective.tooltip": "Neblina en la distancia: el terreno lejano, también el de Distant Horizons, se funde con el cielo, más con lluvia y en biomas húmedos. Más alto, más neblina; 0% la quita. No afecta al rendimiento.",
   "options.radiante.tunable.aerial_perspective_start": "Inicio de la Perspectiva Aérea",

@@ -348,6 +348,8 @@
   "options.radiante.tunable.sun_glow.tooltip": "太阳周围的光晕。",
   "options.radiante.tunable.light_shafts": "光柱",
   "options.radiante.tunable.light_shafts.tooltip": "穿过窗户、天窗与树叶的光束。需要体积雾。",
+  "options.radiante.tunable.fog_veil_dimming": "雾幕遮暗",
+  "options.radiante.tunable.fog_veil_dimming.tooltip": "近处雾气对其后方景物的遮暗程度。调高会让远处的熔岩、光源和地形融入雾中；调低则保留其完整亮度。",
   "options.radiante.tunable.aerial_perspective": "空气透视",
   "options.radiante.tunable.aerial_perspective.tooltip": "远处的雾霭：远方地形（包括 Distant Horizons 的地形）逐渐融入其后的天空，雨天和潮湿生物群系更明显。越高越朦胧；0% 关闭。不影响性能。",
   "options.radiante.tunable.aerial_perspective_start": "空气透视起始距离",

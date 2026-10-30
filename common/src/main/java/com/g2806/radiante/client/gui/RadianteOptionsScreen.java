@@ -1383,7 +1383,7 @@ public class RadianteOptionsScreen extends Screen {
             brightnessSlider("options.radiante.star_altitude", staged("starAltitude", Options.starAltitude),
                 value -> stage("starAltitude", value)),
             tunable(Tunable.SUN_GLOW, false),
-            tunable(Tunable.LIGHT_SHAFTS, false),
+            tunable(Tunable.LIGHT_SHAFTS, false), tunable(Tunable.FOG_VEIL_DIMMING, false),
             tunable(Tunable.AERIAL_PERSPECTIVE, false), tunable(Tunable.AERIAL_PERSPECTIVE_START, false),
             sunPathOption(),
             OptionInstance.createBoolean("options.radiante.vanilla_celestial_orientation",
@@ -1742,7 +1742,8 @@ public class RadianteOptionsScreen extends Screen {
     /** The options an option switches off or takes the place of, named under its description. */
     private static final java.util.Map<String, List<String>> AFFECTS = java.util.Map.ofEntries(
         java.util.Map.entry(O + "volumetric_fog", List.of(O + "fog_style", O + "volumetric_fog_strength",
-            T + "fog_distance", T + "light_shafts", O + "volumetric_fog_samples")),
+            T + "fog_distance", T + "light_shafts", T + "fog_veil_dimming",
+            O + "volumetric_fog_samples")),
         java.util.Map.entry(O + "fog_style", List.of(O + "volumetric_fog_samples")),
         java.util.Map.entry(O + "motion_blur", List.of(T + "motion_blur_strength")),
         java.util.Map.entry(O + "depth_of_field", List.of(T + "dof_strength", T + "dof_range", O + "dof_auto_focus",
@@ -1819,7 +1820,7 @@ public class RadianteOptionsScreen extends Screen {
         }
         return switch (key.substring(O.length())) {
             // Bedrock's fog volume lights the air's shafts too, but keeps its own fixed reach.
-            case "volumetric_fog_strength", "tunable.light_shafts" -> !fog ? needs(O + "volumetric_fog") : null;
+            case "volumetric_fog_strength", "tunable.light_shafts", "tunable.fog_veil_dimming" -> !fog ? needs(O + "volumetric_fog") : null;
             case "tunable.fog_distance" -> !fog ? needs(O + "volumetric_fog") : bedrock ? bedrockFogReason : null;
             case "volumetric_fog_samples" ->
                 !fog ? needs(O + "volumetric_fog") : bedrock ? bedrockFogReason : grid ? overriddenBy(O + "fog_style") : null;

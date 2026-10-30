@@ -43,6 +43,28 @@ const float FOG_VOLUME_HANDOVER = 4.0;
 // block is sun * (sunAir + sunShaft * shaftFade + (sunFog + sunFog2 * h) * h) + sky * (skyAir + skyFog * h)
 // + block * (blockAir + blockShaft * shaftFade + blockFog * h), with h the biome fog's height profile and shaftFade
 // the light shafts' fade with distance.
+#ifndef VPT_FOG_VEIL_DIMMING
+#    define VPT_FOG_VEIL_DIMMING 0.25
+#endif
+
+// The light shafts' air per block near the camera (it fades out by LIGHT_SHAFT_REACH): what it scatters of the sun,
+// before the phase.
+float fogVeilDensity() {
+#if VPT_BEDROCK_FOG != 0
+    return max(VPT_LIGHT_SHAFTS, 0.0) * max(skyUBO.fogControls.z, 0.0);
+#else
+    return max(VPT_LIGHT_SHAFTS, 0.0);
+#endif
+}
+
+// How much the shafts' air takes from what is behind it, per block (Fog Veil Dimming: a share of what it scatters).
+// Without it the veil only ever added light: distant lava and lights kept their whole glow under a pale lift, and
+// never faded into the air in front of them. All of it would take as much as the air scatters, which dims the
+// daytime distance too far; a quarter fades a glow into the fog and keeps the land's contrast.
+float fogVeilExtinction() {
+    return fogVeilDensity() * clamp(VPT_FOG_VEIL_DIMMING, 0.0, 1.0);
+}
+
 struct FogMedium {
     vec3 sunAir;
     float sunShaft;
@@ -66,7 +88,7 @@ bool fogVolumeHasBiomeFog() {
 bool fogVolumeHasMedium() {
 #if VPT_BEDROCK_FOG != 0
     float shafts = max(VPT_LIGHT_SHAFTS, 0.0) * max(skyUBO.fogControls.z, 0.0);
-    return (shafts > 0.0 && skyUBO.rainGradient < 0.98) || fogVolumeHasBiomeFog();
+    return (shafts > 0.0 && (skyUBO.rainGradient < 0.98 || fogVeilExtinction() > 0.0)) || fogVolumeHasBiomeFog();
 #else
     return true;
 #endif
@@ -230,13 +252,15 @@ void froxelFog(vec3 origin, vec3 rayDir, ivec2 pixel, float endDistance, float b
         vec3 source = fogMediumSource(medium, position, distance, sunSky, block);
         float worldY = position.y + float(worldUBO.cameraPos.y);
 #if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0 && VPT_BEDROCK_FOG != 0
+        float veil = fogVeilExtinction() * (1.0 - smoothstep(LIGHT_SHAFT_REACH * 0.6, LIGHT_SHAFT_REACH, distance));
         inscatter += rgbTransmittance * source * stepLength;
-        rgbTransmittance *= exp(-froxelBedrockExtinctionRGB(worldY) * stepLength);
+        rgbTransmittance *= exp(-(froxelBedrockExtinctionRGB(worldY) + veil) * stepLength);
         if (max(rgbTransmittance.r, max(rgbTransmittance.g, rgbTransmittance.b)) < FOG_VOLUME_MIN_TRANSMITTANCE) {
             break;
         }
 #else
-        float extinction = froxelExtinction(worldY);
+        float extinction = froxelExtinction(worldY) +
+                           fogVeilExtinction() * (1.0 - smoothstep(LIGHT_SHAFT_REACH * 0.6, LIGHT_SHAFT_REACH, distance));
         float stepTransmittance = exp(-extinction * stepLength);
         inscatter += t * source * (1.0 - stepTransmittance) / extinction;
         t *= stepTransmittance;

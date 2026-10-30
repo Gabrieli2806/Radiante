@@ -93,6 +93,10 @@ enum Tunable {
     SUN_GLOW(null, "render_pipeline.module.ray_tracing.attribute.sun_glow", 0.0008, 0, 300, 100, Format.PERCENT),
     LIGHT_SHAFTS(null, "render_pipeline.module.ray_tracing.attribute.light_shafts", 0.00015, 0, 400, 100,
         Format.PERCENT),
+    // How much the light shafts' air dims what is behind it, as a share of the light it scatters: distant lava and
+    // lights fade into the fog instead of keeping their whole glow under a pale veil.
+    FOG_VEIL_DIMMING(null, "render_pipeline.module.ray_tracing.attribute.fog_veil_dimming", 0.01, 0, 100, 25,
+        Format.PERCENT),
     // The air's own haze over the distance: far terrain (Distant Horizons' too) fading into the sky behind it.
     AERIAL_PERSPECTIVE(null, "render_pipeline.module.ray_tracing.attribute.aerial_perspective", 0.01, 0, 400, 100,
         Format.PERCENT),

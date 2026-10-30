@@ -450,6 +450,13 @@
             "define": "VPT_LIGHT_SHAFTS"
         },
         {
+            "name": "render_pipeline.module.ray_tracing.attribute.fog_veil_dimming",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.25",
+            "runtime": true,
+            "define": "VPT_FOG_VEIL_DIMMING"
+        },
+        {
             "name": "render_pipeline.module.ray_tracing.attribute.water_density_from_above",
             "type": "float_range:0.0-4.0",
             "default_value": "0.4",
