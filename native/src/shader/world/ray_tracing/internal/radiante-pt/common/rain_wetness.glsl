@@ -115,8 +115,8 @@ const float PUDDLE_WET_START = 0.15;
 const float PUDDLE_WET_FULL = 0.95;
 // On grass and earth (a surface tinted by the biome): how much less of it holds standing water, and how rough that
 // water is.
-const float PUDDLE_POROUS_BIAS = 0.3;
-const float PUDDLE_POROUS_ROUGHNESS = 0.07;
+const float PUDDLE_POROUS_BIAS = 0.45;
+const float PUDDLE_POROUS_ROUGHNESS = 0.18;
 const float PUDDLE_DRY_SECONDS = 180.0;
 // Ripples: rings per block across, how long one ring lives in seconds, and how steep its wave is.
 const float RIPPLE_CELLS = 2.5;
