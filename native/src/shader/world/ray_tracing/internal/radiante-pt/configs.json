@@ -88,6 +88,16 @@
             "name": "raw_specular",
             "define": "RADIANTE_DEBUG_VIEW",
             "value": 16
+        },
+        {
+            "name": "fog_inscatter",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 17
+        },
+        {
+            "name": "fog_transmittance",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 18
         }
     ],
     "attributes": [
@@ -1765,7 +1775,9 @@
                     "out:first_hit_base_emission",
                     "out:first_hit_diffuse_direct_light",
                     "out:first_hit_diffuse_indirect_light",
-                    "out:first_hit_specular"
+                    "out:first_hit_specular",
+                    "out:fog_image",
+                    "out:fog_transmission"
                 ]
             },
             "outputs": {

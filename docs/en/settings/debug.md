@@ -29,6 +29,7 @@ there while **Advanced** is on.
 | Direct Light, Indirect Light | The noisy light on diffuse surfaces before the denoiser, compressed to the screen's range: straight from the lights, or after bouncing. A surface whose path took the mirror lobe this frame reads black, so expect noise. Rain hides the sun, so Direct Light goes dark in it. |
 | SHaRC Contribution | The light each pixel's paths took from the SHaRC cache, compressed to the screen's range, before exposure, so it reads dim. Black with SHaRC off, and nearly black outdoors on open ground, where bounces leave for the sky and never ask the cache; indoors most pixels show it. |
 | Raw Diffuse, Raw Specular | The noisy signals of the first surface before the denoiser, compressed to the screen's range. With NRD they are the signals NRD reads; with DLSS Ray Reconstruction it reads the whole picture instead, and these show the same light split apart. |
+| Fog Light, Fog Transmittance | What the fog does on its own: the light it adds (compressed to the screen's range), and how much of what is behind it gets through, white for all, black for none. |
 
 A shader pack's own views are listed after these, under their own names. The view is not saved, so
 it is off again the next time you open the game.
