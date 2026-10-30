@@ -1630,6 +1630,10 @@ public class RadianteOptionsScreen extends Screen {
                     net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
                     Component.translatable("options.radiante.debug_report.done"), null);
             }),
+            actionRow("options.radiante.ab_capture", () -> {
+                DebugReport.captureSoon(this.minecraft);
+                onClose();
+            }),
             actionRow("options.radiante.open_logs", () -> com.mojang.blaze3d.Blaze3D.openPath(
                 this.minecraft.gameDirectory.toPath().resolve("logs"))),
             actionRow("options.radiante.open_shader_packs", () -> {

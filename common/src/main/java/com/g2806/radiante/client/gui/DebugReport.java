@@ -57,6 +57,36 @@ final class DebugReport {
         return text.toString();
     }
 
+    /**
+     * The A/B capture: a screenshot and, under the same name, this report, so two settings can be compared afterwards
+     * with what they cost. Taken once the settings screen has been gone a moment, so it shows the world.
+     */
+    static void captureSoon(Minecraft minecraft) {
+        long at = System.nanoTime() + 1_000_000_000L;
+        Runnable[] step = new Runnable[1];
+        step[0] = () -> {
+            if (System.nanoTime() < at || minecraft.gui.screen() != null) {
+                minecraft.schedule(step[0]);
+                return;
+            }
+            String name = "radiante_ab_" + java.time.LocalDateTime.now().format(
+                java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd_HH.mm.ss")) + ".png";
+            String report = build(minecraft);
+            net.minecraft.client.Screenshot.grab(minecraft.gameDirectory, name, minecraft.gameRenderer.mainRenderTarget(),
+                1, message -> { });
+            java.nio.file.Path text = minecraft.gameDirectory.toPath().resolve("screenshots")
+                .resolve(name.replace(".png", ".txt"));
+            try {
+                java.nio.file.Files.createDirectories(text.getParent());
+                java.nio.file.Files.writeString(text, report);
+                RadianteClient.LOGGER.info("[debug] A/B capture {}", name);
+            } catch (java.io.IOException e) {
+                RadianteClient.LOGGER.warn("The A/B capture's report could not be written", e);
+            }
+        };
+        minecraft.schedule(step[0]);
+    }
+
     /** To the clipboard and to the game log, so it is there too if the game is gone by the time it is asked for. */
     static void copy(Minecraft minecraft) {
         String report = build(minecraft);

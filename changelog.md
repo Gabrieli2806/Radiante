@@ -4,6 +4,7 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- A/B Capture in the Debug section: a screenshot with the settings and GPU timings saved beside it.
 - F3 now also shows TLAS instances, entity BLAS per frame, sections pending and the renderer's VRAM use.
 - Debug views `fog_inscatter` and `fog_transmittance`: the fog on its own.
 - Debug views `raw_diffuse` and `raw_specular`: the noisy signals before the denoiser.

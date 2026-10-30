@@ -13,6 +13,7 @@ mientras **Avanzado** está activado.
 | **Tiempos de GPU en F3** | Activado / Desactivado | Activado | Muestra en la pantalla F3 el tiempo de cada pase de render y la escena: instancias TLAS, BLAS de entidades construidos por fotograma, secciones por construir y la memoria de vídeo del asignador propio del renderizador (la de Minecraft no cuenta). Ambos pueden ocultarse por separado en la pantalla de opciones de depuración (`F3` + `F6`). |
 | **Registro de Depuración** | Activado / Desactivado | Activado | Escribe en `latest.log` el detalle de Radiante y del renderizador nativo (líneas `[native] ...`). Activado por defecto para que un solo log baste al reportar un problema. Los errores del renderizador llegan al log aunque lo apagues. |
 | **Resumen para Reportes** | Copiar | | Copia las versiones, la GPU, el pipeline en uso y todos los ajustes del pipeline al portapapeles, y los escribe en el registro del juego. Pégalo en tu reporte. |
+| **Captura A/B** | Capturar | | Cierra la pantalla (aplicando lo que cambiaste), y un segundo después guarda `screenshots/radiante_ab_<hora>.png` con un `.txt` del mismo nombre: el Resumen para Reportes, tiempos de GPU incluidos. Si el cambio recompila los shaders, espera a que termine y haz otra captura. |
 | **Registros del Juego** | Abrir Carpeta | | Abre la carpeta con `latest.log`. |
 | **Paquetes de Shaders** | Abrir Carpeta | | Abre la carpeta de la que se cargan los paquetes de shaders. |
 

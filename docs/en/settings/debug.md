@@ -13,6 +13,7 @@ there while **Advanced** is on.
 | **GPU Timings in F3** | On / Off | On | Lists on the F3 screen the time of each render pass, and the scene: TLAS instances, entity BLAS built per frame, sections waiting to build, and the device memory of the renderer's own allocator (Minecraft's is not counted). Both can also be hidden on their own in the debug options screen (`F3` + `F6`). |
 | **Debug Logging** | On / Off | On | Writes Radiante's and the native renderer's detail to `latest.log` (`[native] ...` lines). On by default so one log is enough to report a problem. Renderer errors reach the log even with it off. |
 | **Bug Report Summary** | Copy | | Copies the versions, the GPU, the running pipeline and every pipeline setting to the clipboard, and writes them to the game log. Paste it into your report. |
+| **A/B Capture** | Capture | | Closes the screen (applying what you changed), and a second later saves `screenshots/radiante_ab_<time>.png` with a `.txt` of the same name: the Bug Report Summary, GPU timings included. If the change rebuilds the shaders, wait for the rebuild with a second capture. |
 | **Game Logs** | Open Folder | | Opens the folder with `latest.log`. |
 | **Shader Packs** | Open Folder | | Opens the folder shader packs are loaded from. |
 
