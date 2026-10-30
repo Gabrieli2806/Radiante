@@ -29,8 +29,9 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 
 ## Building
 
-- Java: `./gradlew build` (JDK 25). `./gradlew :fabric:runClient` starts a dev client in `run/`; NeoForge and Forge
-  run in `run-neoforge/` and `run-forge/`.
+- Java: `./gradlew build` (JDK 25). `./gradlew :fabric:runClient` starts a dev client in `run-fabric/`; NeoForge and
+  Forge run in `run-neoforge/` and `run-forge/`. Worlds, resource and shader packs, settings and servers live once in
+  `run-shared/` (linked or copied into each by `shareRun` in the root `build.gradle`); mods and configs stay per loader.
 - Native: `native/build-windows.bat` (Linux: `native/build-linux.sh`). It installs `prismrt.dll` and the shader pack
   zip into `common/src/main/resources/radiante-native/`, which is gitignored.
 - **Any change under `native/src/shader` or `native/src/prism` needs the native build**, and so does every branch

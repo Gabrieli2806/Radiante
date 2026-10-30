@@ -95,7 +95,5 @@ jar {
 	}
 }
 
-// The same worlds as the Fabric client (see shareSaves in the root build).
-tasks.matching { it.name == 'runClient' }.configureEach {
-	doFirst { rootProject.shareSaves(rootProject.file('run-forge')) }
-}
+// Worlds, packs, settings and servers shared with the other loaders (see shareRun in the root build).
+rootProject.shareRun(project, 'run-forge')

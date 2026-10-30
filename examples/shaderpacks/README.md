@@ -151,7 +151,7 @@ Bedrock fog, water and light block glow used without a Bedrock pack; Radiante PT
 ```
 
 writes `build/shaderpacks/<pack>.zip`. Copy it to `radiante/shaderpacks/` in the game folder (in a dev run:
-`run/radiante/shaderpacks/`), then Radiante settings → **Shader Packs** → the pack → **Use**.
+`run-shared/radiante/shaderpacks/`), then Radiante settings → **Shader Packs** → the pack → **Use**.
 
 A pack that extends radiante-pt is zipped as it is. A folder without `extends` is still staged on Radiante PT at
 build time, the way the native build stages it (`native/src/shader/CMakeLists.txt`: the Radiante PT folder, then

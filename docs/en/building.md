@@ -44,7 +44,9 @@ map the worktree to a short path (`subst W: <worktree>`) and set `RADIANTE_BUILD
 folder of its own.
 
 To test: `./gradlew.bat :fabric:runClient` (or `:neoforge:runClient`, `:forge:runClient`). Each
-uses its own folder: `run/` (Fabric), `run-neoforge/` and `run-forge/`, so they can run at once.
+uses its own folder: `run-fabric/`, `run-neoforge/` and `run-forge/`, so they can run at once. They share
+`run-shared/`: worlds, resource packs, shader packs, Radiante's settings, `options.txt` and the server list (mods and
+mod configs stay per loader).
 
 ## Linux
 

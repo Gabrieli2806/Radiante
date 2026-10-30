@@ -141,33 +141,89 @@ file('examples/shaderpacks').listFiles()?.findAll { it.isDirectory() && new File
 	shaderPackExamples.configure { dependsOn zip }
 }
 
-// For the Forge and NeoForge dev clients: their game folder's saves is a link to Fabric's run/saves, so every loader
-// opens the same worlds while each keeps its own options, renderer and log. Made only where saves is missing or empty;
-// a folder with worlds in it is left alone. Minecraft's session lock keeps two clients out of the same world.
-ext.shareSaves = { File gameDir ->
-	File shared = file('run/saves')
-	File saves = new File(gameDir, 'saves')
-	shared.mkdirs()
-	gameDir.mkdirs()
-	if (java.nio.file.Files.isSymbolicLink(saves.toPath()) || isJunction(saves)) return
-	if (saves.isDirectory()) {
-		if (saves.list().length > 0) {
-			logger.warn("${saves} has worlds of its own, so it is not linked to ${shared}")
-			return
-		}
-		saves.delete()
-	}
+// The dev clients' game folders (run-fabric, run-forge, run-neoforge) share everything but their mods, configs and
+// the renderer Radiante unpacks: two clients on one folder fight over that renderer, the log and the world locks, so
+// each keeps its own folder, and what is worth sharing lives once in run-shared.
+// - Folders are linked: each loader's folder holds a junction (a symbolic link off Windows) to run-shared's.
+// - Files are copied, as the game replaces them whole when it saves them, which would break a link: into the loader's
+//   folder before the client starts, when run-shared's copy is newer, and back after it closes.
+ext.sharedRunFolders = ['saves', 'resourcepacks', 'shaderpacks', 'screenshots', 'replay_recordings',
+						'radiante/shaderpacks', 'radiante/bedrock_packs', 'radiante/addons']
+ext.sharedRunFiles = ['options.txt', 'servers.dat', 'hotbar.nbt', 'command_history.txt',
+					  'radiante/options.properties', 'radiante/pipeline.yaml', 'radiante/presets.json']
+// The settings of the built-in shader packs, next to the renderer's own shaders rather than in radiante/shaderpacks.
+ext.sharedRunPackSettings = 'radiante/shaders/world/ray_tracing'
+
+// A Windows junction reads as a plain folder to isSymbolicLink; its real path lies elsewhere.
+ext.isLinkedFolder = { File f ->
+	java.nio.file.Files.isSymbolicLink(f.toPath())
+		|| (f.exists() && f.toPath().toRealPath() != f.toPath().toAbsolutePath().normalize())
+}
+
+ext.linkFolder = { File link, File target ->
 	if (org.gradle.internal.os.OperatingSystem.current().isWindows()) {
 		// A junction needs no administrator rights or Developer Mode, unlike a symbolic link.
-		providers.exec { commandLine 'cmd', '/c', 'mklink', '/J', saves.absolutePath, shared.absolutePath }.result.get()
+		providers.exec { commandLine 'cmd', '/c', 'mklink', '/J', link.absolutePath, target.absolutePath }.result.get()
 	} else {
-		java.nio.file.Files.createSymbolicLink(saves.toPath(), shared.toPath())
+		java.nio.file.Files.createSymbolicLink(link.toPath(), target.toPath())
 	}
 }
 
-// A Windows junction reads as a plain folder to isSymbolicLink; its real path lies elsewhere.
-ext.isJunction = { File f ->
-	f.exists() && f.toPath().toRealPath() != f.toPath().toAbsolutePath().normalize()
+ext.copyIfNewer = { File from, File to ->
+	if (from.isFile() && (!to.exists() || from.lastModified() > to.lastModified())) {
+		to.parentFile.mkdirs()
+		java.nio.file.Files.copy(from.toPath(), to.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+			java.nio.file.StandardCopyOption.COPY_ATTRIBUTES)
+	}
+}
+
+// Before a dev client starts: links its folder's shared folders and brings the shared files in.
+ext.shareRunIn = { File gameDir ->
+	File shared = file('run-shared')
+	for (String path : sharedRunFolders) {
+		File target = new File(shared, path)
+		File link = new File(gameDir, path)
+		target.mkdirs()
+		link.parentFile.mkdirs()
+		if (isLinkedFolder(link)) continue
+		if (link.isDirectory()) {
+			if (link.list().length > 0) {
+				logger.warn("${link} has files of its own, so it is not linked to ${target}")
+				continue
+			}
+			link.delete()
+		}
+		linkFolder(link, target)
+	}
+	for (String path : sharedRunFiles) {
+		copyIfNewer(new File(shared, path), new File(gameDir, path))
+	}
+	new File(shared, sharedRunPackSettings).listFiles({ File f -> f.name.endsWith('.txt') } as FileFilter)?.each {
+		copyIfNewer(it, new File(gameDir, "${sharedRunPackSettings}/${it.name}"))
+	}
+}
+
+// After a dev client closes (or fails): its shared files go back to run-shared.
+ext.shareRunOut = { File gameDir ->
+	File shared = file('run-shared')
+	for (String path : sharedRunFiles) {
+		copyIfNewer(new File(gameDir, path), new File(shared, path))
+	}
+	new File(gameDir, sharedRunPackSettings).listFiles({ File f -> f.name.endsWith('.txt') } as FileFilter)?.each {
+		copyIfNewer(it, new File(shared, "${sharedRunPackSettings}/${it.name}"))
+	}
+}
+
+// Wires a loader's runClient to run-shared; the copy back is its own task so a crashed client still saves.
+ext.shareRun = { Project project, String folder ->
+	File gameDir = file(folder)
+	TaskProvider<Task> back = project.tasks.register('shareRunBack') {
+		doLast { rootProject.shareRunOut(gameDir) }
+	}
+	project.tasks.matching { it.name == 'runClient' }.configureEach {
+		doFirst { rootProject.shareRunIn(gameDir) }
+		finalizedBy back
+	}
 }
 
 // For the loader modules: the jar takes the compressed natives instead of the plain ones.

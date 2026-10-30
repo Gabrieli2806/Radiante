@@ -44,8 +44,9 @@ para el compilador de shaders de FidelityFX: asigna el worktree a una ruta corta
 (`subst W: <worktree>`) y pon en `RADIANTE_BUILD_DIR` una carpeta de compilación propia.
 
 Para probar: `./gradlew.bat :fabric:runClient` (o `:neoforge:runClient`, `:forge:runClient`). Cada
-uno usa su propia carpeta: `run/` (Fabric), `run-neoforge/` y `run-forge/`, así que pueden correr a
-la vez.
+uno usa su propia carpeta: `run-fabric/`, `run-neoforge/` y `run-forge/`, así que pueden correr a
+la vez. Comparten `run-shared/`: mundos, resource packs, shader packs, los ajustes de Radiante, `options.txt` y la
+lista de servidores (los mods y sus configs son de cada loader).
 
 ## Linux
 
