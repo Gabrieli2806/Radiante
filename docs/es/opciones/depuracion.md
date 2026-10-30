@@ -20,7 +20,8 @@ mientras **Avanzado** está activado.
 
 | Vista | Muestra |
 |---|---|
-| Albedo, Normales, Rugosidad, Metálico, Emisión, Profundidad, Vectores de Movimiento | La imagen del fotograma con ese nombre. |
+| Albedo, Normales, Rugosidad, Metálico, Emisión, Profundidad | La imagen del fotograma con ese nombre. |
+| Vectores de Movimiento | Hacia dónde se movió cada píxel desde el último fotograma: gris es quieto, más rojo es a la derecha, menos rojo a la izquierda, más verde hacia abajo, menos verde hacia arriba; con 32 píxeles llega al color pleno. |
 | Tipos de Superficie | Un color por tipo de superficie que ve la cámara: agua, lava, vidrio, hojas, plantas... |
 | Mapa de Calor Any-hit | Cuántas veces se ejecutó un shader any-hit por píxel en el rayo de cámara: azul es 1, pasando por cian, verde y amarillo hasta rojo con 16 o más; negro es ninguna. Las zonas calientes cuestan tiempo de fotograma: superficies translúcidas apiladas o caras ocultas que cruza el rayo, como el terreno de Distant Horizons bajo los chunks reales. En GPUs con micromapas de opacidad, la mayoría de las hojas y el terreno se resuelven sin shader any-hit, así que se ven negros. |
 | Mapa de Calor de Rebotes | Cuántos rayos trazó cada píxel tras el rayo de cámara, en la misma escala. Muestra dónde los caminos se alargan, por ejemplo entre espejos. |

@@ -20,7 +20,8 @@ there while **Advanced** is on.
 
 | View | Shows |
 |---|---|
-| Albedo, Normals, Roughness, Metallic, Emission, Depth, Motion Vectors | The frame's image of that name. |
+| Albedo, Normals, Roughness, Metallic, Emission, Depth | The frame's image of that name. |
+| Motion Vectors | Where each pixel moved since the last frame: grey is still, more red is rightwards, less red leftwards, more green downwards, less green upwards; 32 pixels reach full colour. |
 | Surface Kinds | One colour per kind of surface the camera sees: water, lava, glass, leaves, plants... |
 | Any-hit Heat Map | How many times an any-hit shader ran per pixel on the camera ray: blue is 1, through cyan, green and yellow to red at 16 or more; black is none. Hot areas cost frame time: stacked translucent surfaces, or hidden faces the ray crosses, such as Distant Horizons terrain under the real chunks. On GPUs with opacity micromaps most leaves and terrain are settled without an any-hit shader, so they read black. |
 | Bounces Heat Map | How many rays each pixel traced after the camera ray, on the same scale. Shows where paths run long, such as between mirrors. |
