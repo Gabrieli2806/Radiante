@@ -416,6 +416,11 @@ public final class DevAutomation {
         } else if (action.startsWith("cmd=/")) {
             minecraft.player.connection.sendCommand(action.substring(5));
             RadianteClient.LOGGER.info("[dev] command {}", action.substring(4));
+        } else if (action.startsWith("window=")) {
+            // window=WxH: resizes the window, for what a resize does to the renderer's images.
+            String[] size = action.substring(7).split("x");
+            minecraft.getWindow().setWindowed(Integer.parseInt(size[0]), Integer.parseInt(size[1]));
+            RadianteClient.LOGGER.info("[dev] window {}", action.substring(7));
         } else if (action.startsWith("ccmd=/")) {
             // A client command (/radiante ...), which cmd= sends past to the server; on Fabric, by its dispatcher.
             try {
