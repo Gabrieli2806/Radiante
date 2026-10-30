@@ -101,7 +101,7 @@ final class AddonIcons {
     }
 
     /** The image at most {@link #LARGEST} pixels on its long side, each pixel the average of those it covers. */
-    private static NativeImage shrink(NativeImage image) {
+    static NativeImage shrink(NativeImage image) {
         int width = image.getWidth();
         int height = image.getHeight();
         int longest = Math.max(width, height);

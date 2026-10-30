@@ -20,6 +20,10 @@ public class VulkanBackendMixin {
             target = "Lorg/lwjgl/vulkan/VK12;vkCreateDevice(Lorg/lwjgl/vulkan/VkPhysicalDevice;Lorg/lwjgl/vulkan/VkDeviceCreateInfo;Lorg/lwjgl/vulkan/VkAllocationCallbacks;Lorg/lwjgl/PointerBuffer;)I"))
     private static int radiante$createMergedDevice(VkPhysicalDevice physicalDevice, VkDeviceCreateInfo createInfo,
         VkAllocationCallbacks allocator, PointerBuffer device) {
+        // Without the native renderer the device is created as Minecraft asked, with no ray tracing extensions.
+        if (!com.g2806.radiante.client.RadianteClient.isNativeAvailable()) {
+            return org.lwjgl.vulkan.VK12.vkCreateDevice(physicalDevice, createInfo, allocator, device);
+        }
         return RendererProxy.createDevice(physicalDevice.address(), createInfo.address(),
             allocator == null ? 0L : allocator.address(), device.address());
     }
@@ -30,7 +34,9 @@ public class VulkanBackendMixin {
      */
     @Inject(method = "isDeviceSuitable", at = @At("RETURN"), cancellable = true)
     private static void radiante$requireRayTracing(VkPhysicalDevice device, CallbackInfoReturnable<Boolean> cir) {
-        if (cir.getReturnValueZ() && !RendererProxy.isRayTracingCapable(device.address())) {
+        // Nothing to require when the renderer cannot run anyway: any device Minecraft likes will do.
+        if (cir.getReturnValueZ() && com.g2806.radiante.client.RadianteClient.isNativeAvailable()
+            && !RendererProxy.isRayTracingCapable(device.address())) {
             radiante$rejectedForRayTracing = true;
             cir.setReturnValue(false);
         }

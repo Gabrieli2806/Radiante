@@ -1,0 +1,25 @@
+# Inkwell: its own settings, groups, descriptions and presets; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.inkwell_bands=光照色阶
+render_pipeline.module.ray_tracing.attribute.inkwell_cel=卡通着色
+render_pipeline.module.ray_tracing.attribute.inkwell_poster_levels=海报色彩
+render_pipeline.module.ray_tracing.attribute.inkwell_outline=墨线描边
+render_pipeline.module.ray_tracing.attribute.inkwell_flat_sky=平涂天空
+render_pipeline.module.ray_tracing.attribute.inkwell_paper=纸张质感
+
+inkwell.group.light=光照
+inkwell.group.colour=色彩
+inkwell.group.ink=墨线
+
+inkwell.desc.bands=阳光分成这么多级平涂色阶，而不是平滑过渡。越少越鲜明。
+inkwell.desc.cel=色阶光照的使用程度；0 为 Radiante PT 自己的着色。无需重新编译即可生效。
+inkwell.desc.poster_levels=每个纹理颜色在每个通道上只保留几级，像漫画的平涂油墨。0 保持原色。
+inkwell.desc.flat_sky=双色天空：地平线为奶油色，上方为蓝色，亮度保持天空本身。
+inkwell.desc.paper=在画面上叠加温暖的纸张色调和细微颗粒。0 关闭。
+inkwell.desc.outline=轮廓和方块边缘处墨线的粗细。0 关闭。
+
+inkwell.preset.comic=漫画
+inkwell.preset.comic.desc=光影包本身的外观。
+inkwell.preset.manga=日漫
+inkwell.preset.manga.desc=两级光照、更少的油墨、更粗的线条和更多纸张质感。
+inkwell.preset.storybook=绘本
+inkwell.preset.storybook.desc=更柔和的色阶，保留纹理和天空本来的颜色，细线条。

@@ -1,0 +1,46 @@
+# Aquarela: its own settings, groups, descriptions and presets; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.aquarela_brush=Brush Size
+render_pipeline.module.ray_tracing.attribute.aquarela_wobble=Hand Wobble
+render_pipeline.module.ray_tracing.attribute.aquarela_edges=Edge Darkening
+render_pipeline.module.ray_tracing.attribute.aquarela_bleed=Colour Bleeding
+render_pipeline.module.ray_tracing.attribute.aquarela_paper=Paper Texture
+render_pipeline.module.ray_tracing.attribute.aquarela_granulation=Granulation
+render_pipeline.module.ray_tracing.attribute.aquarela_border=Paper Border
+render_pipeline.module.ray_tracing.attribute.aquarela_grain_size=Grain Size
+render_pipeline.module.ray_tracing.attribute.aquarela_pigment=Pigment Density
+render_pipeline.module.ray_tracing.attribute.aquarela_saturation=Saturation
+render_pipeline.module.ray_tracing.attribute.aquarela_lift=Lifted Shadows
+render_pipeline.module.ray_tracing.attribute.aquarela_warmth=Paper Warmth
+render_pipeline.module.ray_tracing.attribute.aquarela_sky=Sky Washes
+render_pipeline.module.ray_tracing.attribute.aquarela_soft_light=Soft Light
+render_pipeline.module.ray_tracing.attribute.aquarela_cool_shadows=Cool Shadows
+render_pipeline.module.ray_tracing.attribute.aquarela_glow=Glow
+
+aquarela.group.paint=Paint
+aquarela.group.paper=Paper
+aquarela.group.colour=Colour
+aquarela.group.light=Light
+
+aquarela.desc.brush=Melts the picture into flat brush strokes that follow the shapes. The radius in pixels: higher gives broader strokes and costs more; 0 turns it off.
+aquarela.desc.wobble=Edges waver a little, as a hand draws them. Higher wavers more; 0 keeps them straight.
+aquarela.desc.edges=Darker rims where the paint pooled at the edge of a wash. Higher is darker; 0 turns them off.
+aquarela.desc.bleed=In patches, colour creeps across edges as on wet paper. Higher spreads further; 0 keeps every edge dry.
+aquarela.desc.paper=The cold-press paper's grain and the uneven way it takes the paint. Higher shows more paper; 0 is smooth.
+aquarela.desc.granulation=Pigment settling into the paper's grain in darker washes. Higher is more speckled; 0 turns it off.
+aquarela.desc.border=A margin of bare paper round the picture, with a ragged edge. Higher is wider; 0 paints up to the frame.
+aquarela.desc.grain_size=Size of the paper's grain. Higher is coarser.
+aquarela.desc.pigment=How dense the paint is. Lower gives thin, airy washes; higher gives denser, darker ones.
+aquarela.desc.saturation=How much colour the paint keeps. Lower is more pastel; 1 keeps Radiante's colours.
+aquarela.desc.lift=The darkest shadows become a cool grey wash instead of black. Higher is lighter; 0 keeps black.
+aquarela.desc.warmth=White is the paper's colour. Higher is a warmer cream; 0 is pure white.
+aquarela.desc.sky=The sky you see painted in soft washes of two blues; the light it casts stays Radiante's. 0 turns it off.
+aquarela.desc.soft_light=Sunlight wraps further round matte surfaces, for softer, flatter light. 0 is Radiante PT's light.
+aquarela.desc.cool_shadows=Shadows painted in cool blues and lights a touch warmer. 0 turns it off.
+aquarela.desc.glow=A soft glow round bright things, from Radiante's bloom. Higher glows more; 0 turns it off.
+
+aquarela.preset.aquarela=Aquarela
+aquarela.preset.aquarela.desc=The pack's own look: airy washes on warm paper.
+aquarela.preset.sketchbook=Sketchbook
+aquarela.preset.sketchbook.desc=Thinner, paler washes, more paper and a wider bare margin.
+aquarela.preset.gouache=Gouache
+aquarela.preset.gouache.desc=Dense, saturated paint with crisp edges and little paper showing.

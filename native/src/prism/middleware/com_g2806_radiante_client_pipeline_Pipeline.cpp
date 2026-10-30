@@ -5,8 +5,10 @@
 #include "prism/render/modules/world/dlss/dlss_module.hpp"
 #include "prism/render/modules/world/ray_tracing/ray_tracing_module.hpp"
 #include "prism/render/modules/world/shader_pack/shader_pack.hpp"
+#include "prism/render/modules/world/shader_pack/shader_pack_check.hpp"
 #include "prism/render/pipeline.hpp"
 #include "prism/render/render_framework.hpp"
+#include "prism/render/scene_stats.hpp"
 
 #include <cstdint>
 #include <mutex>
@@ -166,6 +168,53 @@ JNIEXPORT void JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_prewarmS
 JNIEXPORT jstring JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_gpuStats(JNIEnv *env, jclass) {
     const std::string summary = GpuProfiler::summary();
     return env->NewStringUTF(summary.c_str());
+}
+
+// What the F3 screen shows of the scene: TLAS instances, entity BLAS built last frame, and the renderer's own device
+// memory in MB, used and the driver's budget for it. The renderer's allocator only: Minecraft has its own.
+JNIEXPORT jlongArray JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_sceneStats(JNIEnv *env, jclass) {
+    jlong values[4] = {static_cast<jlong>(SceneStats::tlasInstances.load(std::memory_order_relaxed)),
+                       static_cast<jlong>(SceneStats::entityBlasLastFrame.load(std::memory_order_relaxed)), 0, 0};
+    if (auto framework = jni::framework(); framework != nullptr && framework->vma() != nullptr) {
+        VmaAllocator allocator = framework->vma()->allocator();
+        const VkPhysicalDeviceMemoryProperties *memory = nullptr;
+        vmaGetMemoryProperties(allocator, &memory);
+        VmaBudget budgets[VK_MAX_MEMORY_HEAPS]{};
+        vmaGetHeapBudgets(allocator, budgets);
+        for (uint32_t heap = 0; heap < memory->memoryHeapCount; heap++) {
+            if ((memory->memoryHeaps[heap].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) == 0) continue;
+            values[2] += static_cast<jlong>(budgets[heap].statistics.blockBytes >> 20);
+            values[3] += static_cast<jlong>(budgets[heap].budget >> 20);
+        }
+    }
+    jlongArray out = env->NewLongArray(4);
+    if (out != nullptr) env->SetLongArrayRegion(out, 0, 4, values);
+    return out;
+}
+
+// Loads and compiles a shader pack without using it (shader_pack::checkPack): /radiante pack validate and the hot
+// reload of folder packs. Java calls it on a thread of its own; it may take seconds. JSON for ShaderPackValidation.
+JNIEXPORT jstring JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_validateShaderPackNative(
+    JNIEnv *env, jclass, jstring packPath, jobjectArray attributes, jstring language) {
+    const std::string json = jni::guard("[Radiante] validateShaderPack", std::string(), [&] {
+        std::vector<std::string> values = jni::utf8Array(env, attributes);
+        if (auto path = jni::utf8(env, packPath)) {
+            values.push_back("render_pipeline.module.ray_tracing.attribute.shader_pack_path");
+            values.push_back(*path);
+        }
+        const shader_pack::PackCheck check =
+            shader_pack::checkPack(jni::framework(), values, jni::utf8(env, language).value_or("en_us"));
+        nlohmann::json result = {
+            {"ok", check.ok},
+            {"error", check.error},
+            {"errors", check.errors},
+            {"shaders", check.shaders},
+            {"compiled", check.compiled},
+        };
+        // Compiler messages may quote bytes of the source that are not UTF-8.
+        return result.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
+    });
+    return env->NewStringUTF(json.c_str());
 }
 
 } // extern "C"

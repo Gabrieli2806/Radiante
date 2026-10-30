@@ -440,9 +440,26 @@ public final class BiomeAmbiance {
         return clarity;
     }
 
-    /** The haze is at full density below x and gone from y up, in world heights. */
+    /**
+     * The haze is at full density below x and gone from y up, in world heights. z is how open the camera is to the sky
+     * (its sky light, 0 to 1, eased), which the air's own haze (aerial perspective) follows whether or not Biome
+     * Ambiance is on: it is lit by the sky, and has no business filling a cave.
+     */
     public static Vector4f heights() {
-        return new Vector4f(currentHeights);
+        return new Vector4f(currentHeights.x, currentHeights.y, skyOpen, 0.0f);
+    }
+
+    /** The camera's sky light, 0 to 1, eased like the haze; 0 outside the overworld. */
+    private static float skyOpen;
+    private static boolean hasSkyOpen;
+
+    private static void updateSkyOpen(ClientLevel level, Vec3 cameraPos, float blend, int skyType) {
+        float target = 0.0f;
+        if (level != null && skyType == OVERWORLD_SKY) {
+            target = level.getBrightness(LightLayer.SKY, BlockPos.containing(cameraPos)) / 15.0f;
+        }
+        skyOpen = hasSkyOpen ? skyOpen + (target - skyOpen) * blend : target;
+        hasSkyOpen = level != null;
     }
 
     /** Reads a converted Bedrock pack's fog, once per resource reload (each one rebuilds the block atlas). */
@@ -607,6 +624,7 @@ public final class BiomeAmbiance {
             sample(level, cameraPos);
         }
         updateWater(level, cameraPos, blend, enabled);
+        updateSkyOpen(level, cameraPos, blend, skyType);
         if (!enabled || level == null) {
             hasCurrent = false;
             lastNanos = now;

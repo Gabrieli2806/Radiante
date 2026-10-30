@@ -59,6 +59,11 @@ on by default, is cast; it is what places point lights):
   Blocks the pack lists as static lights (lava, froglights, redstone lamps) keep the glow of their
   texture; their colour is not applied yet.
 
+Redstone dust glows by its power, with or without a pack: not at all at power 0, then brighter
+and lighter red up to power 15, in vanilla's colour for that power, and it lights the floor around
+it a little (a straight line casts about a quarter of a redstone torch). A pack's emission for the
+dust textures is not used, so dust never glows unpowered.
+
 ### What exactly gets converted
 
 Bedrock describes each texture with a "texture set": a colour texture, a MER(S) map (metalness,
@@ -104,7 +109,8 @@ and its other materials still need a pack. Any Bedrock pack you enable replaces 
 
 Other looks come as shader packs. Earlier versions had a **Realistic** renderer profile; if it
 or **Custom** was chosen, the settings it set are put back to these defaults once on the first start
-after the update, and every other setting is kept.
+after the update, and every other setting is kept. Realistic's look is now the `realistic` example
+shader pack in the source repository (`examples/shaderpacks/`).
 
 ## Files from a Bedrock install
 

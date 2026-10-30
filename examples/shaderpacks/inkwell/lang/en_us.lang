@@ -1,0 +1,25 @@
+# Inkwell: its own settings, groups, descriptions and presets; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.inkwell_bands=Light Bands
+render_pipeline.module.ray_tracing.attribute.inkwell_cel=Cel Shading
+render_pipeline.module.ray_tracing.attribute.inkwell_poster_levels=Poster Colours
+render_pipeline.module.ray_tracing.attribute.inkwell_outline=Ink Outlines
+render_pipeline.module.ray_tracing.attribute.inkwell_flat_sky=Flat Sky
+render_pipeline.module.ray_tracing.attribute.inkwell_paper=Paper
+
+inkwell.group.light=Light
+inkwell.group.colour=Colour
+inkwell.group.ink=Ink
+
+inkwell.desc.bands=Sunlight comes in this many flat steps instead of a smooth falloff. Fewer is bolder.
+inkwell.desc.cel=How much of the banded light is used; 0 is Radiante PT's own shading. Changes without a rebuild.
+inkwell.desc.poster_levels=Each texture colour is snapped to a few levels per channel, like flat comic inks. 0 keeps the colours.
+inkwell.desc.flat_sky=A two-tone sky, cream at the horizon and blue above, at the sky's own brightness.
+inkwell.desc.paper=A warm paper tone and fine grain over the picture. 0 turns it off.
+inkwell.desc.outline=Width of the ink lines at silhouettes and block edges. 0 turns them off.
+
+inkwell.preset.comic=Comic
+inkwell.preset.comic.desc=The pack's own look.
+inkwell.preset.manga=Manga
+inkwell.preset.manga.desc=Two light bands, fewer inks, heavier lines and more paper.
+inkwell.preset.storybook=Storybook
+inkwell.preset.storybook.desc=Softer bands, the textures' own colours and the sky, thin lines.

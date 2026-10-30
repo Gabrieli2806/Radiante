@@ -5,6 +5,9 @@
 // water sides and mirrors up to the first surface that scatters (tracePrimary). prepareSecondary sits here too,
 // beside preparePrimary, as it did in world.rgen. Moved verbatim out of world.rgen.
 
+// Whether a pack moves where the reflections of the surface the camera sees start (hooks/ray_origins.glsl).
+#include "hooks/ray_origins.glsl"
+
 struct FirstHitPayload {
     bool hitSky;
     float surfaceDepth;
@@ -19,6 +22,12 @@ struct FirstHitPayload {
     vec3 outgoingDirection;
     vec3 normal;
     vec3 worldPos;
+#ifndef RADIANTE_HOOK_RAY_ORIGINS_DEFAULT
+    // Where the pack starts that surface's reflection (worldPos when it does not move it), and the view of that
+    // point from where the ray that met the surface came from.
+    vec3 reflectionPos;
+    vec3 reflectionIncoming;
+#endif
 };
 
 void initMainRay(vec3 origin, vec3 direction, uint seed, float coneSpread, out MainRay ray) {
@@ -122,21 +131,24 @@ void preparePrimary(int step, int isHand, out float len, out uint mask, out uint
 }
 
 void prepareSecondaryBase(int bounce, int isHand, out float len, out uint mask) {
+    // No rain on bounced rays (WEATHER_MASK): a streak is kept or skipped at random each frame by the any-hit, so a
+    // bounce that met one carried a different glint every frame, and reflections and indirect light in rain came out
+    // speckled. The streaks also cost an any-hit call for every bounce through a storm. The camera still sees them.
     if (bounce == 0) {
         len = worldTraceDistance();
         if (worldUBO.isFirstPerson > 0) {
             // The held item has to be reachable by bounced light, otherwise a torch in the hand glows without
             // lighting anything around it in first person, while the same torch lights the scene in third person.
-            mask = WORLD_MASK | HAND_MASK | FISHING_BOBBER_MASK | WEATHER_MASK | PARTICLE_MASK | CLOUD_MASK;
+            mask = WORLD_MASK | HAND_MASK | FISHING_BOBBER_MASK | PARTICLE_MASK | CLOUD_MASK;
         } else {
-            mask = WORLD_MASK | PLAYER_MASK | FISHING_BOBBER_MASK | WEATHER_MASK | PARTICLE_MASK | CLOUD_MASK;
+            mask = WORLD_MASK | PLAYER_MASK | FISHING_BOBBER_MASK | PARTICLE_MASK | CLOUD_MASK;
         }
     } else if (bounce <= 1) {
         len = worldTraceDistance();
         if (isHand == 0) {
-            mask = WORLD_MASK | PLAYER_MASK | FISHING_BOBBER_MASK | WEATHER_MASK | PARTICLE_MASK | CLOUD_MASK;
+            mask = WORLD_MASK | PLAYER_MASK | FISHING_BOBBER_MASK | PARTICLE_MASK | CLOUD_MASK;
         } else {
-            mask = WORLD_MASK | FISHING_BOBBER_MASK | WEATHER_MASK | PARTICLE_MASK | CLOUD_MASK;
+            mask = WORLD_MASK | FISHING_BOBBER_MASK | PARTICLE_MASK | CLOUD_MASK;
         }
     } else {
         len = 384.0;
@@ -144,9 +156,8 @@ void prepareSecondaryBase(int bounce, int isHand, out float len, out uint mask) 
     }
 }
 
-/** Rays bounced off or bent by a surface. In first person the player's own body is never among what they find (it
- *  only casts shadows, see g_shadowPlayerMask): the water's surface mirrors it, seen from above, as a flat dark
- *  silhouette lying on the reflection, which Bedrock's renderer does not show. */
+/** Rays bounced off or bent by a surface. In first person the player's own body is left out of what they find (it
+ *  casts shadows, see g_shadowPlayerMask), except along a mirror-like view, which pt_bounce.glsl lets see it. */
 void prepareSecondary(int bounce, int isHand, out float len, out uint mask) {
     prepareSecondaryBase(bounce, isHand, len, mask);
     if (worldUBO.isFirstPerson > 0) { mask &= ~PLAYER_MASK; }
@@ -169,6 +180,10 @@ void tracePrimary(vec3 eyePos,
     firstHit.outgoingDirection = vec3(0.0);
     firstHit.normal = vec3(0.0);
     firstHit.worldPos = vec3(0.0);
+#ifndef RADIANTE_HOOK_RAY_ORIGINS_DEFAULT
+    firstHit.reflectionPos = vec3(0.0);
+    firstHit.reflectionIncoming = vec3(0.0);
+#endif
 
     bool surfaceDepthSampled = false;
     bool cameraPath = true;
@@ -251,6 +266,19 @@ void tracePrimary(vec3 eyePos,
         firstHit.outgoingDirection = rayState.direction;
         firstHit.normal = rayState.normal;
         firstHit.worldPos = tracedOrigin + tracedDirection * rayState.hitT;
+#ifndef RADIANTE_HOOK_RAY_ORIGINS_DEFAULT
+        // The offset the hit shader left in the material image's fourth layer (pt_shade_default.glsl). Only the
+        // default shading writes it: a hit of another group (clouds, the End portal) leaves an older one there,
+        // which is never more than a block away for a texel; anything further is not a reflection origin and is
+        // dropped.
+        memoryBarrierImage();
+        vec3 reflectionOffset = imageLoad(rayMaterialStateImage, rayMaterialStateCoord(3)).xyz;
+        if (!(dot(reflectionOffset, reflectionOffset) <= 1.0)) { reflectionOffset = vec3(0.0); }
+        firstHit.reflectionPos = firstHit.worldPos + reflectionOffset;
+        vec3 toReflectionPos = firstHit.reflectionPos - tracedOrigin;
+        firstHit.reflectionIncoming =
+            dot(toReflectionPos, toReflectionPos) > 1e-12 ? normalize(toReflectionPos) : tracedDirection;
+#endif
         break;
     }
 

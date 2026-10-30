@@ -376,7 +376,11 @@ void sampleSurfaceState(bool useTexture,
             vec3 absWorldPos = worldPos + vec3(worldUBO.cameraPos.xyz);
             vec3 waterCoordNormal = baseGeoNormal.y >= 0.0 ? baseGeoNormal : -baseGeoNormal;
             vec2 waterCoord = fftWaterSurfaceCoord(absWorldPos, dPduWorld, dPdvWorld, waterCoordNormal);
+#ifdef RADIANTE_HOOK_WATER_WAVES_DEFAULT
             FftWaterSample waterSample = sampleFftWater(waterCoord, worldUBO.gameTime);
+#else
+            FftWaterSample waterSample = sampleFftWaterShaped(waterCoord, worldUBO.gameTime, fftWaterWaveShape());
+#endif
             vec3 tangent, bitangent;
             fftWaterStableBasis(baseGeoNormal, tangent, bitangent);
             vec3 localWaterNormal =
@@ -385,8 +389,13 @@ void sampleSurfaceState(bool useTexture,
             shadingNormal = applyNormalMapToBasis(localWaterNormal, tangent, bitangent, baseGeoNormal, viewDir);
         } else if (VPT_WATER_SURFACE_MODE == 2u && bedrockWaterAvailable() && abs(baseGeoNormal.y) > 0.75) {
             float footprint = mainRay.coneWidth + g_hit.hitT * mainRay.coneSpread;
+#ifdef RADIANTE_HOOK_WATER_WAVES_DEFAULT
             shadingNormal = bedrockWaterNormal(worldPos + vec3(worldUBO.cameraPos.xyz), baseGeoNormal, viewDir,
                                                footprint, baseGeoNormal.y < 0.0);
+#else
+            shadingNormal = bedrockWaterNormalShaped(worldPos + vec3(worldUBO.cameraPos.xyz), baseGeoNormal, viewDir,
+                                                     footprint, baseGeoNormal.y < 0.0, fftWaterWaveShape());
+#endif
         }
     }
 
@@ -449,10 +458,45 @@ void sampleSurfaceState(bool useTexture,
 
     // Rain soaks the ground under open sky: darker, glossy, and the bumps of the normal map drown.
     if (!useWaterMaterial && !isFftWaterSurface && !g_hitIsGlass && !isRainStreak) {
-        float wetness = vptGroundWetness(worldPos, baseGeoNormal);
+        vec2 groundRain = vptGroundRain(worldPos, baseGeoNormal);
+        float open = groundRain.x;
+        // Water stands only on the flat top of a full block: a slab, a stair's step, a path block. Elsewhere, and on
+        // leaves, the rain only darkens a little: on a roof of stairs and slabs the full film read as sheets of
+        // glass broken at every step.
+        float topHeight = float(fract(worldUBO.cameraPos.y + double(worldPos.y)));
+        bool fullTop = alphaMode == ALPHA_MODE_OPAQUE && (topHeight < 0.002 || topHeight > 0.998);
+        // The ground darkens well before water stands on it: the wetness rises over a couple of minutes. Upright
+        // faces carry their share already (vptGroundRain); leaves and other cut-out faces take less.
+        bool upward = baseGeoNormal.y >= 0.5;
+        float faceShare = upward ? (fullTop ? 1.0 : (alphaMode == ALPHA_MODE_OPAQUE ? 0.5 : 0.3)) :
+                                   (alphaMode == ALPHA_MODE_OPAQUE ? 1.0 : 0.6);
+        float wetness = groundRain.y * sqrt(max(skyUBO.rainWetness.x, 0.0)) * faceShare;
         if (wetness > 0.0) {
             vptApplyGroundWetness(mat, wetness);
             shadingNormal = normalizeF(mix(shadingNormal, geometricNormal, wetness * 0.7), geometricNormal);
+        }
+        // A film of standing water over it all while it rains, drying up in patches after (vptPuddle).
+        vec3 rainPos = vptRainSurfacePosition(worldPos);
+        // Grass and earth: the surfaces the biome tints.
+        float porous = any(lessThan(colorLayer, vec3(0.98))) ? 1.0 : 0.0;
+        float puddle = open > 0.0 && fullTop ? vptRainPuddleEdge(vptPuddle(rainPos, open, porous)) : 0.0;
+#if defined(RADIANTE_DEBUG_VIEW) && RADIANTE_DEBUG_VIEW == 11
+        g_radianteDebugRain = vec3(wetness, open, puddle);
+#endif
+        if (puddle > 0.0) {
+            vptApplyPuddle(mat, puddle, porous);
+            // Flat water, so the mirror image is sharp: the rings are kept faint on it, as their changing slope
+            // from frame to frame left the denoiser only a blurred image of the sky to show.
+            shadingNormal = vptApplyRainRipples(normalizeF(mix(shadingNormal, geometricNormal, puddle),
+                                                           geometricNormal),
+                                                vptRainRippleSlope(rainPos), puddle * PUDDLE_RIPPLES);
+        }
+    } else if (useWaterMaterial && baseGeoNormal.y > 0.5 && skyUBO.rainGradient > 0.01) {
+        // Rain rings on water under the open sky.
+        float open = vptGroundOpen(worldPos, baseGeoNormal);
+        if (open > 0.0) {
+            vec2 slope = vptRainRippleSlope(vptRainSurfacePosition(worldPos));
+            shadingNormal = vptApplyRainRipples(shadingNormal, slope, open);
         }
     }
 

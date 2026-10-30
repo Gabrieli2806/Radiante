@@ -10,6 +10,8 @@ const uint USE_OVERLAY_BIT = 1u << 2u;
 const uint USE_GLINT_BIT = 1u << 3u;
 const uint USE_NORM_BIT = 1u << 4u;
 const uint USE_LIGHT_BIT = 1u << 5u;
+// Ice, packed ice, blue ice and snow: lit a little past the terminator and from behind (translucentBackLight).
+const uint FROST_SURFACE_BIT = 1u << 6u;
 const uint ALPHA_MODE_SHIFT = 8u;
 const uint COORDINATE_SHIFT = 12u;
 // The surface of water, marked by the section builder.
@@ -40,6 +42,9 @@ const uint LAVA_SURFACE_BIT = 1u << 28u;
 const uint LAYER_SURFACE_BIT = 1u << 29u;
 // Leaves of every tree, marked by the section builder.
 const uint LEAVES_SURFACE_BIT = 1u << 30u;
+// A glow given per vertex that is also a light of the section's list (powered redstone dust): the bounce that reaches
+// it leaves its glow out where the surface before already sampled it, as for glowing texels.
+const uint GLOW_LIGHT_SURFACE_BIT = 1u << 31u;
 
 // The per-geometry vertex buffer address tables (set 1 bindings 4 and 5), visible to the hit stages only.
 layout(set = 1, binding = 4) readonly buffer PositionBufferAddr {
@@ -165,6 +170,14 @@ bool isLayerSurface(uint packedData) {
 
 bool isLavaSurface(uint packedData) {
     return (packedData & LAVA_SURFACE_BIT) != 0u;
+}
+
+bool isGlowLightSurface(uint packedData) {
+    return (packedData & GLOW_LIGHT_SURFACE_BIT) != 0u;
+}
+
+bool isFrostSurface(uint packedData) {
+    return (packedData & FROST_SURFACE_BIT) != 0u;
 }
 
 bool isLeavesSurface(uint packedData) {

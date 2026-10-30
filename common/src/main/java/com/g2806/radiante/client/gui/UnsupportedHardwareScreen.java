@@ -14,7 +14,9 @@ import net.minecraft.network.chat.Component;
  * that looks like vanilla and no idea why, so this explains it, by the cause that was actually met: the game put on
  * OpenGL by the player, OpenGL forced for one session after a start that never finished (often a second instance
  * opened at the same time), a graphics card that cannot ray trace, or a renderer that failed to start on one that
- * can. Each was once told as an unsupported graphics card.
+ * can. Each was once told as an unsupported graphics card. Without the native renderer at all (no build for this
+ * operating system or CPU, or a library that did not load) it says so too, and it is also what the settings open to
+ * then, so this screen must not reach native code.
  */
 public class UnsupportedHardwareScreen extends Screen {
 
@@ -26,7 +28,9 @@ public class UnsupportedHardwareScreen extends Screen {
         OPENGL("opengl"),
         FAILED_START("failed_start"),
         NO_RAY_TRACING(""),
-        INIT_FAILED("init_failed");
+        INIT_FAILED("init_failed"),
+        UNSUPPORTED_PLATFORM("platform"),
+        NATIVE_LOAD_FAILED("native_load_failed");
 
         private final String suffix;
 
@@ -56,6 +60,8 @@ public class UnsupportedHardwareScreen extends Screen {
         return switch (RadianteRenderer.failure()) {
             case NO_RAY_TRACING -> Reason.NO_RAY_TRACING;
             case INIT_FAILED -> Reason.INIT_FAILED;
+            case UNSUPPORTED_PLATFORM -> Reason.UNSUPPORTED_PLATFORM;
+            case NATIVE_LOAD_FAILED -> Reason.NATIVE_LOAD_FAILED;
             case NOT_VULKAN -> choseOpenGl() || !Options.openGlAfterFailedStart ? Reason.OPENGL : Reason.FAILED_START;
         };
     }
@@ -85,8 +91,10 @@ public class UnsupportedHardwareScreen extends Screen {
         layout.defaultCellSetting().alignHorizontallyCenter();
 
         layout.addChild(new MultiLineTextWidget(this.title, this.font).setMaxWidth(320).setCentered(true));
+        // The platform messages name the operating system and CPU that were detected.
         layout.addChild(new MultiLineTextWidget(
-            Component.translatable(this.reason.key("screen.radiante.unsupported.message")), this.font)
+            Component.translatable(this.reason.key("screen.radiante.unsupported.message"),
+                com.g2806.radiante.client.RadianteClient.platform()), this.font)
             .setMaxWidth(320).setCentered(true));
 
         switch (this.reason) {
@@ -109,7 +117,8 @@ public class UnsupportedHardwareScreen extends Screen {
                 }).width(WIDGET_WIDTH).build());
             }
             // Nothing to switch: a restart is all it takes.
-            case FAILED_START, INIT_FAILED -> layout.addChild(continueButton());
+            case FAILED_START, INIT_FAILED, UNSUPPORTED_PLATFORM, NATIVE_LOAD_FAILED ->
+                layout.addChild(continueButton());
         }
 
         layout.arrangeElements();

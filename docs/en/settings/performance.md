@@ -21,6 +21,7 @@ Defaults are radiante-pt's, the Bedrock RTX look ([bedrock-rtx.md](../bedrock-rt
 | **Clear Teal Water** | 0% – 100% | 0% | How far the water of every biome is moved towards clear teal water: red is absorbed within a few blocks while green and blue carry on for dozens, so you see the bottom and the light shafts far off. 0% is the pack's own water. |
 | **Portal Transparency** | 0% – 100% | 50% | How much of the pack's see-through share a Nether portal keeps. 100% is as the resource pack draws it, 0% is opaque. |
 | **Rain Opacity** | 0% – 100% | 0% | How much of each rain streak shows. Low is thin, nearly clear falling water that catches the light; 100% is the pack's rain texture as an opaque sheet. |
+| **Rain Streaks** | 0% – 200% | 100% | How much rain streaks catch the light of the overcast sky over them. 0% leaves the rain invisible. |
 | **Cache Deep Bounces** | On / Off | On | After the first bounce, light comes from the radiance cache instead of more tracing, and bounced surfaces skip block light lookups, as in Bedrock RTX. Much faster with many lights; bounced light may look slightly softer. |
 | **One Bounce + Cache** | On / Off | Off | Like Bedrock RTX: only one bounce of light is traced everywhere, and the rest comes from the radiance cache where it lands. The biggest gain; indirect light in uncached spots is a little darker for a moment. |
 | **Glass/Water Checkerboard** | On / Off | Off | Water and glass trace either their reflection or their refraction per pixel, alternating in a checkerboard, instead of both: one ray per pixel instead of two, as Bedrock RTX does. Off by default, as Bedrock's full-resolution picture needs both. |
@@ -32,6 +33,14 @@ Defaults are radiante-pt's, the Bedrock RTX look ([bedrock-rtx.md](../bedrock-rt
 | **Chunk Batch Size** | 1 – 64 | What Automatic picks for your CPU | How many chunk sections are sent to the GPU in one acceleration structure build. Higher fills the world in faster but can cause frame time spikes while loading; lower is smoother but slower to catch up. |
 | **Chunk Batches** | 1 – 64 | What Automatic picks for your CPU | How many of those builds may be in flight on the GPU at once. Higher loads faster on strong GPUs and uses more video memory; lower it if you see hitches or run out of VRAM. |
 | **Block Emission** | On / Off | On | Blocks that give off light (torches, lava, glowstone...) light up the world around them. Off saves some performance, but light sources then only glow themselves — Block Light Sampling and ReSTIR (in [Lighting](lighting.md)) need it. |
+
+## Advanced hand lighting
+
+Enable **Advanced** and open **Renderer** to find **Hand Lighting Samples** (1–8, default **3**).
+It controls indirect-lighting samples for both first-person hands and held items. Lower values reduce GPU work
+but add noise, especially on maps and large held items; higher values smooth the lighting at greater cost.
+Apply changes using the usual Apply button. The value is saved with the shader pack settings and updates at
+runtime without recompiling shaders. World lighting samples and bounce limits are unchanged.
 
 ## Why the Chunk Threads maximum is half your cores
 

@@ -1,0 +1,46 @@
+# Aquarela: its own settings, groups, descriptions and presets; the rest of the names come from radiante-pt.
+render_pipeline.module.ray_tracing.attribute.aquarela_brush=笔刷大小
+render_pipeline.module.ray_tracing.attribute.aquarela_wobble=手绘抖动
+render_pipeline.module.ray_tracing.attribute.aquarela_edges=边缘加深
+render_pipeline.module.ray_tracing.attribute.aquarela_bleed=渗色
+render_pipeline.module.ray_tracing.attribute.aquarela_paper=纸张纹理
+render_pipeline.module.ray_tracing.attribute.aquarela_granulation=颜料颗粒
+render_pipeline.module.ray_tracing.attribute.aquarela_border=纸张留边
+render_pipeline.module.ray_tracing.attribute.aquarela_grain_size=纹理粗细
+render_pipeline.module.ray_tracing.attribute.aquarela_pigment=颜料浓度
+render_pipeline.module.ray_tracing.attribute.aquarela_saturation=饱和度
+render_pipeline.module.ray_tracing.attribute.aquarela_lift=提亮暗部
+render_pipeline.module.ray_tracing.attribute.aquarela_warmth=纸张暖度
+render_pipeline.module.ray_tracing.attribute.aquarela_sky=天空晕染
+render_pipeline.module.ray_tracing.attribute.aquarela_soft_light=柔和光照
+render_pipeline.module.ray_tracing.attribute.aquarela_cool_shadows=冷色阴影
+render_pipeline.module.ray_tracing.attribute.aquarela_glow=辉光
+
+aquarela.group.paint=绘画
+aquarela.group.paper=纸张
+aquarela.group.colour=色彩
+aquarela.group.light=光照
+
+aquarela.desc.brush=把画面化为顺着形状的平涂笔触。半径以像素计：越高笔触越宽，开销也越大；0 关闭。
+aquarela.desc.wobble=边缘略微抖动，像手绘的线条。越高抖动越大；0 保持笔直。
+aquarela.desc.edges=颜料在色块边缘积聚处的深色边。越高越深；0 关闭。
+aquarela.desc.bleed=局部颜色像在湿纸上一样越过边缘晕开。越高晕得越远；0 让所有边缘保持干爽。
+aquarela.desc.paper=冷压纸的纹理，以及纸张吸收颜料的不均匀。越高纸感越强；0 为平滑。
+aquarela.desc.granulation=较深的色块中颜料沉积在纸纹里。越高斑点越多；0 关闭。
+aquarela.desc.border=画面四周一圈未上色的纸，边缘不规则。越高越宽；0 画满到边框。
+aquarela.desc.grain_size=纸张纹理的大小。越高越粗。
+aquarela.desc.pigment=颜料的浓度。越低色块越薄越通透；越高越浓越深。
+aquarela.desc.saturation=颜料保留多少色彩。越低越接近粉彩；1 保持 Radiante 的颜色。
+aquarela.desc.lift=最暗的阴影变成冷灰色的淡彩，而不是黑色。越高越亮；0 保留黑色。
+aquarela.desc.warmth=白色即纸张的颜色。越高越接近温暖的奶油色；0 为纯白。
+aquarela.desc.sky=你看到的天空以两种蓝色的柔和晕染绘出；天空投下的光仍是 Radiante 的。0 关闭。
+aquarela.desc.soft_light=阳光在哑光表面上包裹得更远，光照更柔和、更平。0 为 Radiante PT 的光照。
+aquarela.desc.cool_shadows=阴影用冷蓝色绘制，亮部稍偏暖。0 关闭。
+aquarela.desc.glow=明亮物体周围的柔和辉光，来自 Radiante 的泛光。越高越亮；0 关闭。
+
+aquarela.preset.aquarela=水彩
+aquarela.preset.aquarela.desc=光影包本身的外观：温暖纸面上通透的淡彩。
+aquarela.preset.sketchbook=速写本
+aquarela.preset.sketchbook.desc=更薄更淡的色块，更多纸感，更宽的留白边。
+aquarela.preset.gouache=水粉
+aquarela.preset.gouache.desc=浓厚饱和的颜料，边缘清晰，几乎不露纸面。

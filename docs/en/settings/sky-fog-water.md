@@ -24,10 +24,19 @@ Defaults are radiante-pt's, the Bedrock RTX look ([bedrock-rtx.md](../bedrock-rt
 | **Stars** | 100 – 20000 | 3000 | How many stars the night sky has. |
 | **Stars at Altitude** | 0% – 400% | 100% | How much clearer the stars get the higher you are: at 100% they are twice as bright from a mountain top (around Y 190) as from sea level. 0% keeps them the same everywhere. With Biome Ambiance on, the biome's air counts too: sharper over deserts, peaks and the open sea, dimmer in a swamp's or a jungle's haze. |
 | **Sun Glow** | 0% – 300% | 100% | The halo around the sun. |
-| **Light Shafts** | 0% – 400% | 100% | Beams of light through windows, skylights and leaves. Needs Volumetric Fog; no effect with Bedrock's fog volume (see below). |
+| **Light Shafts** | 0% – 400% | 100% | Beams of light through windows, skylights and leaves, within about 48 blocks of you. Needs Volumetric Fog. |
+| **Fog Veil Dimming** | 0% – 100% | 25% | How much the hazy air near you dims what is behind it, as a share of the light it scatters. Distant lava, lights and land fade into the fog instead of keeping their full glow behind a pale veil; 0% only adds the veil. Needs Volumetric Fog. |
+| **Aerial Perspective** | 0% – 400% | 100% | The air's own haze over the distance: far terrain, Distant Horizons' included, fades towards the sky behind it, about an eighth of the way at 16 chunks and two fifths at 64 at sea level on a clear day. Thicker in rain, thunder and humid biomes (jungle, swamp), thinner over deserts and from a mountain top, none in caves. Works with Volumetric Fog on or off and with Biome Ambiance (whose haze it does not stack on). 0% turns it off; no effect on performance. |
+| **Aerial Perspective Start** | 0 – 1024 blocks | 128 | How far from you the distance haze begins. Nothing nearer is hazed; past it the haze comes in over half that distance again (at least 32 blocks). Raise it to keep more of the land around you crisp. |
 | **Sun Path** | Vanilla · Tilted · Custom | Vanilla | Vanilla: sun and moon cross straight overhead from east to west. Tilted: the path leans ten degrees south, so noon shadows are not straight down. Custom shows when the [Sun & Moon Path](#sun--moon-path-advanced) settings hold anything else. |
 | **Vanilla Sun/Moon Rotation** | On / Off | On | Keeps the sun and moon squares lined up with their path as in vanilla, instead of turning as they cross the sky. |
 | **Wet Ground in Rain** | On / Off | On | Surfaces under open sky darken and shine while it rains, and dry slowly after. |
+| **Puddles** | 0% – 100% | 50% | How much standing water rain leaves on the flat tops of open full blocks, with Wet Ground in Rain on: gathering in patches that merge into one film with rain rings over a couple of minutes of rain, then drying up in patches over about three minutes. Full from 50%; 0% leaves only wet ground. |
+| **Wetness** | 0% – 200% | 100% | How strongly wet surfaces darken and shine in rain. 0% leaves them looking dry. |
+| **Wet Walls** | 0% – 100% | 50% | How wet walls, tree trunks and other upright faces open to the rain get, against the ground. Undersides stay dry. |
+| **Wet-Up Time** | 10 – 600 s | 150 s | How long steady rain takes to soak the open ground through: it darkens within seconds, then standing water gathers in patches that merge into one film by the end. |
+| **Drying Time** | 30 – 600 s | 180 s | How long the ground takes to dry after the rain; puddles dry up in patches and the last is gone by then. |
+| **Lightning Flash** | 0% – 200% | 100% | How brightly a lightning flash lights the world in a thunderstorm, from the bolt's direction and with shadows. 0% leaves only the bolt's own glow. Off with the game's *Hide Lightning Flashes* accessibility option. |
 | **Wind** | On / Off | Off | Leaves, grass, flowers, crops, saplings, sugar cane, vines and lily pads sway in the wind within about 48 blocks of you, harder in rain and thunder; seagrass and kelp sway slowly with the current. The geometry itself moves, so shadows, reflections and light through the leaves move with it. Switching it reloads the world's geometry. In a dense forest it costs about 0.6 ms a frame on an RTX 5070; off, nothing. |
 | **Wind Strength** | 0% – 200% | 100% | How far the wind moves leaves and plants while Wind is on. 0% holds them still. |
 | **Seamless Glass** | On / Off | Off | Removes the frame around each glass block and pane: a glass wall reads as one sheet. Off by default, as Bedrock shows each block in its frame. |
@@ -35,7 +44,7 @@ Defaults are radiante-pt's, the Bedrock RTX look ([bedrock-rtx.md](../bedrock-rt
 | **Biome Ambiance** | On / Off | Off | Each biome's own air and water, kept subtle: warm dust over deserts, a green murk over swamps, a cold bright mist over snow, red, teal and ash in the Nether, violet in the End; under water, clear and bright by a beach, dark and close in the deep ocean. Fades from one biome to the next, stays out of overworld caves, and works with or without Volumetric Fog. More under [Biome Ambiance](#biome-ambiance) below. |
 | **Biome Ambiance Strength** | 0% – 400% | 100% | How thick each biome's haze is. 100% is the tuned, subtle look; no effect on performance. Needs Biome Ambiance. |
 | **Volumetric Fog** | On / Off | On | Ray marches the air: sunlight and moonlight scatter in it, and trees and terrain cast light shafts through it. Costs noticeably more GPU time than the plain haze. By default it is Bedrock's own fog volume. |
-| **Fog Style** | Froxel · Radiante | Froxel | Froxel: a 3D grid (froxels) lit once per cell and kept across frames; sharper shafts, block lights glow in the fog, and it costs less. Radiante: each pixel marches the air itself; follows every surface exactly but costs more. Hidden while Bedrock Volumetric Fog (Advanced, on by default) fogs the air with its own volume. |
+| **Fog Style** | Froxel · Radiante | Froxel | Froxel: a 3D grid of light fixed to the world around the camera, lit cell by cell and kept across frames, so the fog holds still while you look around; sharper shafts, block lights glow in the fog, and it costs less. Radiante: each pixel marches the air itself; follows every surface exactly but costs more. Hidden while Bedrock Volumetric Fog (Advanced, on by default) fogs the air with its own volume. |
 | **Volumetric Fog Strength** | 0% – 400% | 100% | How thick the air that shows sunbeams and light shafts is. No effect on performance — only the sample count (in [Performance](performance.md)) does. |
 | **Fog Distance** | 48 – 192 blocks | 128 | How far volumetric fog and light shafts reach. |
 | **Water Waves** | 0% – 400% | 100% | How rough the water surface is. 0% is a flat, mirror-like surface. |
@@ -43,8 +52,9 @@ Defaults are radiante-pt's, the Bedrock RTX look ([bedrock-rtx.md](../bedrock-rt
 | **Underwater Light Rays** | 0% – 400% | 100% | Shafts of sunlight through the water surface while underwater. |
 
 With Bedrock Volumetric Fog on (under Advanced, the default) the air is fogged
-by Bedrock's own volume, which has no use for Volumetric Fog Strength, Fog Distance, Light Shafts or
-Volumetric Fog Quality: those rows are grey and say so.
+by Bedrock's own volume, 50 blocks deep: it shows the biome's fog (with Biome Ambiance on) and the light shafts
+(Light Shafts and Volumetric Fog Strength set how strong). It has no use for Fog Distance or Volumetric Fog
+Quality: those rows are grey and say so. The haze over the distance beyond it is Aerial Perspective.
 
 ## Sun & Moon Path (advanced)
 

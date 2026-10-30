@@ -1,0 +1,200 @@
+#ifndef RADIANTE_PACK_WORLD_GLSL
+#define RADIANTE_PACK_WORLD_GLSL
+
+// The weather and the biome at the camera, for shader packs. Part of the pack interface (radiante-pt@1): functions
+// are only added. radiante-pt itself never includes this file, so it renders the same without it.
+//
+// Include it from a hook file: #include "common/pack_world.glsl". It reads skyUBO, which every hook point can see
+// (the miss shader's sky, stars and clouds, the closest hit's surface, direct light and cloud shadow, the fog and the
+// water); post_render/post_hook_grade.frag declares it too, so hooks/post_grade.glsl can use it as well.
+//
+// The biome values are those at the camera, not at the point shaded, and they are eased over about two and a half
+// seconds, so an effect tied to them fades across a border instead of switching.
+
+// ---- Weather
+
+// Rain, 0..1 (Iris's rainStrength).
+float radianteRain() { return skyUBO.rainGradient; }
+// Thunder, 0..1 (Iris's thunderStrength): the game fades it in and out, and it is never above the rain.
+float radianteThunder() { return skyUBO.thunderGradient; }
+// Iris's wetness, 0..1: the rain smoothed with Iris's default half-lives, rising over about a minute and drying with
+// a half-life of twenty seconds, so it stays above the rain for a while after the rain stops.
+float radianteWetness() { return skyUBO.wetness; }
+// Seconds since the rain eased off (below 0.2) after it had wetted the air (wetness 0.25): 0 while it rains, and
+// 1e6 when there has been no such rain since the world was joined. Stands still while the game is paused. For what
+// follows rain for minutes, longer than the wetness lasts: a rainbow, dripping leaves, mist.
+float radianteRainStoppedFor() { return skyUBO.rainStoppedFor; }
+
+// ---- Time of day, in the overworld
+//
+// Read off where the sun is, not off the clock: radiante-pt's sun follows the Sun Path settings (tilt, turn), and
+// these follow the sun the player sees. In the End the sun's direction is the End flash's, so they mean nothing there.
+
+// Towards the sun and the moon, unit length (y up). The moon keeps the hour opposite the sun's but its path can lean
+// apart from the sun's (the Moon Path settings).
+vec3 radianteSunDirection() {
+    vec3 sun = skyUBO.sunDirection;
+    float lengthSquared = dot(sun, sun);
+    return lengthSquared > 1e-8 ? sun * inversesqrt(lengthSquared) : vec3(0.0, 1.0, 0.0);
+}
+vec3 radianteMoonDirection() {
+    vec3 moon = skyUBO.moonDirection.xyz;
+    float lengthSquared = dot(moon, moon);
+    return lengthSquared > 1e-8 ? moon * inversesqrt(lengthSquared) : -radianteSunDirection();
+}
+
+// The sun's height: the sine of its angle above the horizon, 1 straight overhead, negative at night.
+float radianteSunHeight() { return radianteSunDirection().y; }
+
+// Iris's sunAngle, 0..1 round the day: 0 sunrise, 0.25 noon, 0.5 sunset, 0.75 midnight. Measured along the sun's own
+// path (it turns round skyUBO.celestialAxis), so it reads the same with a tilted or turned path.
+float radianteSunAngle() {
+    vec3 sun = radianteSunDirection();
+    vec3 axis = skyUBO.celestialAxis.xyz;
+    axis = dot(axis, axis) > 1e-8 ? normalize(axis) : vec3(0.0, 0.0, 1.0);
+    // The path's highest point (noon), and a quarter turn on from it (sunset).
+    vec3 noon = vec3(0.0, 1.0, 0.0) - axis * axis.y;
+    noon = dot(noon, noon) > 1e-6 ? normalize(noon) : vec3(0.0, 1.0, 0.0);
+    vec3 evening = cross(axis, noon);
+    float turn = atan(dot(sun, evening), dot(sun, noon)) * (0.5 / 3.14159265);
+    return fract(turn + 0.25);
+}
+
+// How much it is sunrise, day, sunset and night, each 0..1 and adding up to 1: day and night full once the sun is
+// 30 degrees above or below the horizon (a height of 0.5), sunrise and sunset in between, sunrise in the morning half
+// of the day and sunset in the evening one. Mellow's and many Iris packs' dayStrength, sunriseStrength and so on.
+// x sunrise, y day, z sunset, w night.
+vec4 radianteDayWeights() {
+    float height = radianteSunHeight();
+    float day = clamp(height * 2.0, 0.0, 1.0);
+    float night = clamp(-height * 2.0, 0.0, 1.0);
+    float twilight = max(1.0 - day - night, 0.0);
+    float angle = radianteSunAngle();
+    float evening = angle >= 0.25 && angle < 0.75 ? 1.0 : 0.0;
+    return vec4(twilight * (1.0 - evening), day, twilight * evening, night);
+}
+float radianteSunrise() { return radianteDayWeights().x; }
+float radianteDay() { return radianteDayWeights().y; }
+float radianteSunset() { return radianteDayWeights().z; }
+float radianteNight() { return radianteDayWeights().w; }
+
+// The moon's phase, 0..7 as Iris's moonPhase: 0 full, 4 new.
+int radianteMoonPhase() { return int(skyUBO.moonPhase % 8u); }
+// How much of the moon's face is lit, 1 full to 0 new.
+float radianteMoonLit() { return 0.5 + 0.5 * cos(float(skyUBO.moonPhase % 8u) * 0.78539816); }
+
+// ---- Climate of the biome at the camera, eased
+
+// The biome's base temperature (Iris's temperature): about -0.7 (frozen peaks) to 2 (desert, badlands, Nether).
+float radianteBiomeTemperature() { return skyUBO.biomeClimate.x; }
+// The biome's downfall (Iris's rainfall), 0..1.
+float radianteBiomeDownfall() { return skyUBO.biomeClimate.y; }
+// How snowy, 0..1: 1 where snow falls at the camera's height (rain turns to snow there), 0 elsewhere.
+float radianteBiomeSnowy() { return skyUBO.biomeClimate.z; }
+// How dry, 0..1: 1 where nothing falls (desert, savanna, badlands, the Nether and the End).
+float radianteBiomeDry() { return skyUBO.biomeClimate.w; }
+// How rainy, 0..1: where rain falls rather than snow or nothing. snowy + dry + rainy = 1.
+float radianteBiomeRainy() { return clamp(1.0 - skyUBO.biomeClimate.z - skyUBO.biomeClimate.w, 0.0, 1.0); }
+// Iris's biome_precipitation, eased: 0 nothing falls, 1 rain, 2 snow. Mellow's
+// smooth(biome_precipitation, ...) is this.
+float radianteBiomePrecipitation() { return 1.0 + skyUBO.biomeClimate.z - skyUBO.biomeClimate.w; }
+
+// ---- The body of water the camera is in, eased over about half a second; both 0 out of water
+
+// The height of the water column at the camera's eye, floor to surface, in blocks (1 in a one-block-deep pool, at
+// most 64).
+float radianteWaterDepth() { return skyUBO.waterBodyDepth; }
+// How far the water runs across at the camera's eye level, averaged over four directions, in blocks (1 in a 1x1
+// pool, at most 49 in open water).
+float radianteWaterWidth() { return skyUBO.waterBodyWidth; }
+
+// ---- Which biome
+
+// The biome at the camera as the FNV-1a hash of its id ("minecraft:snowy_plains"), 0 without a world. Compare it
+// with the RADIANTE_BIOME_* constants below, or with radianteBiomeHash for any other biome.
+uint radianteBiomeId() { return skyUBO.biomeId; }
+
+// How much the camera is in the biome with this hash, 0..1, fading over a couple of seconds as the biome changes.
+float radianteBiomeIs(uint biome) {
+    if (biome == skyUBO.biomeId) { return skyUBO.biomeIdBlend; }
+    if (biome == skyUBO.previousBiomeId) { return 1.0 - skyUBO.biomeIdBlend; }
+    return 0.0;
+}
+
+// Adds one byte to an FNV-1a hash; with it a pack can work out the hash of a modded biome's id in GLSL, one
+// character code at a time, starting from RADIANTE_BIOME_HASH_START (or once by hand: offset basis 0x811C9DC5, prime
+// 0x01000193, over the id's UTF-8 bytes; Python: h = 0x811C9DC5; for b in id.encode(): h = ((h ^ b) * 0x01000193)
+// & 0xFFFFFFFF). Constant arguments fold to a constant.
+const uint RADIANTE_BIOME_HASH_START = 0x811C9DC5u;
+uint radianteBiomeHash(uint hash, uint byteValue) { return (hash ^ byteValue) * 0x01000193u; }
+
+// The vanilla biomes (Minecraft 26.3).
+const uint RADIANTE_BIOME_THE_VOID = 0x59218D88u; // minecraft:the_void
+const uint RADIANTE_BIOME_PLAINS = 0xA514DE73u; // minecraft:plains
+const uint RADIANTE_BIOME_SUNFLOWER_PLAINS = 0xA42FB605u; // minecraft:sunflower_plains
+const uint RADIANTE_BIOME_SNOWY_PLAINS = 0xF187B5B4u; // minecraft:snowy_plains
+const uint RADIANTE_BIOME_ICE_SPIKES = 0x25D936F9u; // minecraft:ice_spikes
+const uint RADIANTE_BIOME_DESERT = 0xE6295CC7u; // minecraft:desert
+const uint RADIANTE_BIOME_SWAMP = 0xDFE5F0A6u; // minecraft:swamp
+const uint RADIANTE_BIOME_MANGROVE_SWAMP = 0x30F2ADCEu; // minecraft:mangrove_swamp
+const uint RADIANTE_BIOME_FOREST = 0x1C7EDD2Fu; // minecraft:forest
+const uint RADIANTE_BIOME_FLOWER_FOREST = 0x0BCB2687u; // minecraft:flower_forest
+const uint RADIANTE_BIOME_BIRCH_FOREST = 0xDC4A05A4u; // minecraft:birch_forest
+const uint RADIANTE_BIOME_DAPPLED_FOREST = 0x9E094482u; // minecraft:dappled_forest
+const uint RADIANTE_BIOME_DARK_FOREST = 0xB81C099Au; // minecraft:dark_forest
+const uint RADIANTE_BIOME_PALE_GARDEN = 0xF0F2D9F6u; // minecraft:pale_garden
+const uint RADIANTE_BIOME_OLD_GROWTH_BIRCH_FOREST = 0xE43463C2u; // minecraft:old_growth_birch_forest
+const uint RADIANTE_BIOME_OLD_GROWTH_PINE_TAIGA = 0xB35266C7u; // minecraft:old_growth_pine_taiga
+const uint RADIANTE_BIOME_OLD_GROWTH_SPRUCE_TAIGA = 0xAB4ED3CBu; // minecraft:old_growth_spruce_taiga
+const uint RADIANTE_BIOME_TAIGA = 0x07730B98u; // minecraft:taiga
+const uint RADIANTE_BIOME_SNOWY_TAIGA = 0x7508EB85u; // minecraft:snowy_taiga
+const uint RADIANTE_BIOME_SAVANNA = 0x7F90E692u; // minecraft:savanna
+const uint RADIANTE_BIOME_SAVANNA_PLATEAU = 0x2822396Fu; // minecraft:savanna_plateau
+const uint RADIANTE_BIOME_WINDSWEPT_HILLS = 0x7FB06846u; // minecraft:windswept_hills
+const uint RADIANTE_BIOME_WINDSWEPT_GRAVELLY_HILLS = 0x8AB5D72Du; // minecraft:windswept_gravelly_hills
+const uint RADIANTE_BIOME_WINDSWEPT_FOREST = 0xE3776017u; // minecraft:windswept_forest
+const uint RADIANTE_BIOME_WINDSWEPT_SAVANNA = 0x3E036A3Au; // minecraft:windswept_savanna
+const uint RADIANTE_BIOME_JUNGLE = 0xD41D9CC3u; // minecraft:jungle
+const uint RADIANTE_BIOME_SPARSE_JUNGLE = 0x508EFEF2u; // minecraft:sparse_jungle
+const uint RADIANTE_BIOME_BAMBOO_JUNGLE = 0x1A9017AAu; // minecraft:bamboo_jungle
+const uint RADIANTE_BIOME_BADLANDS = 0x3A8B17A1u; // minecraft:badlands
+const uint RADIANTE_BIOME_ERODED_BADLANDS = 0x6976B093u; // minecraft:eroded_badlands
+const uint RADIANTE_BIOME_WOODED_BADLANDS = 0x3EA0A8ACu; // minecraft:wooded_badlands
+const uint RADIANTE_BIOME_MEADOW = 0x53F5946Fu; // minecraft:meadow
+const uint RADIANTE_BIOME_CHERRY_GROVE = 0x527C78F7u; // minecraft:cherry_grove
+const uint RADIANTE_BIOME_GROVE = 0x4AC1B419u; // minecraft:grove
+const uint RADIANTE_BIOME_SNOWY_SLOPES = 0x9431C369u; // minecraft:snowy_slopes
+const uint RADIANTE_BIOME_FROZEN_PEAKS = 0xF446B2AFu; // minecraft:frozen_peaks
+const uint RADIANTE_BIOME_JAGGED_PEAKS = 0x6D174EAFu; // minecraft:jagged_peaks
+const uint RADIANTE_BIOME_STONY_PEAKS = 0x797A4550u; // minecraft:stony_peaks
+const uint RADIANTE_BIOME_RIVER = 0x4D4AFB98u; // minecraft:river
+const uint RADIANTE_BIOME_FROZEN_RIVER = 0x5BD57735u; // minecraft:frozen_river
+const uint RADIANTE_BIOME_BEACH = 0xBD42C9FDu; // minecraft:beach
+const uint RADIANTE_BIOME_SNOWY_BEACH = 0x4EFC4C50u; // minecraft:snowy_beach
+const uint RADIANTE_BIOME_STONY_SHORE = 0xCD0B4AE5u; // minecraft:stony_shore
+const uint RADIANTE_BIOME_WARM_OCEAN = 0x27A6F3B2u; // minecraft:warm_ocean
+const uint RADIANTE_BIOME_LUKEWARM_OCEAN = 0x01D4364Du; // minecraft:lukewarm_ocean
+const uint RADIANTE_BIOME_DEEP_LUKEWARM_OCEAN = 0x4AC7FC0Au; // minecraft:deep_lukewarm_ocean
+const uint RADIANTE_BIOME_OCEAN = 0xEADC8BF4u; // minecraft:ocean
+const uint RADIANTE_BIOME_DEEP_OCEAN = 0x44DA7D05u; // minecraft:deep_ocean
+const uint RADIANTE_BIOME_COLD_OCEAN = 0xF6BF8519u; // minecraft:cold_ocean
+const uint RADIANTE_BIOME_DEEP_COLD_OCEAN = 0xB54D601Au; // minecraft:deep_cold_ocean
+const uint RADIANTE_BIOME_FROZEN_OCEAN = 0xA2013C2Du; // minecraft:frozen_ocean
+const uint RADIANTE_BIOME_DEEP_FROZEN_OCEAN = 0x9AA45456u; // minecraft:deep_frozen_ocean
+const uint RADIANTE_BIOME_MUSHROOM_FIELDS = 0x57B14A3Cu; // minecraft:mushroom_fields
+const uint RADIANTE_BIOME_DRIPSTONE_CAVES = 0xE6497FF3u; // minecraft:dripstone_caves
+const uint RADIANTE_BIOME_LUSH_CAVES = 0xE0FC675Bu; // minecraft:lush_caves
+const uint RADIANTE_BIOME_DEEP_DARK = 0x0F7BDAA1u; // minecraft:deep_dark
+const uint RADIANTE_BIOME_SULFUR_CAVES = 0x8BF2A672u; // minecraft:sulfur_caves
+const uint RADIANTE_BIOME_NETHER_WASTES = 0x730110EAu; // minecraft:nether_wastes
+const uint RADIANTE_BIOME_WARPED_FOREST = 0xB5517217u; // minecraft:warped_forest
+const uint RADIANTE_BIOME_CRIMSON_FOREST = 0xF58DCDD5u; // minecraft:crimson_forest
+const uint RADIANTE_BIOME_SOUL_SAND_VALLEY = 0xE1F8CB8Eu; // minecraft:soul_sand_valley
+const uint RADIANTE_BIOME_BASALT_DELTAS = 0xC853055Fu; // minecraft:basalt_deltas
+const uint RADIANTE_BIOME_THE_END = 0x2FE29CB3u; // minecraft:the_end
+const uint RADIANTE_BIOME_END_HIGHLANDS = 0xD9B91CAAu; // minecraft:end_highlands
+const uint RADIANTE_BIOME_END_MIDLANDS = 0xD282C7ECu; // minecraft:end_midlands
+const uint RADIANTE_BIOME_SMALL_END_ISLANDS = 0xEE79DDD6u; // minecraft:small_end_islands
+const uint RADIANTE_BIOME_END_BARRENS = 0x7BBEDB47u; // minecraft:end_barrens
+
+#endif

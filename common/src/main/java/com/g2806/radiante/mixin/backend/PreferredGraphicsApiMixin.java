@@ -21,6 +21,10 @@ public class PreferredGraphicsApiMixin {
 
     @Inject(method = "getBackendsToTry", at = @At("HEAD"), cancellable = true)
     private void radiante$preferVulkan(CallbackInfoReturnable<GpuBackend[]> cir) {
+        // Without the native renderer there is nothing to prefer Vulkan for: Minecraft's own choice stands.
+        if (!com.g2806.radiante.client.RadianteClient.isNativeAvailable()) {
+            return;
+        }
         PreferredGraphicsApi preference = (PreferredGraphicsApi) (Object) this;
         if (preference == PreferredGraphicsApi.OPENGL || Options.useOpenGl || Options.openGlAfterFailedStart) {
             // Vulkan stays as the second choice: on Linux under Wayland (NVIDIA especially) OpenGL often has no EGL

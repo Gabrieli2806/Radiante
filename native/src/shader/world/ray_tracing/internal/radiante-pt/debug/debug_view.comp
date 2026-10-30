@@ -1,0 +1,105 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+
+// Fills radiante_debug_view with the chosen debug view (common/debug_view.glsl), from the guide images the ray
+// generation shader wrote this frame, as display colours. Runs after the world pass, only while a view is chosen. The
+// surface flags are written by the closest-hit shader itself (pt/pt_shade_default.glsl), so here they only get the
+// sky, which no hit shader sees. The heat maps come from the counts the ray tracing stage kept
+// (common/debug_count.glsl).
+
+#include "common/shared.hpp"
+#include "common/debug_view.glsl"
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+
+layout(set = 3, binding = 1, rgba8) uniform readonly image2D diffuseAlbedoImage;
+layout(set = 3, binding = 3, rgba16f) uniform readonly image2D normalRoughnessImage;
+layout(set = 3, binding = 4, rg16f) uniform readonly image2D motionVectorImage;
+layout(set = 3, binding = 5, r16f) uniform readonly image2D linearDepthImage;
+layout(set = 3, binding = 12, rgba16f) uniform readonly image2D firstHitBaseEmissionImage;
+layout(set = 5, binding = RADIANTE_DEBUG_VIEW_STORAGE_BINDING, rgba16f) uniform image2D radianteDebugViewImage;
+
+#ifndef RADIANTE_DEBUG_VIEW
+#    define RADIANTE_DEBUG_VIEW 0
+#endif
+
+#include "common/debug_count.glsl"
+
+#if RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_FOG_INSCATTER || RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_FOG_TRANSMITTANCE
+layout(set = 3, binding = 13, rgba16f) uniform readonly image2D fogImage;
+layout(set = 3, binding = 15, rgba16f) uniform readonly image2D fogTransmissionImage;
+#endif
+#if RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_RAW_DIFFUSE
+layout(set = 3, binding = 8, rgba16f) uniform readonly image2D rawDirectImage;
+layout(set = 3, binding = 9, rgba16f) uniform readonly image2D rawIndirectImage;
+#endif
+#if RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_RAW_SPECULAR
+layout(set = 3, binding = 10, rgba16f) uniform readonly image2D firstHitSpecularImage;
+#endif
+#if RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_DIRECT
+layout(set = 3, binding = 8, rgba16f) uniform readonly image2D firstHitDiffuseDirectLightImage;
+#endif
+#if RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_INDIRECT
+layout(set = 3, binding = 9, rgba16f) uniform readonly image2D firstHitDiffuseIndirectLightImage;
+#endif
+
+// HDR light into the screen's range, so a torch and the sun both read.
+vec3 radianteDebugLight(vec3 light) {
+    light = max(light, vec3(0.0));
+    return radianteDebugDisplay(light / (1.0 + light));
+}
+
+void main() {
+    ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+    if (any(greaterThanEqual(texel, imageSize(radianteDebugViewImage)))) { return; }
+    if (any(greaterThanEqual(texel, imageSize(linearDepthImage)))) { return; }
+
+    float depth = imageLoad(linearDepthImage, texel).r;
+    bool sky = depth >= INF_DISTANCE * 0.5;
+    vec3 color = vec3(0.0);
+#if RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_ALBEDO
+    // The denoiser's albedo guide: the sky's is its colour, scaled to its brightest channel.
+    color = radianteDebugDisplay(imageLoad(diffuseAlbedoImage, texel).rgb);
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_NORMAL
+    vec3 normal = imageLoad(normalRoughnessImage, texel).xyz;
+    color = sky || dot(normal, normal) < 1e-6 ? vec3(0.0) : normalize(normal) * 0.5 + 0.5;
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_ROUGHNESS
+    color = sky ? vec3(0.0) : vec3(clamp(imageLoad(normalRoughnessImage, texel).w, 0.0, 1.0));
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_METALLIC
+    color = sky ? vec3(0.0) : vec3(clamp(imageLoad(diffuseAlbedoImage, texel).a, 0.0, 1.0));
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_EMISSION
+    // HDR: squeezed into the screen's range, so a torch and lava both read.
+    vec3 emission = max(imageLoad(firstHitBaseEmissionImage, texel).rgb, vec3(0.0));
+    color = radianteDebugDisplay(emission / (1.0 + emission));
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_DEPTH
+    // View depth on a log scale: white at the camera, black at 1024 blocks and in the sky.
+    color = sky ? vec3(0.0) : vec3(1.0 - clamp(log2(1.0 + max(depth, 0.0)) / 10.0, 0.0, 1.0));
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_MOTION
+    // Pixels moved since the last frame: red right, green down, grey still; 32 pixels reach full colour.
+    vec2 motion = imageLoad(motionVectorImage, texel).xy;
+    color = vec3(clamp(0.5 + motion / 64.0, 0.0, 1.0), 0.5);
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_FOG_INSCATTER
+    color = radianteDebugLight(imageLoad(fogImage, texel).rgb);
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_FOG_TRANSMITTANCE
+    // As the compose reads it: -1 no fog, -2 the transmission is in its own image, by colour (froxel/march.comp).
+    float fogShare = imageLoad(fogImage, texel).a;
+    color = fogShare == -2.0 ? clamp(imageLoad(fogTransmissionImage, texel).rgb, 0.0, 1.0)
+                             : vec3(fogShare < 0.0 ? 1.0 : clamp(fogShare, 0.0, 1.0));
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_RAW_DIFFUSE
+    color = radianteDebugLight(imageLoad(rawDirectImage, texel).rgb + imageLoad(rawIndirectImage, texel).rgb);
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_RAW_SPECULAR
+    color = radianteDebugLight(imageLoad(firstHitSpecularImage, texel).rgb);
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_DIRECT
+    color = radianteDebugLight(imageLoad(firstHitDiffuseDirectLightImage, texel).rgb);
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_INDIRECT
+    color = radianteDebugLight(imageLoad(firstHitDiffuseIndirectLightImage, texel).rgb);
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_FLAGS || RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_RAIN ||            \
+    RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_SHARC
+    if (!sky) { return; }
+    color = vec3(0.0);
+#elif RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_ANYHIT || RADIANTE_DEBUG_VIEW == RADIANTE_DEBUG_VIEW_BOUNCES
+    // This frame's count, cleared for the next.
+    color = radianteDebugHeat(imageAtomicExchange(radianteDebugCountImage, texel, 0u));
+#endif
+    imageStore(radianteDebugViewImage, texel, vec4(color, 1.0));
+}

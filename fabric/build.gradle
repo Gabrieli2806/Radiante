@@ -31,9 +31,10 @@ dependencies {
 
 loom {
 	runs {
-		// Forge and NeoForge run in run-forge and run-neoforge: clients sharing a game folder cannot run together.
+		// Each loader has its own game folder (run-fabric, run-forge, run-neoforge): clients sharing one cannot run
+		// together. What they share lives in run-shared (shareRun in the root build).
 		client {
-			runDir = "../run"
+			runDir = "../run-fabric"
 		}
 	}
 }
@@ -69,3 +70,6 @@ rootProject.packNatives(tasks.jar)
 jar {
 	archiveFileName.set("${rootProject.archives_base_name}-fabric-${project.version}+${rootProject.minecraft_version}.jar")
 }
+
+// Worlds, packs, settings and servers shared with the other loaders (see shareRun in the root build).
+rootProject.shareRun(project, 'run-fabric')

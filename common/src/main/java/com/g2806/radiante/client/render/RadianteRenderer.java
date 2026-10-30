@@ -91,13 +91,18 @@ public final class RadianteRenderer {
         /** The Vulkan device cannot ray trace (an old card, or a software driver). */
         NO_RAY_TRACING,
         /** The card can ray trace but the renderer did not start (out of video memory, another instance, ...). */
-        INIT_FAILED
+        INIT_FAILED,
+        /** No build of the native renderer exists for this operating system or CPU (macOS, Windows on ARM...). */
+        UNSUPPORTED_PLATFORM,
+        /** The native renderer exists for this platform but its library did not load (a missing runtime...). */
+        NATIVE_LOAD_FAILED
     }
 
     private static Failure failure = Failure.NOT_VULKAN;
 
     public static Failure failure() {
-        return failure;
+        Failure nativeFailure = RadianteClient.nativeFailure();
+        return nativeFailure != null ? nativeFailure : failure;
     }
 
     /** 26.2 port: every Vulkan device was turned down for lacking ray tracing (VulkanBackendMixin). */
@@ -170,7 +175,10 @@ public final class RadianteRenderer {
     }
 
     public static void onDeviceCreated(VulkanDevice device) {
-        RadianteClient.ensureNativeLoaded();
+        // Without the native renderer the device stays Minecraft's alone; the failure is RadianteClient's.
+        if (!RadianteClient.isNativeAvailable()) {
+            return;
+        }
         vkDevice = device.vkDevice();
         try (org.lwjgl.system.MemoryStack stack = org.lwjgl.system.MemoryStack.stackPush()) {
             org.lwjgl.vulkan.VkPhysicalDeviceProperties properties = org.lwjgl.vulkan.VkPhysicalDeviceProperties.calloc(stack);
@@ -512,6 +520,9 @@ public final class RadianteRenderer {
             (float) Math.cos(moonSprite), (float) Math.sin(moonSprite));
 
 
+        BiomeClimate.update(minecraft, cameraState.pos);
+        WaterBody.update(minecraft, cameraState.pos);
+
         TextureAtlas celestials = minecraft.getAtlasManager().getAtlasOrThrow(AtlasIds.CELESTIALS);
         int celestialsId = TextureTracker.idOf(celestials.getTexture());
 
@@ -526,9 +537,14 @@ public final class RadianteRenderer {
             new Vector4f(celestialAxis, Options.vanillaCelestialOrientation ? 1.0f : 0.0f),
             BiomeAmbiance.chroma(), BiomeAmbiance.heights(), BiomeAmbiance.waterExtinction(),
             BiomeAmbiance.waterAlbedo(), mobEffect,
-            RainExposure.update(minecraft, cameraState.pos.x(), cameraState.pos.z()),
+            LightningFlash.apply(RainExposure.update(minecraft, cameraState.pos.x(), cameraState.pos.z()), minecraft,
+                cameraState.pos),
             BiomeAmbiance.waterFog(), new Vector4f(moonDirection, 0.0f), new Vector4f(moonAxis, 0.0f),
-            spriteRotation));
+            spriteRotation, BiomeClimate.climate(),
+            BiomeClimate.thunder(minecraft, PlayerFrame.worldPartialTicks()), BiomeClimate.biomeId(),
+            BiomeClimate.previousBiomeId(), BiomeClimate.idBlend(),
+            PackWeather.update(minecraft, PlayerFrame.worldPartialTicks())
+                .setComponent(2, WaterBody.depth()).setComponent(3, WaterBody.width())));
     }
 
     /**

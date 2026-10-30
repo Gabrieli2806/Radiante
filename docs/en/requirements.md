@@ -13,7 +13,10 @@
 | Minecraft | 26.3 (also 26.2 and 26.4 snapshots, see [Loader](#loader)) | same |
 
 The same jar works on both systems: it carries the Windows renderer (`prismrt.dll`) and the Linux
-one (`libprismrt.so`) and picks the right one at start. macOS is not supported.
+one (`libprismrt.so`) and picks the right one at start. macOS, Windows on ARM (Snapdragon and other ARM64
+laptops), 32-bit Java and Android launchers are not supported: there the game starts with Minecraft's own
+renderer and a one-time screen says that this device is not supported yet. The same happens if the renderer's
+library cannot be loaded on a supported system (`logs/latest.log` has the reason).
 
 Linux has a few details of its own (Flatpak launchers, Wayland, glibc): see [Linux](linux.md).
 

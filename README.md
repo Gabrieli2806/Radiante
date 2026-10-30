@@ -141,7 +141,7 @@ native/build-windows.bat
 `C:\rtb\radiante`, or in `RADIANTE_BUILD_DIR` when that is set. The install step copies `prismrt.dll`, the shaders
 and the modules into `common/src/main/resources/radiante-native/`, which is not in git: build the native part again
 after switching branches. `./gradlew.bat :fabric:runClient`, `:neoforge:runClient` or `:forge:runClient` launches a
-development client; each uses its own folder (`run/` for Fabric, `run-neoforge/`, `run-forge/`), so they can run at
+development client; each uses its own folder (`run-fabric/`, `run-neoforge/`, `run-forge/`, sharing worlds, packs and settings through `run-shared/`), so they can run at
 the same time.
 
 #### Which build a change needs
@@ -256,7 +256,7 @@ Bug reports, shader tweaks and pull requests are welcome. Bugs and ideas are tra
   `LevelRendererSkipMixin`), restore that vanilla behaviour so every mod relying on it benefits, instead of
   special-casing X by name. Only fall back to a mod-specific patch when no general fix exists, and keep it
   optional (reflection, no hard dependency).
-- Test in a `Radiante*`-prefixed world under `run/saves/` (a fresh superflat is usually enough) — never point
+- Test in a `Radiante*`-prefixed world under `run-shared/saves/` (a fresh superflat is usually enough) — never point
   a dev/test run at a world you actually play in. `-PquickPlay="<world>"` boots straight into one.
 - Before opening a PR: rebuild natives (`native/build-windows.bat` or `native/build-linux.sh`), run
   `./gradlew.bat build` for all three loaders, and sanity-check the change in game (screenshot it if it's visual).

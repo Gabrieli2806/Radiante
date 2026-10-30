@@ -44,7 +44,9 @@ map the worktree to a short path (`subst W: <worktree>`) and set `RADIANTE_BUILD
 folder of its own.
 
 To test: `./gradlew.bat :fabric:runClient` (or `:neoforge:runClient`, `:forge:runClient`). Each
-uses its own folder: `run/` (Fabric), `run-neoforge/` and `run-forge/`, so they can run at once.
+uses its own folder: `run-fabric/`, `run-neoforge/` and `run-forge/`, so they can run at once. They share
+`run-shared/`: worlds, resource packs, shader packs, Radiante's settings, `options.txt` and the server list (mods and
+mod configs stay per loader).
 
 ## Linux
 
@@ -60,6 +62,13 @@ The script builds in `native/build/linux-release` (or `RADIANTE_BUILD_DIR`) and 
 `-DVulkan_LIBRARY=/usr/lib/x86_64-linux-gnu/libvulkan.so.1`. For the result to load on
 Ubuntu 22.04, build on a system with glibc 2.35 (or check with
 `objdump -T libprismrt.so | grep -oE 'GLIBC_2\.[0-9]+' | sort -Vu | tail -1`).
+
+## Hand-ray comparison
+
+For offline comparisons, set `VPT_HAND_PRIMARY_BOUNDS` in `world/world.rgen`: `0` traces the original full-screen
+hand rays, `1` enables geometry bounds (the default), `2` visualizes the envelope, and `3` traces every hand ray
+and marks actual hand hits green inside the envelope or red outside. Rebuild native and then Gradle after changing
+the shader mode. Diagnostic modes are for coverage checks, not image quality or performance comparisons.
 
 ## One jar for both systems
 

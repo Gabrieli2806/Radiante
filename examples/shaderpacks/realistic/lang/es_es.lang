@@ -1,0 +1,13 @@
+# Realistic: sus propios ajustes, un grupo, descripciones y preajustes; el resto de los nombres vienen de radiante-pt.
+render_pipeline.module.ray_tracing.attribute.realistic_contrast=Contraste
+render_pipeline.module.ray_tracing.attribute.realistic_saturation=Saturación
+
+realistic.group.grade=Imagen
+
+realistic.desc.contrast=Separación entre luces y sombras alrededor del gris medio, encima del mapeo de tonos. Más alto da más fuerza, 1 deja la imagen como está. Cambia sin recompilar.
+realistic.desc.saturation=Cuánto color tiene la imagen, encima del mapeo de tonos. Más bajo la apaga, 1 deja los colores como están. Cambia sin recompilar.
+
+realistic.preset.realistic=Realista
+realistic.preset.realistic.desc=La corrección del propio paquete: un poco más de contraste y un poco menos de color.
+realistic.preset.neutral=Neutro
+realistic.preset.neutral.desc=Sin corrección encima del mapeo de tonos; el resto del paquete se mantiene.

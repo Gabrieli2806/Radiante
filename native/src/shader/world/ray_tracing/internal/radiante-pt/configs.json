@@ -8,6 +8,98 @@
         "update_pass": "world",
         "resolve_comp": "sharc_resolve.comp"
     },
+    "debug_views": [
+        {
+            "name": "albedo",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 1
+        },
+        {
+            "name": "normal",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 2
+        },
+        {
+            "name": "roughness",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 3
+        },
+        {
+            "name": "metallic",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 4
+        },
+        {
+            "name": "emission",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 5
+        },
+        {
+            "name": "depth",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 6
+        },
+        {
+            "name": "motion",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 7
+        },
+        {
+            "name": "flags",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 8
+        },
+        {
+            "name": "anyhit",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 9
+        },
+        {
+            "name": "bounces",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 10
+        },
+        {
+            "name": "rain",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 11
+        },
+        {
+            "name": "direct",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 12
+        },
+        {
+            "name": "indirect",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 13
+        },
+        {
+            "name": "sharc",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 14
+        },
+        {
+            "name": "raw_diffuse",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 15
+        },
+        {
+            "name": "raw_specular",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 16
+        },
+        {
+            "name": "fog_inscatter",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 17
+        },
+        {
+            "name": "fog_transmittance",
+            "define": "RADIANTE_DEBUG_VIEW",
+            "value": 18
+        }
+    ],
     "attributes": [
         {
             "name": "render_pipeline.module.ray_tracing.attribute.bedrock_original",
@@ -81,6 +173,12 @@
             "type": "bool",
             "default_value": "render_pipeline.true",
             "define": "VPT_RESTIR"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.restir_gi",
+            "type": "bool",
+            "default_value": "render_pipeline.false",
+            "define": "VPT_RESTIR_GI"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.capture_volumetric_cloud_indirect",
@@ -333,6 +431,20 @@
             "define": "VPT_BIOME_FOG_SCATTERING"
         },
         {
+            "name": "render_pipeline.module.ray_tracing.attribute.aerial_perspective",
+            "type": "float_range:0.0-4.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "VPT_AERIAL_PERSPECTIVE"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aerial_perspective_start",
+            "type": "float_range:0.0-1024.0",
+            "default_value": "128.0",
+            "runtime": true,
+            "define": "VPT_AERIAL_PERSPECTIVE_START"
+        },
+        {
             "name": "render_pipeline.module.ray_tracing.attribute.water_density",
             "type": "float_range:0.0-4.0",
             "default_value": "1.0",
@@ -374,11 +486,25 @@
             "define": "VPT_WATER_GOD_RAYS"
         },
         {
+            "name": "render_pipeline.module.ray_tracing.attribute.translucency",
+            "type": "float_range:0.0-2.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "VPT_TRANSLUCENCY"
+        },
+        {
             "name": "render_pipeline.module.ray_tracing.attribute.light_shafts",
             "type": "float_range:0.0-0.1",
             "default_value": "0.015",
             "runtime": true,
             "define": "VPT_LIGHT_SHAFTS"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.fog_veil_dimming",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.25",
+            "runtime": true,
+            "define": "VPT_FOG_VEIL_DIMMING"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.water_density_from_above",
@@ -449,6 +575,55 @@
             "default_value": "0.0",
             "runtime": true,
             "define": "VPT_RAIN_OPACITY"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.rain_streak_brightness",
+            "type": "float_range:0.0-2.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "VPT_RAIN_STREAK_BRIGHTNESS"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.rain_puddles",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "VPT_RAIN_PUDDLES"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.rain_wet_up_time",
+            "type": "float_range:10.0-600.0",
+            "default_value": "150.0",
+            "runtime": true,
+            "define": "VPT_RAIN_WET_UP_TIME"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.rain_drying_time",
+            "type": "float_range:30.0-600.0",
+            "default_value": "180.0",
+            "runtime": true,
+            "define": "VPT_RAIN_DRYING_TIME"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.rain_wetness_strength",
+            "type": "float_range:0.0-2.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "VPT_RAIN_WETNESS_STRENGTH"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.rain_wet_walls",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.5",
+            "runtime": true,
+            "define": "VPT_RAIN_WET_WALLS"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.lightning_flash",
+            "type": "float_range:0.0-2.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "VPT_LIGHTNING_FLASH"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.wind",
@@ -724,6 +899,13 @@
             "default_value": "4.0",
             "runtime": true,
             "define": "VPT_POST_DOF_MAX_RADIUS"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.hand_samples",
+            "type": "int_range:1-8",
+            "default_value": "3",
+            "runtime": true,
+            "define": "VPT_HAND_SAMPLES"
         }
     ],
     "textures": [
@@ -935,6 +1117,17 @@
             "storage_binding": 39
         },
         {
+            "name": "restir_gi_reservoir",
+            "type": "intermediate",
+            "shared": true,
+            "dimension": "2d_array",
+            "format": "R32G32B32A32_SFLOAT",
+            "width": "RENDER_WIDTH",
+            "height": "RENDER_HEIGHT",
+            "depth": 6,
+            "storage_binding": 48
+        },
+        {
             "name": "volumetric_cloud_history",
             "type": "intermediate",
             "shared": true,
@@ -946,43 +1139,86 @@
             "storage_binding": 35
         },
         {
-            "name": "froxel_light",
+            "name": "fog_sun_near",
             "type": "intermediate",
             "shared": true,
             "dimension": "3d",
             "format": "R16G16B16A16_SFLOAT",
-            "width": 160,
-            "height": 90,
+            "width": 128,
+            "height": 64,
             "depth": 128,
-            "storage_binding": 40
-        },
-        {
-            "name": "froxel_integral",
-            "type": "intermediate",
-            "shared": true,
-            "dimension": "3d",
-            "format": "R16G16B16A16_SFLOAT",
-            "width": 160,
-            "height": 90,
-            "depth": 64,
-            "storage_binding": 41,
+            "storage_binding": 40,
             "sampled_binding": 42,
             "filter": "linear",
-            "address_mode": "clamp_to_edge"
+            "address_mode": "repeat"
         },
         {
-            "name": "froxel_transmission",
+            "name": "fog_block_near",
             "type": "intermediate",
             "shared": true,
             "dimension": "3d",
             "format": "R16G16B16A16_SFLOAT",
-            "width": 160,
-            "height": 90,
-            "depth": 64,
+            "width": 128,
+            "height": 64,
+            "depth": 128,
+            "storage_binding": 41,
+            "sampled_binding": 43,
+            "filter": "linear",
+            "address_mode": "repeat"
+        },
+        {
+            "name": "fog_sun_far",
+            "type": "intermediate",
+            "shared": true,
+            "dimension": "3d",
+            "format": "R16G16B16A16_SFLOAT",
+            "width": 128,
+            "height": 64,
+            "depth": 128,
             "storage_binding": 46,
             "sampled_binding": 47,
             "filter": "linear",
+            "address_mode": "repeat"
+        },
+        {
+            "name": "fog_block_far",
+            "type": "intermediate",
+            "shared": true,
+            "dimension": "3d",
+            "format": "R16G16B16A16_SFLOAT",
+            "width": 128,
+            "height": 64,
+            "depth": 128,
+            "storage_binding": 49
+        },
+        {
+            "name": "fog_march_record",
+            "type": "intermediate",
+            "shared": true,
+            "format": "R32G32B32A32_UINT",
+            "width": "RENDER_WIDTH",
+            "height": "RENDER_HEIGHT",
+            "storage_binding": 50
+        },
+        {
+            "name": "radiante_debug_view",
+            "type": "intermediate",
+            "shared": true,
+            "format": "R16G16B16A16_SFLOAT",
+            "width": "if(RADIANTE_DEBUG_VIEW, RENDER_WIDTH, 1)",
+            "height": "if(RADIANTE_DEBUG_VIEW, RENDER_HEIGHT, 1)",
+            "sampled_binding": 120,
+            "storage_binding": 121,
+            "filter": "linear",
             "address_mode": "clamp_to_edge"
+        },
+        {
+            "name": "radiante_debug_count",
+            "type": "intermediate",
+            "format": "R32_UINT",
+            "width": "if(RADIANTE_DEBUG_VIEW, RENDER_WIDTH, 1)",
+            "height": "if(RADIANTE_DEBUG_VIEW, RENDER_HEIGHT, 1)",
+            "storage_binding": 122
         }
     ],
     "execution": {
@@ -1026,7 +1262,7 @@
                                 "condition": "VPT_VOLUMETRIC_LIGHT_MODE == 1",
                                 "then": [
                                     {
-                                        "pass": "froxel_carry"
+                                        "pass": "fog_volume_shift"
                                     }
                                 ],
                                 "else": []
@@ -1048,7 +1284,7 @@
                                 "condition": "VPT_VOLUMETRIC_LIGHT_MODE == 1",
                                 "then": [
                                     {
-                                        "pass": "froxel_integrate"
+                                        "pass": "fog_march"
                                     }
                                 ],
                                 "else": []
@@ -1101,6 +1337,17 @@
                         }
                     ]
                 }
+            },
+            {
+                "if_else": {
+                    "condition": "RADIANTE_DEBUG_VIEW != 0",
+                    "then": [
+                        {
+                            "pass": "debug_view_capture"
+                        }
+                    ],
+                    "else": []
+                }
             }
         ]
     },
@@ -1111,6 +1358,9 @@
             },
             {
                 "VPT_POST_DOF_FOCUS_HISTORY_READY": false
+            },
+            {
+                "RADIANTE_HOOK_POST_GRADE": false
             }
         ],
         "commands": [
@@ -1197,6 +1447,29 @@
                         }
                     ]
                 }
+            },
+            {
+                "if_else": {
+                    "condition": "RADIANTE_HOOK_POST_GRADE",
+                    "then": [
+                        {
+                            "pass": "post_hook_copy"
+                        },
+                        {
+                            "pass": "post_hook_grade"
+                        }
+                    ]
+                }
+            },
+            {
+                "if_else": {
+                    "condition": "RADIANTE_DEBUG_VIEW != 0",
+                    "then": [
+                        {
+                            "pass": "post_debug_view"
+                        }
+                    ]
+                }
             }
         ]
     },
@@ -1233,21 +1506,23 @@
         },
         {
             "type": "compute",
-            "name": "froxel_carry",
+            "name": "fog_volume_shift",
             "inputs": {
                 "images": [
-                    "froxel_light"
+                    "fog_sun_far"
                 ]
             },
             "outputs": {
                 "images": [
-                    "froxel_light"
+                    "fog_sun_near",
+                    "fog_block_near",
+                    "fog_block_far"
                 ]
             },
-            "compute": "froxel/carry.comp",
-            "gx": "20",
-            "gy": "12",
-            "gz": "64"
+            "compute": "froxel/shift.comp",
+            "gx": "16",
+            "gy": "8",
+            "gz": "256"
         },
         {
             "type": "ray_tracing",
@@ -1262,8 +1537,9 @@
                     "volumetric_cloud_weather",
                     "volumetric_cloud_curl",
                     "volumetric_cloud_coverage_noise",
-                    "froxel_integral",
-                    "froxel_transmission"
+                    "fog_sun_near",
+                    "fog_block_near",
+                    "fog_sun_far"
                 ]
             },
             "outputs": {
@@ -1286,7 +1562,12 @@
                     "post_star_cloud_transmittance",
                     "material_state",
                     "restir_reservoir",
-                    "froxel_light",
+                    "restir_gi_reservoir",
+                    "fog_sun_near",
+                    "fog_block_near",
+                    "fog_sun_far",
+                    "fog_block_far",
+                    "fog_march_record",
                     "out:fog_transmission"
                 ]
             },
@@ -1416,21 +1697,26 @@
         },
         {
             "type": "compute",
-            "name": "froxel_integrate",
+            "name": "fog_march",
             "inputs": {
                 "images": [
-                    "froxel_light"
+                    "sky_cube",
+                    "fog_sun_near",
+                    "fog_block_near",
+                    "fog_sun_far",
+                    "fog_march_record"
                 ]
             },
             "outputs": {
                 "images": [
-                    "froxel_integral",
-                    "froxel_transmission"
+                    "out:radiance",
+                    "out:fog_image",
+                    "out:fog_transmission"
                 ]
             },
-            "compute": "froxel/integrate.comp",
-            "gx": "20",
-            "gy": "12",
+            "compute": "froxel/march.comp",
+            "gx": "(RENDER_WIDTH + 7) / 8",
+            "gy": "(RENDER_HEIGHT + 7) / 8",
             "gz": "1"
         },
         {
@@ -1473,6 +1759,34 @@
                 ]
             },
             "compute": "volumetric_cloud/apply.comp",
+            "gx": "(RENDER_WIDTH + 7) / 8",
+            "gy": "(RENDER_HEIGHT + 7) / 8",
+            "gz": "1"
+        },
+        {
+            "type": "compute",
+            "name": "debug_view_capture",
+            "inputs": {
+                "images": [
+                    "out:diffuse_albedo_metallic",
+                    "out:normal_roughness",
+                    "out:motion_vector",
+                    "out:linear_depth",
+                    "out:first_hit_base_emission",
+                    "out:first_hit_diffuse_direct_light",
+                    "out:first_hit_diffuse_indirect_light",
+                    "out:first_hit_specular",
+                    "out:fog_image",
+                    "out:fog_transmission"
+                ]
+            },
+            "outputs": {
+                "images": [
+                    "radiante_debug_view",
+                    "radiante_debug_count"
+                ]
+            },
+            "compute": "debug/debug_view.comp",
             "gx": "(RENDER_WIDTH + 7) / 8",
             "gy": "(RENDER_HEIGHT + 7) / 8",
             "gz": "1"
@@ -1646,6 +1960,42 @@
                 "VPT_POST_DOF_DIRECTION_X": "0.0",
                 "VPT_POST_DOF_DIRECTION_Y": "1.0"
             }
+        },
+        {
+            "type": "full_screen",
+            "stage": "post_render",
+            "name": "post_hook_copy",
+            "fragment": "post_render/post_copy.frag",
+            "inputs": {
+                "images": [
+                    "out:ldr"
+                ]
+            },
+            "target": "post_motion"
+        },
+        {
+            "type": "full_screen",
+            "stage": "post_render",
+            "name": "post_hook_grade",
+            "fragment": "post_render/post_hook_grade.frag",
+            "inputs": {
+                "images": [
+                    "post_motion"
+                ]
+            },
+            "target": "out:ldr"
+        },
+        {
+            "type": "full_screen",
+            "stage": "post_render",
+            "name": "post_debug_view",
+            "fragment": "post_render/post_debug_view.frag",
+            "inputs": {
+                "images": [
+                    "radiante_debug_view"
+                ]
+            },
+            "target": "out:ldr"
         }
     ]
 }

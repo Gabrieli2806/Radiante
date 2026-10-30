@@ -46,6 +46,7 @@
     "texture.TextureAtlasAccessor",
     "texture.TextureAtlasMixin",
     "world.ChunkSectionsToRenderMixin",
+    "world.ClientLevelAccessor",
     "world.CloudRendererAccessor",
     "world.ScreenEffectRendererMixin",
     "world.GameRendererMixin",

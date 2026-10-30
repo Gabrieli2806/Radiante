@@ -94,6 +94,20 @@ class Shader : public SharedObject<Shader> {
                                           std::string injectedSource = "",
                                           const std::filesystem::path &cacheDir = {});
 
+    // While one lives, compiles on this thread do not write their errors to the renderer's error log (the message is
+    // in the exception compileGlslToSpv throws either way). For a shader pack check, whose failures Java must not take
+    // for the running pack's (ShaderPackTrial reads that log).
+    class QuietErrors {
+      public:
+        QuietErrors();
+        ~QuietErrors();
+        QuietErrors(const QuietErrors &) = delete;
+        QuietErrors &operator=(const QuietErrors &) = delete;
+
+      private:
+        bool previous_;
+    };
+
     VkShaderModule &vkShaderModule();
 
   private:

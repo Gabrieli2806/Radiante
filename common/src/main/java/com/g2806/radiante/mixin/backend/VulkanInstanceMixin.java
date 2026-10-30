@@ -17,7 +17,10 @@ public class VulkanInstanceMixin {
         target = "Lorg/lwjgl/vulkan/VK12;vkCreateInstance(Lorg/lwjgl/vulkan/VkInstanceCreateInfo;Lorg/lwjgl/vulkan/VkAllocationCallbacks;Lorg/lwjgl/PointerBuffer;)I"))
     private int radiante$createMergedInstance(VkInstanceCreateInfo createInfo, VkAllocationCallbacks allocator,
         PointerBuffer instance) {
-        RadianteClient.ensureNativeLoaded();
+        // Without the native renderer Minecraft creates its own instance, with no ray tracing extensions added.
+        if (!RadianteClient.isNativeAvailable()) {
+            return org.lwjgl.vulkan.VK12.vkCreateInstance(createInfo, allocator, instance);
+        }
         return RendererProxy.createInstance(createInfo.address(), allocator == null ? 0L : allocator.address(),
             instance.address());
     }

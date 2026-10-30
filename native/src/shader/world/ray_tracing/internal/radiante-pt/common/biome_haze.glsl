@@ -17,17 +17,7 @@
 // biome's vanilla fog colour.
 const float BIOME_HAZE_MAX_DISTANCE = 320.0;
 
-// How thick the haze is at a world height: full below biomeFogHeights.x, thinning to nothing at .y. Bedrock RTX fogs
-// settle in the valleys this way; Radiante's own haze puts both heights far above the world.
-float biomeFogHeightProfile(float worldY) {
-    vec2 heights = skyUBO.biomeFogHeights.xy;
-    return clamp((heights.y - worldY) / max(heights.y - heights.x, 1.0), 0.0, 1.0);
-}
-
-// Extinction per channel relative to biomeFog.a: a fog that absorbs more blue than red turns the distance warm.
-vec3 biomeFogChroma() {
-    return max(skyUBO.biomeFogChroma.rgb, vec3(0.0));
-}
+#include "common/biome_fog_profile.glsl"
 
 // How far a sky ray runs through the biome haze. The haze is a layer that thins out to nothing at biomeFogHeights.y,
 // so a ray rising at an angle crosses about half of what is left of it over the camera, divided by the sine of that
@@ -107,6 +97,101 @@ void biomeHaze(vec3 rayDir, bool hitSky, float hitDistance, out float transmitta
         hazeRadiance += light * phase * max(VPT_BIOME_FOG_SCATTERING, 0.0) * albedo;
     }
     additive = hazeRadiance * fogAmount;
+}
+
+// ---- Aerial perspective: the air itself between the camera and what it sees.
+//
+// Far terrain fades towards the colour of the sky behind it, more the further it is and the lower the air it looks
+// through, as real air does over a few kilometres (Minecraft's scale is compressed: a render distance stands in for
+// them). Without it nothing hazed the distance at all by default: Bedrock's fog volume only fogs the biome's own fog
+// (zero with Biome Ambiance off), and only for its 50 blocks, so the far hills and Distant Horizons' terrain stood out
+// at full contrast against a pale sky.
+//
+// Analytic, per pixel, from the primary hit's distance alone: the optical depth through air whose density falls off
+// exponentially with height, and the light it scatters taken from the sky in the view's own direction (raised to the
+// horizon), which is what a deep enough layer of that air converges to. That sky carries the sun's glow around a low
+// sun, so the haze warms towards a sunset without a phase function of its own. No ray, no noise, and the same at every
+// distance, so chunks and LODs fade alike.
+#ifndef VPT_AERIAL_PERSPECTIVE
+#    define VPT_AERIAL_PERSPECTIVE 1.0
+#endif
+#ifndef VPT_AERIAL_PERSPECTIVE_START
+#    define VPT_AERIAL_PERSPECTIVE_START 128.0
+#endif
+
+// Extinction per block at sea level at 100 %: about an eighth of the view gone at 16 chunks, two fifths at 64 chunks of
+// Distant Horizons terrain, seen at sea level in a temperate biome on a clear day.
+const float AERIAL_DENSITY = 0.0006;
+const float AERIAL_REFERENCE_HEIGHT = 64.0;
+// The height over which the air thins to a third: a mountain top at Y 200 looks through half the haze of a beach.
+const float AERIAL_SCALE_HEIGHT = 200.0;
+// Below sea level (a deep valley, a ravine seen from its rim) the air thickens no further than this many scale heights.
+const float AERIAL_MAX_BELOW = 0.5;
+// Past Aerial Perspective Start, the share of the start distance over which the haze comes in, and its least length.
+const float AERIAL_FADE = 0.5;
+const float AERIAL_FADE_MIN = 32.0;
+
+// How much thicker the air is than on a clear temperate day: humid biomes (the biome's downfall) and rain haze more,
+// dry ones less; wet air lingers a little after the rain.
+float aerialDensityScale() {
+    float humid = mix(0.7, 1.4, clamp(skyUBO.biomeClimate.y, 0.0, 1.0));
+    float rain = clamp(skyUBO.rainGradient, 0.0, 1.0);
+    float weather = 1.0 + 1.5 * rain + 0.5 * clamp(skyUBO.thunderGradient, 0.0, 1.0) +
+                    0.4 * clamp(skyUBO.wetness, 0.0, 1.0) * (1.0 - rain);
+    // The haze is lit by the sky; away from it (a cave, deep indoors) there is none to see. biomeFogHeights.z is the
+    // sky light at the camera, eased (BiomeAmbiance).
+    float open = smoothstep(0.25, 0.85, clamp(skyUBO.biomeFogHeights.z, 0.0, 1.0));
+    return max(VPT_AERIAL_PERSPECTIVE, 0.0) * humid * weather * open;
+}
+
+// The optical depth from a point at worldY along a ray rising by dirY per block, over distance blocks: the exact
+// integral of the exponential profile, its ends clamped at AERIAL_MAX_BELOW.
+float aerialOpticalDepth(float worldY, float dirY, float distance, float densityScale) {
+    float a0 = max((worldY - AERIAL_REFERENCE_HEIGHT) / AERIAL_SCALE_HEIGHT, -AERIAL_MAX_BELOW);
+    float a1 = max((worldY + dirY * distance - AERIAL_REFERENCE_HEIGHT) / AERIAL_SCALE_HEIGHT, -AERIAL_MAX_BELOW);
+    float span = a1 - a0;
+    float meanDensity = abs(span) < 1e-3 ? exp(-a0) * (1.0 - 0.5 * span) : (exp(-a0) - exp(-a1)) / span;
+    return AERIAL_DENSITY * densityScale * meanDensity * max(distance, 0.0);
+}
+
+// The colour the distance fades into: the sky behind it, at the horizon for a ray that points down, greyed by rain
+// as the sky itself is (world_miss_eval_impl.glsl).
+vec3 aerialHazeRadiance(vec3 rayDir) {
+    float horizontal = length(rayDir.xz);
+    vec2 bearing = horizontal > 1e-4 ? rayDir.xz / horizontal : vec2(1.0, 0.0);
+    float rise = max(rayDir.y, 0.04);
+    vec3 dir = vec3(bearing.x * sqrt(1.0 - rise * rise), rise, bearing.y * sqrt(1.0 - rise * rise));
+    vec3 sky = max(texture(skyFull, dir).rgb, vec3(0.0));
+    vec3 rainy = mix(vec3(0.0), vec3(0.1), smoothstep(-0.3, 0.3, celestialSunDirection().y));
+    return mix(sky, rainy, clamp(skyUBO.rainGradient, 0.0, 1.0));
+}
+
+// The aerial perspective over the camera's ray to a surface hitDistance away: what is left of the surface, and the
+// sky's light the air adds. Where Biome Ambiance's haze is on it is part of the same air: the clear air is the floor
+// the biome's haze thickens, never stacked on it whole (the biome's density is taken off, down to a third), and so is
+// any other air already fogging the distance (otherAirDensity, extinction per block).
+void aerialPerspective(vec3 rayDir, float hitDistance, float otherAirDensity, out vec3 transmittance,
+                       out vec3 additive) {
+    transmittance = vec3(1.0);
+    additive = vec3(0.0);
+    float densityScale = aerialDensityScale();
+    if (densityScale <= 0.0 || hitDistance <= 0.0 || worldUBO.skyType != 1) { return; }
+    float cameraY = float(worldUBO.cameraPos.y);
+    float present = max(otherAirDensity, 0.0) + max(skyUBO.biomeFog.a, 0.0) * biomeFogHeightProfile(cameraY);
+    if (present > 0.0) { densityScale = max(densityScale - present / AERIAL_DENSITY, densityScale * 0.35); }
+    // No haze nearer than Aerial Perspective Start: the air thickens from nothing there to its full density over
+    // AERIAL_FADE of the start (at least AERIAL_FADE_MIN blocks), and is integrated from the start point on, not from
+    // the camera. Hazed from the camera, a house across the street was already faintly washed out.
+    float start = max(VPT_AERIAL_PERSPECTIVE_START, 0.0);
+    if (hitDistance <= start) { return; }
+    float fade = max(start * AERIAL_FADE, AERIAL_FADE_MIN);
+    float past = hitDistance - start;
+    // The path length weighted by the linear ramp of the density over the fade.
+    float weighted = past < fade ? past * past / (2.0 * fade) : past - 0.5 * fade;
+    float opticalDepth = aerialOpticalDepth(cameraY + rayDir.y * start, rayDir.y, weighted, densityScale);
+    float t = exp(-opticalDepth);
+    transmittance = vec3(t);
+    additive = aerialHazeRadiance(rayDir) * (1.0 - t);
 }
 
 #endif

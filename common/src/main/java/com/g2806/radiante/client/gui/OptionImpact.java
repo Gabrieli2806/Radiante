@@ -23,6 +23,7 @@ enum OptionImpact {
     }
 
     private static final Map<String, OptionImpact> BY_OPTION = Map.ofEntries(
+        Map.entry("render_pipeline.module.ray_tracing.attribute.hand_samples", HIGH),
         Map.entry("options.radiante.quality", VARIES),
         Map.entry("options.radiante.preset", HIGH),
         Map.entry("options.radiante.dlss_mode", HIGH),
@@ -36,6 +37,7 @@ enum OptionImpact {
         Map.entry("options.radiante.cloud_mode", MEDIUM),
         Map.entry("options.radiante.block_light_sampling", MEDIUM),
         Map.entry("options.radiante.restir", MEDIUM),
+        Map.entry("options.radiante.restir_gi", MEDIUM),
         Map.entry("options.radiante.parallax", LOW),
         Map.entry("options.radiante.motion_blur", LOW),
         Map.entry("options.radiante.depth_of_field", LOW),
@@ -44,6 +46,10 @@ enum OptionImpact {
         Map.entry("options.radiante.tunable.mirror_bounces", VARIES),
         Map.entry("options.radiante.tunable.fog_distance", MEDIUM),
         Map.entry("options.radiante.tunable.light_shafts", LOW),
+        Map.entry("options.radiante.tunable.fog_veil_dimming", LOW),
+        Map.entry("options.radiante.tunable.translucency", NONE),
+        Map.entry("options.radiante.tunable.aerial_perspective", NONE),
+        Map.entry("options.radiante.tunable.aerial_perspective_start", NONE),
         Map.entry("options.radiante.tunable.water_god_rays", LOW),
         Map.entry("options.radiante.chunk_building_threads", VARIES),
         Map.entry("options.radiante.hdr_output", LOW),
@@ -66,16 +72,27 @@ enum OptionImpact {
         Map.entry("options.radiante.chunk_building_total_batches", VARIES),
         Map.entry("options.radiante.mod_overlays", LOW),
         Map.entry("options.radiante.debug_logging", LOW),
+        Map.entry("options.radiante.debug_view", VARIES),
         Map.entry("options.radiante.tunable.dof_range", LOW),
         Map.entry("options.radiante.tunable.motion_blur_strength", LOW),
         Map.entry("options.radiante.tunable.glass_reflections", LOW),
         Map.entry("options.radiante.tunable.water_texture", LOW),
         Map.entry("options.radiante.tunable.portal_transparency", LOW),
         Map.entry("options.radiante.tunable.rain_opacity", LOW),
+        Map.entry("options.radiante.tunable.rain_streaks", LOW),
+        Map.entry("options.radiante.tunable.puddles", LOW),
+        Map.entry("options.radiante.tunable.rain_wet_up_time", LOW),
+        Map.entry("options.radiante.tunable.rain_drying_time", LOW),
+        Map.entry("options.radiante.tunable.rain_wetness", LOW),
+        Map.entry("options.radiante.tunable.rain_wet_walls", LOW),
+        Map.entry("options.radiante.tunable.lightning_flash", LOW),
         Map.entry("options.radiante.wind", LOW),
         Map.entry("options.radiante.tunable.water_clear_teal", LOW));
 
     static OptionImpact of(String optionKey) {
+        if (optionKey != null && BY_OPTION.containsKey(optionKey)) {
+            return BY_OPTION.get(optionKey);
+        }
         // Advanced rows without a translation have a literal caption and so no key: nothing is known of their cost.
         if (optionKey == null || !optionKey.startsWith("options.radiante.")) {
             return null;

@@ -8,4 +8,6 @@
 layout(location = 0) rayPayloadInEXT MainRay mainRay;
 hitAttributeEXT vec2 attribs;
 
-void main() {}
+#include "common/debug_count.glsl"
+
+void main() { RADIANTE_DEBUG_COUNT_ANYHIT(); }

@@ -43,6 +43,10 @@ public abstract class HdrPresentMixin {
     @Inject(method = "pickSwapchainSurfaceFormat", at = @At("HEAD"), cancellable = true)
     private void radiante$pickHdrFormat(VkSurfaceFormatKHR.Buffer formats,
         CallbackInfoReturnable<VkSurfaceFormatKHR> cir) {
+        // HDR output is composed by the native renderer; without it the swapchain stays SDR.
+        if (!com.g2806.radiante.client.RadianteClient.isNativeLoaded()) {
+            return;
+        }
         VkSurfaceFormatKHR hdr = HdrDisplay.pick(formats);
         if (hdr != null) {
             cir.setReturnValue(hdr);

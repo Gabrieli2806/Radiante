@@ -1,4 +1,6 @@
 #include "prism/render/entities.hpp"
+#include "prism/render/scene_stats.hpp"
+#include "prism/render/hand_primary_bounds.hpp"
 
 #include "prism/render/buffers.hpp"
 #include "prism/render/chunks.hpp"
@@ -649,6 +651,7 @@ void attachGeometry(Entity &entity,
 
 // Places every structure described on `batch` in one buffer and hands each to its entity.
 void placeStructures(gpu::BlasBatch &batch, const std::vector<Entity *> &awaitingStructure) {
+    SceneStats::entityBlasThisFrame.fetch_add(static_cast<uint32_t>(awaitingStructure.size()), std::memory_order_relaxed);
     auto framework = Renderer::instance().framework();
     std::vector<std::shared_ptr<gpu::BLAS>> structures = batch.place(framework->device(), framework->vma());
     for (size_t i = 0; i < awaitingStructure.size(); i++) awaitingStructure[i]->blas = std::move(structures[i]);
@@ -848,7 +851,17 @@ std::shared_ptr<Entity> Entities::State::gatherTraced(const EntitiesBuildTask &t
     for (int i = 0; i < input.geometryCount; i++) {
         const size_t geometry = input.firstGeometry + i;
         if (!triangulate(task, geometry, placement, triangles)) continue;
-        if (entity == nullptr) entity = makeEntity(input, task.coordinate, prebuiltBLAS);
+        if (entity == nullptr) {
+            entity = makeEntity(input, task.coordinate, prebuiltBLAS);
+            entity->handBoundsValid = true;
+        }
+        if ((input.rayTracingFlag & hand_primary::mask) != 0) {
+            for (const auto &vertex : triangles.vertices) {
+                const glm::vec3 p(gpu::Vertex::makePositionVertex(vertex).pos);
+                if (!hand_primary::finite(p)) entity->handBoundsValid = false;
+                entity->handPositions.push_back(p);
+            }
+        }
 
         if (collectLights) {
             if (const Emission *source = emission.get(); source != nullptr) {
@@ -885,6 +898,8 @@ Entities::Entities(std::shared_ptr<Framework>) : state_(std::make_unique<State>(
 Entities::~Entities() = default;
 
 void Entities::resetFrame() {
+    SceneStats::entityBlasLastFrame.store(SceneStats::entityBlasThisFrame.exchange(0, std::memory_order_relaxed),
+                                          std::memory_order_relaxed);
     Renderer::instance().framework()->safeAcquireCurrentContext();
     State &s = *state_;
 

@@ -57,6 +57,14 @@ indexBuffer;
 
 #include "util/vertex.glsl"
 #include "common/lod_coverage.glsl"
+// A pack's waves (hooks/water_waves.glsl) shape the caustics as they shape the surface. This shader names its world
+// uniform ubo; the hook sees it as worldUBO, as everywhere else.
+#define worldUBO ubo
+#include "hooks/water_waves.glsl"
+#undef worldUBO
+#ifndef RADIANTE_HOOK_WATER_WAVES_DEFAULT
+#    include "common/fft_water_shaped.glsl"
+#endif
 #include "common/seamless_glass.glsl"
 
 layout(location = 1) rayPayloadInEXT ShadowRay shadowRay;
@@ -113,9 +121,17 @@ bool waterSurfaceLight(PositionVertex p0, PositionVertex p1, PositionVertex p2,
     } else {
         absorption = exp(-(vec3(1.0) - clamp(biomeWaterColour, vec3(0.0), vec3(1.0))) * depth * 0.22);
     }
+#ifdef RADIANTE_HOOK_WATER_WAVES_DEFAULT
     float caustic = bedrockCausticsAvailable() ?
                         sampleBedrockCaustic(worldHit.xz, ubo.gameTime, depth) :
                         sampleFftWaterCaustic(waveCoord, ubo.gameTime, gl_WorldRayDirectionEXT, depth);
+#else
+    // The waves as a pack shaped them (hooks/water_waves.glsl); Bedrock's caustics texture keeps its own.
+    vec3 waveShape = fftWaterWaveShape();
+    float caustic = bedrockCausticsAvailable() ?
+                        sampleBedrockCaustic(worldHit.xz, ubo.gameTime, depth) :
+                        sampleFftWaterCausticShaped(waveCoord, ubo.gameTime, gl_WorldRayDirectionEXT, depth, waveShape);
+#endif
     transmission = absorption * caustic;
     return true;
 }

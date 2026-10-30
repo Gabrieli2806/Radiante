@@ -54,6 +54,10 @@ public class RadianteOptionsScreen extends Screen {
     private boolean pendingChunkAuto = Options.chunkBuildingAuto;
     private boolean pendingCollectEmission = Options.collectChunkEmission;
     private boolean pendingDebugLogging = Options.debugLogging;
+    /** The debug view chosen on the Debug section and not applied yet; null when untouched. */
+    private String pendingDebugView;
+    /** The GPU pass timings on the F3 screen as chosen on the Debug section and not applied yet; null when untouched. */
+    private Boolean pendingGpuTimings;
     private boolean pendingBiomeAmbiance = Options.biomeAmbiance;
     private boolean pendingFirstPersonShadow = Options.firstPersonShadow;
     private int pendingBiomeAmbianceStrength = Options.biomeAmbianceStrength;
@@ -63,6 +67,12 @@ public class RadianteOptionsScreen extends Screen {
     private Boolean pendingCloudShadows;
     private String pendingSeamlessScope;
     private Boolean pendingRestir;
+    private Boolean pendingRestirGi;
+    /**
+     * radiante-pt's default for restir_gi (configs.json), what Reset puts back. Off: behind DLSS Ray Reconstruction it
+     * took only a little noise off and read a few percent darker.
+     */
+    private static final Boolean RESTIR_GI_DEFAULT = Boolean.FALSE;
     private Boolean pendingSer;
     private Boolean pendingFroxelFog;
     private Boolean pendingSeamlessGlass;
@@ -83,8 +93,12 @@ public class RadianteOptionsScreen extends Screen {
     /** The part of the settings shown; kept while the game runs, so the screen reopens where it was left. */
     enum Category {
         QUALITY, IMAGE, LIGHTING, SKY_AND_WATER, PERFORMANCE, OTHER,
+        /** The settings of the shader pack in use (PackSettingsPage), named after it; only with a pack other than Radiante PT. */
+        PACK,
         /** Other mods' options (RadianteAddons); only there when one registered. */
-        ADDONS;
+        ADDONS,
+        /** Developer utilities; only while Advanced is on. */
+        DEBUG;
 
         String key() {
             return "options.radiante.category." + name().toLowerCase(java.util.Locale.ROOT);
@@ -107,6 +121,8 @@ public class RadianteOptionsScreen extends Screen {
     private final java.util.Map<AddonImpl.SettingImpl<?>, Object> pendingAddons = new java.util.LinkedHashMap<>();
     /** The caption keys of the addon options on this screen: nothing of Radiante's own greys them out. */
     private final java.util.Set<String> addonCaptionKeys = new java.util.HashSet<>();
+    /** The cost the shader pack declares for its rows on the pack's page (performance_impact). */
+    private final java.util.Map<OptionInstance<?>, OptionImpact> packImpacts = new java.util.IdentityHashMap<>();
 
     @SuppressWarnings("unchecked")
     private <T> T staged(String field, T current) {
@@ -182,6 +198,7 @@ public class RadianteOptionsScreen extends Screen {
         this.pendingCloudShadows = previous.pendingCloudShadows;
         this.pendingSeamlessScope = previous.pendingSeamlessScope;
         this.pendingRestir = previous.pendingRestir;
+        this.pendingRestirGi = previous.pendingRestirGi;
         this.pendingSer = previous.pendingSer;
         this.pendingFroxelFog = previous.pendingFroxelFog;
         this.pendingSeamlessGlass = previous.pendingSeamlessGlass;
@@ -194,6 +211,9 @@ public class RadianteOptionsScreen extends Screen {
         this.pendingFogSamples = previous.pendingFogSamples;
         this.pendingDepthOfField = previous.pendingDepthOfField;
         this.pendingReflex = previous.pendingReflex;
+        this.pendingDebugLogging = previous.pendingDebugLogging;
+        this.pendingDebugView = previous.pendingDebugView;
+        this.pendingGpuTimings = previous.pendingGpuTimings;
         this.pendingTunables = previous.pendingTunables;
         this.pendingToneMethod = previous.pendingToneMethod;
         this.scroll = previous.layout != null ? previous.layout.scroll() : previous.scroll;
@@ -351,6 +371,25 @@ public class RadianteOptionsScreen extends Screen {
             return false;
         }
         return component != UpscalerDownloads.Component.DLSS || RadianteRenderer.isNvidiaGpu();
+    }
+
+    /**
+     * The settings screen, or, when the native renderer is not loaded, the screen that says why: every page of the
+     * settings reaches the renderer. Everything that opens the settings from outside (the video settings button, the
+     * key binding, the mod list) goes through here.
+     */
+    public static Screen create(Screen parent, net.minecraft.client.Options options) {
+        if (!com.g2806.radiante.client.RadianteClient.isNativeLoaded()) {
+            return new UnsupportedHardwareScreen(parent);
+        }
+        return new RadianteOptionsScreen(parent, options);
+    }
+
+    /** Development: opens the settings on a section. */
+    public static RadianteOptionsScreen showingSection(Screen parent, net.minecraft.client.Options options,
+        String section) {
+        SettingsLayout.select(Category.valueOf(section));
+        return new RadianteOptionsScreen(parent, options);
     }
 
     /** Development: opens the settings looking at a pipeline, as if picked in the selector. */
@@ -596,6 +635,18 @@ public class RadianteOptionsScreen extends Screen {
         }
         return OptionInstance.createBoolean("options.radiante.restir", tooltip("options.radiante.restir"),
             this.pendingRestir, value -> this.pendingRestir = value);
+    }
+
+    /** ReSTIR GI for the first bounce of light, where the shader pack has it. */
+    private OptionInstance<Boolean> restirGiOption() {
+        if (!Pipeline.supportsShaderPackToggle(Pipeline.RESTIR_GI_ATTRIBUTE)) {
+            return null;
+        }
+        if (this.pendingRestirGi == null) {
+            this.pendingRestirGi = Pipeline.isShaderPackToggleOn(Pipeline.RESTIR_GI_ATTRIBUTE);
+        }
+        return OptionInstance.createBoolean("options.radiante.restir_gi", tooltip("options.radiante.restir_gi"),
+            this.pendingRestirGi, value -> this.pendingRestirGi = value);
     }
 
     /** DLSS or FSR frame generation, offered where the GPU runs both (FSR works next to any upscaler). */
@@ -916,6 +967,7 @@ public class RadianteOptionsScreen extends Screen {
         this.pendingMotionBlur = Boolean.FALSE;
         this.pendingCloudShadows = Boolean.FALSE;
         this.pendingRestir = Boolean.TRUE;
+        this.pendingRestirGi = Pipeline.supportsShaderPackToggle(Pipeline.RESTIR_GI_ATTRIBUTE) ? RESTIR_GI_DEFAULT : null;
         this.pendingSer = Boolean.FALSE;
         this.pendingFroxelFog = Pipeline.supportsShaderPackToggle(Pipeline.FROXEL_FOG_ATTRIBUTE) ? Boolean.TRUE : null;
         this.pendingSeamlessGlass =
@@ -991,6 +1043,8 @@ public class RadianteOptionsScreen extends Screen {
                     String.valueOf(Math.round(value * tunable.unit)));
                 case BLOCKS -> Component.translatable("options.radiante.blocks_value", caption,
                     String.valueOf(Math.round(value * tunable.unit)));
+                case SECONDS -> Component.translatable("options.radiante.seconds_value", caption,
+                    String.valueOf(Math.round(value * tunable.unit)));
                 case PERCENT -> Component.translatable("options.percent_value", caption, value);
             },
             new OptionInstance.IntRange(tunable.min, tunable.max, false), current, value -> {
@@ -1056,8 +1110,25 @@ public class RadianteOptionsScreen extends Screen {
             });
         this.sections.clear();
         this.addonCaptionKeys.clear();
+        this.packImpacts.clear();
         for (Category section : Category.values()) {
             this.page.clear();
+            if (section == Category.DEBUG && !Options.advancedSettings) {
+                continue;
+            }
+            if (section == Category.PACK) {
+                // A pack whose settings cannot be laid out loses its page, not the screen.
+                try {
+                    PackSettingsPage.Page pack = PackSettingsPage.build(this.pendingAdvanced, this::refreshQualityLater);
+                    if (pack != null) {
+                        this.sections.add(pack.section());
+                        this.packImpacts.putAll(pack.impacts());
+                    }
+                } catch (RuntimeException e) {
+                    RadianteClient.LOGGER.warn("The shader pack's settings could not be shown", e);
+                }
+                continue;
+            }
             if (section == Category.ADDONS) {
                 List<SettingsLayout.Block> blocks = addonBlocks();
                 if (!blocks.isEmpty()) {
@@ -1076,10 +1147,13 @@ public class RadianteOptionsScreen extends Screen {
                 case SKY_AND_WATER -> addSkyAndWaterOptions(clouds);
                 case PERFORMANCE -> addPerformanceOptions();
                 case OTHER -> addOtherOptions();
-                case ADDONS -> {
+                case DEBUG -> addDebugOptions();
+                case PACK, ADDONS -> {
                 }
             }
-            List<SettingsLayout.Group> groups = new ArrayList<>(AdvancedOptions.groups(section, this.pendingAdvanced));
+            // The Debug section only opens with Advanced on, so its attributes are plain rows (addDebugOptions).
+            List<SettingsLayout.Group> groups = section == Category.DEBUG ? new ArrayList<>()
+                : new ArrayList<>(AdvancedOptions.groups(section, this.pendingAdvanced));
             if (section == Category.SKY_AND_WATER) {
                 groups.add(0, skyPathGroup());
             }
@@ -1230,14 +1304,14 @@ public class RadianteOptionsScreen extends Screen {
                 value -> stage("emissionBrightness", value)),
             brightnessSlider("options.radiante.held_light_brightness", staged("heldLightBrightness", Options.heldLightBrightness),
                 value -> stage("heldLightBrightness", value)),
-            tunable(Tunable.BOUNCE_LIGHT, true), tunable(Tunable.SKY_LIGHT, true),
+            tunable(Tunable.BOUNCE_LIGHT, true), tunable(Tunable.SKY_LIGHT, true), tunable(Tunable.TRANSLUCENCY, true),
             OptionInstance.createBoolean("options.radiante.block_light_sampling",
                 tooltip("options.radiante.block_light_sampling"), staged("blockLightSampling", Options.blockLightSampling),
                 value -> {
                     stage("blockLightSampling", value);
                     refreshQualityLater();
                 }),
-            restirOption(), serOption(),
+            restirOption(), restirGiOption(), serOption(),
             OptionInstance.createBoolean("options.radiante.glowing_pixel_light",
                 tooltip("options.radiante.glowing_pixel_light"),
                 staged("glowingPixelLight", Options.glowingPixelLight), value -> stage("glowingPixelLight", value)),
@@ -1331,7 +1405,8 @@ public class RadianteOptionsScreen extends Screen {
             brightnessSlider("options.radiante.star_altitude", staged("starAltitude", Options.starAltitude),
                 value -> stage("starAltitude", value)),
             tunable(Tunable.SUN_GLOW, false),
-            tunable(Tunable.LIGHT_SHAFTS, false),
+            tunable(Tunable.LIGHT_SHAFTS, false), tunable(Tunable.FOG_VEIL_DIMMING, false),
+            tunable(Tunable.AERIAL_PERSPECTIVE, false), tunable(Tunable.AERIAL_PERSPECTIVE_START, false),
             sunPathOption(),
             OptionInstance.createBoolean("options.radiante.vanilla_celestial_orientation",
                 OptionInstance.cachedConstantTooltip(
@@ -1340,6 +1415,9 @@ public class RadianteOptionsScreen extends Screen {
             OptionInstance.createBoolean("options.radiante.rain_wetness",
                 tooltip("options.radiante.rain_wetness"), staged("rainWetness", Options.rainWetness),
                 value -> stage("rainWetness", value)),
+            tunable(Tunable.RAIN_WETNESS, false), tunable(Tunable.RAIN_WET_WALLS, false),
+            tunable(Tunable.PUDDLES, false), tunable(Tunable.RAIN_WET_UP_TIME, false),
+            tunable(Tunable.RAIN_DRYING_TIME, false), tunable(Tunable.LIGHTNING_FLASH, false),
             packToggle(Pipeline.WIND_ATTRIBUTE, "options.radiante.wind"), tunable(Tunable.WIND_STRENGTH, false),
             seamlessGlass, seamlessScope,
             OptionInstance.createBoolean("options.radiante.biome_ambiance",
@@ -1478,7 +1556,7 @@ public class RadianteOptionsScreen extends Screen {
             tunable(Tunable.WATER_TEXTURE, false),
             tunable(Tunable.WATER_CLEAR_TEAL, false),
             tunable(Tunable.PORTAL_TRANSPARENCY, false),
-            tunable(Tunable.RAIN_OPACITY, false),
+            tunable(Tunable.RAIN_OPACITY, false), tunable(Tunable.RAIN_STREAKS, false),
             packToggle(Pipeline.CACHE_DEEP_BOUNCES_ATTRIBUTE, "options.radiante.cache_deep_bounces"),
             packToggle(Pipeline.BEDROCK_ONE_BOUNCE_ATTRIBUTE, "options.radiante.bedrock_one_bounce"),
             packToggle(Pipeline.TRANSPARENT_CHECKERBOARD_ATTRIBUTE, "options.radiante.transparent_checkerboard"),
@@ -1522,10 +1600,80 @@ public class RadianteOptionsScreen extends Screen {
                 value -> stage("textBackgrounds", value)),
             OptionInstance.createBoolean("options.radiante.parallax_transparent_edges",
                 tooltip("options.radiante.parallax_transparent_edges"), staged("parallaxTransparentEdges", Options.parallaxTransparentEdges),
-                value -> stage("parallaxTransparentEdges", value)),
+                value -> stage("parallaxTransparentEdges", value)));
+    }
+
+    /**
+     * The Debug section: what shows the renderer's inner workings, and what gets its state out of the game for a bug
+     * report. None of it changes the look for good: the debug view and the HDR one are not saved.
+     */
+    private void addDebugOptions() {
+        addRows(debugViewRow());
+        for (SettingsLayout.Group group : AdvancedOptions.groups(Category.DEBUG, this.pendingAdvanced)) {
+            this.page.addAll(group.options());
+        }
+        // Tints the SDR parts of the picture, so it says nothing while the output is not HDR.
+        if (staged("hdrOutput", Options.hdrOutput)) {
+            addRows(OptionInstance.createBoolean("options.radiante.hdr_debug_view",
+                tooltip("options.radiante.hdr_debug_view"), staged("hdrDebugView", Options.hdrDebugView),
+                value -> stage("hdrDebugView", value)));
+        }
+        addRows(OptionInstance.createBoolean("options.radiante.gpu_timings", tooltip("options.radiante.gpu_timings"),
+                this.pendingGpuTimings != null ? this.pendingGpuTimings : RadianteDebugEntries.gpuTimingsShown(),
+                value -> this.pendingGpuTimings = value),
             OptionInstance.createBoolean("options.radiante.debug_logging",
                 tooltip("options.radiante.debug_logging"), this.pendingDebugLogging,
-                value -> this.pendingDebugLogging = value));
+                value -> this.pendingDebugLogging = value),
+            actionRow("options.radiante.debug_report", () -> {
+                DebugReport.copy(this.minecraft);
+                net.minecraft.client.gui.components.toasts.SystemToast.addOrUpdate(this.minecraft.gui.toastManager(),
+                    net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
+                    Component.translatable("options.radiante.debug_report.done"), null);
+            }),
+            actionRow("options.radiante.ab_capture", () -> {
+                DebugReport.captureSoon(this.minecraft);
+                onClose();
+            }),
+            actionRow("options.radiante.open_logs", () -> net.minecraft.util.Util.getPlatform().openPath(
+                this.minecraft.gameDirectory.toPath().resolve("logs"))),
+            actionRow("options.radiante.open_shader_packs", () -> {
+                java.nio.file.Path folder = com.g2806.radiante.client.pipeline.ShaderPackLibrary.folder();
+                if (folder != null) {
+                    net.minecraft.util.Util.getPlatform().openPath(folder);
+                }
+            }));
+    }
+
+    /** The picker of debug views: off, and the ones the pack in use lists, its own among them. */
+    private OptionInstance<String> debugViewRow() {
+        String current = this.pendingDebugView != null ? this.pendingDebugView : Pipeline.debugView();
+        List<String> views = new ArrayList<>();
+        views.add(Pipeline.DEBUG_VIEW_OFF);
+        views.addAll(Pipeline.availableDebugViews());
+        if (!views.contains(current)) {
+            views.add(current);
+        }
+        String key = "options.radiante.debug_view";
+        return new OptionInstance<>(key, value -> {
+            Component view = AdvancedOptions.known(key + ".value." + value + ".tooltip");
+            return net.minecraft.client.gui.components.Tooltip.create(view == null
+                ? Component.translatable(key + ".tooltip")
+                : Component.empty().append(Component.translatable(key + ".tooltip")).append("\n\n").append(view));
+        }, (caption, value) -> {
+            Component name = AdvancedOptions.known(key + ".value." + value);
+            return Component.empty().append(caption).append(": ")
+                .append(name != null ? name : Component.literal(AdvancedOptions.pretty(value)));
+        }, new OptionInstance.Enum<>(List.copyOf(views), com.mojang.serialization.Codec.STRING), current,
+            value -> this.pendingDebugView = value);
+    }
+
+    /**
+     * A row that does something instead of holding a value: a click flips a switch nobody sees, and the switch shows
+     * the action's name whichever way it stands.
+     */
+    private static OptionInstance<Boolean> actionRow(String key, Runnable action) {
+        Component word = Component.translatable(key + ".action");
+        return OptionInstance.createBoolean(key, tooltip(key), (caption, value) -> word, false, value -> action.run());
     }
 
     /**
@@ -1549,10 +1697,7 @@ public class RadianteOptionsScreen extends Screen {
         addRows(toggle, nitsSlider("options.radiante.hdr_peak", 400, 4000, staged("hdrPeakNits", Options.hdrPeakNits),
                 value -> stage("hdrPeakNits", value)),
             nitsSlider("options.radiante.hdr_paper_white", 80, 400, staged("hdrPaperWhiteNits", Options.hdrPaperWhiteNits),
-                value -> stage("hdrPaperWhiteNits", value)),
-            OptionInstance.createBoolean("options.radiante.hdr_debug_view",
-                tooltip("options.radiante.hdr_debug_view"), staged("hdrDebugView", Options.hdrDebugView),
-                value -> stage("hdrDebugView", value)));
+                value -> stage("hdrPaperWhiteNits", value)));
     }
 
     private static OptionInstance<Integer> nitsSlider(String key, int min, int max, int current,
@@ -1613,7 +1758,15 @@ public class RadianteOptionsScreen extends Screen {
                     Options.overwriteConfig();
                     reopenWithSameChoices();
                 },
-                this::rebuildShaders),
+                this::rebuildShaders,
+                () -> {
+                    // As Share: what is only staged here is not applied by leaving for the pack list, and the
+                    // settings screen comes back fresh, reading the settings of whichever pack is in use then.
+                    this.applied = true;
+                    Screen last = this.lastScreen;
+                    this.minecraft.gui.setScreen(new ShaderPacksScreen(
+                        () -> new RadianteOptionsScreen(last, this.options)));
+                }),
             value -> this.scroll = value);
         this.layout.restartInfo(new SettingsLayout.RestartInfo() {
             @Override
@@ -1641,6 +1794,11 @@ public class RadianteOptionsScreen extends Screen {
                     return null;
                 }
                 return null;
+            }
+
+            @Override
+            public OptionImpact impact(OptionInstance<?> option) {
+                return packImpacts.get(option);
             }
 
             @Override
@@ -1673,7 +1831,8 @@ public class RadianteOptionsScreen extends Screen {
     /** The options an option switches off or takes the place of, named under its description. */
     private static final java.util.Map<String, List<String>> AFFECTS = java.util.Map.ofEntries(
         java.util.Map.entry(O + "volumetric_fog", List.of(O + "fog_style", O + "volumetric_fog_strength",
-            T + "fog_distance", T + "light_shafts", O + "volumetric_fog_samples")),
+            T + "fog_distance", T + "light_shafts", T + "fog_veil_dimming",
+            O + "volumetric_fog_samples")),
         java.util.Map.entry(O + "fog_style", List.of(O + "volumetric_fog_samples")),
         java.util.Map.entry(O + "motion_blur", List.of(T + "motion_blur_strength")),
         java.util.Map.entry(O + "depth_of_field", List.of(T + "dof_strength", T + "dof_range", O + "dof_auto_focus",
@@ -1749,8 +1908,9 @@ public class RadianteOptionsScreen extends Screen {
             return null;
         }
         return switch (key.substring(O.length())) {
-            case "volumetric_fog_strength", "tunable.fog_distance", "tunable.light_shafts" ->
-                !fog ? needs(O + "volumetric_fog") : bedrock ? bedrockFogReason : null;
+            // Bedrock's fog volume lights the air's shafts too, but keeps its own fixed reach.
+            case "volumetric_fog_strength", "tunable.light_shafts", "tunable.fog_veil_dimming" -> !fog ? needs(O + "volumetric_fog") : null;
+            case "tunable.fog_distance" -> !fog ? needs(O + "volumetric_fog") : bedrock ? bedrockFogReason : null;
             case "volumetric_fog_samples" ->
                 !fog ? needs(O + "volumetric_fog") : bedrock ? bedrockFogReason : grid ? overriddenBy(O + "fog_style") : null;
             case "fog_style" -> !fog ? needs(O + "volumetric_fog") : bedrock ? bedrockFogReason : null;
@@ -1886,6 +2046,9 @@ public class RadianteOptionsScreen extends Screen {
         if (this.pendingDebugLogging != Options.debugLogging) {
             Options.setDebugLogging(this.pendingDebugLogging, false);
         }
+        if (this.pendingGpuTimings != null) {
+            RadianteDebugEntries.setGpuTimingsShown(this.pendingGpuTimings);
+        }
         if (FrameGeneration.maxGeneratedFrames() <= 0) {
             this.pendingGeneratedFrames = 0;
         }
@@ -1965,6 +2128,9 @@ public class RadianteOptionsScreen extends Screen {
         if (this.pendingRestir != null) {
             changed |= Pipeline.setShaderPackToggle(Pipeline.RESTIR_ATTRIBUTE, this.pendingRestir);
         }
+        if (this.pendingRestirGi != null) {
+            changed |= Pipeline.setShaderPackToggle(Pipeline.RESTIR_GI_ATTRIBUTE, this.pendingRestirGi);
+        }
         if (this.pendingSeamlessScope != null) {
             changed |= Pipeline.setShaderPackValue(SEAMLESS_SCOPE, this.pendingSeamlessScope);
         }
@@ -1983,6 +2149,9 @@ public class RadianteOptionsScreen extends Screen {
         }
         if (this.pendingUpscalerMode != null && upscalerModes() != null) {
             changed |= Pipeline.setModuleValue(upscalerModule(), upscalerAttribute(), this.pendingUpscalerMode);
+        }
+        if (this.pendingDebugView != null) {
+            changed |= Pipeline.setDebugView(this.pendingDebugView);
         }
         for (java.util.Map.Entry<String, String> advanced : this.pendingAdvanced.entrySet()) {
             String[] target = advanced.getKey().split("\n", 2);

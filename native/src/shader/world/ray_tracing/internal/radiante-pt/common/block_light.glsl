@@ -45,12 +45,28 @@ vec3 vptEmissiveColour(vec3 colour) {
 // (a triangle of a full face) are strengthened, up to 5x, toward the light a full block would cast.
 // An exact light (a Bedrock pack's glow, under the experimental profile) casts the light it shows, as in Bedrock
 // RTX, where a glowing surface lights the world only through the rays that find it.
+#ifdef RADIANTE_HOOK_BLOCK_LIGHT_DEFAULT
 vec3 vptCastLight(vec4 radiance, float area) {
     if (radiance.w > 1.5) { return radiance.rgb * vptPointLightScale(); }
     if (radiance.w > 0.5) { return vptEmissiveColour(radiance.rgb) * vptExactLightScale(); }
     float boost = clamp(sqrt(0.5 / max(area, 1e-4)), 1.0, 5.0);
     return vptEmissiveColour(radiance.rgb) * boost;
 }
+#else
+vec3 vptBlockCastLight(vec4 radiance, float area) {
+    if (radiance.w > 1.5) { return radiance.rgb * vptPointLightScale(); }
+    if (radiance.w > 0.5) { return vptEmissiveColour(radiance.rgb) * vptExactLightScale(); }
+    float boost = clamp(sqrt(0.5 / max(area, 1e-4)), 1.0, 5.0);
+    return vptEmissiveColour(radiance.rgb) * boost;
+}
+
+// The light a block light casts, as a pack's hooks/block_light.glsl colours it (radiance.w is its kind).
+vec3 vptCastLight(vec4 radiance, float area) {
+    vec3 light = vptBlockCastLight(radiance, area);
+    hookBlockLight(light, uint(clamp(radiance.w + 0.5, 0.0, 2.0)));
+    return light;
+}
+#endif
 
 /**
  * How a surface returns the light of one of Bedrock's point lights (vptIsPointLight) towards viewDir, cosine
@@ -561,8 +577,15 @@ vec3 sampleOneHeldLight(uint slot, vec4 heldPos, vec4 heldColor, vec3 worldPos, 
 
     float fade = 1.0 - pow(lightDistance / reach, 4.0);
     fade *= fade;
+#ifdef RADIANTE_HOOK_BLOCK_LIGHT_DEFAULT
     vec3 contribution =
         heldColor.rgb * mat.albedo * (diffuseWeight / PI) * cosSurface * fade * vptFlameFalloff(distance2);
+#else
+    vec3 heldLight = heldColor.rgb;
+    hookBlockLight(heldLight, RADIANTE_BLOCK_LIGHT_HELD); // a pack's colour for it (hooks/block_light.glsl)
+    vec3 contribution =
+        heldLight * mat.albedo * (diffuseWeight / PI) * cosSurface * fade * vptFlameFalloff(distance2);
+#endif
     if (dot(contribution, vec3(1.0)) <= 1e-8) { return vec3(0.0); }
 
     vec3 origin = worldPos + geometricNormal * 0.0002;

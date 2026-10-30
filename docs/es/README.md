@@ -42,6 +42,7 @@ Versión de esta documentación: **1.1.0**.
 
 - **[Compilar y publicar](compilar.md)** — Windows, Linux, GitHub Actions y cómo sale una versión.
 - **[Hacer mods para Radiante](api.md)** — la API pública: estado del trazado, el sol, geometría propia, ajustes.
+- **[Hacer un paquete de shaders](paquetes-de-shaders.md)** — tu propio path tracer sobre Radiante PT.
 - **[Opciones de complementos](complementos.md)** — cómo un mod pone sus opciones en los ajustes de Radiante.
 - **[Cómo funciona PrismRT](../prismrt.md)** — la arquitectura del renderizador nativo, para quien contribuye (en inglés).
 
