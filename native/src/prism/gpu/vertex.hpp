@@ -27,7 +27,7 @@ struct VertexAttribute {
 struct Vertex {
     // The material word (PackedMaterialVertex::packedData) as the shaders unpack it:
     //   bits 0-5    which of the vertex's inputs are used
-    //   bit 6       frost (ice and snow, see alphaModeFrostFlag)
+    //   bits 6-7    frost and dedicated held light (see alphaModeFrostFlag / alphaModeHeldLightFlag)
     //   bits 8-11   the alpha mode (the low four bits of PBRVertex::alphaMode)
     //   bits 12-15  the coordinate system
     //   bits 17-31  the surface flags Java sets in alphaMode above the mode (below)
@@ -91,6 +91,9 @@ struct Vertex {
     // word's top fifteen bits, so this one goes to a free low bit (6) instead of thirteen bits up.
     static constexpr uint32_t alphaModeFrostFlag = 0x80000u;
     static constexpr uint32_t frostSurfaceBit = 1u << 6u;
+    // Only the local player's item represented by a dedicated held light; its visible glow is retained.
+    static constexpr uint32_t alphaModeHeldLightFlag = 0x100000u;
+    static constexpr uint32_t heldLightSurfaceBit = 1u << 7u;
 
     // The layout of vertex format T: one per format, made on first use and kept for the process, so pipelines may
     // point into it. Only the formats specialized below have one; asking for any other does not compile.
@@ -172,6 +175,9 @@ inline uint32_t Vertex::packMaterialFlags(const VertexFormat::PBRVertex &vertex)
                   (alphaModeLeavesFlag << surfaceShift) == leavesSurfaceBit &&
                   (alphaModeGlowLightFlag << surfaceShift) == glowLightSurfaceBit);
     static_assert((alphaModePointLightFlag & surfaceFlags) == 0);
+    static_assert((alphaModeHeldLightFlag & (surfaceFlags | alphaModePointLightFlag | alphaModeFrostFlag | 0xFu)) == 0);
+    static_assert((heldLightSurfaceBit & (0x3Fu | frostSurfaceBit | (0xFu << alphaModeShift) |
+                                         (0xFu << coordinateShift) | (surfaceFlags << surfaceShift))) == 0);
 
     uint32_t packed = 0;
     packed |= vertex.useColorLayer != 0 ? useColorLayerBit : 0u;
@@ -184,6 +190,7 @@ inline uint32_t Vertex::packMaterialFlags(const VertexFormat::PBRVertex &vertex)
     packed |= (vertex.coordinate & 0xFu) << coordinateShift;
     packed |= (vertex.alphaMode & surfaceFlags) << surfaceShift;
     packed |= (vertex.alphaMode & alphaModeFrostFlag) != 0u ? frostSurfaceBit : 0u;
+    packed |= (vertex.alphaMode & alphaModeHeldLightFlag) != 0u ? heldLightSurfaceBit : 0u;
     return packed;
 }
 

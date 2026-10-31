@@ -343,6 +343,9 @@ void collectEmissiveQuadLights(const Emission &emission,
         const PBRVertex &v2 = geometryVertices[first + 2];
         const PBRVertex &v3 = geometryVertices[first + 3];
 
+        // Local held items have a dedicated light. Sampling their hand and shadow copies adds it again.
+        if ((v0.alphaMode & gpu::Vertex::alphaModeHeldLightFlag) != 0u) continue;
+
         if ((v0.alphaMode & gpu::Vertex::alphaModePointLightFlag) != 0u) {
             lightInfos.push_back(LightInfo{
                 .p0 = v0.pos,

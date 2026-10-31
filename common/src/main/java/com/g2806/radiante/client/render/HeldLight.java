@@ -135,6 +135,11 @@ public final class HeldLight {
      */
     private static final float POINT_LIGHT_REACH = 40.0f;
 
+    /** Whether this item has a dedicated held light, including while that light is switched off. */
+    public static boolean isLightSource(ItemStack stack) {
+        return levelOf(stack) > 0;
+    }
+
     private static int levelOf(ItemStack stack) {
         if (stack.isEmpty()) {
             return 0;

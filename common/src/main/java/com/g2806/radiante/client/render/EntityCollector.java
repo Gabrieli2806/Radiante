@@ -72,6 +72,8 @@ public class EntityCollector implements SubmitNodeCollector {
     private int colorTint = 0xFFFFFF;
     private boolean held;
     private boolean heldGlass;
+    private boolean leftHeldLight;
+    private boolean rightHeldLight;
     private final List<QuadParticleRenderState> particleGroups = new ArrayList<>();
     /** Debug gizmo groups (F3+B hitboxes, F3+G chunk borders, ...) since the last drain; see drainGizmoGroups. */
     private final List<DrawableGizmoPrimitives.Group> gizmoGroups = new ArrayList<>();
@@ -102,6 +104,8 @@ public class EntityCollector implements SubmitNodeCollector {
         this.colorTint = 0xFFFFFF;
         this.held = false;
         this.heldGlass = false;
+        this.leftHeldLight = false;
+        this.rightHeldLight = false;
         this.skipNameTags = false;
     }
 
@@ -117,6 +121,12 @@ public class EntityCollector implements SubmitNodeCollector {
     /** Marks everything collected from here on as held by the player; see PBRVertexWriter.held. */
     public void held(boolean held) {
         this.held = held;
+    }
+
+    /** Identifies only the local player's items already represented by the dedicated held lights. */
+    public void heldLights(boolean left, boolean right) {
+        this.leftHeldLight = left;
+        this.rightHeldLight = right;
     }
 
     /**
@@ -337,6 +347,11 @@ public class EntityCollector implements SubmitNodeCollector {
         ItemStackRenderState.FoilType foilType) {
         this.quadInstance.setLightCoords(lightCoords);
         this.quadInstance.setOverlayCoords(overlayCoords);
+        boolean heldLight = switch (displayContext) {
+            case FIRST_PERSON_LEFT_HAND, THIRD_PERSON_LEFT_HAND -> this.leftHeldLight;
+            case FIRST_PERSON_RIGHT_HAND, THIRD_PERSON_RIGHT_HAND -> this.rightHeldLight;
+            default -> false;
+        };
         for (BakedQuad quad : quads.all()) {
             BakedQuad.MaterialInfo material = quad.materialInfo();
             int tintIndex = material.tintIndex();
@@ -358,7 +373,13 @@ public class EntityCollector implements SubmitNodeCollector {
                         .radiante$name() + " sprite " + material.sprite().contents().name() + " "
                     + material.sprite().contents().width() + "x" + material.sprite().contents().height());
             }
-            this.writer(renderType).putBakedQuad(poseStack.last(), quad, this.quadInstance);
+            PBRVertexWriter writer = this.writer(renderType);
+            writer.heldLight(heldLight);
+            try {
+                writer.putBakedQuad(poseStack.last(), quad, this.quadInstance);
+            } finally {
+                writer.heldLight(false);
+            }
         }
     }
 

@@ -294,6 +294,9 @@ public final class EntityManager {
         }
 
         COLLECTOR.reset();
+        if (minecraft.player != null && ((EntityIdHolder) state).radiante$entityId() == minecraft.player.getId()) {
+            configureHeldLights(minecraft, COLLECTOR);
+        }
         POSE_STACK.setIdentity();
 
         // A glow item frame is lit from within in vanilla rather than by the world around it, and nothing in its
@@ -967,6 +970,7 @@ public final class EntityManager {
 
         EntityRenderState state = playerState.avatarRenderState;
         COLLECTOR.reset();
+        configureHeldLights(minecraft, COLLECTOR);
         COLLECTOR.skipNameTags();
         POSE_STACK.setIdentity();
 
@@ -992,6 +996,7 @@ public final class EntityManager {
             return null;
         }
         VR_HANDS.reset();
+        configureHeldLights(Minecraft.getInstance(), VR_HANDS);
         vrHandsCaptured = false;
         return VR_HANDS;
     }
@@ -1042,6 +1047,7 @@ public final class EntityManager {
         // Minecraft poses the hands in its view space; rotate them into world orientation around the camera.
         POSE_STACK.mulPose(new Matrix4f(cameraState.viewRotationMatrix).invert());
         COLLECTOR.held(true);
+        configureHeldLights(minecraft, COLLECTOR);
         if (minecraft.player != null) {
             COLLECTOR.heldGlass(isGlassItem(minecraft.player.getMainHandItem())
                 || isGlassItem(minecraft.player.getOffhandItem()));
@@ -1056,6 +1062,16 @@ public final class EntityManager {
         }
 
         addPending(HAND_ID, cameraState.pos.x(), cameraState.pos.y(), cameraState.pos.z(), RAY_TRACING_HAND);
+    }
+
+    private static void configureHeldLights(Minecraft minecraft, EntityCollector collector) {
+        if (minecraft.player == null) {
+            return;
+        }
+        boolean main = HeldLight.isLightSource(minecraft.player.getMainHandItem());
+        boolean off = HeldLight.isLightSource(minecraft.player.getOffhandItem());
+        boolean mainLeft = minecraft.player.getMainArm() == net.minecraft.world.entity.HumanoidArm.LEFT;
+        collector.heldLights(mainLeft ? main : off, mainLeft ? off : main);
     }
 
     /** Glass blocks and panes, as items: drawn as glass when held (see EntityCollector.heldGlass). */
