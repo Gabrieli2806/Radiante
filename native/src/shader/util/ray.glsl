@@ -179,6 +179,13 @@ bool rayInWater(MainRay ray) { return (ray.stateBits & rayInWaterBit) != 0u; }
 // gathered for that surface.
 const uint RAY_VIEW_BOUNCE_MARK = 1u;
 
+// The pack controls a source's visible glow, also through mirrors and glass. Per-source tints affect illumination
+// gathered for surfaces and the radiance cache, independently of how the source looks to the camera.
+vec3 rayEmissionTint(MainRay ray, vec3 tint, bool viewBounce) {
+    bool visible = !rayCacheUpdate(ray) && (rayBounce(ray) == 0u || rayCameraPath(ray) || viewBounce);
+    return visible ? vec3(1.0) : tint;
+}
+
 // Minecraft stores textures and tints for display (sRGB), not as reflectance. Lit as stored, everything looked
 // washed out: dark planks turned light cream, grass a pale yellow-green, and dark and bright blocks barely differed.
 // Raising them to this power gets (close to) the linear colour the lighting expects; 2.2 is the full conversion,

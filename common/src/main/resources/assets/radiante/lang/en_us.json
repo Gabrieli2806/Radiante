@@ -227,6 +227,8 @@
   "options.radiante.first_person_shadow.tooltip": "Draws the player in first person so you cast a shadow and show up in water and glass reflections.",
   "options.radiante.glowing_pixel_light": "Light From Glowing Pixels",
   "options.radiante.glowing_pixel_light.tooltip": "Light blocks cast their light from the glowing parts of their texture (a redstone lamp's filaments), as Bedrock RTX does, instead of from the whole block. The same amount of light, from more and smaller sources. Needs Block Emission.",
+  "options.radiante.unlit_block_light": "Light From Unlit Blocks",
+  "options.radiante.unlit_block_light.tooltip": "Blocks with no light level, such as crimson stems, cast light from their emissive textures. Off, only real light blocks cast it. On costs some frame time where many are in view.",
   "options.radiante.held_item_light": "Held Item Light",
   "options.radiante.held_item_light.tooltip": "A torch, lantern or other light source held in either hand lights up its surroundings.",
   "options.radiante.day_brightness": "Day Brightness",
@@ -846,5 +848,14 @@
   "screen.radiante.shader_packs.hint.in_use": "This is the pack the game uses now.",
   "screen.radiante.shader_packs.crashed": "The game closed while this pack was being tried (a crash, or the GPU stopped responding). Radiante PT was put back. Check the game log or crash report.",
   "render_pipeline.module.ray_tracing.attribute.hand_samples": "Hand Lighting Samples",
-  "render_pipeline.module.ray_tracing.attribute.hand_samples.tooltip": "Indirect-lighting samples for first-person hands and held items. Higher is smoother but costs more GPU time; lower is faster but noisier."
+  "render_pipeline.module.ray_tracing.attribute.hand_samples.tooltip": "Indirect-lighting samples for first-person hands and held items. Higher is smoother but costs more GPU time; lower is faster but noisier.",
+  "options.radiante.advanced.group.block_emission": "Block Emission",
+  "options.radiante.emission_profile.tooltip": "HDR cast-light tint for %s.\nClick to edit RGB and exposure. White preserves sampled light; values above 1 brighten it; black disables its cast light. Visible glow stays pack-authored.",
+  "options.radiante.emission_profile.variant": "%s · %s",
+  "options.radiante.emission_profile.texture": "Texture · %s",
+  "options.radiante.emission_colour.red": "Red",
+  "options.radiante.emission_colour.green": "Green",
+  "options.radiante.emission_colour.blue": "Blue",
+  "options.radiante.emission_colour.exposure": "Exposure",
+  "options.radiante.emission_colour.hint": "Linear RGB multipliers for cast light · visible glow comes from the resource pack"
 }

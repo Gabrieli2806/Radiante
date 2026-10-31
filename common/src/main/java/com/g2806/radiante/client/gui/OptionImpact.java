@@ -67,6 +67,7 @@ enum OptionImpact {
         Map.entry("options.radiante.transparent_checkerboard", MEDIUM),
         Map.entry("options.radiante.bedrock_materials", LOW),
         Map.entry("options.radiante.collect_chunk_emission", MEDIUM),
+        Map.entry("options.radiante.unlit_block_light", MEDIUM),
         Map.entry("options.radiante.chunk_building_auto", VARIES),
         Map.entry("options.radiante.chunk_building_batch_size", VARIES),
         Map.entry("options.radiante.chunk_building_total_batches", VARIES),
@@ -90,6 +91,7 @@ enum OptionImpact {
         Map.entry("options.radiante.tunable.water_clear_teal", LOW));
 
     static OptionImpact of(String optionKey) {
+        if (optionKey != null && optionKey.startsWith(BlockEmissionSettings.PREFIX)) return VARIES;
         if (optionKey != null && BY_OPTION.containsKey(optionKey)) {
             return BY_OPTION.get(optionKey);
         }

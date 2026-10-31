@@ -86,6 +86,7 @@ public final class PbrAtlases {
         ByteBuffer rawMer = null;
         hasRawMer = false;
         int found = 0;
+        EmissionTiles.beginAuthoredEmission();
         Map<String, Integer> packHeights = packHeights(resources);
         // Only with no Bedrock pack at all: one that leaves a light block out means it to glow as Radiante works out.
         boolean defaults = BedrockDefaults.emissionActive() && resources.listResources("bedrock_mer",
@@ -119,6 +120,12 @@ public final class PbrAtlases {
                 byte[] derivedGlow = EmissionTiles.derivedGlow(entry.getValue(), specular, width, height);
                 boolean any = stitch(resources, entry.getKey(), entry.getValue(), "_s", specular, width, height);
                 if (any) {
+                    // Radiante's own maps are for showing: a light block's light stays the calibrated one, and only a block
+                    // with no light level, or too weak a one, casts from them.
+                    if (!merStitched && (EmissionTiles.castsFromEmissiveMap(entry.getValue())
+                        || !isOwnSpecular(resources, entry.getKey()))) {
+                        EmissionTiles.uploadFromLabPbr(albedoTextureId, entry.getValue(), specular, width, height);
+                    }
                     EmissionTiles.keepSetGlow(entry.getValue(), specular, width, height);
                     EmissionTiles.keepVisibleGlow(entry.getValue(), specular, derivedGlow, width, height);
                     EmissionTiles.softenSpecular(entry.getValue(), specular, width, height);
@@ -213,6 +220,13 @@ public final class PbrAtlases {
         // Radiante's own resources come from its mod's pack, which its icon is in too.
         Optional<Resource> own = resources.getResource(Identifier.fromNamespaceAndPath("radiante", "icon.png"));
         return own.isPresent() && own.get().sourcePackId().equals(specular.get().sourcePackId());
+    }
+
+    private static boolean isOwnSpecular(ResourceManager resources, Identifier spriteId) {
+        Optional<Resource> specular = resources.getResource(Identifier.fromNamespaceAndPath(spriteId.getNamespace(),
+            "textures/" + spriteId.getPath() + "_s.png"));
+        Optional<Resource> own = resources.getResource(Identifier.fromNamespaceAndPath("radiante", "icon.png"));
+        return specular.isPresent() && own.isPresent() && own.get().sourcePackId().equals(specular.get().sourcePackId());
     }
 
     /** Where each pack sits in the stack, counted from the bottom, by its id. */

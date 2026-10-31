@@ -375,7 +375,7 @@ Placement placementOf(const EntitiesBuildTask &task, const EntityInput &entity) 
 }
 
 void place(PBRVertex &vertex, const Placement &placement) {
-    vertex.coordinate = placement.coordinate;
+    vertex.coordinate = (vertex.coordinate & ~0xFu) | static_cast<uint32_t>(placement.coordinate);
 }
 
 // Working memory for turning one geometry into triangles, reused from geometry to geometry and frame to frame.

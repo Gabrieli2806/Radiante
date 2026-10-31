@@ -705,7 +705,8 @@ public final class ChunkManager {
             scratch.dustPower = RedstoneGlow.power(blockState);
             // Dust glows by its power alone (RedstoneGlow): marked unlit, a pack's emission map for its sprites
             // does not make it glow at every power.
-            scratch.blockIsUnlit = EmissionTiles.isUnlit(blockState) || scratch.dustPower >= 0;
+            scratch.blockCastScale = EmissionTiles.castScale(blockState);
+            scratch.blockIsUnlit = (EmissionTiles.isUnlit(blockState) && scratch.blockCastScale == 1.0f) || scratch.dustPower >= 0;
             scratch.blockIsPlant = isPlant(blockState);
             scratch.blockIsLeaves = isLeaves(blockState);
             scratch.blockIsFrost = isFrost(blockState);
@@ -737,7 +738,8 @@ public final class ChunkManager {
                 fluidRenderer.tesselate(region, pos, fluidOutput, blockState, fluidState);
                 scratch.blockIsGlass = isGlass(blockState);
                 scratch.blockIsBlend = isBlend(blockState);
-                scratch.blockIsUnlit = EmissionTiles.isUnlit(blockState) || scratch.dustPower >= 0;
+                scratch.blockCastScale = EmissionTiles.castScale(blockState);
+                scratch.blockIsUnlit = (EmissionTiles.isUnlit(blockState) && scratch.blockCastScale == 1.0f) || scratch.dustPower >= 0;
                 scratch.blockIsPlant = isPlant(blockState);
                 scratch.blockIsLeaves = isLeaves(blockState);
                 scratch.blockIsFrost = isFrost(blockState);
@@ -1046,6 +1048,7 @@ public final class ChunkManager {
         private boolean blockIsBlend;
         /** The block being written is a light block in a state that gives no light; see PBRVertexWriter.unlit. */
         private boolean blockIsUnlit;
+        float blockCastScale = 1.0f;
         private boolean blockIsPlant;
         /** How the block being written sways in the wind; see setWind and PBRVertexWriter.wind. */
         private int windKind = PBRVertexWriter.WIND_NONE;
@@ -1111,7 +1114,7 @@ public final class ChunkManager {
             }
             writer.textureId(atlasId).alphaMode(alphaModeOf(layer)).coordinate(0).water(false).lava(false).glass(this.blockIsGlass).plant(this.blockIsPlant).leaves(this.blockIsLeaves).frost(this.blockIsFrost)
                 .glassPane(this.blockIsPane, this.paneCapUp, this.paneCapDown).blend(this.blockIsBlend)
-                .unlit(this.blockIsUnlit).wind(this.windKind, this.windBaseY, this.windRise, this.windScale);
+                .unlit(this.blockIsUnlit).castScale(this.blockCastScale).wind(this.windKind, this.windBaseY, this.windRise, this.windScale);
             this.current = writer;
             return writer;
         }
