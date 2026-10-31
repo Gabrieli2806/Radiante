@@ -86,6 +86,7 @@ public final class PbrAtlases {
         ByteBuffer rawMer = null;
         hasRawMer = false;
         int found = 0;
+        EmissionTiles.beginAuthoredEmission();
         Map<String, Integer> packHeights = packHeights(resources);
         // Only with no Bedrock pack at all: one that leaves a light block out means it to glow as Radiante works out.
         boolean defaults = BedrockDefaults.emissionActive() && resources.listResources("bedrock_mer",
@@ -119,6 +120,9 @@ public final class PbrAtlases {
                 byte[] derivedGlow = EmissionTiles.derivedGlow(entry.getValue(), specular, width, height);
                 boolean any = stitch(resources, entry.getKey(), entry.getValue(), "_s", specular, width, height);
                 if (any) {
+                    if (!merStitched) {
+                        EmissionTiles.uploadFromLabPbr(albedoTextureId, entry.getValue(), specular, width, height);
+                    }
                     EmissionTiles.keepSetGlow(entry.getValue(), specular, width, height);
                     EmissionTiles.keepVisibleGlow(entry.getValue(), specular, derivedGlow, width, height);
                     EmissionTiles.softenSpecular(entry.getValue(), specular, width, height);

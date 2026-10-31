@@ -110,7 +110,7 @@ public class RadianteOptionsScreen extends Screen {
 
     /** Advanced options changed and not applied yet, by AdvancedOptions.key; shared by the screens of one visit. */
     private java.util.Map<String, String> pendingAdvanced = new java.util.HashMap<>();
-    private java.util.Map<String, Integer> pendingBlockEmissions = new java.util.TreeMap<>(
+    private java.util.Map<String, com.g2806.radiante.client.option.EmissionColor> pendingBlockEmissions = new java.util.TreeMap<>(
         com.g2806.radiante.client.render.BlockEmissionControls.values());
 
     /**

@@ -848,7 +848,12 @@
   "render_pipeline.module.ray_tracing.attribute.hand_samples": "Muestras de iluminación de las manos",
   "render_pipeline.module.ray_tracing.attribute.hand_samples.tooltip": "Muestras de iluminación indirecta para las manos y objetos en primera persona. Más muestras suavizan el ruido y cuestan más GPU; menos son más rápidas pero más ruidosas.",
   "options.radiante.advanced.group.block_emission": "Emisión de bloques",
-  "options.radiante.emission_profile.tooltip": "Multiplicador de emisión de %s.\n0%% apaga la emisión; 100%% conserva el material activo; 1000%% multiplica el brillo por diez. Usa las flechas para ajustes precisos. Aplicar reconstruye la iluminación y el terreno afectados.",
+  "options.radiante.emission_profile.tooltip": "Tinte HDR de emisión para %s.\nPulsa para editar RGB y exposición. Blanco conserva el color; valores mayores que 1 aumentan el brillo; negro apaga la emisión. Aplicar actualiza la luz y el terreno.",
   "options.radiante.emission_profile.variant": "%s · %s",
-  "options.radiante.emission_profile.texture": "Textura · %s"
+  "options.radiante.emission_profile.texture": "Textura · %s",
+  "options.radiante.emission_colour.red": "Rojo",
+  "options.radiante.emission_colour.green": "Verde",
+  "options.radiante.emission_colour.blue": "Azul",
+  "options.radiante.emission_colour.exposure": "Exposición",
+  "options.radiante.emission_colour.hint": "Multiplicadores RGB lineales · valores mayores que 1 emiten más luz"
 }

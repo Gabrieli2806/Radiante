@@ -95,17 +95,17 @@ public final class HeldLight {
         if (level <= 0) {
             return NONE;
         }
-        float multiplier = stack.getItem() instanceof BlockItem item ? BlockEmissionControls.forBlock(item.getBlock())
-            : stack.is(Items.LAVA_BUCKET) ? BlockEmissionControls.forBlock("minecraft", "lava") : 1.0f;
+        var multiplier = stack.getItem() instanceof BlockItem item ? BlockEmissionControls.forBlock(item.getBlock())
+            : stack.is(Items.LAVA_BUCKET) ? BlockEmissionControls.forBlock("minecraft", "lava") : com.g2806.radiante.client.option.EmissionColor.WHITE;
         int[] pointLight = pointLightOf(stack);
         if (pointLight != null) {
             // The light the same block casts set down (BedrockPointLights), on the held light's scale: the shaders
             // multiply a placed one by (100 / 12) and the Emission Brightness, a held one by 16 and the Held Light
             // Brightness, both 12 by default.
-            float scale = BedrockPointLights.CAST_STRENGTH * (100.0f / 12.0f) / 16.0f / 255.0f * multiplier;
-            return new Vector4f(pointLight[0] * scale, pointLight[1] * scale, pointLight[2] * scale, 1.0f);
+            float scale = BedrockPointLights.CAST_STRENGTH * (100.0f / 12.0f) / 16.0f / 255.0f;
+            return new Vector4f(pointLight[0] * scale * multiplier.red(), pointLight[1] * scale * multiplier.green(), pointLight[2] * scale * multiplier.blue(), 1.0f);
         }
-        return new Vector4f(tintOf(stack).mul(STRENGTH * level / 15.0f * multiplier), 1.0f);
+        return new Vector4f(tintOf(stack).mul(multiplier.red(), multiplier.green(), multiplier.blue()).mul(STRENGTH * level / 15.0f), 1.0f);
     }
 
     /**

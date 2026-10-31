@@ -26,16 +26,19 @@ Cambian con el Estilo de Imagen (ver [Imagen](imagen.md) y
 [estilos-y-calidad.md](../estilos-y-calidad.md)). Tocarlas a mano deja el estilo en Personalizado.
 
 
-## Emisión por bloque (Avanzado)
+## Emisión HDR por bloque (Avanzado)
 
-Abre **Iluminación → Avanzado → Emisión de bloques**. Cada perfil de textura tiene un control de **0–1000%**
-en pasos de 1%: **100%** conserva el material actual, **0%** elimina su emisión y **1000%** la multiplica por diez.
-Estos valores multiplican el Brillo de Fuentes de Luz y el Brillo de Luz en la Mano. Busca el bloque o la textura
-y pulsa **Aplicar**. **Restablecer** devuelve todos los perfiles al 100%.
+Abre **Iluminación → Avanzado → Emisión de bloques** y pulsa el color del bloque. El selector ofrece RGB,
+exposición y campos numéricos **RGB HDR lineales**. **(1,1,1)** conserva el material; **(0,0,0)** apaga su emisión;
+**(10,10,10)** multiplica el brillo por diez. Cada canal admite hasta 65408. El tinte multiplica el color muestreado
+de la textura. Listo prepara el cambio; Aplicar actualiza la luz y el terreno. Cancelar conserva el valor anterior;
+Restablecer devuelve el blanco neutro.
 
-La lista incluye las texturas emisivas integradas, las fuentes de luz activas y los ajustes guardados de paquetes.
-Las variantes, como las lámparas de redstone encendidas, tienen filas propias. Las enredaderas de bayas luminosas
-tienen perfiles para la punta y el tallo; también hay controles para enredaderas normales, retorcidas, lloronas y
-liquen luminoso cuando un paquete les da emisión. Un multiplicador no hace emitir a un material que no emite.
-Los perfiles afectan al resplandor visible y a la luz proyectada, incluidas las luces en mano y puntuales.
-Los ajustes se conservan al desactivar su paquete y se incluyen en los códigos de ajustes compartidos.
+La lista permite buscar fuentes integradas, texturas LabPBR/MER emisivas de paquetes activos, enredaderas y ajustes
+guardados. Las texturas emisivas de un paquete también proyectan luz aunque el bloque no tenga nivel de luz en
+Minecraft. Los ajustes se conservan al desactivar un paquete y se incluyen en los códigos compartidos. Los ajustes
+antiguos de 0–1000% se convierten automáticamente a tres multiplicadores RGB iguales.
+
+Un paquete puede incluir tintes de emisión del material en `assets/radiante/emission_tints.json`, por ejemplo
+`{"minecraft:block/sea_lantern":[0.9,0.95,1.0]}`. Conservan la textura difusa y se multiplican por el ajuste del jugador.
+Las luces dedicadas en mano conservan sus colores calibrados y reciben el tinte adicional del jugador.

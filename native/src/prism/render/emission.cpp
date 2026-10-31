@@ -342,8 +342,8 @@ void collectEmissiveQuadLights(const Emission &emission,
         const PBRVertex &v1 = geometryVertices[first + 1];
         const PBRVertex &v2 = geometryVertices[first + 2];
         const PBRVertex &v3 = geometryVertices[first + 3];
-        const float multiplier = gpu::emissionMultiplier(v0);
-        if (multiplier <= 0.0f) continue;
+        const glm::vec3 multiplier = gpu::emissionTint(v0);
+        if (std::max({multiplier.r, multiplier.g, multiplier.b}) <= 0.0f) continue;
 
         if ((v0.alphaMode & gpu::Vertex::alphaModePointLightFlag) != 0u) {
             lightInfos.push_back(LightInfo{

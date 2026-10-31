@@ -130,6 +130,14 @@ public final class EmissionTiles {
      */
     private static volatile Set<BlockState> unlitStates = Set.of();
 
+    private static final Set<Identifier> authoredEmission = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    static boolean authoredEmission(Identifier sprite) { return authoredEmission.contains(sprite); }
+    static Set<String> authoredEmissionProfiles() {
+        return authoredEmission.stream().map(Identifier::toString).collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+    static void beginAuthoredEmission() { authoredEmission.clear(); }
+
     private EmissionTiles() {
     }
 
@@ -167,7 +175,6 @@ public final class EmissionTiles {
 
         Map<TextureAtlasSprite, Integer> emitters = collectEmissiveSprites(minecraft, atlas);
         lightLevels = emitters;
-        BlockEmissionControls.atlas(atlas, atlasId, emitters.keySet());
         int atlasWidth = atlas.getTexture().getWidth(0);
         int atlasHeight = atlas.getTexture().getHeight(0);
         int mipLevels = atlas.getTexture().getMipLevels();
@@ -193,6 +200,7 @@ public final class EmissionTiles {
             RadianteRenderer.LOGGER.info("Registered {} emissive block textures, {} unlit block states",
                 emitters.size(), unlitStates.size());
         }
+        BlockEmissionControls.atlas(atlas, atlasId, emitters.keySet());
         ChunkManager.markAllDirty();
     }
 
@@ -500,10 +508,15 @@ public final class EmissionTiles {
      * A block whose MER marks nothing emissive casts nothing, as in Bedrock.
      */
     static void uploadFromMer(int atlasId, TextureAtlasSprite sprite, ByteBuffer mer, int atlasWidth, int atlasHeight) {
-        Integer level = lightLevels.get(sprite);
-        if (level == null || level <= 0 || !com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow()) {
-            return;
-        }
+        uploadAuthoredEmission(atlasId, sprite, mer, atlasWidth, atlasHeight, false);
+    }
+
+    static void uploadFromLabPbr(int atlasId, TextureAtlasSprite sprite, ByteBuffer specular, int atlasWidth, int atlasHeight) {
+        uploadAuthoredEmission(atlasId, sprite, specular, atlasWidth, atlasHeight, true);
+    }
+
+    private static void uploadAuthoredEmission(int atlasId, TextureAtlasSprite sprite, ByteBuffer mer,
+        int atlasWidth, int atlasHeight, boolean labPbr) {
         SpriteContents contents = sprite.contents();
         ByteBuffer[] mips = ((SpriteContentsAccess) contents).radiante$mipImages();
         if (mips.length == 0 || mips[0] == null) {
@@ -539,8 +552,9 @@ public final class EmissionTiles {
                         if ((pixels.get(index + 3) & 0xFF) < 128) {
                             continue;
                         }
+                        int alpha = mer.get(merIndex + 3) & 0xFF;
                         float g = (mer.get(merIndex + 1) & 0xFF) / 255.0f;
-                        float weight = g * g;
+                        float weight = labPbr ? (alpha == 255 ? 0.0f : alpha / 254.0f) : g * g;
                         if (weight <= 0.0f) {
                             continue;
                         }
@@ -565,9 +579,11 @@ public final class EmissionTiles {
         }
         long tileKey = ((long) sprite.getX() << 32) ^ sprite.getY() ^ ((long) width << 48) ^ height;
         if (cells.isEmpty()) {
+            if (labPbr) return;
             TextureProxy.uploadEmissionTile(atlasId, tileKey, 0L, 0);
             return;
         }
+        authoredEmission.add(sprite.contents().name());
         long address = MemoryUtil.nmemAllocChecked((long) cells.size() * CELL_BYTES);
         try {
             for (int i = 0; i < cells.size(); i++) {

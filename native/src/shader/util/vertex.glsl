@@ -107,11 +107,15 @@ MaterialVertex unpackMaterialVertex(PackedMaterialVertex p) {
     m.glintTexture = p.textures >> 16u;
     m.albedoEmission = p.albedoEmission;
     bool overridden = (p.packedData & EMISSION_OVERRIDE_BIT) != 0u;
-    uint percent = ((p.light >> 8u) & 0xFFu) | ((p.light >> 24u) << 8u);
-    m.emissionMultiplier = overridden ? float(min(percent, 1000u)) / 100.0 : 1.0;
-    m.lightUV = overridden ? ivec2(int(p.light & 0xFFu), int((p.light >> 16u) & 0xFFu)) :
-                            ivec2(int(p.light & 0xFFFFu), int(p.light >> 16u));
-    m.albedoEmission *= m.emissionMultiplier;
+    uint rgb = ((p.light >> 8u) & 255u) | ((p.light >> 24u) << 8u) |
+               (((p.overlay >> 8u) & 255u) << 16u) | ((p.overlay >> 24u) << 24u);
+    m.emissionTint = overridden ? vec3(rgb & 511u, (rgb >> 9u) & 511u, (rgb >> 18u) & 511u) *
+                                 exp2(float(rgb >> 27u) - 24.0) : vec3(1.0);
+    m.emissionMultiplier = max(m.emissionTint.r, max(m.emissionTint.g, m.emissionTint.b));
+    m.emissionPad = 0u;
+    m.lightUV = overridden ? ivec2(int(p.light & 255u), int((p.light >> 16u) & 255u)) :
+                            ivec2(int(p.light & 65535u), int(p.light >> 16u));
+    if (overridden) m.overlayUV = ivec2(int(p.overlay & 255u), int((p.overlay >> 16u) & 255u));
     m.packedData = p.packedData;
     return m;
 }

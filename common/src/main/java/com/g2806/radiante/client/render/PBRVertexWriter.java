@@ -107,7 +107,8 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private int glintTextureId;
     private int alphaMode;
     private int coordinate;
-    private int emissionPercent = -1;
+    private long emissionTint = -1;
+    private static final int EMISSION_TINT_FLAG = 1 << 21;
     private boolean water;
     private boolean rain;
     private boolean held;
@@ -218,40 +219,51 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     }
 
     /** Encoded in unused coordinate bits until the native material packing stage. */
-    public int emissionPercent() {
-        return this.emissionPercent;
+    public long emissionTint() {
+        return this.emissionTint;
     }
 
-    public PBRVertexWriter emissionPercent(int percent) {
-        this.emissionPercent = percent;
+    public PBRVertexWriter emissionTint(long colour) {
+        this.emissionTint = colour;
         return this;
     }
 
     private int encodedCoordinate() {
-        return this.coordinate | (this.emissionPercent >= 0 ? (this.emissionPercent + 1) << 4 : 0);
+        return (this.coordinate & 15) | (this.emissionTint >= 0 ? (int) (this.emissionTint << 4) : 0);
+    }
+
+    private int emissionFlags() {
+        return this.emissionTint >= 0 && this.emissionTint != com.g2806.radiante.client.option.EmissionColor.WHITE.packed()
+            ? EMISSION_TINT_FLAG | (int) ((this.emissionTint >>> 28) << 24) : 0;
     }
 
     @Override
     public void putBlockBakedQuad(float x, float y, float z,
         net.minecraft.client.resources.model.geometry.BakedQuad quad, com.mojang.blaze3d.vertex.QuadInstance instance) {
-        int previous = this.emissionPercent;
-        this.emissionPercent = BlockEmissionControls.percent(quad.materialInfo().sprite().contents().name());
+        long previous = this.emissionTint;
+        boolean oldUnlit = this.unlit;
+        if (EmissionTiles.authoredEmission(quad.materialInfo().sprite().contents().name())) this.unlit = false;
+        this.emissionTint = BlockEmissionControls.color(quad.materialInfo().sprite().contents().name()).packed();
         try {
             VertexConsumer.super.putBlockBakedQuad(x, y, z, quad, instance);
         } finally {
-            this.emissionPercent = previous;
+            this.emissionTint = previous;
+            this.unlit = oldUnlit;
         }
     }
 
     @Override
     public void putBakedQuad(com.mojang.blaze3d.vertex.PoseStack.Pose pose,
         net.minecraft.client.resources.model.geometry.BakedQuad quad, com.mojang.blaze3d.vertex.QuadInstance instance) {
-        int previous = this.emissionPercent;
-        this.emissionPercent = BlockEmissionControls.percent(quad.materialInfo().sprite().contents().name());
+        long previous = this.emissionTint;
+        boolean oldUnlit = this.unlit;
+        if (EmissionTiles.authoredEmission(quad.materialInfo().sprite().contents().name())) this.unlit = false;
+        this.emissionTint = BlockEmissionControls.color(quad.materialInfo().sprite().contents().name()).packed();
         try {
             VertexConsumer.super.putBakedQuad(pose, quad, instance);
         } finally {
-            this.emissionPercent = previous;
+            this.emissionTint = previous;
+            this.unlit = oldUnlit;
         }
     }
 
@@ -421,7 +433,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
             MemoryUtil.memPutInt(v + OFF_TEXTURE_ID, this.textureId);
             MemoryUtil.memPutFloat(v + OFF_ALBEDO_EMISSION, strength);
             MemoryUtil.memPutInt(v + OFF_COORDINATE, encodedCoordinate());
-            MemoryUtil.memPutInt(v + OFF_ALPHA_MODE, ALPHA_MODE_TRANSPARENT | POINT_LIGHT_FLAG);
+            MemoryUtil.memPutInt(v + OFF_ALPHA_MODE, ALPHA_MODE_TRANSPARENT | POINT_LIGHT_FLAG | emissionFlags());
         }
         this.finishedUpTo = this.vertexCount;
     }
@@ -446,7 +458,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     }
 
     public void reset() {
-        this.emissionPercent = -1;
+        this.emissionTint = -1;
         this.layerOffset = 0.0f;
         this.vertexCount = 0;
         this.finishedUpTo = 0;
@@ -481,17 +493,20 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         this.finishedUpTo = this.vertexCount;
         long first = this.address + (long) (this.vertexCount - 4) * STRIDE;
         // Fluid/custom quads carry UVs but no BakedQuad sprite. Resolve the whole face at its UV centre.
-        if ((MemoryUtil.memGetInt(first + OFF_COORDINATE) >>> 4) == 0 && !BlockEmissionControls.values().isEmpty()) {
+        if ((MemoryUtil.memGetInt(first + OFF_ALPHA_MODE) & EMISSION_TINT_FLAG) == 0 && BlockEmissionControls.hasTints()) {
             float u = 0, v = 0;
             for (int i = 0; i < 4; i++) {
                 u += MemoryUtil.memGetFloat(first + (long) i * STRIDE + OFF_TEXTURE_UV);
                 v += MemoryUtil.memGetFloat(first + (long) i * STRIDE + OFF_TEXTURE_UV + 4);
             }
-            int percent = BlockEmissionControls.percentAt(MemoryUtil.memGetInt(first + OFF_TEXTURE_ID), u * 0.25f, v * 0.25f);
-            if (percent != 100) {
+            var colour = BlockEmissionControls.colorAt(MemoryUtil.memGetInt(first + OFF_TEXTURE_ID), u * 0.25f, v * 0.25f);
+            if (!colour.equals(com.g2806.radiante.client.option.EmissionColor.WHITE)) {
+                long packed = colour.packed();
                 for (int i = 0; i < 4; i++) {
                     long at = first + (long) i * STRIDE + OFF_COORDINATE;
-                    MemoryUtil.memPutInt(at, (MemoryUtil.memGetInt(at) & 15) | ((percent + 1) << 4));
+                    MemoryUtil.memPutInt(at, (MemoryUtil.memGetInt(at) & 15) | (int) (packed << 4));
+                    long flags = first + (long) i * STRIDE + OFF_ALPHA_MODE;
+                    MemoryUtil.memPutInt(flags, MemoryUtil.memGetInt(flags) | EMISSION_TINT_FLAG | (int) ((packed >>> 28) << 24));
                 }
             }
         }
@@ -568,7 +583,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
             MemoryUtil.memPutInt(v + OFF_CAST_COLOR, this.castColor);
         }
         MemoryUtil.memPutInt(v + OFF_ALPHA_MODE,
-            this.alphaMode | (this.water ? WATER_FLAG : 0) | (this.rain ? RAIN_FLAG : 0) | (this.held ? HELD_FLAG : 0) | (this.glass ? GLASS_FLAG : 0)
+            this.alphaMode | emissionFlags() | (this.water ? WATER_FLAG : 0) | (this.rain ? RAIN_FLAG : 0) | (this.held ? HELD_FLAG : 0) | (this.glass ? GLASS_FLAG : 0)
                 | (this.plant ? PLANT_FLAG : 0) | this.paneFlags | (this.blend ? BLEND_FLAG : 0)
                 | (this.unlit ? UNLIT_FLAG : 0) | (this.lava ? LAVA_FLAG : 0) | (this.layerOffset != 0.0f ? LAYER_FLAG : 0)
                 | (this.leaves ? LEAVES_FLAG : 0) | (this.glowLight ? GLOW_LIGHT_FLAG : 0) | (this.frost ? FROST_FLAG : 0));

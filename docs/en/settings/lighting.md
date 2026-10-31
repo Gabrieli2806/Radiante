@@ -27,16 +27,20 @@ They change with the Picture Style (see [Image](image.md) and
 Custom.
 
 
-## Per-block emission (Advanced)
+## Per-block HDR emission (Advanced)
 
-Open **Lighting → Advanced → Block Emission**. Each texture profile has a **0–1000%** slider in 1% steps:
-**100%** keeps the current material, **0%** removes its emission, and **1000%** multiplies it by ten.
-These multiply Light Source Brightness and Held Light Brightness rather than replacing them. Search by block or
-texture name, then press **Apply**. **Reset** restores 100% for every profile.
+Open **Lighting → Advanced → Block Emission**, then click a block's colour swatch. The picker has RGB controls,
+exposure, and numeric **linear HDR RGB** fields. **(1,1,1)** preserves the material's colour and brightness;
+**(0,0,0)** disables emission; **(10,10,10)** is ten times brighter. The maximum per channel is 65408.
+Values multiply the sampled emission rather than replacing its texture. Done stages the colour; Apply on the
+settings screen updates geometry and lighting. Cancel leaves the colour alone; Reset restores neutral white.
 
-The list includes the built-in emissive textures, active light-source textures and saved resource-pack overrides.
-Variants such as lit redstone lamps have separate rows. **Cave Vines** with berries have tip and stem profiles;
-**Vines**, **Glow Lichen**, twisting and weeping vines also have controls for packs that make them glow.
-A multiplier does not turn a non-emissive material into a light. Texture profiles affect both visible glow and the
-light cast, including corresponding held and point lights. Overrides stay saved when their resource pack is disabled
-and are included in shared settings codes.
+The searchable list includes built-in sources, emissive LabPBR/MER textures from active packs, vines and saved
+custom entries. Textures discovered only through a resource pack also cast sampled light, even if the block has
+no vanilla light level. Overrides persist when a pack is disabled and are included in shared settings codes.
+Old 0–1000% settings migrate automatically to equal RGB multipliers.
+
+A pack may supply material-only RGB emission tints in `assets/radiante/emission_tints.json`, for example
+`{"minecraft:block/sea_lantern":[0.9,0.95,1.0]}`. These tint the material's diffuse-derived emission, preserving the
+original diffuse texture. The player's picker multiplies this authored tint. Dedicated held-light colours retain
+their existing calibration and take the player's additional tint.
