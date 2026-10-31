@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Per-texture HDR pickers now control cast light only; visible emission keeps the resource pack's colour and strength, including in mirrors and glass.
+
 - Advanced block emission controls now use HDR RGB pickers with exposure and exact numeric input; existing percentage settings migrate automatically.
 - Emissive LabPBR/MER textures are discovered from resource packs and supply sampled light even on blocks without vanilla light levels. Packs can author material emission tints without changing diffuse textures.
 

@@ -491,7 +491,8 @@ void ptShadeDefault(bool viewMark) {
     }
 #endif
     vec3 emissionTint = baryCoords.x * m0.emissionTint + baryCoords.y * m1.emissionTint + baryCoords.z * m2.emissionTint;
-    float emissionMultiplier = max(emissionTint.r, max(emissionTint.g, emissionTint.b));
+    vec3 appearanceTint = rayEmissionTint(mainRay, emissionTint, g_viewBounce);
+    float emissionMultiplier = max(appearanceTint.r, max(appearanceTint.g, appearanceTint.b));
     mainRay.normal = surface.shadingNormal;
     ptStoreMaterial(surface.albedoValue, surface.mat.f0, surface.mat.roughness, surface.mat.metallic,
                     surface.mat.transmission, surface.mat.ior, surface.mat.emission * emissionMultiplier);
@@ -599,7 +600,7 @@ void ptShadeDefault(bool viewMark) {
         vec3 emissionRadiance = blockEmissionWeight * emissionFactor * worldUBO.emissionBrightness * glowColour *
                                 seenEmission * mainRay.throughput;
 #endif
-        emissionRadiance *= emissionTint;
+        emissionRadiance *= appearanceTint;
         // A glow given as negative (the beacon beam's core) is seen, not cast (transparent_only.rchit).
         float vertexGlow = albedoEmission;
         if (vertexGlow < 0.0) {
@@ -607,7 +608,7 @@ void ptShadeDefault(bool viewMark) {
         }
         // A glow that is also in the light list (powered redstone dust) is not counted twice, as glowing texels.
         if (isGlowLightSurface(packedData)) { vertexGlow *= blockEmissionWeight; }
-        emissionRadiance += currentSurface.tint * emissionTint * vertexGlow * mainRay.throughput;
+        emissionRadiance += currentSurface.tint * appearanceTint * vertexGlow * mainRay.throughput;
         mainRay.radiance += emissionRadiance;
 #if VPT_NRD_SIGNALS
         // The surface the camera sees (pass-throughs left out, the paths that fill the cache too). Stored at once:

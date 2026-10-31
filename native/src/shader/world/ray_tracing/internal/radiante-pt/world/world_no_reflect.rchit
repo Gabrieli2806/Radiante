@@ -174,6 +174,7 @@ void main() {
     // add glowing radiance
     float brightness = worldUBO.emissionBrightness;
     vec3 emissionTint = baryCoords.x * m0.emissionTint + baryCoords.y * m1.emissionTint + baryCoords.z * m2.emissionTint;
+    emissionTint = rayEmissionTint(mainRay, emissionTint, mainRay.pad0 == RAY_VIEW_BOUNCE_MARK);
     mainRay.radiance += 16.0 * brightness * tint * emissionTint * mat.emission * mainRay.throughput;
     mainRay.hitT = gl_HitTEXT;
     mainRay.normal = vec3(0.0);

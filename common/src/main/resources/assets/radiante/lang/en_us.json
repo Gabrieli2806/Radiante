@@ -848,12 +848,12 @@
   "render_pipeline.module.ray_tracing.attribute.hand_samples": "Hand Lighting Samples",
   "render_pipeline.module.ray_tracing.attribute.hand_samples.tooltip": "Indirect-lighting samples for first-person hands and held items. Higher is smoother but costs more GPU time; lower is faster but noisier.",
   "options.radiante.advanced.group.block_emission": "Block Emission",
-  "options.radiante.emission_profile.tooltip": "HDR emission tint for %s.\nClick to edit RGB and exposure. White keeps the sampled colour; values above 1 brighten it; black disables emission. Apply updates lighting and terrain.",
+  "options.radiante.emission_profile.tooltip": "HDR cast-light tint for %s.\nClick to edit RGB and exposure. White preserves sampled light; values above 1 brighten it; black disables its cast light. Visible glow stays pack-authored.",
   "options.radiante.emission_profile.variant": "%s · %s",
   "options.radiante.emission_profile.texture": "Texture · %s",
   "options.radiante.emission_colour.red": "Red",
   "options.radiante.emission_colour.green": "Green",
   "options.radiante.emission_colour.blue": "Blue",
   "options.radiante.emission_colour.exposure": "Exposure",
-  "options.radiante.emission_colour.hint": "Linear RGB multipliers · values above 1 emit more light"
+  "options.radiante.emission_colour.hint": "Linear RGB multipliers for cast light · visible glow comes from the resource pack"
 }

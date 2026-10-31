@@ -115,6 +115,7 @@ void main() {
     float factor = rayBounce(mainRay) == 0u ? 16.0 * VPT_DIRECT_LIGHT_STRENGTH : VPT_INDIRECT_LIGHT_STRENGTH;
     float brightness = worldUBO.emissionBrightness;
     vec3 emissionTint = bary.x * m0.emissionTint + bary.y * m1.emissionTint + bary.z * m2.emissionTint;
+    emissionTint = rayEmissionTint(mainRay, emissionTint, mainRay.pad0 == RAY_VIEW_BOUNCE_MARK);
     mainRay.radiance += factor * brightness * emissionTint * shadedRgb * alpha * pbrEmission * mainRay.throughput;
     // Layers that are light themselves rather than lit surfaces carry their emission per vertex: glowing eyes,
     // beacon beams, lightning and the flames on a burning entity are all blended, so this is the only path they

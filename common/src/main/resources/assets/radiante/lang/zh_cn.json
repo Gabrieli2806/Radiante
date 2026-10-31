@@ -848,12 +848,12 @@
   "render_pipeline.module.ray_tracing.attribute.hand_samples": "手部光照采样数",
   "render_pipeline.module.ray_tracing.attribute.hand_samples.tooltip": "第一人称手部和手持物品的间接光照采样数。提高可减少噪点，但会增加 GPU 耗时；降低可提升速度，但噪点更多。",
   "options.radiante.advanced.group.block_emission": "方块发光",
-  "options.radiante.emission_profile.tooltip": "%s 的 HDR 发光色调。\n点击编辑 RGB 和曝光。白色保留采样颜色；大于 1 增强亮度；黑色关闭发光。应用后更新光照与地形。",
+  "options.radiante.emission_profile.tooltip": "%s 的 HDR 投射光色调。\n点击编辑 RGB 和曝光。白色保留采样光照；大于 1 增强光照；黑色关闭投射光。可见辉光仍由资源包决定。",
   "options.radiante.emission_profile.variant": "%s · %s",
   "options.radiante.emission_profile.texture": "纹理 · %s",
   "options.radiante.emission_colour.red": "红",
   "options.radiante.emission_colour.green": "绿",
   "options.radiante.emission_colour.blue": "蓝",
   "options.radiante.emission_colour.exposure": "曝光",
-  "options.radiante.emission_colour.hint": "线性 RGB 倍率 · 大于 1 可增强发光"
+  "options.radiante.emission_colour.hint": "投射光的线性 RGB 倍率 · 可见辉光由资源包决定"
 }

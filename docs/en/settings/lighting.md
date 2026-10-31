@@ -30,9 +30,10 @@ Custom.
 ## Per-block HDR emission (Advanced)
 
 Open **Lighting → Advanced → Block Emission**, then click a block's colour swatch. The picker has RGB controls,
-exposure, and numeric **linear HDR RGB** fields. **(1,1,1)** preserves the material's colour and brightness;
-**(0,0,0)** disables emission; **(10,10,10)** is ten times brighter. The maximum per channel is 65408.
-Values multiply the sampled emission rather than replacing its texture. Done stages the colour; Apply on the
+exposure, and numeric **linear HDR RGB** fields. **(1,1,1)** preserves the sampled light's colour and brightness;
+**(0,0,0)** disables cast light; **(10,10,10)** casts ten times more light. The maximum per channel is 65408.
+Values multiply the sampled illumination rather than replacing its texture. The visible glow keeps its resource-pack
+colour and strength, including in reflections and through glass; edit the pack to change that appearance. Done stages the colour; Apply on the
 settings screen updates geometry and lighting. Cancel leaves the colour alone; Reset restores neutral white.
 
 The searchable list includes built-in sources, emissive LabPBR/MER textures from active packs, vines and saved
@@ -41,6 +42,6 @@ no vanilla light level. Overrides persist when a pack is disabled and are includ
 Old 0–1000% settings migrate automatically to equal RGB multipliers.
 
 A pack may supply material-only RGB emission tints in `assets/radiante/emission_tints.json`, for example
-`{"minecraft:block/sea_lantern":[0.9,0.95,1.0]}`. These tint the material's diffuse-derived emission, preserving the
-original diffuse texture. The player's picker multiplies this authored tint. Dedicated held-light colours retain
+`{"minecraft:block/sea_lantern":[0.9,0.95,1.0]}`. These tint the material's diffuse-derived cast light, preserving the
+original diffuse texture and visible glow. The player's picker multiplies this authored tint. Dedicated held-light colours retain
 their existing calibration and take the player's additional tint.
