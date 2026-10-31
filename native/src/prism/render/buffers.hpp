@@ -82,6 +82,7 @@ class Buffers : public SharedObject<Buffers> {
     bool useJitter_ = true;
     size_t jitterIndex_ = 0;
     uint32_t frameCounter_ = 0;
+    uint32_t heldLightResetFrames_ = 0;
     std::ranlux48 seedEngine_;
     std::uniform_int_distribution<int32_t> seedDistribution_;
     std::shared_ptr<gpu::DeviceLocalBuffer> lightMeter_;

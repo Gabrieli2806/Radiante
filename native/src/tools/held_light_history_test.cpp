@@ -47,5 +47,12 @@ int main() {
     changed = torch;
     changed.heldLightColor = glm::vec4(0.2, 0.5, 1, 1);
     require(!held_light_history::changed(changed, torch), "zero-brightness item swaps reset");
+    uint32_t remaining = 0;
+    require(held_light_history::resetFrame(true, 3, remaining), "transition did not reset");
+    require(held_light_history::resetFrame(false, 3, remaining), "second in-flight slot was retained");
+    require(held_light_history::resetFrame(false, 3, remaining), "third in-flight slot was retained");
+    require(!held_light_history::resetFrame(false, 3, remaining), "stable frames never resumed accumulation");
+    require(held_light_history::resetFrame(true, 0, remaining), "empty startup window missed reset");
+    require(!held_light_history::resetFrame(false, 0, remaining), "single startup reset did not expire");
     std::cout << "Held-light history: equip, removal, both hands, colour, brightness, motion and idle passed\n";
 }
