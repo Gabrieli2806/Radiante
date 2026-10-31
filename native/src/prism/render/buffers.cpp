@@ -259,10 +259,15 @@ void Buffers::setUseJitter(bool useJitter) {
     useJitter_ = useJitter;
 }
 
-void Buffers::setAndUploadSkyUniformBuffer(const gpu::Data::SkyUBO &ubo) {
+void Buffers::setAndUploadSkyUniformBuffer(const gpu::Data::SkyUBO &source) {
     auto framework = this->framework();
     const uint32_t frame = framework->safeAcquireCurrentContext()->frameIndex;
     std::scoped_lock lock(mutex_);
+    gpu::Data::SkyUBO ubo = source;
+    // The day moves the sun a third of a degree a second. A degree in one frame is the time being set, and light kept
+    // over time (the fog's grids) belongs to another hour.
+    ubo.biomeFogHeights.w = glm::dot(ubo.sunDirection, lastSunDirection_) < 0.99985f ? 1.0f : 0.0f;
+    lastSunDirection_ = ubo.sunDirection;
     auto &buffer = ensureUniform(uniforms_[frame].sky, *framework, sizeof(ubo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
     write(*buffer, &ubo, sizeof(ubo));
 }

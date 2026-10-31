@@ -354,7 +354,8 @@ struct SkyUBO {
     T_VEC4 biomeFogChroma;
     // x: world height below which the haze is at full density, y: height where it has thinned to nothing. Radiante's
     // own haze never thins, so both sit far above the world. z: how open the camera is to the sky (its sky light,
-    // 0..1, eased), set with or without Biome Ambiance: the air's own haze (aerial perspective) follows it. w unused.
+    // 0..1, eased), set with or without Biome Ambiance: the air's own haze (aerial perspective) follows it. w: 1 on a frame where the
+    // time was set and the sun jumped (Buffers), filled in natively.
     T_VEC4 biomeFogHeights;
 
     // Water as a medium for the biomes at the camera, from a converted Bedrock pack when it has one, otherwise derived

@@ -46,7 +46,7 @@ class Buffers : public SharedObject<Buffers> {
     void setPackParam(uint32_t slot, const glm::vec4 &value);
     // Whether the camera moves by a sub-pixel jitter from frame to frame, for the temporal passes and upscalers.
     void setUseJitter(bool useJitter);
-    void setAndUploadSkyUniformBuffer(const gpu::Data::SkyUBO &ubo);
+    void setAndUploadSkyUniformBuffer(const gpu::Data::SkyUBO &source);
     void setAndUploadTextureMappingBuffer(const gpu::Data::TextureMapping &mapping);
 
     // The current frame's copies; null until the first upload of each.
@@ -61,6 +61,8 @@ class Buffers : public SharedObject<Buffers> {
     std::shared_ptr<gpu::DeviceLocalBuffer> lightMeterBuffer();
 
   private:
+    glm::vec3 lastSunDirection_{0.0f};
+
     struct FrameUniforms {
         bool heldLightHistoryReset = false;
         std::shared_ptr<gpu::HostVisibleBuffer> world;

@@ -12,6 +12,8 @@ All notable changes to this project are documented in this file.
 
 - Held light brightness now controls the local held item's diffuse lighting without extra emitters from its hand and shadow models.
 
+- Setting the time no longer leaves the sky white with fog lit by the previous hour for seconds.
+
 - Unlit redstone ore casts a quarter of its light and the full light once touched; its texture's glow stays.
 
 - New Light From Unlit Blocks option (Lighting, on by default): blocks with no light level, such as crimson and warped stems, cast light from their emissive textures.
