@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Shader packs: vines, hanging roots and moss, lily pads, sugar cane, kelp, bamboo, cobwebs and particles carry a thin surface flag (bit 27, isThinSurface), so a pack can let light through them as through leaves and plants.
+
 - Items lowering during a hand swap keep their dedicated-light ownership, preventing a bright mesh-light flash.
 
 - Changing either held light clears obsolete denoiser and upscaler history instead of leaving a discoloured flash.

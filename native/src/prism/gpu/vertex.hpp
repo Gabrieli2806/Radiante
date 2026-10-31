@@ -31,7 +31,8 @@ struct Vertex {
     //   bits 8-11   the alpha mode (the low four bits of PBRVertex::alphaMode)
     //   bits 12-15  the coordinate system
     //   bit 16      an HDR emission tint in the spare light and overlay UV bytes
-    //   bits 17-31  the surface flags Java sets in alphaMode above the mode (below)
+    //   bits 17-31  the surface flags Java sets in alphaMode above the mode (below); bit 27, which the point light
+    //               leaves free, is thin (see alphaModeThinFlag)
     static constexpr uint32_t useColorLayerBit = 1u << 0u;
     static constexpr uint32_t useTextureBit = 1u << 1u;
     static constexpr uint32_t useOverlayBit = 1u << 2u;
@@ -97,6 +98,10 @@ struct Vertex {
     // Only the local player's item represented by a dedicated held light; its visible glow is retained.
     static constexpr uint32_t alphaModeHeldLightFlag = 0x100000u;
     static constexpr uint32_t heldLightSurfaceBit = 1u << 7u;
+    // Thin foliage and fibres that let light through, besides leaves and small plants (vines, lily pads, sugar cane,
+    // kelp, cobwebs): bit 27, which the point light flag never fills.
+    static constexpr uint32_t alphaModeThinFlag = 0x400000u;
+    static constexpr uint32_t thinSurfaceBit = 1u << 27u;
 
     // The layout of vertex format T: one per format, made on first use and kept for the process, so pipelines may
     // point into it. Only the formats specialized below have one; asking for any other does not compile.
@@ -180,6 +185,10 @@ inline uint32_t Vertex::packMaterialFlags(const VertexFormat::PBRVertex &vertex)
     static_assert((alphaModePointLightFlag & surfaceFlags) == 0);
     static_assert((alphaModeHeldLightFlag & (surfaceFlags | alphaModePointLightFlag | alphaModeFrostFlag | 0xFu)) == 0);
     static_assert((alphaModeEmissionTintFlag & (surfaceFlags | alphaModeFrostFlag | alphaModePointLightFlag | alphaModeHeldLightFlag | 15u)) == 0);
+    static_assert((alphaModeThinFlag & (surfaceFlags | alphaModeFrostFlag | alphaModePointLightFlag | alphaModeHeldLightFlag |
+                                        alphaModeEmissionTintFlag | 15u)) == 0);
+    static_assert((thinSurfaceBit & (0x3Fu | frostSurfaceBit | heldLightSurfaceBit | (0xFu << alphaModeShift) |
+                                     (0xFu << coordinateShift) | emissionOverrideBit | (surfaceFlags << surfaceShift))) == 0);
     static_assert(((heldLightSurfaceBit | emissionOverrideBit) & (0x3Fu | frostSurfaceBit | (0xFu << alphaModeShift) |
                                          (0xFu << coordinateShift) | (surfaceFlags << surfaceShift))) == 0);
 
@@ -196,6 +205,7 @@ inline uint32_t Vertex::packMaterialFlags(const VertexFormat::PBRVertex &vertex)
     packed |= (vertex.alphaMode & surfaceFlags) << surfaceShift;
     packed |= (vertex.alphaMode & alphaModeFrostFlag) != 0u ? frostSurfaceBit : 0u;
     packed |= (vertex.alphaMode & alphaModeHeldLightFlag) != 0u ? heldLightSurfaceBit : 0u;
+    packed |= (vertex.alphaMode & alphaModeThinFlag) != 0u ? thinSurfaceBit : 0u;
     return packed;
 }
 

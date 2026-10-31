@@ -46,6 +46,8 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private static final int FROST_FLAG = 0x80000;
     /** A local held item whose light is supplied separately; see heldLight(). */
     private static final int HELD_LIGHT_FLAG = 0x100000;
+    /** Thin foliage and fibres that let light through; see thin(). */
+    private static final int THIN_FLAG = 0x400000;
 
     public static final int ALPHA_MODE_OPAQUE = 0;
     public static final int ALPHA_MODE_CUTOUT = 1;
@@ -134,6 +136,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private float windScale;
     private boolean leaves;
     private boolean frost;
+    private boolean thin;
     private boolean glowLight;
     private float castLight;
     private int castColor = 0xFFFFFF;
@@ -358,6 +361,15 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     /** Marks what follows as ice or snow (FROST_SURFACE_BIT in the shaders). */
     public PBRVertexWriter frost(boolean frost) {
         this.frost = frost;
+        return this;
+    }
+
+    /**
+     * Marks what follows as thin enough to let light through it (THIN_SURFACE_BIT in the shaders): vines, lily pads,
+     * sugar cane, kelp, cobwebs and the like, which are neither leaves nor small plants.
+     */
+    public PBRVertexWriter thin(boolean thin) {
+        this.thin = thin;
         return this;
     }
 
@@ -615,7 +627,8 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
                 | (this.plant ? PLANT_FLAG : 0) | this.paneFlags | (this.blend ? BLEND_FLAG : 0)
                 | (this.unlit ? UNLIT_FLAG : 0) | (this.lava ? LAVA_FLAG : 0) | (this.layerOffset != 0.0f ? LAYER_FLAG : 0)
                 | (this.leaves ? LEAVES_FLAG : 0) | (this.glowLight ? GLOW_LIGHT_FLAG : 0) | (this.frost ? FROST_FLAG : 0)
-                | (this.heldLight ? HELD_LIGHT_FLAG : 0));
+                | (this.heldLight ? HELD_LIGHT_FLAG : 0)
+                | (this.thin ? THIN_FLAG : 0));
         if (this.colorOverride != 0) {
             setColor(255, 255, 255, 255);
         }

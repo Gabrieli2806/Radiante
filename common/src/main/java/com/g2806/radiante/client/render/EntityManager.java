@@ -657,6 +657,8 @@ public final class EntityManager {
                 int textureId = TextureTracker.idOf(layer.textureAtlasLocation());
                 PBRVertexWriter writer = PARTICLE_WRITER.textureId(textureId)
                     .glintTextureId(0)
+                    // Falling leaves, smoke and dust let light through as thin surfaces do.
+                    .thin(true)
                     // Translucent ones (smoke, campfire, dust) are kept by their alpha at random, as solid surfaces: traced as
                     // see-through geometry they looked like glass, the world showing through them clearer than in vanilla.
                     .alphaMode(layer.translucent() ? PBRVertexWriter.ALPHA_MODE_STOCHASTIC : PBRVertexWriter.ALPHA_MODE_CUTOUT)

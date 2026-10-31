@@ -167,6 +167,22 @@ public final class ChunkManager {
         return state.is(BlockTags.ICE) || state.is(BlockTags.SNOW);
     }
 
+    /**
+     * Thin foliage and fibres that let light through, besides leaves and small plants (isLeaves, isPlant): what hangs
+     * (vines, roots, moss), stalks and floating leaves, and cobwebs. Not marked as plants, which the tracer leaves out
+     * far away.
+     */
+    private static boolean isThin(BlockState state) {
+        net.minecraft.world.level.block.Block block = state.getBlock();
+        return block instanceof net.minecraft.world.level.block.VineBlock || block == Blocks.CAVE_VINES
+            || block == Blocks.CAVE_VINES_PLANT || block == Blocks.WEEPING_VINES || block == Blocks.WEEPING_VINES_PLANT
+            || block == Blocks.TWISTING_VINES || block == Blocks.TWISTING_VINES_PLANT || block == Blocks.HANGING_ROOTS
+            || block == Blocks.PALE_HANGING_MOSS || block == Blocks.LILY_PAD || block == Blocks.SUGAR_CANE
+            || block == Blocks.KELP || block == Blocks.KELP_PLANT || block == Blocks.BIG_DRIPLEAF
+            || block == Blocks.BIG_DRIPLEAF_STEM || block == Blocks.SPORE_BLOSSOM || block == Blocks.GLOW_LICHEN
+            || block == Blocks.BAMBOO || block == Blocks.BAMBOO_SAPLING || block == Blocks.COBWEB;
+    }
+
     private static final int VERTEX_FORMAT_PBR = 12;
     public static final int GEOMETRY_TYPE_WORLD_SOLID = 1;
     public static final int GEOMETRY_TYPE_WORLD_TRANSPARENT = 2;
@@ -710,6 +726,7 @@ public final class ChunkManager {
             scratch.blockIsPlant = isPlant(blockState);
             scratch.blockIsLeaves = isLeaves(blockState);
             scratch.blockIsFrost = isFrost(blockState);
+            scratch.blockIsThin = isThin(blockState);
             scratch.blockIsPane = scratch.blockIsGlass && isGlassPane(blockState);
             scratch.windKind = PBRVertexWriter.WIND_NONE;
             if (windOn) {
@@ -730,6 +747,7 @@ public final class ChunkManager {
                 scratch.blockIsPlant = false;
                 scratch.blockIsLeaves = false;
                 scratch.blockIsFrost = false;
+                scratch.blockIsThin = false;
                 scratch.blockIsPane = false;
                 // The water round seagrass and kelp stays where it is.
                 scratch.windKind = PBRVertexWriter.WIND_NONE;
@@ -743,6 +761,7 @@ public final class ChunkManager {
                 scratch.blockIsPlant = isPlant(blockState);
                 scratch.blockIsLeaves = isLeaves(blockState);
                 scratch.blockIsFrost = isFrost(blockState);
+                scratch.blockIsThin = isThin(blockState);
                 scratch.blockIsPane = scratch.blockIsGlass && isGlassPane(blockState);
                 scratch.windKind = blockWind;
                 // Water with water or solid blocks on every side draws no face, and never asks for a writer: when
@@ -1059,6 +1078,8 @@ public final class ChunkManager {
         private boolean blockIsLeaves;
         /** The block being written is ice or snow; see PBRVertexWriter.frost. */
         private boolean blockIsFrost;
+        /** The block being written is thin and lets light through; see PBRVertexWriter.thin. */
+        private boolean blockIsThin;
         private boolean blockIsPane;
         private boolean paneCapUp;
         private boolean paneCapDown;
@@ -1113,7 +1134,7 @@ public final class ChunkManager {
                 writers.put(layer, writer);
             }
             writer.textureId(atlasId).alphaMode(alphaModeOf(layer)).coordinate(0).water(false).lava(false).glass(this.blockIsGlass).plant(this.blockIsPlant).leaves(this.blockIsLeaves).frost(this.blockIsFrost)
-                .glassPane(this.blockIsPane, this.paneCapUp, this.paneCapDown).blend(this.blockIsBlend)
+                .thin(this.blockIsThin).glassPane(this.blockIsPane, this.paneCapUp, this.paneCapDown).blend(this.blockIsBlend)
                 .unlit(this.blockIsUnlit).castScale(this.blockCastScale).wind(this.windKind, this.windBaseY, this.windRise, this.windScale);
             this.current = writer;
             return writer;
@@ -1130,7 +1151,7 @@ public final class ChunkManager {
                 this.glowWriters.put(layer, writer);
             }
             writer.textureId(atlasId).alphaMode(alphaModeOf(layer)).coordinate(0).water(false).lava(false).glass(false)
-                .plant(false).leaves(false).frost(false).glassPane(false, false, false).blend(false).unlit(true).glowLight(true)
+                .plant(false).leaves(false).frost(false).thin(false).glassPane(false, false, false).blend(false).unlit(true).glowLight(true)
                 .wind(PBRVertexWriter.WIND_NONE, 0.0f, 0.0f, 0.0f);
             this.current = writer;
             return writer;
