@@ -489,6 +489,7 @@ void FSRUpscalerModuleContext::recordFsr(FSRUpscalerModule &module,
     upscale.reset = module.cameraCut(
         glm::vec3(world.cameraPos),
         glm::vec3(world.cameraViewMat[0][2], world.cameraViewMat[1][2], world.cameraViewMat[2][2]));
+    upscale.reset |= Renderer::instance().buffers()->heldLightHistoryReset();
     upscale.enableSharpening = true;
     upscale.sharpness = module.sharpness_;
     module.fsr3_->dispatch(upscale);
