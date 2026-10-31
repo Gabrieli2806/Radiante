@@ -7,7 +7,6 @@
 #include "prism/render/render_framework.hpp"
 #include "prism/render/renderer.hpp"
 #include "prism/render/world.hpp"
-#include "prism/util/logging.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -226,14 +225,7 @@ void Buffers::setAndUploadWorldUniformBuffer(gpu::Data::WorldUBO &ubo) {
     ubo.cameraJitter = useJitter_ ? halton(static_cast<int>(jitterIndex_++)) - glm::vec2(0.5f) : glm::vec2(0.0f);
 
     FrameUniforms &uniforms = uniforms_[frame];
-    const bool heldSourceChanged = held_light_history::changed(ubo, lastWorld_);
-    // Each in-flight history slot must see the discontinuity before accumulation can resume.
-    uniforms.heldLightHistoryReset = held_light_history::resetFrame(
-        heldSourceChanged, static_cast<uint32_t>(uniforms_.size()), heldLightResetFrames_);
-    if (heldSourceChanged) {
-        radiante::out() << "[Lighting] held source changed at frame " << ubo.frameCounter
-                       << "; restarting " << uniforms_.size() << " history frames\n";
-    }
+    uniforms.heldLightHistoryReset = held_light_history::changed(ubo, lastWorld_);
     constexpr VkBufferUsageFlags usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     write(*ensureUniform(uniforms.world, *framework, sizeof(ubo), usage), &ubo, sizeof(ubo));
     write(*ensureUniform(uniforms.lastWorld, *framework, sizeof(ubo), usage), &lastWorld_, sizeof(lastWorld_));

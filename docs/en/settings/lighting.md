@@ -25,3 +25,10 @@
 They change with the Picture Style (see [Image](image.md) and
 [styles-and-quality.md](../styles-and-quality.md)). Changing them by hand turns the style into
 Custom.
+
+
+## Changing a held light
+
+Changing the effective light in either hand clears denoiser and upscaler history once, including when the light is
+removed or its brightness changes. This avoids a bright, discoloured afterimage of the previous light. The first
+new frame can be noisier while accumulation resumes. Walking, hand animations and camera movement keep their history.

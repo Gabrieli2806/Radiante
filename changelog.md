@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Items lowering during a hand swap keep their dedicated-light ownership, preventing a bright mesh-light flash.
+
 - Changing either held light clears obsolete denoiser and upscaler history instead of leaving a discoloured flash.
 
 - Dropped torches, lanterns and other small point-light items use the placed block's calibrated light, once per stack.

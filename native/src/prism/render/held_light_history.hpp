@@ -22,13 +22,6 @@ inline bool different(const glm::vec4 &a, const glm::vec4 &b) {
     return false;
 }
 
-inline bool resetFrame(bool sourceChanged, uint32_t framesInFlight, uint32_t &remaining) {
-    if (sourceChanged) remaining = std::max(framesInFlight, 1u);
-    if (remaining == 0) return false;
-    --remaining;
-    return true;
-}
-
 // Light motion is continuous. A changed source invalidates lighting history even when the surfaces did not move.
 inline bool changed(const gpu::Data::WorldUBO &now, const gpu::Data::WorldUBO &previous) {
     return different(signature(now.heldLightPos, now.heldLightColor, now.heldLightBrightness),

@@ -24,3 +24,11 @@
 
 Cambian con el Estilo de Imagen (ver [Imagen](imagen.md) y
 [estilos-y-calidad.md](../estilos-y-calidad.md)). Tocarlas a mano deja el estilo en Personalizado.
+
+
+## Cambiar la luz en la mano
+
+Cambiar la luz efectiva de cualquiera de las manos borra una vez el historial del reductor de ruido y del escalador,
+incluso al retirar la luz o cambiar su brillo. Así se evita una imagen residual brillante y de otro color. El primer
+fotograma puede tener más ruido mientras vuelve a acumular muestras. Caminar, mover la cámara y las animaciones de
+las manos conservan su historial.

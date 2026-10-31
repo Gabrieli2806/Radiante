@@ -295,7 +295,7 @@ public final class EntityManager {
 
         COLLECTOR.reset();
         if (minecraft.player != null && ((EntityIdHolder) state).radiante$entityId() == minecraft.player.getId()) {
-            configureHeldLights(minecraft, COLLECTOR);
+            configureHeldLights(minecraft, COLLECTOR, state);
         }
         net.minecraft.world.level.block.Block droppedLight = null;
         if (minecraft.level != null && com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow()
@@ -980,7 +980,7 @@ public final class EntityManager {
 
         EntityRenderState state = playerState.avatarRenderState;
         COLLECTOR.reset();
-        configureHeldLights(minecraft, COLLECTOR);
+        configureHeldLights(minecraft, COLLECTOR, state);
         COLLECTOR.skipNameTags();
         POSE_STACK.setIdentity();
 
@@ -1057,7 +1057,9 @@ public final class EntityManager {
         // Minecraft poses the hands in its view space; rotate them into world orientation around the camera.
         POSE_STACK.mulPose(new Matrix4f(cameraState.viewRotationMatrix).invert());
         COLLECTOR.held(true);
-        configureHeldLights(minecraft, COLLECTOR);
+        // The previous stack is still rendered while its equip animation lowers it after a slot change.
+        var hands = playerState.firstPersonHandsAndItems;
+        configureHeldLights(minecraft, COLLECTOR, hands.mainHandItem, hands.offHandItem);
         if (minecraft.player != null) {
             COLLECTOR.heldGlass(isGlassItem(minecraft.player.getMainHandItem())
                 || isGlassItem(minecraft.player.getOffhandItem()));
@@ -1078,8 +1080,23 @@ public final class EntityManager {
         if (minecraft.player == null) {
             return;
         }
-        boolean main = HeldLight.isLightSource(minecraft.player.getMainHandItem());
-        boolean off = HeldLight.isLightSource(minecraft.player.getOffhandItem());
+        configureHeldLights(minecraft, collector, minecraft.player.getMainHandItem(), minecraft.player.getOffhandItem());
+    }
+
+    private static void configureHeldLights(Minecraft minecraft, EntityCollector collector, EntityRenderState state) {
+        if (state instanceof net.minecraft.client.renderer.entity.state.ArmedEntityRenderState armed) {
+            collector.heldLights(HeldLight.isLightSource(armed.leftHandItemStack),
+                HeldLight.isLightSource(armed.rightHandItemStack));
+        } else {
+            configureHeldLights(minecraft, collector);
+        }
+    }
+
+    private static void configureHeldLights(Minecraft minecraft, EntityCollector collector,
+        net.minecraft.world.item.ItemStack mainStack, net.minecraft.world.item.ItemStack offStack) {
+        if (minecraft.player == null) return;
+        boolean main = HeldLight.isLightSource(mainStack);
+        boolean off = HeldLight.isLightSource(offStack);
         boolean mainLeft = minecraft.player.getMainArm() == net.minecraft.world.entity.HumanoidArm.LEFT;
         collector.heldLights(mainLeft ? main : off, mainLeft ? off : main);
     }
