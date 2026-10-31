@@ -171,6 +171,8 @@ public class Options {
      * listed were never opened or folded and follow the default (see SettingsLayout).
      */
     public static String addonsOpen = "";
+    /** Per-texture emission percentages; omitted entries retain the active material's brightness. */
+    public static String blockEmissionOverrides = "{}";
     /** Set when the player chooses to run on OpenGL, where this renderer cannot work at all. */
     public static boolean useOpenGl = false;
     /** OpenGL for this session only, after Minecraft detected a failed start; never saved. */
@@ -293,6 +295,8 @@ public class Options {
         new Entry("cloudsBeforeDistantHorizons", () -> cloudsBeforeDistantHorizons,
             v -> cloudsBeforeDistantHorizons = v),
         new Entry("addonsOpen", () -> addonsOpen, v -> addonsOpen = v),
+        new Entry("blockEmissionOverrides", () -> blockEmissionOverrides,
+            v -> blockEmissionOverrides = EmissionOverrides.serialize(EmissionOverrides.parse(v))),
         bool("useOpenGl", () -> useOpenGl, v -> useOpenGl = v),
         bool("frameGeneration", () -> frameGeneration, v -> frameGeneration = v),
         number("generatedFrames", () -> generatedFrames, v -> generatedFrames = v),

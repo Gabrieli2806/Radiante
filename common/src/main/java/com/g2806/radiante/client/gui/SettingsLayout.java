@@ -796,6 +796,11 @@ final class SettingsLayout {
                 pending ? 0xFFF0B040 : 0xFF808080);
         }
         Object value = option.get();
+        if (value instanceof com.g2806.radiante.client.option.EmissionColor colour) {
+            int boxX = right - this.font.width(colour.display()) - 18;
+            g.fill(boxX, y + 4, boxX + 12, y + 16, colour.preview());
+            g.outline(boxX, y + 4, 12, 12, TEXT_DIM);
+        }
         if (isCheckbox(option) && value instanceof Boolean on) {
             int box = 10;
             int bx = right - box;
@@ -994,7 +999,9 @@ final class SettingsLayout {
     @SuppressWarnings("unchecked")
     private void activate(OptionInstance<?> option, double mouseX, int button) {
         Object value = option.get();
-        if (value instanceof Boolean on) {
+        if (value instanceof com.g2806.radiante.client.option.EmissionColor) {
+            BlockEmissionSettings.open(option);
+        } else if (value instanceof Boolean on) {
             ((OptionInstance<Boolean>) option).set(!on);
         } else if (option.values() instanceof OptionInstance.IntRange) {
             int trackW = Math.min(90, this.listW / 3);
@@ -1265,7 +1272,9 @@ final class SettingsLayout {
             return true;
         }
         Object value = option.get();
-        if (value instanceof Boolean on) {
+        if (value instanceof com.g2806.radiante.client.option.EmissionColor) {
+            BlockEmissionSettings.open(option);
+        } else if (value instanceof Boolean on) {
             ((OptionInstance<Boolean>) option).set(!on);
             clickSound();
         } else if (option.values() instanceof OptionInstance.IntRange range) {
@@ -1314,7 +1323,9 @@ final class SettingsLayout {
             return true;
         }
         Object value = option.get();
-        if (value instanceof Boolean on) {
+        if (value instanceof com.g2806.radiante.client.option.EmissionColor) {
+            BlockEmissionSettings.open(option);
+        } else if (value instanceof Boolean on) {
             ((OptionInstance<Boolean>) option).set(!on);
         } else if (option.values() instanceof OptionInstance.Enum<?> values) {
             List<Object> list = (List<Object>) values.valueListSupplier().getDefaultList();
@@ -1592,7 +1603,7 @@ final class SettingsLayout {
     private static Component caption(OptionInstance<?> option) {
         Component caption = accessor(option).radiante$caption();
         String key = keyOf(caption);
-        return key == null ? caption : AdvancedOptions.caption(key);
+        return key == null || key.startsWith(BlockEmissionSettings.PREFIX) ? caption : AdvancedOptions.caption(key);
     }
 
     /** The value alone: the option's own "Name: value" text without the name in front. */

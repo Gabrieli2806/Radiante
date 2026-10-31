@@ -14,6 +14,7 @@ const uint USE_LIGHT_BIT = 1u << 5u;
 const uint FROST_SURFACE_BIT = 1u << 6u;
 const uint ALPHA_MODE_SHIFT = 8u;
 const uint COORDINATE_SHIFT = 12u;
+const uint EMISSION_OVERRIDE_BIT = 1u << 16u;
 // The surface of water, marked by the section builder.
 const uint WATER_SURFACE_BIT = 1u << 17u;
 // Rain sheets, marked by the weather collector: their texture falls while the sheet stands still.
@@ -105,9 +106,17 @@ MaterialVertex unpackMaterialVertex(PackedMaterialVertex p) {
     m.glintUV = unpackHalf2x16(p.glintUV);
     m.glintTexture = p.textures >> 16u;
     m.albedoEmission = p.albedoEmission;
-    m.lightUV = ivec2(int(p.light & 0xFFFFu), int(p.light >> 16u));
+    bool overridden = (p.packedData & EMISSION_OVERRIDE_BIT) != 0u;
+    uint rgb = ((p.light >> 8u) & 255u) | ((p.light >> 24u) << 8u) |
+               (((p.overlay >> 8u) & 255u) << 16u) | ((p.overlay >> 24u) << 24u);
+    m.emissionTint = overridden ? vec3(rgb & 511u, (rgb >> 9u) & 511u, (rgb >> 18u) & 511u) *
+                                 exp2(float(rgb >> 27u) - 24.0) : vec3(1.0);
+    m.emissionMultiplier = max(m.emissionTint.r, max(m.emissionTint.g, m.emissionTint.b));
+    m.emissionPad = 0u;
+    m.lightUV = overridden ? ivec2(int(p.light & 255u), int((p.light >> 16u) & 255u)) :
+                            ivec2(int(p.light & 65535u), int(p.light >> 16u));
+    if (overridden) m.overlayUV = ivec2(int(p.overlay & 255u), int((p.overlay >> 16u) & 255u));
     m.packedData = p.packedData;
-    m.pad0 = 0u;
     return m;
 }
 

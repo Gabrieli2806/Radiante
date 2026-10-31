@@ -90,6 +90,7 @@ enum OptionImpact {
         Map.entry("options.radiante.tunable.water_clear_teal", LOW));
 
     static OptionImpact of(String optionKey) {
+        if (optionKey != null && optionKey.startsWith(BlockEmissionSettings.PREFIX)) return VARIES;
         if (optionKey != null && BY_OPTION.containsKey(optionKey)) {
             return BY_OPTION.get(optionKey);
         }

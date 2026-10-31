@@ -24,3 +24,22 @@
 
 Cambian con el Estilo de Imagen (ver [Imagen](imagen.md) y
 [estilos-y-calidad.md](../estilos-y-calidad.md)). Tocarlas a mano deja el estilo en Personalizado.
+
+
+## Emisión HDR por bloque (Avanzado)
+
+Abre **Iluminación → Avanzado → Emisión de bloques** y pulsa el color del bloque. El selector ofrece RGB,
+exposición y campos numéricos **RGB HDR lineales**. **(1,1,1)** conserva la luz muestreada; **(0,0,0)** apaga la luz proyectada;
+**(10,10,10)** multiplica por diez la luz proyectada. Cada canal admite hasta 65408. El tinte multiplica el color muestreado
+de la textura. El brillo visible conserva el color y la intensidad del paquete, también en espejos y a través del
+vidrio; su apariencia se modifica en el paquete. Listo prepara el cambio; Aplicar actualiza la luz y el terreno. Cancelar conserva el valor anterior;
+Restablecer devuelve el blanco neutro.
+
+La lista permite buscar fuentes integradas, texturas LabPBR/MER emisivas de paquetes activos, enredaderas y ajustes
+guardados. Las texturas emisivas de un paquete también proyectan luz aunque el bloque no tenga nivel de luz en
+Minecraft. Los ajustes se conservan al desactivar un paquete y se incluyen en los códigos compartidos. Los ajustes
+antiguos de 0–1000% se convierten automáticamente a tres multiplicadores RGB iguales.
+
+Un paquete puede incluir tintes de emisión del material en `assets/radiante/emission_tints.json`, por ejemplo
+`{"minecraft:block/sea_lantern":[0.9,0.95,1.0]}`. Solo tiñen la luz proyectada, conservan la textura difusa y el brillo visible, y se multiplican por el ajuste del jugador.
+Las luces dedicadas en mano conservan sus colores calibrados y reciben el tinte adicional del jugador.

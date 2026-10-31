@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Per-texture HDR pickers now control cast light only; visible emission keeps the resource pack's colour and strength, including in mirrors and glass.
+
+- Advanced block emission controls now use HDR RGB pickers with exposure and exact numeric input; existing percentage settings migrate automatically.
+- Emissive LabPBR/MER textures are discovered from resource packs and supply sampled light even on blocks without vanilla light levels. Packs can author material emission tints without changing diffuse textures.
+
+- Advanced Lighting now offers searchable 0–1000% emission sliders for each built-in light texture, including material glow, light cast, and held lights.
+
 - A/B Capture in the Debug section: a screenshot with the settings and GPU timings saved beside it.
 - F3 now also shows TLAS instances, entity BLAS per frame, sections pending and the renderer's VRAM use.
 - Debug views `fog_inscatter` and `fog_transmittance`: the fog on its own.

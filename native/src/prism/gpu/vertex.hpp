@@ -30,6 +30,7 @@ struct Vertex {
     //   bit 6       frost (ice and snow, see alphaModeFrostFlag)
     //   bits 8-11   the alpha mode (the low four bits of PBRVertex::alphaMode)
     //   bits 12-15  the coordinate system
+    //   bit 16      an HDR emission tint in the spare light and overlay UV bytes
     //   bits 17-31  the surface flags Java sets in alphaMode above the mode (below)
     static constexpr uint32_t useColorLayerBit = 1u << 0u;
     static constexpr uint32_t useTextureBit = 1u << 1u;
@@ -39,6 +40,8 @@ struct Vertex {
     static constexpr uint32_t useLightBit = 1u << 5u;
     static constexpr uint32_t alphaModeShift = 8u;
     static constexpr uint32_t coordinateShift = 12u;
+    static constexpr uint32_t emissionOverrideBit = 1u << 16u;
+    static constexpr uint32_t alphaModeEmissionTintFlag = 1u << 21u;
 
     // Water surfaces.
     static constexpr uint32_t alphaModeWaterFlag = 0x10u;
@@ -172,6 +175,9 @@ inline uint32_t Vertex::packMaterialFlags(const VertexFormat::PBRVertex &vertex)
                   (alphaModeLeavesFlag << surfaceShift) == leavesSurfaceBit &&
                   (alphaModeGlowLightFlag << surfaceShift) == glowLightSurfaceBit);
     static_assert((alphaModePointLightFlag & surfaceFlags) == 0);
+    static_assert((alphaModeEmissionTintFlag & (surfaceFlags | alphaModeFrostFlag | alphaModePointLightFlag | 0x100000u | 15u)) == 0);
+    static_assert((emissionOverrideBit & (0x3Fu | frostSurfaceBit | (0xFu << alphaModeShift) |
+                                         (0xFu << coordinateShift) | (surfaceFlags << surfaceShift))) == 0);
 
     uint32_t packed = 0;
     packed |= vertex.useColorLayer != 0 ? useColorLayerBit : 0u;
@@ -182,6 +188,7 @@ inline uint32_t Vertex::packMaterialFlags(const VertexFormat::PBRVertex &vertex)
     packed |= vertex.useLight != 0 ? useLightBit : 0u;
     packed |= (vertex.alphaMode & 0xFu) << alphaModeShift;
     packed |= (vertex.coordinate & 0xFu) << coordinateShift;
+    packed |= (vertex.alphaMode & alphaModeEmissionTintFlag) != 0u ? emissionOverrideBit : 0u;
     packed |= (vertex.alphaMode & surfaceFlags) << surfaceShift;
     packed |= (vertex.alphaMode & alphaModeFrostFlag) != 0u ? frostSurfaceBit : 0u;
     return packed;
@@ -194,17 +201,35 @@ inline VertexFormat::PositionVertex Vertex::makePositionVertex(const VertexForma
     };
 }
 
+// Raw vertices carry RGB9_E5 in the spare coordinate and alpha-mode bits until material packing.
+inline uint32_t packedEmissionTint(const VertexFormat::PBRVertex &vertex) {
+    return (vertex.coordinate >> 4u) | (((vertex.alphaMode >> 24u) & 15u) << 28u);
+}
+
+inline glm::vec3 emissionTint(const VertexFormat::PBRVertex &vertex) {
+    return (vertex.alphaMode & Vertex::alphaModeEmissionTintFlag) != 0u ?
+        glm::unpackF3x9_E1x5(packedEmissionTint(vertex)) : glm::vec3(1.0f);
+}
+
 inline VertexFormat::PackedMaterialVertex Vertex::makeMaterialVertex(const VertexFormat::PBRVertex &vertex) {
+    uint32_t light = packUint16Pair(vertex.lightUV.x, vertex.lightUV.y);
+    uint32_t overlay = packInt16Pair(vertex.overlayUV.x, vertex.overlayUV.y);
+    if ((vertex.alphaMode & alphaModeEmissionTintFlag) != 0u) {
+        // Minecraft light and overlay UVs fit in a byte. Their spare bytes retain the full RGB9_E5 word.
+        uint32_t rgb = packedEmissionTint(vertex);
+        light = (light & 0x00FF00FFu) | ((rgb & 255u) << 8u) | (((rgb >> 8u) & 255u) << 24u);
+        overlay = (overlay & 0x00FF00FFu) | (((rgb >> 16u) & 255u) << 8u) | ((rgb >> 24u) << 24u);
+    }
     return {
         .normal = packNormal(vertex.norm),
         .textures = (vertex.textureID & 0xFFFFu) | ((vertex.glintTexture & 0xFFFFu) << 16),
         .color = glm::packUnorm4x8(glm::clamp(vertex.colorLayer, glm::vec4(0.0f), glm::vec4(1.0f))),
         .u = vertex.textureUV.x,
         .v = vertex.textureUV.y,
-        .overlay = packInt16Pair(vertex.overlayUV.x, vertex.overlayUV.y),
+        .overlay = overlay,
         .glintUV = glm::packHalf2x16(vertex.glintUV),
         .albedoEmission = vertex.albedoEmission,
-        .light = packUint16Pair(vertex.lightUV.x, vertex.lightUV.y),
+        .light = light,
         .packedData = packMaterialFlags(vertex),
     };
 }

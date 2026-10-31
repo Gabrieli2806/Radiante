@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.option;
 
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.render.BlockEmissionControls;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -91,6 +92,7 @@ public final class SettingsCode {
         JsonObject root = new JsonObject();
         JsonObject options = new JsonObject();
         Options.exportValues(OPTIONS.keySet()).forEach(options::addProperty);
+        options.addProperty("blockEmissionOverrides", EmissionOverrides.serialize(EmissionOverrides.parse(Options.blockEmissionOverrides)));
         root.add("o", options);
         for (Map.Entry<String, String> module : MODULES.entrySet()) {
             String prefix = attributePrefix(module.getValue());
@@ -171,6 +173,15 @@ public final class SettingsCode {
         }
         for (Map.Entry<String, JsonElement> entry : root.getAsJsonObject("o").entrySet()) {
             String value = text(entry.getValue());
+            if (entry.getKey().equals("blockEmissionOverrides") && value != null) {
+                try {
+                    if (!JsonParser.parseString(value).isJsonObject()) throw new IllegalArgumentException();
+                    parsed.options.put(entry.getKey(), EmissionOverrides.serialize(EmissionOverrides.parse(value)));
+                } catch (RuntimeException invalid) {
+                    parsed.skipped++;
+                }
+                continue;
+            }
             if (value == null || !OPTIONS.containsKey(entry.getKey())) {
                 parsed.skipped++;
                 continue;
@@ -282,6 +293,8 @@ public final class SettingsCode {
         if (oldSunPath != null) {
             Options.importValue("vanillaSunPath", oldSunPath);
         }
+        String emission = parsed.options.get("blockEmissionOverrides");
+        if (emission != null) BlockEmissionControls.apply(EmissionOverrides.parse(emission));
         parsed.options.forEach((key, value) -> {
             if (!key.equals("vanillaSunPath")) {
                 Options.importValue(key, value);

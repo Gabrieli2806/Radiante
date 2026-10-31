@@ -53,6 +53,16 @@ final class BedrockPointLights {
 
     /** Writes the light Bedrock gives this block, if any, at the block whose corner is (x, y, z). */
     static void emit(BlockState state, float x, float y, float z, PBRVertexWriter writer) {
+        long previous = writer.emissionTint();
+        writer.emissionTint(BlockEmissionControls.forBlock(state.getBlock()).packed());
+        try {
+            emitScaled(state, x, y, z, writer);
+        } finally {
+            writer.emissionTint(previous);
+        }
+    }
+
+    private static void emitScaled(BlockState state, float x, float y, float z, PBRVertexWriter writer) {
         Block block = state.getBlock();
         int[] rgb = colourOf(block);
         if (rgb != null) {
@@ -101,6 +111,21 @@ final class BedrockPointLights {
             PackLight added = packLights.get(block);
             if (added != null && added.point()) {
                 packPointLight(state, added.rgb(), x, y, z, writer);
+            }
+        }
+    }
+
+    /** The same source as the placed block, once for a dropped stack rather than for each visual copy. */
+    static void emitItem(Block block, float x, float y, float z, PBRVertexWriter writer) {
+        int[] rgb = colourOf(block);
+        if (rgb != null) {
+            long previous = writer.emissionTint();
+            writer.emissionTint(BlockEmissionControls.forBlock(block).packed());
+            try {
+                float radius = block instanceof LanternBlock || block == Blocks.BEACON ? LANTERN_RADIUS : RADIUS;
+                writer.pointLight(x, y, z, rgb[0], rgb[1], rgb[2], CAST_STRENGTH, radius);
+            } finally {
+                writer.emissionTint(previous);
             }
         }
     }
