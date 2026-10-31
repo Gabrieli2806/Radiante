@@ -110,6 +110,8 @@ public class RadianteOptionsScreen extends Screen {
 
     /** Advanced options changed and not applied yet, by AdvancedOptions.key; shared by the screens of one visit. */
     private java.util.Map<String, String> pendingAdvanced = new java.util.HashMap<>();
+    private java.util.Map<String, Integer> pendingBlockEmissions = new java.util.TreeMap<>(
+        com.g2806.radiante.client.render.BlockEmissionControls.values());
 
     /**
      * Plain options (Options fields) changed on this screen, by field name, held until Apply or Done like every other
@@ -182,6 +184,7 @@ public class RadianteOptionsScreen extends Screen {
         this.pendingRenderScale = previous.pendingRenderScale;
         this.pendingCustomScale = previous.pendingCustomScale;
         this.pendingAdvanced = previous.pendingAdvanced;
+        this.pendingBlockEmissions = previous.pendingBlockEmissions;
         this.pendingGeneratedFrames = previous.pendingGeneratedFrames;
         this.pendingCloudMode = previous.pendingCloudMode;
         this.pendingChunkThreads = previous.pendingChunkThreads;
@@ -992,6 +995,7 @@ public class RadianteOptionsScreen extends Screen {
         this.pendingCustomScale = false;
         this.pendingRenderScale = null;
         this.pendingAdvanced.clear();
+        this.pendingBlockEmissions.clear();
         for (AddonImpl addon : AddonRegistry.addons()) {
             for (AddonImpl.SettingImpl<?> setting : addon.settings()) {
                 this.pendingAddons.put(setting, setting.defaultValue());
@@ -1156,6 +1160,9 @@ public class RadianteOptionsScreen extends Screen {
                 : new ArrayList<>(AdvancedOptions.groups(section, this.pendingAdvanced));
             if (section == Category.SKY_AND_WATER) {
                 groups.add(0, skyPathGroup());
+            }
+            if (section == Category.LIGHTING) {
+                groups.add(BlockEmissionSettings.group(this.pendingBlockEmissions));
             }
             this.sections.add(new SettingsLayout.Section(section, List.copyOf(this.page), groups));
         }
@@ -2013,6 +2020,7 @@ public class RadianteOptionsScreen extends Screen {
         }
         this.applied = true;
         applyStaged();
+        com.g2806.radiante.client.render.BlockEmissionControls.apply(this.pendingBlockEmissions);
         if (!this.pendingAddons.isEmpty()) {
             try {
                 AddonRegistry.apply(this.pendingAddons);

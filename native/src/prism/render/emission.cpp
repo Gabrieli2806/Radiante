@@ -342,6 +342,8 @@ void collectEmissiveQuadLights(const Emission &emission,
         const PBRVertex &v1 = geometryVertices[first + 1];
         const PBRVertex &v2 = geometryVertices[first + 2];
         const PBRVertex &v3 = geometryVertices[first + 3];
+        const float multiplier = gpu::emissionMultiplier(v0);
+        if (multiplier <= 0.0f) continue;
 
         if ((v0.alphaMode & gpu::Vertex::alphaModePointLightFlag) != 0u) {
             lightInfos.push_back(LightInfo{
@@ -350,7 +352,7 @@ void collectEmissiveQuadLights(const Emission &emission,
                 .p2 = v0.pos,
                 .p3 = v0.pos,
                 .normal = glm::vec3(v0.norm.x, 0.0f, 0.0f),
-                .radiance = glm::vec3(v0.colorLayer) * v0.albedoEmission,
+                .radiance = glm::vec3(v0.colorLayer) * v0.albedoEmission * multiplier,
                 .area = 1.0f,
                 .kind = 2.0f,
                 .textureID = v0.textureID,
@@ -383,7 +385,7 @@ void collectEmissiveQuadLights(const Emission &emission,
                     .p2 = p2,
                     .p3 = p2,
                     .normal = glm::normalize(glm::cross(p1 - p0, p2 - p0)),
-                    .radiance = tint * cast,
+                    .radiance = tint * cast * multiplier,
                     .area = area,
                     .kind = 0.0f,
                     .textureID = v0.textureID,
@@ -462,7 +464,7 @@ void collectEmissiveQuadLights(const Emission &emission,
                         .p2 = p2,
                         .p3 = p2,
                         .normal = normal,
-                        .radiance = cell.avgColor * tint * cell.avgEmission,
+                        .radiance = cell.avgColor * tint * cell.avgEmission * multiplier,
                         .area = area,
                         .kind = cell.exact ? 1.0f : 0.0f,
                         .textureID = v0.textureID,

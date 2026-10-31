@@ -846,5 +846,9 @@
   "screen.radiante.shader_packs.hint.in_use": "This is the pack the game uses now.",
   "screen.radiante.shader_packs.crashed": "The game closed while this pack was being tried (a crash, or the GPU stopped responding). Radiante PT was put back. Check the game log or crash report.",
   "render_pipeline.module.ray_tracing.attribute.hand_samples": "Hand Lighting Samples",
-  "render_pipeline.module.ray_tracing.attribute.hand_samples.tooltip": "Indirect-lighting samples for first-person hands and held items. Higher is smoother but costs more GPU time; lower is faster but noisier."
+  "render_pipeline.module.ray_tracing.attribute.hand_samples.tooltip": "Indirect-lighting samples for first-person hands and held items. Higher is smoother but costs more GPU time; lower is faster but noisier.",
+  "options.radiante.advanced.group.block_emission": "Block Emission",
+  "options.radiante.emission_profile.tooltip": "Emission multiplier for %s.\n0%% turns emission off; 100%% keeps the active material; 1000%% is ten times brighter. Use arrow keys for fine adjustments. Apply rebuilds the affected lighting and terrain.",
+  "options.radiante.emission_profile.variant": "%s · %s",
+  "options.radiante.emission_profile.texture": "Texture · %s"
 }

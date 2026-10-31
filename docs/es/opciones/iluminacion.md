@@ -24,3 +24,18 @@
 
 Cambian con el Estilo de Imagen (ver [Imagen](imagen.md) y
 [estilos-y-calidad.md](../estilos-y-calidad.md)). Tocarlas a mano deja el estilo en Personalizado.
+
+
+## Emisión por bloque (Avanzado)
+
+Abre **Iluminación → Avanzado → Emisión de bloques**. Cada perfil de textura tiene un control de **0–1000%**
+en pasos de 1%: **100%** conserva el material actual, **0%** elimina su emisión y **1000%** la multiplica por diez.
+Estos valores multiplican el Brillo de Fuentes de Luz y el Brillo de Luz en la Mano. Busca el bloque o la textura
+y pulsa **Aplicar**. **Restablecer** devuelve todos los perfiles al 100%.
+
+La lista incluye las texturas emisivas integradas, las fuentes de luz activas y los ajustes guardados de paquetes.
+Las variantes, como las lámparas de redstone encendidas, tienen filas propias. Las enredaderas de bayas luminosas
+tienen perfiles para la punta y el tallo; también hay controles para enredaderas normales, retorcidas, lloronas y
+liquen luminoso cuando un paquete les da emisión. Un multiplicador no hace emitir a un material que no emite.
+Los perfiles afectan al resplandor visible y a la luz proyectada, incluidas las luces en mano y puntuales.
+Los ajustes se conservan al desactivar su paquete y se incluyen en los códigos de ajustes compartidos.

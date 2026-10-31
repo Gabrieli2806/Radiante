@@ -490,9 +490,10 @@ void ptShadeDefault(bool viewMark) {
                    vec4(surface.worldPos + hookReflectionOffset() - hitWorldPos, 0.0));
     }
 #endif
+    float emissionMultiplier = dot(baryCoords, vec3(m0.emissionMultiplier, m1.emissionMultiplier, m2.emissionMultiplier));
     mainRay.normal = surface.shadingNormal;
     ptStoreMaterial(surface.albedoValue, surface.mat.f0, surface.mat.roughness, surface.mat.metallic,
-                    surface.mat.transmission, surface.mat.ior, surface.mat.emission);
+                    surface.mat.transmission, surface.mat.ior, surface.mat.emission * emissionMultiplier);
 #if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     // Save the incoming medium before the sampled bounce changes it. The deterministic split needs it too.
     ptStoreAux(isWaterMaterial ? vec2(VPT_FFT_WATER_ORIGIN_BIAS, rayInWater(mainRay) ? 2.0 : 1.0) : vec2(0.0));
@@ -597,6 +598,7 @@ void ptShadeDefault(bool viewMark) {
         vec3 emissionRadiance = blockEmissionWeight * emissionFactor * worldUBO.emissionBrightness * glowColour *
                                 seenEmission * mainRay.throughput;
 #endif
+        emissionRadiance *= emissionMultiplier;
         // A glow given as negative (the beacon beam's core) is seen, not cast (transparent_only.rchit).
         float vertexGlow = albedoEmission;
         if (vertexGlow < 0.0) {

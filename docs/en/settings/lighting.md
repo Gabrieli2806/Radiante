@@ -25,3 +25,18 @@
 They change with the Picture Style (see [Image](image.md) and
 [styles-and-quality.md](../styles-and-quality.md)). Changing them by hand turns the style into
 Custom.
+
+
+## Per-block emission (Advanced)
+
+Open **Lighting → Advanced → Block Emission**. Each texture profile has a **0–1000%** slider in 1% steps:
+**100%** keeps the current material, **0%** removes its emission, and **1000%** multiplies it by ten.
+These multiply Light Source Brightness and Held Light Brightness rather than replacing them. Search by block or
+texture name, then press **Apply**. **Reset** restores 100% for every profile.
+
+The list includes the built-in emissive textures, active light-source textures and saved resource-pack overrides.
+Variants such as lit redstone lamps have separate rows. **Cave Vines** with berries have tip and stem profiles;
+**Vines**, **Glow Lichen**, twisting and weeping vines also have controls for packs that make them glow.
+A multiplier does not turn a non-emissive material into a light. Texture profiles affect both visible glow and the
+light cast, including corresponding held and point lights. Overrides stay saved when their resource pack is disabled
+and are included in shared settings codes.

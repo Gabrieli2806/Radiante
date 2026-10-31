@@ -30,6 +30,7 @@ struct Vertex {
     //   bit 6       frost (ice and snow, see alphaModeFrostFlag)
     //   bits 8-11   the alpha mode (the low four bits of PBRVertex::alphaMode)
     //   bits 12-15  the coordinate system
+    //   bit 16      a per-texture emission multiplier in the spare light UV bytes
     //   bits 17-31  the surface flags Java sets in alphaMode above the mode (below)
     static constexpr uint32_t useColorLayerBit = 1u << 0u;
     static constexpr uint32_t useTextureBit = 1u << 1u;
@@ -39,6 +40,7 @@ struct Vertex {
     static constexpr uint32_t useLightBit = 1u << 5u;
     static constexpr uint32_t alphaModeShift = 8u;
     static constexpr uint32_t coordinateShift = 12u;
+    static constexpr uint32_t emissionOverrideBit = 1u << 16u;
 
     // Water surfaces.
     static constexpr uint32_t alphaModeWaterFlag = 0x10u;
@@ -172,6 +174,8 @@ inline uint32_t Vertex::packMaterialFlags(const VertexFormat::PBRVertex &vertex)
                   (alphaModeLeavesFlag << surfaceShift) == leavesSurfaceBit &&
                   (alphaModeGlowLightFlag << surfaceShift) == glowLightSurfaceBit);
     static_assert((alphaModePointLightFlag & surfaceFlags) == 0);
+    static_assert((emissionOverrideBit & (0x3Fu | frostSurfaceBit | (0xFu << alphaModeShift) |
+                                         (0xFu << coordinateShift) | (surfaceFlags << surfaceShift))) == 0);
 
     uint32_t packed = 0;
     packed |= vertex.useColorLayer != 0 ? useColorLayerBit : 0u;
@@ -182,6 +186,8 @@ inline uint32_t Vertex::packMaterialFlags(const VertexFormat::PBRVertex &vertex)
     packed |= vertex.useLight != 0 ? useLightBit : 0u;
     packed |= (vertex.alphaMode & 0xFu) << alphaModeShift;
     packed |= (vertex.coordinate & 0xFu) << coordinateShift;
+    const uint32_t emission = vertex.coordinate >> 4u;
+    packed |= emission != 0u && emission != 101u ? emissionOverrideBit : 0u;
     packed |= (vertex.alphaMode & surfaceFlags) << surfaceShift;
     packed |= (vertex.alphaMode & alphaModeFrostFlag) != 0u ? frostSurfaceBit : 0u;
     return packed;
@@ -194,7 +200,23 @@ inline VertexFormat::PositionVertex Vertex::makePositionVertex(const VertexForma
     };
 }
 
+// The raw coordinate word retains its low nibble; upper bits carry percent+1, with zero meaning 100%.
+inline uint32_t emissionPercent(const VertexFormat::PBRVertex &vertex) {
+    uint32_t encoded = vertex.coordinate >> 4u;
+    return encoded == 0 ? 100u : std::min(encoded - 1u, 1000u);
+}
+
+inline float emissionMultiplier(const VertexFormat::PBRVertex &vertex) {
+    return static_cast<float>(emissionPercent(vertex)) / 100.0f;
+}
+
 inline VertexFormat::PackedMaterialVertex Vertex::makeMaterialVertex(const VertexFormat::PBRVertex &vertex) {
+    uint32_t light = packUint16Pair(vertex.lightUV.x, vertex.lightUV.y);
+    uint32_t percent = emissionPercent(vertex);
+    if (percent != 100u) {
+        // Minecraft light UVs use 0..240. Reuse their spare bytes only for overridden vertices.
+        light = (light & 0x00FF00FFu) | ((percent & 0xFFu) << 8u) | ((percent >> 8u) << 24u);
+    }
     return {
         .normal = packNormal(vertex.norm),
         .textures = (vertex.textureID & 0xFFFFu) | ((vertex.glintTexture & 0xFFFFu) << 16),
@@ -204,7 +226,7 @@ inline VertexFormat::PackedMaterialVertex Vertex::makeMaterialVertex(const Verte
         .overlay = packInt16Pair(vertex.overlayUV.x, vertex.overlayUV.y),
         .glintUV = glm::packHalf2x16(vertex.glintUV),
         .albedoEmission = vertex.albedoEmission,
-        .light = packUint16Pair(vertex.lightUV.x, vertex.lightUV.y),
+        .light = light,
         .packedData = packMaterialFlags(vertex),
     };
 }

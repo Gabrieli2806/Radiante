@@ -166,7 +166,7 @@ struct MaterialVertex {
 
     T_IVEC2 lightUV;
     T_UINT packedData;
-    T_UINT pad0;
+    T_FLOAT emissionMultiplier;
 };
 
 // MaterialVertex as the material buffers hold it, in 40 bytes instead of 80. At far render distances those buffers

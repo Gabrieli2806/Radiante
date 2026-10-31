@@ -846,5 +846,9 @@
   "screen.radiante.shader_packs.hint.in_use": "这是游戏当前使用的光影包。",
   "screen.radiante.shader_packs.crashed": "试用此光影包时游戏关闭了（崩溃或 GPU 停止响应），已恢复 Radiante PT。请查看游戏日志或崩溃报告。",
   "render_pipeline.module.ray_tracing.attribute.hand_samples": "手部光照采样数",
-  "render_pipeline.module.ray_tracing.attribute.hand_samples.tooltip": "第一人称手部和手持物品的间接光照采样数。提高可减少噪点，但会增加 GPU 耗时；降低可提升速度，但噪点更多。"
+  "render_pipeline.module.ray_tracing.attribute.hand_samples.tooltip": "第一人称手部和手持物品的间接光照采样数。提高可减少噪点，但会增加 GPU 耗时；降低可提升速度，但噪点更多。",
+  "options.radiante.advanced.group.block_emission": "方块发光",
+  "options.radiante.emission_profile.tooltip": "%s 的发光倍率。\n0%% 关闭发光；100%% 保持当前材质；1000%% 为十倍亮度。使用方向键进行精细调整。应用后重建相关光照和地形。",
+  "options.radiante.emission_profile.variant": "%s · %s",
+  "options.radiante.emission_profile.texture": "纹理 · %s"
 }

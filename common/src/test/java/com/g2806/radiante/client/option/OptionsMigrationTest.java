@@ -121,6 +121,22 @@ class OptionsMigrationTest {
         assertEquals(1, parsed.skipped());
     }
 
+    @Test
+    void shareCodeAcceptsEmissionOverridesAndRejectsNonObjects() {
+        JsonObject root = new JsonObject();
+        JsonObject options = new JsonObject();
+        options.addProperty("blockEmissionOverrides", "{\"minecraft:block/redstone_block\":25}");
+        root.add("o", options);
+        SettingsCode.Parsed parsed = SettingsCode.parse(code(root.toString()));
+        assertNotNull(parsed);
+        assertEquals(1, parsed.count());
+        assertEquals(0, parsed.skipped());
+        parsed = SettingsCode.parse(code("{\"o\":{\"blockEmissionOverrides\":\"[]\",\"biomeAmbiance\":\"true\"}}"));
+        assertNotNull(parsed);
+        assertEquals(1, parsed.count());
+        assertEquals(1, parsed.skipped());
+    }
+
     private static String code(String json) {
         Deflater deflater = new Deflater(Deflater.BEST_COMPRESSION, true);
         deflater.setInput(json.getBytes(StandardCharsets.UTF_8));

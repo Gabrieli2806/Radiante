@@ -167,6 +167,7 @@ public final class EmissionTiles {
 
         Map<TextureAtlasSprite, Integer> emitters = collectEmissiveSprites(minecraft, atlas);
         lightLevels = emitters;
+        BlockEmissionControls.atlas(atlas, atlasId, emitters.keySet());
         int atlasWidth = atlas.getTexture().getWidth(0);
         int atlasHeight = atlas.getTexture().getHeight(0);
         int mipLevels = atlas.getTexture().getMipLevels();

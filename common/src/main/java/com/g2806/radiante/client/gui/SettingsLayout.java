@@ -1592,7 +1592,7 @@ final class SettingsLayout {
     private static Component caption(OptionInstance<?> option) {
         Component caption = accessor(option).radiante$caption();
         String key = keyOf(caption);
-        return key == null ? caption : AdvancedOptions.caption(key);
+        return key == null || key.startsWith(BlockEmissionSettings.PREFIX) ? caption : AdvancedOptions.caption(key);
     }
 
     /** The value alone: the option's own "Name: value" text without the name in front. */
