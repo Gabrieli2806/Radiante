@@ -74,6 +74,9 @@ public class EntityCollector implements SubmitNodeCollector {
     private boolean heldGlass;
     private boolean leftHeldLight;
     private boolean rightHeldLight;
+    private boolean groundPointLight;
+    private final org.joml.Vector3f lightMinimum = new org.joml.Vector3f();
+    private final org.joml.Vector3f lightMaximum = new org.joml.Vector3f();
     private final List<QuadParticleRenderState> particleGroups = new ArrayList<>();
     /** Debug gizmo groups (F3+B hitboxes, F3+G chunk borders, ...) since the last drain; see drainGizmoGroups. */
     private final List<DrawableGizmoPrimitives.Group> gizmoGroups = new ArrayList<>();
@@ -106,6 +109,7 @@ public class EntityCollector implements SubmitNodeCollector {
         this.heldGlass = false;
         this.leftHeldLight = false;
         this.rightHeldLight = false;
+        this.groundPointLight = false;
         this.skipNameTags = false;
     }
 
@@ -127,6 +131,26 @@ public class EntityCollector implements SubmitNodeCollector {
     public void heldLights(boolean left, boolean right) {
         this.leftHeldLight = left;
         this.rightHeldLight = right;
+    }
+
+    /** Dropped point-light items use one calibrated source rather than one emitter per rendered model copy. */
+    public void groundPointLight(boolean enabled) {
+        this.groundPointLight = enabled;
+    }
+
+    /** Uses the submitted model's centre, so the source follows its bobbing and rotation. */
+    public void appendPointItemLight(net.minecraft.world.level.block.Block block) {
+        PBRVertexWriter target = null;
+        this.lightMinimum.set(Float.POSITIVE_INFINITY);
+        this.lightMaximum.set(Float.NEGATIVE_INFINITY);
+        for (PBRVertexWriter writer : this.writers.values()) {
+            if (writer.extendManagedLightBounds(this.lightMinimum, this.lightMaximum)) target = writer;
+        }
+        if (target != null && this.lightMinimum.isFinite() && this.lightMaximum.isFinite()) {
+            BedrockPointLights.emitItem(block, (this.lightMinimum.x + this.lightMaximum.x) * 0.5f,
+                (this.lightMinimum.y + this.lightMaximum.y) * 0.5f,
+                (this.lightMinimum.z + this.lightMaximum.z) * 0.5f, target);
+        }
     }
 
     /**
@@ -350,6 +374,7 @@ public class EntityCollector implements SubmitNodeCollector {
         boolean heldLight = switch (displayContext) {
             case FIRST_PERSON_LEFT_HAND, THIRD_PERSON_LEFT_HAND -> this.leftHeldLight;
             case FIRST_PERSON_RIGHT_HAND, THIRD_PERSON_RIGHT_HAND -> this.rightHeldLight;
+            case GROUND -> this.groundPointLight;
             default -> false;
         };
         for (BakedQuad quad : quads.all()) {

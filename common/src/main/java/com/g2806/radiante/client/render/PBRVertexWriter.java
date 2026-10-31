@@ -410,6 +410,23 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         return this.vertexCount;
     }
 
+    /** Bounds only the item quads represented by a dedicated light, excluding unrelated entity layers. */
+    boolean extendManagedLightBounds(org.joml.Vector3f minimum, org.joml.Vector3f maximum) {
+        finishQuadIfComplete();
+        boolean found = false;
+        for (int i = 0; i < this.vertexCount; i++) {
+            long vertex = this.address + (long) i * STRIDE;
+            if ((MemoryUtil.memGetInt(vertex + OFF_ALPHA_MODE) & HELD_LIGHT_FLAG) == 0) continue;
+            float x = MemoryUtil.memGetFloat(vertex + OFF_POS);
+            float y = MemoryUtil.memGetFloat(vertex + OFF_POS + 4);
+            float z = MemoryUtil.memGetFloat(vertex + OFF_POS + 8);
+            minimum.set(Math.min(minimum.x, x), Math.min(minimum.y, y), Math.min(minimum.z, z));
+            maximum.set(Math.max(maximum.x, x), Math.max(maximum.y, y), Math.max(maximum.z, z));
+            found = true;
+        }
+        return found;
+    }
+
     public long address() {
         return this.address;
     }

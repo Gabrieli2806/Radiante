@@ -105,6 +105,15 @@ final class BedrockPointLights {
         }
     }
 
+    /** The same source as the placed block, once for a dropped stack rather than for each visual copy. */
+    static void emitItem(Block block, float x, float y, float z, PBRVertexWriter writer) {
+        int[] rgb = colourOf(block);
+        if (rgb != null) {
+            float radius = block instanceof LanternBlock || block == Blocks.BEACON ? LANTERN_RADIUS : RADIUS;
+            writer.pointLight(x, y, z, rgb[0], rgb[1], rgb[2], CAST_STRENGTH, radius);
+        }
+    }
+
     // ---- an enabled Bedrock pack's local lighting
 
     /** Written into converted Bedrock packs (BedrockLocalLighting.PATH). */

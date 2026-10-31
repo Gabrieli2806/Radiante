@@ -297,6 +297,15 @@ public final class EntityManager {
         if (minecraft.player != null && ((EntityIdHolder) state).radiante$entityId() == minecraft.player.getId()) {
             configureHeldLights(minecraft, COLLECTOR);
         }
+        net.minecraft.world.level.block.Block droppedLight = null;
+        if (minecraft.level != null && com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow()
+            && minecraft.level.getEntity(((EntityIdHolder) state).radiante$entityId())
+                instanceof net.minecraft.world.entity.item.ItemEntity item
+            && item.getItem().getItem() instanceof net.minecraft.world.item.BlockItem blockItem
+            && BedrockPointLights.colourOf(blockItem.getBlock()) != null) {
+            droppedLight = blockItem.getBlock();
+            COLLECTOR.groundPointLight(true);
+        }
         POSE_STACK.setIdentity();
 
         // A glow item frame is lit from within in vanilla rather than by the world around it, and nothing in its
@@ -325,6 +334,7 @@ public final class EntityManager {
             return;
         }
 
+        if (droppedLight != null) COLLECTOR.appendPointItemLight(droppedLight);
         if (COLLECTOR.isEmpty()) {
             return;
         }

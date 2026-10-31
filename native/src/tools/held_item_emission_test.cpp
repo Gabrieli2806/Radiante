@@ -50,5 +50,22 @@ int main() {
     lights.clear();
     collectEmissiveQuadLights(emission, vertices, 1, 0, occupancy, lights);
     require(lights.size() == ordinaryCount, "reused geometry must recover ordinary emission");
+    // A dropped stack may render several model copies, but its owned quads share one calibrated point light.
+    auto stack = vertices;
+    for (auto &v : stack) v.alphaMode = gpu::Vertex::alphaModeHeldLightFlag;
+    for (int copy = 1; copy < 5; ++copy) stack.insert(stack.end(), vertices.begin(), vertices.end());
+    for (auto &v : stack) v.alphaMode = gpu::Vertex::alphaModeHeldLightFlag;
+    auto marker = vertices[0];
+    marker.alphaMode = gpu::Vertex::alphaModePointLightFlag;
+    marker.pos = glm::vec3(0.5f);
+    marker.colorLayer = glm::vec4(1.0f, 0.5f, 0.1f, 1.0f);
+    marker.albedoEmission = 0.25f;
+    marker.norm = glm::vec3(0.115f, 0.0f, 0.0f);
+    stack.insert(stack.end(), 4, marker);
+    lights.clear();
+    collectEmissiveQuadLights(emission, stack, 1, 0, occupancy, lights);
+    require(lights.size() == 1 && lights[0].kind == 2.0f, "dropped model copies duplicated the point light");
+    require(glm::length(lights[0].radiance - glm::vec3(0.25f, 0.125f, 0.025f)) < 1e-6f,
+            "dropped point light calibration changed");
     std::cout << "held ownership, ordinary emission and 256 packed flag combinations passed\n";
 }

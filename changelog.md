@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Dropped torches, lanterns and other small point-light items use the placed block's calibrated light, once per stack.
+
 - Held light brightness now controls the local held item's diffuse lighting without extra emitters from its hand and shadow models.
 
 - A/B Capture in the Debug section: a screenshot with the settings and GPU timings saved beside it.
