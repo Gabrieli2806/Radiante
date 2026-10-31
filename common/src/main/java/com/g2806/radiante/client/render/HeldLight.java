@@ -9,6 +9,8 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.level.ClipContext;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
@@ -48,6 +50,14 @@ public final class HeldLight {
             return NONE;
         }
         Vec3 at = handPosition(minecraft, player, hand == InteractionHand.MAIN_HAND, partialTicks);
+        if (minecraft.level != null) {
+            var hit = minecraft.level.clip(new ClipContext(player.getEyePosition(partialTicks), at,
+                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
+            if (hit.getType() == HitResult.Type.BLOCK) {
+                // The estimated hand can lie inside a wall. Keep its 0.1-block light sphere on the visible side.
+                at = hit.getLocation().add(hit.getDirection().getUnitVec3().scale(0.11));
+            }
+        }
         float reach = pointLightOf(player.getItemInHand(hand)) != null ? POINT_LIGHT_REACH : REACH * level / 15.0f;
         return new Vector4f((float) (at.x - camera.x), (float) (at.y - camera.y), (float) (at.z - camera.z), reach);
     }
@@ -134,6 +144,11 @@ public final class HeldLight {
      * far out, so within the 12 blocks a torch visibly lights it takes off under a few percent.
      */
     private static final float POINT_LIGHT_REACH = 40.0f;
+
+    /** Whether this item has a dedicated held light, including while that light is switched off. */
+    public static boolean isLightSource(ItemStack stack) {
+        return levelOf(stack) > 0;
+    }
 
     private static int levelOf(ItemStack stack) {
         if (stack.isEmpty()) {

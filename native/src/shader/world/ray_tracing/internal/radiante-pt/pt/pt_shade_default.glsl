@@ -605,6 +605,10 @@ void ptShadeDefault(bool viewMark) {
         // A glow that is also in the light list (powered redstone dust) is not counted twice, as glowing texels.
         if (isGlowLightSurface(packedData)) { vertexGlow *= blockEmissionWeight; }
         emissionRadiance += currentSurface.tint * vertexGlow * mainRay.throughput;
+        // Diffuse paths use the dedicated held light once; camera and reflected views still see the item glow.
+        if (isHeldLightSurface(packedData) && !(bounce == 0u || rayCameraPath(mainRay) || g_viewBounce)) {
+            emissionRadiance = vec3(0.0);
+        }
         mainRay.radiance += emissionRadiance;
 #if VPT_NRD_SIGNALS
         // The surface the camera sees (pass-throughs left out, the paths that fill the cache too). Stored at once:

@@ -12,6 +12,8 @@ const uint USE_NORM_BIT = 1u << 4u;
 const uint USE_LIGHT_BIT = 1u << 5u;
 // Ice, packed ice, blue ice and snow: lit a little past the terminator and from behind (translucentBackLight).
 const uint FROST_SURFACE_BIT = 1u << 6u;
+// The local player's item whose diffuse lighting is supplied by a dedicated held light.
+const uint HELD_LIGHT_SURFACE_BIT = 1u << 7u;
 const uint ALPHA_MODE_SHIFT = 8u;
 const uint COORDINATE_SHIFT = 12u;
 // The surface of water, marked by the section builder.
@@ -134,6 +136,10 @@ const float GLINT_STRENGTH = 0.3;
 
 bool hasGlint(uint packedData) {
     return (packedData & USE_GLINT_BIT) != 0u;
+}
+
+bool isHeldLightSurface(uint packedData) {
+    return (packedData & HELD_LIGHT_SURFACE_BIT) != 0u;
 }
 
 bool isHeldSurface(uint packedData) {

@@ -44,6 +44,8 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private static final int GLOW_LIGHT_FLAG = 0x40000;
     /** Ice and snow; see frost(). */
     private static final int FROST_FLAG = 0x80000;
+    /** A local held item whose light is supplied separately; see heldLight(). */
+    private static final int HELD_LIGHT_FLAG = 0x100000;
 
     public static final int ALPHA_MODE_OPAQUE = 0;
     public static final int ALPHA_MODE_CUTOUT = 1;
@@ -110,6 +112,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private boolean water;
     private boolean rain;
     private boolean held;
+    private boolean heldLight;
     private float albedoEmission;
     /**
      * How far, in blocks, each vertex is pushed out along its normal. Rasterised, a layer drawn over the same
@@ -191,6 +194,12 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
 
     public PBRVertexWriter alphaMode(int alphaMode) {
         this.alphaMode = alphaMode;
+        return this;
+    }
+
+    /** Keeps the item's visible glow while its dedicated held light illuminates diffuse surfaces. */
+    public PBRVertexWriter heldLight(boolean heldLight) {
+        this.heldLight = heldLight;
         return this;
     }
 
@@ -401,11 +410,29 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         return this.vertexCount;
     }
 
+    /** Bounds only the item quads represented by a dedicated light, excluding unrelated entity layers. */
+    boolean extendManagedLightBounds(org.joml.Vector3f minimum, org.joml.Vector3f maximum) {
+        finishQuadIfComplete();
+        boolean found = false;
+        for (int i = 0; i < this.vertexCount; i++) {
+            long vertex = this.address + (long) i * STRIDE;
+            if ((MemoryUtil.memGetInt(vertex + OFF_ALPHA_MODE) & HELD_LIGHT_FLAG) == 0) continue;
+            float x = MemoryUtil.memGetFloat(vertex + OFF_POS);
+            float y = MemoryUtil.memGetFloat(vertex + OFF_POS + 4);
+            float z = MemoryUtil.memGetFloat(vertex + OFF_POS + 8);
+            minimum.set(Math.min(minimum.x, x), Math.min(minimum.y, y), Math.min(minimum.z, z));
+            maximum.set(Math.max(maximum.x, x), Math.max(maximum.y, y), Math.max(maximum.z, z));
+            found = true;
+        }
+        return found;
+    }
+
     public long address() {
         return this.address;
     }
 
     public void reset() {
+        this.heldLight = false;
         this.layerOffset = 0.0f;
         this.vertexCount = 0;
         this.finishedUpTo = 0;
@@ -514,7 +541,8 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
             this.alphaMode | (this.water ? WATER_FLAG : 0) | (this.rain ? RAIN_FLAG : 0) | (this.held ? HELD_FLAG : 0) | (this.glass ? GLASS_FLAG : 0)
                 | (this.plant ? PLANT_FLAG : 0) | this.paneFlags | (this.blend ? BLEND_FLAG : 0)
                 | (this.unlit ? UNLIT_FLAG : 0) | (this.lava ? LAVA_FLAG : 0) | (this.layerOffset != 0.0f ? LAYER_FLAG : 0)
-                | (this.leaves ? LEAVES_FLAG : 0) | (this.glowLight ? GLOW_LIGHT_FLAG : 0) | (this.frost ? FROST_FLAG : 0));
+                | (this.leaves ? LEAVES_FLAG : 0) | (this.glowLight ? GLOW_LIGHT_FLAG : 0) | (this.frost ? FROST_FLAG : 0)
+                | (this.heldLight ? HELD_LIGHT_FLAG : 0));
         if (this.colorOverride != 0) {
             setColor(255, 255, 255, 255);
         }

@@ -294,6 +294,18 @@ public final class EntityManager {
         }
 
         COLLECTOR.reset();
+        if (minecraft.player != null && ((EntityIdHolder) state).radiante$entityId() == minecraft.player.getId()) {
+            configureHeldLights(minecraft, COLLECTOR, state);
+        }
+        net.minecraft.world.level.block.Block droppedLight = null;
+        if (minecraft.level != null && com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow()
+            && minecraft.level.getEntity(((EntityIdHolder) state).radiante$entityId())
+                instanceof net.minecraft.world.entity.item.ItemEntity item
+            && item.getItem().getItem() instanceof net.minecraft.world.item.BlockItem blockItem
+            && BedrockPointLights.colourOf(blockItem.getBlock()) != null) {
+            droppedLight = blockItem.getBlock();
+            COLLECTOR.groundPointLight(true);
+        }
         POSE_STACK.setIdentity();
 
         // A glow item frame is lit from within in vanilla rather than by the world around it, and nothing in its
@@ -322,6 +334,7 @@ public final class EntityManager {
             return;
         }
 
+        if (droppedLight != null) COLLECTOR.appendPointItemLight(droppedLight);
         if (COLLECTOR.isEmpty()) {
             return;
         }
@@ -967,6 +980,7 @@ public final class EntityManager {
 
         EntityRenderState state = playerState.avatarRenderState;
         COLLECTOR.reset();
+        configureHeldLights(minecraft, COLLECTOR, state);
         COLLECTOR.skipNameTags();
         POSE_STACK.setIdentity();
 
@@ -992,6 +1006,7 @@ public final class EntityManager {
             return null;
         }
         VR_HANDS.reset();
+        configureHeldLights(Minecraft.getInstance(), VR_HANDS);
         vrHandsCaptured = false;
         return VR_HANDS;
     }
@@ -1042,6 +1057,9 @@ public final class EntityManager {
         // Minecraft poses the hands in its view space; rotate them into world orientation around the camera.
         POSE_STACK.mulPose(new Matrix4f(cameraState.viewRotationMatrix).invert());
         COLLECTOR.held(true);
+        // The previous stack is still rendered while its equip animation lowers it after a slot change.
+        var hands = playerState.firstPersonHandsAndItems;
+        configureHeldLights(minecraft, COLLECTOR, hands.mainHandItem, hands.offHandItem);
         if (minecraft.player != null) {
             COLLECTOR.heldGlass(isGlassItem(minecraft.player.getMainHandItem())
                 || isGlassItem(minecraft.player.getOffhandItem()));
@@ -1056,6 +1074,31 @@ public final class EntityManager {
         }
 
         addPending(HAND_ID, cameraState.pos.x(), cameraState.pos.y(), cameraState.pos.z(), RAY_TRACING_HAND);
+    }
+
+    private static void configureHeldLights(Minecraft minecraft, EntityCollector collector) {
+        if (minecraft.player == null) {
+            return;
+        }
+        configureHeldLights(minecraft, collector, minecraft.player.getMainHandItem(), minecraft.player.getOffhandItem());
+    }
+
+    private static void configureHeldLights(Minecraft minecraft, EntityCollector collector, EntityRenderState state) {
+        if (state instanceof net.minecraft.client.renderer.entity.state.ArmedEntityRenderState armed) {
+            collector.heldLights(HeldLight.isLightSource(armed.leftHandItemStack),
+                HeldLight.isLightSource(armed.rightHandItemStack));
+        } else {
+            configureHeldLights(minecraft, collector);
+        }
+    }
+
+    private static void configureHeldLights(Minecraft minecraft, EntityCollector collector,
+        net.minecraft.world.item.ItemStack mainStack, net.minecraft.world.item.ItemStack offStack) {
+        if (minecraft.player == null) return;
+        boolean main = HeldLight.isLightSource(mainStack);
+        boolean off = HeldLight.isLightSource(offStack);
+        boolean mainLeft = minecraft.player.getMainArm() == net.minecraft.world.entity.HumanoidArm.LEFT;
+        collector.heldLights(mainLeft ? main : off, mainLeft ? off : main);
     }
 
     /** Glass blocks and panes, as items: drawn as glass when held (see EntityCollector.heldGlass). */

@@ -1,5 +1,6 @@
 #include "prism/render/modules/world/temporal_accumulation/temporal_accumulation_module.hpp"
 
+#include "prism/render/buffers.hpp"
 #include "prism/render/pipeline.hpp"
 #include "prism/render/render_framework.hpp"
 #include "prism/render/renderer.hpp"
@@ -246,8 +247,10 @@ void TemporalAccumulationModule::record(uint32_t frameIndex, gpu::CommandBuffer 
         {frame.normal, gpu::ImageUsage::ColorAttachment, 0, true},
     });
 
+    auto blend = kBlend;
+    if (Renderer::instance().buffers()->heldLightHistoryReset()) blend.alpha = 1.0f;
     vkCmdPushConstants(commandBuffer.vkCommandBuffer(), frame.descriptors->vkPipelineLayout(),
-                       VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(kBlend), &kBlend);
+                       VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(blend), &blend);
     commandBuffer.beginRenderPass({
         .renderPass = renderPass_,
         .framebuffer = frame.framebuffer,
