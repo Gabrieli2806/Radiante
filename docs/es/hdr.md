@@ -39,6 +39,13 @@ controles están en la sección [Imagen](opciones/imagen.md), entre Nitidez de F
   bájalo en una oscura — es, en la práctica, el control de brillo general para todo lo que no es
   una fuente de luz intensa.
 
+## Calibrar HDR
+
+**Calibrar HDR** aparece bajo Salida HDR cuando el HDR está funcionando, y ajusta esos mismos dos valores con imágenes
+en lugar de números: sube el máximo hasta que desaparezcan las marcas de un cuadrado, elige el blanco de papel con dos
+capturas y comprueba el resultado. Listo los deja pendientes como los controles, y Aplicar los guarda. Para cambiar las
+imágenes, sustituye `dark.png` y `bright.png` en `assets/radiante/textures/gui/hdr_calibration/`.
+
 ## Vista de Depuración HDR
 
 En la sección [Depuración](opciones/depuracion.md) (con Avanzado activado), mientras la Salida HDR está activada.

@@ -1704,10 +1704,29 @@ public class RadianteOptionsScreen extends Screen {
             addRows(toggle);
             return;
         }
-        addRows(toggle, nitsSlider("options.radiante.hdr_peak", 400, 4000, staged("hdrPeakNits", Options.hdrPeakNits),
+        // The guided way to set the two sliders below; it needs the HDR window, which a restart may still have to give.
+        if (com.g2806.radiante.client.hdr.HdrDisplay.isActive()) {
+            addRows(toggle, actionRow("options.radiante.hdr_calibration", this::openHdrCalibration));
+        } else {
+            addRows(toggle);
+        }
+        addRows(nitsSlider("options.radiante.hdr_peak", 400, 4000, staged("hdrPeakNits", Options.hdrPeakNits),
                 value -> stage("hdrPeakNits", value)),
             nitsSlider("options.radiante.hdr_paper_white", 80, 400, staged("hdrPaperWhiteNits", Options.hdrPaperWhiteNits),
                 value -> stage("hdrPaperWhiteNits", value)));
+    }
+
+    private void openHdrCalibration() {
+        // Back from it, a new screen carries the choices, with the sliders at what was calibrated (null: cancelled).
+        this.applied = true;
+        this.minecraft.gui.setScreen(new HdrCalibrationScreen(this, staged("hdrPeakNits", Options.hdrPeakNits),
+            staged("hdrPaperWhiteNits", Options.hdrPaperWhiteNits), (peak, paperWhite) -> {
+                if (peak != null) {
+                    stage("hdrPeakNits", peak);
+                    stage("hdrPaperWhiteNits", paperWhite);
+                }
+                reopenWithSameChoices();
+            }));
     }
 
     private static OptionInstance<Integer> nitsSlider(String key, int min, int max, int current,

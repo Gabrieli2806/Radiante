@@ -53,6 +53,7 @@ enum OptionImpact {
         Map.entry("options.radiante.tunable.water_god_rays", LOW),
         Map.entry("options.radiante.chunk_building_threads", VARIES),
         Map.entry("options.radiante.hdr_output", LOW),
+        Map.entry("options.radiante.hdr_calibration", LOW),
         Map.entry("options.radiante.upscaler_mode", HIGH),
         Map.entry("options.radiante.ray_tracing", HIGH),
         Map.entry("options.radiante.frame_generation_backend", VARIES),

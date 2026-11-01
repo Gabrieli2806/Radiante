@@ -26,8 +26,18 @@ struct ComposeConstants {
     int32_t worldValid;
     int32_t debugView;
     int32_t scaled; // the world was upscaled to Minecraft's image from a lower output resolution
+    int32_t calibration;
+    float testLevel; // scRGB units
+    float padding;   // the rectangles are vec4s, aligned to 16 bytes
+    glm::vec4 rectA;
+    glm::vec4 rectB;
 };
-static_assert(sizeof(ComposeConstants) == 36);
+static_assert(sizeof(ComposeConstants) == 80);
+
+// The calibration screen's rectangles are top down; Minecraft's image is stored bottom row first when flipped.
+glm::vec4 inImage(const glm::vec4 &rect, bool flipY) {
+    return flipY ? glm::vec4(rect.x, 1.0f - rect.y - rect.w, rect.z, rect.w) : rect;
+}
 
 constexpr VkPipelineStageFlags2 ANY_STAGE = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 constexpr VkAccessFlags2 ANY_ACCESS = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
@@ -303,6 +313,12 @@ bool HdrOutput::compose(VkCommandBuffer commands,
         .worldValid = worldValid ? 1 : 0,
         .debugView = debugView ? 1 : 0,
         .scaled = scaled ? 1 : 0,
+        .calibration = calibration_.mode,
+        // Over the same 80 nits as paper white: the pattern tests the display in nits, whatever paper white is.
+        .testLevel = peakNits / 80.0f,
+        .padding = 0.0f,
+        .rectA = inImage(calibration_.rectA, flipY),
+        .rectB = inImage(calibration_.rectB, flipY),
     };
     vkCmdBindPipeline(commands, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_->vkPipeline());
     vkCmdBindDescriptorSets(commands, VK_PIPELINE_BIND_POINT_COMPUTE, table->vkPipelineLayout(), 0,
@@ -345,6 +361,11 @@ bool HdrOutput::compose(VkCommandBuffer commands,
         }
     }
     return true;
+}
+
+void HdrOutput::setCalibration(int mode, const glm::vec4 &rectA, const glm::vec4 &rectB) {
+    std::scoped_lock lock(mutex_);
+    calibration_ = {mode, rectA, rectB};
 }
 
 void HdrOutput::release() {
