@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Shader packs: opacity micromaps keep the solid parts of cut-out terrain (leaves, plants) as "unknown opaque", so a ray traced without the forced two-state reading asks the any-hit shader there and nowhere else, for light let through foliage. Radiante PT reads them in two states as before.
+
 - Items lowering during a hand swap keep their dedicated-light ownership, preventing a bright mesh-light flash.
 
 - Changing either held light clears obsolete denoiser and upscaler history instead of leaving a discoloured flash.

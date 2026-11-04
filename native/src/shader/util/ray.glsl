@@ -21,10 +21,11 @@ layout(set = 5, binding = 7, rgba16f) uniform image2DArray rayMaterialStateImage
 // Micromap2StateEXT given by its value: the renderer declares its capability in the compiled module itself
 // (gpu/shader.cpp, declareOpacityMicromaps), as enabling GL_EXT_opacity_micromap here crippled the SPIR-V optimizer.
 #if defined(VPT_OMM_SUPPORTED) && VPT_OMM_SUPPORTED != 0
-#    define VPT_SHADOW_RAY_FLAGS (gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT | 0x400u)
+#    define VPT_OMM_2STATE_FLAG 0x400u
 #else
-#    define VPT_SHADOW_RAY_FLAGS (gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT)
+#    define VPT_OMM_2STATE_FLAG 0u
 #endif
+#define VPT_SHADOW_RAY_FLAGS (gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT | VPT_OMM_2STATE_FLAG)
 
 // ---- stateBits layout ----------------------------------------------------------------------------------------
 // bits 0-7    bounce count
