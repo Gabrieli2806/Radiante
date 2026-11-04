@@ -1,7 +1,7 @@
 # Third party notices
 
 Radiante itself is licensed under the GNU General Public License v3.0, as is Radiance,
-the mod it derives from. This file covers the third party components redistributed
+the mod it began as a fork of. This file covers the third party components redistributed
 inside the mod jar, or downloaded by it, which are **not** under the GPL and carry their
 own terms.
 

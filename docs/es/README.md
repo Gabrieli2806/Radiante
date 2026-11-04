@@ -102,4 +102,4 @@ los [issues del roadmap](https://github.com/Gabrieli2806/Radiante/issues?q=is%3A
 
 ## Licencia
 
-GPL-3.0. Radiante comenzó como un fork de Radiance y MCVR, de LJIONG e Interstellarss.
+GPL-3.0. Radiante comenzó como un fork de Radiance. Desde entonces se rehízo, y casi todo su código se reescribió.

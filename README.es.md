@@ -288,7 +288,7 @@ Reportes de errores, ajustes de shaders y pull requests son bienvenidos. Los err
 
 ## Licencia
 
-GPL-3.0. Radiante comenzó como un fork de Radiance y MCVR, de LJIONG e Interstellarss.
+GPL-3.0. Radiante comenzó como un fork de Radiance. Desde entonces se rehízo, y casi todo su código se reescribió.
 
 Radiante no está afiliado, respaldado ni patrocinado por Mojang, Microsoft ni NVIDIA. Minecraft, Minecraft Bedrock,
 Bedrock RTX y NVIDIA son marcas de sus dueños; sus nombres se usan solo para describir la compatibilidad con sus

@@ -102,4 +102,4 @@ and where the project is heading in the
 
 ## Licence
 
-GPL-3.0. Radiante began as a fork of Radiance and MCVR by LJIONG and Interstellarss.
+GPL-3.0. Radiante began as a fork of Radiance. It has since been rebuilt, with almost all of its code rewritten.
