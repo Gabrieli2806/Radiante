@@ -348,8 +348,8 @@ All notable changes to this project are documented in this file.
 
 ## [1.0.0] - 2026-10-20
 
-First stable release of Radiante with its own renderer, PrismRT. Radiante began as a fork of Radiance (GPL-3.0);
-it has since been rebuilt, with almost all of its code rewritten.
+First stable release of Radiante with its own renderer, PrismRT. Radiante began as a fork of Radiance and its MCVR renderer (GPL-3.0);
+much of it has been rebuilt since, and some of their code remains.
 
 ### Renderer
 
