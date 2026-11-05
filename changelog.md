@@ -4,6 +4,33 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Shader packs: opacity micromaps keep the solid parts of cut-out terrain (leaves, plants) as "unknown opaque", so a ray traced without the forced two-state reading asks the any-hit shader there and nowhere else, for light let through foliage. Radiante PT reads them in two states as before.
+
+- Shader packs: vines, hanging roots and moss, lily pads, sugar cane, kelp, bamboo, cobwebs and particles carry a thin surface flag (bit 27, isThinSurface), so a pack can let light through them as through leaves and plants.
+
+- Items lowering during a hand swap keep their dedicated-light ownership, preventing a bright mesh-light flash.
+
+- Changing either held light clears obsolete denoiser and upscaler history instead of leaving a discoloured flash.
+
+- Dropped torches, lanterns and other small point-light items use the placed block's calibrated light, once per stack.
+
+- Held light brightness now controls the local held item's diffuse lighting without extra emitters from its hand and shadow models.
+
+- New Calibrate HDR screen sets HDR Peak Brightness and Paper White with a test pattern and pictures; the sliders stay.
+
+- Setting the time no longer leaves the sky white with fog lit by the previous hour for seconds.
+
+- Unlit redstone ore casts a quarter of its light and the full light once touched; its texture's glow stays.
+
+- New Light From Unlit Blocks option (Lighting, on by default): blocks with no light level, such as crimson and warped stems, cast light from their emissive textures.
+
+- Per-texture HDR pickers now control cast light only; visible emission keeps the resource pack's colour and strength, including in mirrors and glass.
+
+- Advanced block emission controls now use HDR RGB pickers with exposure and exact numeric input; existing percentage settings migrate automatically.
+- Emissive LabPBR/MER textures are discovered from resource packs and supply sampled light even on blocks without vanilla light levels. Packs can author material emission tints without changing diffuse textures.
+
+- Advanced Lighting now offers searchable 0–1000% emission sliders for each built-in light texture, including material glow, light cast, and held lights.
+
 - A/B Capture in the Debug section: a screenshot with the settings and GPU timings saved beside it.
 - F3 now also shows TLAS instances, entity BLAS per frame, sections pending and the renderer's VRAM use.
 - Debug views `fog_inscatter` and `fog_transmittance`: the fog on its own.
@@ -325,8 +352,8 @@ All notable changes to this project are documented in this file.
 
 ## [1.0.0] - 2026-10-20
 
-First stable release of Radiante with its own renderer, PrismRT. Radiante began as a fork of Radiance and MCVR (GPL-3.0)
-and keeps their credits and licence; what the renderer shares with them is in the licence notices.
+First stable release of Radiante with its own renderer, PrismRT. Radiante began as a fork of Radiance and its MCVR renderer (GPL-3.0);
+much of it has been rebuilt since, and some of their code remains.
 
 ### Renderer
 

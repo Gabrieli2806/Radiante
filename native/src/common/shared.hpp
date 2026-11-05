@@ -166,7 +166,9 @@ struct MaterialVertex {
 
     T_IVEC2 lightUV;
     T_UINT packedData;
-    T_UINT pad0;
+    T_FLOAT emissionMultiplier;
+    T_VEC3 emissionTint;
+    T_UINT emissionPad;
 };
 
 // MaterialVertex as the material buffers hold it, in 40 bytes instead of 80. At far render distances those buffers
@@ -189,7 +191,7 @@ struct PackedMaterialVertex {
 } // namespace VertexFormat
 
 static_assert(sizeof(VertexFormat::PackedMaterialVertex) == 40);
-static_assert(sizeof(VertexFormat::MaterialVertex) == 80);
+static_assert(sizeof(VertexFormat::MaterialVertex) == 96);
 static_assert(offsetof(VertexFormat::MaterialVertex, lightUV) == 64);
 static_assert(offsetof(VertexFormat::MaterialVertex, packedData) == 72);
 
@@ -352,7 +354,8 @@ struct SkyUBO {
     T_VEC4 biomeFogChroma;
     // x: world height below which the haze is at full density, y: height where it has thinned to nothing. Radiante's
     // own haze never thins, so both sit far above the world. z: how open the camera is to the sky (its sky light,
-    // 0..1, eased), set with or without Biome Ambiance: the air's own haze (aerial perspective) follows it. w unused.
+    // 0..1, eased), set with or without Biome Ambiance: the air's own haze (aerial perspective) follows it. w: 1 on a frame where the
+    // time was set and the sun jumped (Buffers), filled in natively.
     T_VEC4 biomeFogHeights;
 
     // Water as a medium for the biomes at the camera, from a converted Bedrock pack when it has one, otherwise derived

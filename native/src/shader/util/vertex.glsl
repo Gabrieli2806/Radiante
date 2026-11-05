@@ -12,8 +12,11 @@ const uint USE_NORM_BIT = 1u << 4u;
 const uint USE_LIGHT_BIT = 1u << 5u;
 // Ice, packed ice, blue ice and snow: lit a little past the terminator and from behind (translucentBackLight).
 const uint FROST_SURFACE_BIT = 1u << 6u;
+// The local player's item whose diffuse lighting is supplied by a dedicated held light.
+const uint HELD_LIGHT_SURFACE_BIT = 1u << 7u;
 const uint ALPHA_MODE_SHIFT = 8u;
 const uint COORDINATE_SHIFT = 12u;
+const uint EMISSION_OVERRIDE_BIT = 1u << 16u;
 // The surface of water, marked by the section builder.
 const uint WATER_SURFACE_BIT = 1u << 17u;
 // Rain sheets, marked by the weather collector: their texture falls while the sheet stands still.
@@ -35,6 +38,9 @@ const uint BLEND_SURFACE_BIT = 1u << 25u;
 // A light block in a state that gives no light while drawing the sprites its lit states glow with (unlit redstone
 // ore): it does not glow.
 const uint UNLIT_SURFACE_BIT = 1u << 26u;
+// Thin foliage and fibres that let light through, besides leaves and small plants: vines, roots and moss that hang,
+// lily pads, sugar cane, kelp, bamboo, cobwebs, and every particle.
+const uint THIN_SURFACE_BIT = 1u << 27u;
 // The surface of lava, marked by the section builder.
 const uint LAVA_SURFACE_BIT = 1u << 28u;
 // A layer drawn over a face of the same model and lifted off it (the grass block's side overlay): not carved by
@@ -105,9 +111,17 @@ MaterialVertex unpackMaterialVertex(PackedMaterialVertex p) {
     m.glintUV = unpackHalf2x16(p.glintUV);
     m.glintTexture = p.textures >> 16u;
     m.albedoEmission = p.albedoEmission;
-    m.lightUV = ivec2(int(p.light & 0xFFFFu), int(p.light >> 16u));
+    bool overridden = (p.packedData & EMISSION_OVERRIDE_BIT) != 0u;
+    uint rgb = ((p.light >> 8u) & 255u) | ((p.light >> 24u) << 8u) |
+               (((p.overlay >> 8u) & 255u) << 16u) | ((p.overlay >> 24u) << 24u);
+    m.emissionTint = overridden ? vec3(rgb & 511u, (rgb >> 9u) & 511u, (rgb >> 18u) & 511u) *
+                                 exp2(float(rgb >> 27u) - 24.0) : vec3(1.0);
+    m.emissionMultiplier = max(m.emissionTint.r, max(m.emissionTint.g, m.emissionTint.b));
+    m.emissionPad = 0u;
+    m.lightUV = overridden ? ivec2(int(p.light & 255u), int((p.light >> 16u) & 255u)) :
+                            ivec2(int(p.light & 65535u), int(p.light >> 16u));
+    if (overridden) m.overlayUV = ivec2(int(p.overlay & 255u), int((p.overlay >> 16u) & 255u));
     m.packedData = p.packedData;
-    m.pad0 = 0u;
     return m;
 }
 
@@ -134,6 +148,10 @@ const float GLINT_STRENGTH = 0.3;
 
 bool hasGlint(uint packedData) {
     return (packedData & USE_GLINT_BIT) != 0u;
+}
+
+bool isHeldLightSurface(uint packedData) {
+    return (packedData & HELD_LIGHT_SURFACE_BIT) != 0u;
 }
 
 bool isHeldSurface(uint packedData) {
@@ -178,6 +196,10 @@ bool isGlowLightSurface(uint packedData) {
 
 bool isFrostSurface(uint packedData) {
     return (packedData & FROST_SURFACE_BIT) != 0u;
+}
+
+bool isThinSurface(uint packedData) {
+    return (packedData & THIN_SURFACE_BIT) != 0u;
 }
 
 bool isLeavesSurface(uint packedData) {

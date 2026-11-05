@@ -91,5 +91,5 @@ target_include_directories(ngx INTERFACE "include")
 
 install(
     FILES ${__NGX_DLLS_LIST}
-    DESTINATION ${MCVR_INSTALL_BIN_DIR}
+    DESTINATION ${PRISM_DLSS_INSTALL_BIN_DIR}
 )

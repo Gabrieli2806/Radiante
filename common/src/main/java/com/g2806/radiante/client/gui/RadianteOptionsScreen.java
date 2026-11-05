@@ -110,6 +110,8 @@ public class RadianteOptionsScreen extends Screen {
 
     /** Advanced options changed and not applied yet, by AdvancedOptions.key; shared by the screens of one visit. */
     private java.util.Map<String, String> pendingAdvanced = new java.util.HashMap<>();
+    private java.util.Map<String, com.g2806.radiante.client.option.EmissionColor> pendingBlockEmissions = new java.util.TreeMap<>(
+        com.g2806.radiante.client.render.BlockEmissionControls.values());
 
     /**
      * Plain options (Options fields) changed on this screen, by field name, held until Apply or Done like every other
@@ -182,6 +184,7 @@ public class RadianteOptionsScreen extends Screen {
         this.pendingRenderScale = previous.pendingRenderScale;
         this.pendingCustomScale = previous.pendingCustomScale;
         this.pendingAdvanced = previous.pendingAdvanced;
+        this.pendingBlockEmissions = previous.pendingBlockEmissions;
         this.pendingGeneratedFrames = previous.pendingGeneratedFrames;
         this.pendingCloudMode = previous.pendingCloudMode;
         this.pendingChunkThreads = previous.pendingChunkThreads;
@@ -992,6 +995,7 @@ public class RadianteOptionsScreen extends Screen {
         this.pendingCustomScale = false;
         this.pendingRenderScale = null;
         this.pendingAdvanced.clear();
+        this.pendingBlockEmissions.clear();
         for (AddonImpl addon : AddonRegistry.addons()) {
             for (AddonImpl.SettingImpl<?> setting : addon.settings()) {
                 this.pendingAddons.put(setting, setting.defaultValue());
@@ -1157,6 +1161,9 @@ public class RadianteOptionsScreen extends Screen {
             if (section == Category.SKY_AND_WATER) {
                 groups.add(0, skyPathGroup());
             }
+            if (section == Category.LIGHTING) {
+                groups.add(BlockEmissionSettings.group(this.pendingBlockEmissions));
+            }
             this.sections.add(new SettingsLayout.Section(section, List.copyOf(this.page), groups));
         }
     }
@@ -1315,6 +1322,9 @@ public class RadianteOptionsScreen extends Screen {
             OptionInstance.createBoolean("options.radiante.glowing_pixel_light",
                 tooltip("options.radiante.glowing_pixel_light"),
                 staged("glowingPixelLight", Options.glowingPixelLight), value -> stage("glowingPixelLight", value)),
+            OptionInstance.createBoolean("options.radiante.unlit_block_light",
+                tooltip("options.radiante.unlit_block_light"),
+                staged("unlitBlockLight", Options.unlitBlockLight), value -> stage("unlitBlockLight", value)),
             OptionInstance.createBoolean("options.radiante.held_item_light",
                 tooltip("options.radiante.held_item_light"), staged("heldItemLight", Options.heldItemLight),
                 value -> stage("heldItemLight", value)),
@@ -1694,10 +1704,29 @@ public class RadianteOptionsScreen extends Screen {
             addRows(toggle);
             return;
         }
-        addRows(toggle, nitsSlider("options.radiante.hdr_peak", 400, 4000, staged("hdrPeakNits", Options.hdrPeakNits),
+        // The guided way to set the two sliders below; it needs the HDR window, which a restart may still have to give.
+        if (com.g2806.radiante.client.hdr.HdrDisplay.isActive()) {
+            addRows(toggle, actionRow("options.radiante.hdr_calibration", this::openHdrCalibration));
+        } else {
+            addRows(toggle);
+        }
+        addRows(nitsSlider("options.radiante.hdr_peak", 400, 4000, staged("hdrPeakNits", Options.hdrPeakNits),
                 value -> stage("hdrPeakNits", value)),
             nitsSlider("options.radiante.hdr_paper_white", 80, 400, staged("hdrPaperWhiteNits", Options.hdrPaperWhiteNits),
                 value -> stage("hdrPaperWhiteNits", value)));
+    }
+
+    private void openHdrCalibration() {
+        // Back from it, a new screen carries the choices, with the sliders at what was calibrated (null: cancelled).
+        this.applied = true;
+        this.minecraft.gui.setScreen(new HdrCalibrationScreen(this, staged("hdrPeakNits", Options.hdrPeakNits),
+            staged("hdrPaperWhiteNits", Options.hdrPaperWhiteNits), (peak, paperWhite) -> {
+                if (peak != null) {
+                    stage("hdrPeakNits", peak);
+                    stage("hdrPaperWhiteNits", paperWhite);
+                }
+                reopenWithSameChoices();
+            }));
     }
 
     private static OptionInstance<Integer> nitsSlider(String key, int min, int max, int current,
@@ -2014,6 +2043,7 @@ public class RadianteOptionsScreen extends Screen {
         }
         this.applied = true;
         applyStaged();
+        com.g2806.radiante.client.render.BlockEmissionControls.apply(this.pendingBlockEmissions);
         if (!this.pendingAddons.isEmpty()) {
             try {
                 AddonRegistry.apply(this.pendingAddons);

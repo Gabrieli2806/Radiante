@@ -4,7 +4,9 @@
 // Runs before the world pass: the fog's two world grids (common/froxel_fog.glsl) follow the camera. A texel whose
 // world cell changed since last frame (the camera crossed into another cell, and the texel wrapped round to the
 // grid's other side) holds nothing of its new cell yet: the fine grid's take the coarse grid's light there, the
-// coarse grid's keep what they held, and both count no looks, so the world pass's first look replaces it whole.
+// coarse grid's keep what they held, and both count no looks, so the world pass's first look replaces it whole. When
+// the time is set every cell does the same: its light is another hour's, and fading out through the usual blend left
+// the sky white with the day's sun for seconds after setting night.
 
 #include "common/shared.hpp"
 
@@ -57,12 +59,13 @@ void main() {
     ivec3 cameraCell = fogVolumeCameraCell(worldUBO.cameraPos.xyz, cascade, fraction);
     ivec3 previousCameraCell = fogVolumeCameraCell(lastWorldUBO.cameraPos.xyz, cascade, previousFraction);
     ivec3 cell = fogVolumeCellOfTexel(texel, cameraCell);
-    if (worldUBO.skyType == lastWorldUBO.skyType && cell == fogVolumeCellOfTexel(texel, previousCameraCell)) {
+    bool timeSet = skyUBO.biomeFogHeights.w > 0.5;
+    if (!timeSet && worldUBO.skyType == lastWorldUBO.skyType && cell == fogVolumeCellOfTexel(texel, previousCameraCell)) {
         return;
     }
     if (cascade == 0) {
         vec3 centre = (vec3(cell - cameraCell) + 0.5 - fraction) * FOG_VOLUME_NEAR_CELL;
-        imageStore(fogSunNearImage, texel, max(farLightAt(centre), vec4(0.0)));
+        imageStore(fogSunNearImage, texel, timeSet ? vec4(0.0) : max(farLightAt(centre), vec4(0.0)));
         imageStore(fogBlockNearImage, texel, vec4(0.0));
     } else {
         imageStore(fogBlockFarImage, texel, vec4(0.0));

@@ -46,12 +46,14 @@ class Buffers : public SharedObject<Buffers> {
     void setPackParam(uint32_t slot, const glm::vec4 &value);
     // Whether the camera moves by a sub-pixel jitter from frame to frame, for the temporal passes and upscalers.
     void setUseJitter(bool useJitter);
-    void setAndUploadSkyUniformBuffer(const gpu::Data::SkyUBO &ubo);
+    void setAndUploadSkyUniformBuffer(const gpu::Data::SkyUBO &source);
     void setAndUploadTextureMappingBuffer(const gpu::Data::TextureMapping &mapping);
 
     // The current frame's copies; null until the first upload of each.
     std::shared_ptr<gpu::HostVisibleBuffer> worldUniformBuffer();
     std::shared_ptr<gpu::HostVisibleBuffer> lastWorldUniformBuffer();
+    // Drops obsolete illumination after a held source changes, without resetting for hand or camera movement.
+    bool heldLightHistoryReset();
     std::shared_ptr<gpu::HostVisibleBuffer> skyUniformBuffer();
     std::shared_ptr<gpu::HostVisibleBuffer> textureMappingBuffer();
     // The incident light meter: the ray generation shader writes one sample per cell of a 16 x 16 grid each frame,
@@ -59,7 +61,10 @@ class Buffers : public SharedObject<Buffers> {
     std::shared_ptr<gpu::DeviceLocalBuffer> lightMeterBuffer();
 
   private:
+    glm::vec3 lastSunDirection_{0.0f};
+
     struct FrameUniforms {
+        bool heldLightHistoryReset = false;
         std::shared_ptr<gpu::HostVisibleBuffer> world;
         std::shared_ptr<gpu::HostVisibleBuffer> lastWorld;
         std::shared_ptr<gpu::HostVisibleBuffer> sky;

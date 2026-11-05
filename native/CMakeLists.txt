@@ -32,7 +32,7 @@ message(STATUS "Include dir: ${PRISM_INCLUDE_DIR}")
 
 set(PRISM_INSTALL_BIN_DIR ${PROJECT_SOURCE_DIR}/bin)
 # The vendored DLSS SDK's install rule reads this name.
-set(MCVR_INSTALL_BIN_DIR ${PRISM_INSTALL_BIN_DIR})
+set(PRISM_DLSS_INSTALL_BIN_DIR ${PRISM_INSTALL_BIN_DIR})
 message(STATUS "Install bin dir: ${PRISM_INSTALL_BIN_DIR}")
 
 set(PRISM_INSTALL_LIB_DIR ${JAVA_PROJECT_ROOT_DIR}/common/src/main/resources/radiante-native/)

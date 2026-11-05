@@ -38,6 +38,13 @@ brighter than white, instead of clipping to flat white as they would in SDR. The
   "white" in SDR) look, in nits. Raise it in a bright room, lower it in a dark one — in practice, it
   is the overall brightness control for everything that is not an intense light source.
 
+## Calibrate HDR
+
+**Calibrate HDR** sits under HDR Output once HDR is running, and sets the same two values with pictures instead of
+numbers: raise the peak until the marks in a square disappear, choose paper white on two screenshots, then check the
+result. Done stages them like the sliders, and Apply saves them. To replace the pictures, swap `dark.png` and
+`bright.png` in `assets/radiante/textures/gui/hdr_calibration/`.
+
 ## HDR Debug View
 
 In the [Debug](settings/debug.md) section (Advanced on), while HDR Output is on.

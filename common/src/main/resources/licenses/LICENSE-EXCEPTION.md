@@ -11,6 +11,6 @@ libraries.
 
 Those libraries remain under their own licences and are not made subject to the GPL by this permission.
 
-This permission covers only the parts of Radiante whose copyright holders have granted it. Code inherited from
-Radiance and MCVR remains under its original licences unless their authors grant the same permission. If you modify
+This permission covers only the parts of Radiante whose copyright holders have granted it. Code that remains
+from Radiance and MCVR stays under its original licences unless their authors grant the same permission. If you modify
 Radiante, you may extend this permission to your version, but you are not obliged to do so.

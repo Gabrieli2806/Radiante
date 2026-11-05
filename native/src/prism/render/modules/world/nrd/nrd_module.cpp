@@ -536,7 +536,11 @@ void NrdModule::record(FrameworkContext &context) {
 
     const auto &world = *static_cast<const gpu::Data::WorldUBO *>(worldUniform->mappedPtr());
     const auto &lastWorld = *static_cast<const gpu::Data::WorldUBO *>(lastWorldUniform->mappedPtr());
-    wrapper_->setCommonSettings(commonSettings(world, lastWorld, width_, height_, nrdFrameIndex_));
+    auto settings = commonSettings(world, lastWorld, width_, height_, nrdFrameIndex_);
+    if (Renderer::instance().buffers()->heldLightHistoryReset()) {
+        settings.accumulationMode = nrd::AccumulationMode::CLEAR_AND_RESTART;
+    }
+    wrapper_->setCommonSettings(settings);
     nrdFrameIndex_++;
 
     gpu::CommandBuffer &commands = *context.worldCommandBuffer;

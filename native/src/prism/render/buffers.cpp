@@ -3,6 +3,7 @@
 #include "prism/render/chunks.hpp"
 #include "prism/render/entities.hpp"
 #include "prism/render/hand_primary_bounds.hpp"
+#include "prism/render/held_light_history.hpp"
 #include "prism/render/render_framework.hpp"
 #include "prism/render/renderer.hpp"
 #include "prism/render/world.hpp"
@@ -224,6 +225,7 @@ void Buffers::setAndUploadWorldUniformBuffer(gpu::Data::WorldUBO &ubo) {
     ubo.cameraJitter = useJitter_ ? halton(static_cast<int>(jitterIndex_++)) - glm::vec2(0.5f) : glm::vec2(0.0f);
 
     FrameUniforms &uniforms = uniforms_[frame];
+    uniforms.heldLightHistoryReset = held_light_history::changed(ubo, lastWorld_);
     constexpr VkBufferUsageFlags usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     write(*ensureUniform(uniforms.world, *framework, sizeof(ubo), usage), &ubo, sizeof(ubo));
     write(*ensureUniform(uniforms.lastWorld, *framework, sizeof(ubo), usage), &lastWorld_, sizeof(lastWorld_));
@@ -257,10 +259,15 @@ void Buffers::setUseJitter(bool useJitter) {
     useJitter_ = useJitter;
 }
 
-void Buffers::setAndUploadSkyUniformBuffer(const gpu::Data::SkyUBO &ubo) {
+void Buffers::setAndUploadSkyUniformBuffer(const gpu::Data::SkyUBO &source) {
     auto framework = this->framework();
     const uint32_t frame = framework->safeAcquireCurrentContext()->frameIndex;
     std::scoped_lock lock(mutex_);
+    gpu::Data::SkyUBO ubo = source;
+    // The day moves the sun a third of a degree a second. A degree in one frame is the time being set, and light kept
+    // over time (the fog's grids) belongs to another hour.
+    ubo.biomeFogHeights.w = glm::dot(ubo.sunDirection, lastSunDirection_) < 0.99985f ? 1.0f : 0.0f;
+    lastSunDirection_ = ubo.sunDirection;
     auto &buffer = ensureUniform(uniforms_[frame].sky, *framework, sizeof(ubo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
     write(*buffer, &ubo, sizeof(ubo));
 }
@@ -287,6 +294,12 @@ std::shared_ptr<gpu::HostVisibleBuffer> Buffers::worldUniformBuffer() {
 
 std::shared_ptr<gpu::HostVisibleBuffer> Buffers::lastWorldUniformBuffer() {
     return uniform(&FrameUniforms::lastWorld);
+}
+
+bool Buffers::heldLightHistoryReset() {
+    const uint32_t frame = currentFrame();
+    std::scoped_lock lock(mutex_);
+    return uniforms_[frame].heldLightHistoryReset;
 }
 
 std::shared_ptr<gpu::HostVisibleBuffer> Buffers::skyUniformBuffer() {

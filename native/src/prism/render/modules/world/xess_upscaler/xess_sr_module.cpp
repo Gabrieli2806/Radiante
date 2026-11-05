@@ -477,6 +477,7 @@ bool XessSrModule::upscaleWithXeSS(Frame &frame, gpu::CommandBuffer &commandBuff
     input.resetHistory =
         cameraJumped(glm::vec3(world.cameraPos),
                      glm::vec3(world.cameraViewMat[0][2], world.cameraViewMat[1][2], world.cameraViewMat[2][2]));
+    input.resetHistory |= Renderer::instance().buffers()->heldLightHistoryReset();
     input.inputWidth = renderWidth_;
     input.inputHeight = renderHeight_;
     return xess_->dispatch(input);

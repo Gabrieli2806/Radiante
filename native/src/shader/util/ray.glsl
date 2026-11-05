@@ -21,10 +21,11 @@ layout(set = 5, binding = 7, rgba16f) uniform image2DArray rayMaterialStateImage
 // Micromap2StateEXT given by its value: the renderer declares its capability in the compiled module itself
 // (gpu/shader.cpp, declareOpacityMicromaps), as enabling GL_EXT_opacity_micromap here crippled the SPIR-V optimizer.
 #if defined(VPT_OMM_SUPPORTED) && VPT_OMM_SUPPORTED != 0
-#    define VPT_SHADOW_RAY_FLAGS (gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT | 0x400u)
+#    define VPT_OMM_2STATE_FLAG 0x400u
 #else
-#    define VPT_SHADOW_RAY_FLAGS (gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT)
+#    define VPT_OMM_2STATE_FLAG 0u
 #endif
+#define VPT_SHADOW_RAY_FLAGS (gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsSkipClosestHitShaderEXT | VPT_OMM_2STATE_FLAG)
 
 // ---- stateBits layout ----------------------------------------------------------------------------------------
 // bits 0-7    bounce count
@@ -178,6 +179,13 @@ bool rayInWater(MainRay ray) { return (ray.stateBits & rayInWaterBit) != 0u; }
 // the ray carries what the camera sees off or through a surface - a reflection or refraction - rather than light
 // gathered for that surface.
 const uint RAY_VIEW_BOUNCE_MARK = 1u;
+
+// The pack controls a source's visible glow, also through mirrors and glass. Per-source tints affect illumination
+// gathered for surfaces and the radiance cache, independently of how the source looks to the camera.
+vec3 rayEmissionTint(MainRay ray, vec3 tint, bool viewBounce) {
+    bool visible = !rayCacheUpdate(ray) && (rayBounce(ray) == 0u || rayCameraPath(ray) || viewBounce);
+    return visible ? vec3(1.0) : tint;
+}
 
 // Minecraft stores textures and tints for display (sRGB), not as reflectance. Lit as stored, everything looked
 // washed out: dark planks turned light cream, grass a pale yellow-green, and dark and bright blocks barely differed.

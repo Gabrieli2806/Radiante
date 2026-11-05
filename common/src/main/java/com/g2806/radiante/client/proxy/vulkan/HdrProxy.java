@@ -16,4 +16,12 @@ public final class HdrProxy {
     public static native boolean compose(long commandBuffer, long minecraftImage, int minecraftLayout,
         int minecraftFormat, int width, int height, long swapchainImage, int swapchainWidth, int swapchainHeight,
         float paperWhiteNits, float peakNits, boolean flipY, boolean debugView);
+
+    /**
+     * The HDR calibration screen's pictures for the following compositions, in fractions of the image, top down:
+     * mode 1 is the peak pattern in the first rectangle, mode 2 Minecraft's image with its highlights brought back in
+     * both, and mode 0 ends it.
+     */
+    public static native void setCalibration(int mode, float ax, float ay, float aw, float ah, float bx, float by,
+        float bw, float bh);
 }
