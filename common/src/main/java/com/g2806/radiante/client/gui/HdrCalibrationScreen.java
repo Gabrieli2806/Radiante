@@ -8,11 +8,10 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.gui.GuiPipeline;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
-import net.minecraft.util.Mth;
 
 /**
  * A guided way to set HDR Peak Brightness and HDR Paper White: the same two settings as the sliders in the Image
@@ -44,8 +43,8 @@ final class HdrCalibrationScreen extends Screen {
         super(Component.translatable(KEY + "title"));
         this.parent = parent;
         this.save = save;
-        Options.hdrPeakNits = Mth.clamp(peak, 400, 4000);
-        Options.hdrPaperWhiteNits = Mth.clamp(paperWhite, 80, 400);
+        Options.hdrPeakNits = Math.clamp(peak, 400, 4000);
+        Options.hdrPaperWhiteNits = Math.clamp(paperWhite, 80, 400);
     }
 
     @Override
@@ -83,14 +82,14 @@ final class HdrCalibrationScreen extends Screen {
     }
 
     @Override
-    public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
+    public void extractBackground(GuiGraphicsExtractor g) {
         // Black, as what is around a brightness test changes what the eye makes of it.
         g.fill(0, 0, width, height, 0xFF000000);
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
-        super.extractRenderState(g, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor g) {
+        super.extractRenderState(g);
         g.centeredText(font, title, width / 2, 10, 0xFFFFFFFF);
         int y = 26;
         for (FormattedCharSequence line : font.split(Component.translatable(KEY + "hint." + page),
@@ -127,7 +126,7 @@ final class HdrCalibrationScreen extends Screen {
     }
 
     private static void picture(GuiGraphicsExtractor g, Identifier texture, int x, int y, int w, int h) {
-        g.blit(RenderPipelines.GUI_TEXTURED, texture, x, y, 0.0f, 0.0f, w, h, w, h);
+        g.blit(GuiPipeline.TEXTURED, texture, x, y, 0.0f, 0.0f, w, h, w, h);
     }
 
     private void setCalibration(int mode, int ax, int ay, int aw, int ah, int bx, int by, int bw, int bh) {
@@ -171,7 +170,7 @@ final class HdrCalibrationScreen extends Screen {
         }
 
         private int nits() {
-            return Mth.clamp(min + Math.round((float) (value * (max - min)) / step) * step, min, max);
+            return Math.clamp(min + Math.round((float) (value * (max - min)) / step) * step, min, max);
         }
 
         @Override

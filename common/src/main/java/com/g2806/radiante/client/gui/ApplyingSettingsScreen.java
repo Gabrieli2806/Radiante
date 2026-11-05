@@ -51,7 +51,7 @@ final class ApplyingSettingsScreen extends Screen {
 
     /** The mod's icon (the one beside its name in the settings), centred on {@code centerX} with its top at y. */
     static void drawIcon(GuiGraphicsExtractor graphics, int centerX, int y) {
-        graphics.blit(net.minecraft.client.renderer.pipeline.RenderPipelines.GUI_TEXTURED, ICON, centerX - ICON_SIZE / 2, y, 0.0f,
+        graphics.blit(net.minecraft.client.gui.GuiPipeline.TEXTURED, ICON, centerX - ICON_SIZE / 2, y, 0.0f,
             0.0f, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
     }
 

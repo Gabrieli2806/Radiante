@@ -191,14 +191,15 @@ public class LevelRendererSkipMixin {
      * the traced picture; over it, the pass loads what is there instead.
      */
     @WrapOperation(method = "lambda$addMainPass$0", at = @At(value = "INVOKE",
-        target = "Lcom/mojang/renderpearl/api/commands/CommandEncoder;createRenderPass(Ljava/util/function/Supplier;Lcom/mojang/renderpearl/api/textures/GpuTextureView;Ljava/util/Optional;Lcom/mojang/renderpearl/api/textures/GpuTextureView;Ljava/util/OptionalDouble;)Lcom/mojang/renderpearl/api/commands/RenderPass;"))
+        target = "Lcom/mojang/renderpearl/api/commands/CommandEncoder;createRenderPass(Ljava/util/function/Supplier;Lcom/mojang/renderpearl/api/pipeline/RenderPassLayout;Lcom/mojang/renderpearl/api/textures/GpuTextureView;Ljava/util/Optional;Lcom/mojang/renderpearl/api/textures/GpuTextureView;Ljava/util/OptionalDouble;)Lcom/mojang/renderpearl/api/commands/RenderPass;"))
     private RenderPass radiante$keepTraceInMainPass(CommandEncoder encoder, Supplier<String> label,
+        com.mojang.renderpearl.api.pipeline.RenderPassLayout layout,
         GpuTextureView color, Optional<Vector4f> clearColor, GpuTextureView depth, OptionalDouble clearDepth,
         Operation<RenderPass> original) {
         if (RadianteRenderer.isOverlayFrame()) {
-            return original.call(encoder, label, color, Optional.empty(), depth, OptionalDouble.empty());
+            return original.call(encoder, label, layout, color, Optional.empty(), depth, OptionalDouble.empty());
         }
-        return original.call(encoder, label, color, clearColor, depth, clearDepth);
+        return original.call(encoder, label, layout, color, clearColor, depth, clearDepth);
     }
 
     /**

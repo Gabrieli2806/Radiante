@@ -87,7 +87,8 @@ public abstract class GameRendererMixin {
             // In front of everything, as in vanilla, where this pass starts from a cleared depth.
             encoder.clearDepthTexture(this.mainRenderTarget.getDepthTexture(), 0.0);
             try (com.mojang.renderpearl.api.commands.RenderPass pass = encoder.createRenderPass(
-                () -> "Radiante screen effects", this.mainRenderTarget.getColorTextureView(),
+                () -> "Radiante screen effects", net.minecraft.client.renderer.RenderPassLayouts.COLOR_DEPTH,
+                this.mainRenderTarget.getColorTextureView(),
                 java.util.Optional.empty(), this.mainRenderTarget.getDepthTextureView(),
                 java.util.OptionalDouble.empty())) {
                 com.mojang.blaze3d.systems.RenderSystem.bindDefaultUniforms(pass);

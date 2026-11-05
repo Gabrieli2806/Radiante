@@ -36,7 +36,6 @@ public final class ModBackdrop {
     private static final Identifier PIPELINE = Identifier.fromNamespaceAndPath("radiante", "pipeline/world_restore");
 
     private static RenderPipeline pipeline;
-    private static GpuFormat pipelineFormat;
     private static TextureTarget copy;
     /** The copy holds this frame's traced picture and the world has not been drawn back yet. */
     private static boolean pending;
@@ -89,17 +88,15 @@ public final class ModBackdrop {
         }
         pending = false;
         try {
-            GpuFormat format = copy.getColorTexture().getFormat();
-            if (pipeline == null || pipelineFormat != format) {
+            if (pipeline == null) {
                 // Minecraft's depth runs from 1 at the camera to 0 far away: nearer than the quad is greater.
                 pipeline = RenderPipeline.builder().withLocation(PIPELINE).withVertexShader(VERTEX_SHADER)
                     .withFragmentShader("core/blit_screen").withBindGroupLayout(BindGroupLayouts.IN_SAMPLER)
-                    .withColorTargetState(new ColorTargetState(Optional.empty(), format, ColorTargetState.WRITE_ALL))
+                    .withColorTargetState(new ColorTargetState(Optional.empty(), ColorTargetState.WRITE_ALL))
                     .withDepthStencilState(new DepthStencilState(CompareOp.LESS_THAN, false))
                     .withCull(false).withPrimitiveTopology(PrimitiveTopology.TRIANGLES).build();
-                pipelineFormat = format;
             }
-            pass.setPipeline(RenderSystem.getCompiledPipeline(pipeline));
+            pass.setPipeline(RenderSystem.getCompiledPipeline(pipeline, pass.activeSubpass()));
             pass.setUniform("InSampler", copy.getColorTextureView(),
                 RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST));
             pass.draw(3, 1, 0, 0);

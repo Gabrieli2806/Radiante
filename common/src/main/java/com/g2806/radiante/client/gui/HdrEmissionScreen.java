@@ -119,8 +119,8 @@ final class HdrEmissionScreen extends Screen {
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
-        super.extractRenderState(g, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor g) {
+        super.extractRenderState(g);
         int top = Math.max(45, height / 2 - 78);
         g.centeredText(font, title, width / 2, top - 34, 0xFFFFFFFF);
         g.centeredText(font, Component.translatable(KEY + "hint"), width / 2, top - 20, 0xFFB0B8B4);

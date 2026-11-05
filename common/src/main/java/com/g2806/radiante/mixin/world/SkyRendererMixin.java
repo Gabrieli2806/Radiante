@@ -32,7 +32,7 @@ public class SkyRendererMixin {
 
     @Inject(method = "render", at = @At("HEAD"))
     private void radiante$beforeSky(SkyRenderState state, RenderPass pass, org.joml.Vector4f fogColor,
-        boolean withDepthAttachment, CallbackInfo ci) {
+        CallbackInfo ci) {
         // Stars are due when Minecraft would draw them; a mod that draws its own keeps renderStars from running.
         this.radiante$starsDue = state.starBrightness > 0.0f && RadianteRenderer.isOverlayFrame();
     }

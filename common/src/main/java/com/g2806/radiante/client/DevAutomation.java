@@ -509,7 +509,7 @@ public final class DevAutomation {
             if (codes != null && screen != null) {
                 // Shift's modifier bit, as the event carries it.
                 int modifiers = parts.length > 1 && parts[1].equals("shift") ? 1 : 0;
-                var event = new net.minecraft.client.input.KeyEvent(codes[0], codes[1], modifiers);
+                var event = new net.minecraft.client.input.KeyEvent(codes[0], codes[1], modifiers, false);
                 boolean used = screen.keyPressed(event);
                 screen.keyReleased(event);
                 RadianteClient.LOGGER.info("[dev] key {} on {}: {}", action.substring(4),

@@ -64,11 +64,9 @@ final class BlockEmissionSettings {
         }
 
         @Override
-        public java.util.function.Function<OptionInstance<EmissionColor>, net.minecraft.client.gui.components.AbstractWidget>
-            createButton(OptionInstance.TooltipSupplier<EmissionColor> tooltip, net.minecraft.client.Options options,
-                int x, int y, int width, OptionInstance.ValueUpdateListener<? super EmissionColor> changed) {
-            return option -> net.minecraft.client.gui.components.Button.builder(Component.literal(option.get().display()),
-                button -> open(option)).bounds(x, y, width, 20).build();
+        public OptionInstance.ButtonFactory<EmissionColor> buttonFactory() {
+            return (option, tooltip, options, x, y, width, changed) -> net.minecraft.client.gui.components.Button
+                .builder(Component.literal(option.get().display()), button -> open(option)).bounds(x, y, width, 20).build();
         }
     }
 
