@@ -38,6 +38,9 @@ const uint BLEND_SURFACE_BIT = 1u << 25u;
 // A light block in a state that gives no light while drawing the sprites its lit states glow with (unlit redstone
 // ore): it does not glow.
 const uint UNLIT_SURFACE_BIT = 1u << 26u;
+// Thin foliage and fibres that let light through, besides leaves and small plants: vines, roots and moss that hang,
+// lily pads, sugar cane, kelp, bamboo, cobwebs, and every particle.
+const uint THIN_SURFACE_BIT = 1u << 27u;
 // The surface of lava, marked by the section builder.
 const uint LAVA_SURFACE_BIT = 1u << 28u;
 // A layer drawn over a face of the same model and lifted off it (the grass block's side overlay): not carved by
@@ -193,6 +196,10 @@ bool isGlowLightSurface(uint packedData) {
 
 bool isFrostSurface(uint packedData) {
     return (packedData & FROST_SURFACE_BIT) != 0u;
+}
+
+bool isThinSurface(uint packedData) {
+    return (packedData & THIN_SURFACE_BIT) != 0u;
 }
 
 bool isLeavesSurface(uint packedData) {
