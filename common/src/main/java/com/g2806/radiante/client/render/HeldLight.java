@@ -9,6 +9,8 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.level.ClipContext;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
@@ -48,6 +50,14 @@ public final class HeldLight {
             return NONE;
         }
         Vec3 at = handPosition(minecraft, player, hand == InteractionHand.MAIN_HAND, partialTicks);
+        if (minecraft.level != null) {
+            var hit = minecraft.level.clip(new ClipContext(player.getEyePosition(partialTicks), at,
+                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
+            if (hit.getType() == HitResult.Type.BLOCK) {
+                // The estimated hand can lie inside a wall. Keep its 0.1-block light sphere on the visible side.
+                at = hit.getLocation().add(hit.getDirection().getUnitVec3().scale(0.11));
+            }
+        }
         float reach = pointLightOf(player.getItemInHand(hand)) != null ? POINT_LIGHT_REACH : REACH * level / 15.0f;
         return new Vector4f((float) (at.x - camera.x), (float) (at.y - camera.y), (float) (at.z - camera.z), reach);
     }
@@ -95,15 +105,17 @@ public final class HeldLight {
         if (level <= 0) {
             return NONE;
         }
+        var multiplier = stack.getItem() instanceof BlockItem item ? BlockEmissionControls.forBlock(item.getBlock())
+            : stack.is(Items.LAVA_BUCKET) ? BlockEmissionControls.forBlock("minecraft", "lava") : com.g2806.radiante.client.option.EmissionColor.WHITE;
         int[] pointLight = pointLightOf(stack);
         if (pointLight != null) {
             // The light the same block casts set down (BedrockPointLights), on the held light's scale: the shaders
             // multiply a placed one by (100 / 12) and the Emission Brightness, a held one by 16 and the Held Light
             // Brightness, both 12 by default.
             float scale = BedrockPointLights.CAST_STRENGTH * (100.0f / 12.0f) / 16.0f / 255.0f;
-            return new Vector4f(pointLight[0] * scale, pointLight[1] * scale, pointLight[2] * scale, 1.0f);
+            return new Vector4f(pointLight[0] * scale * multiplier.red(), pointLight[1] * scale * multiplier.green(), pointLight[2] * scale * multiplier.blue(), 1.0f);
         }
-        return new Vector4f(tintOf(stack).mul(STRENGTH * level / 15.0f), 1.0f);
+        return new Vector4f(tintOf(stack).mul(multiplier.red(), multiplier.green(), multiplier.blue()).mul(STRENGTH * level / 15.0f), 1.0f);
     }
 
     /**
@@ -134,6 +146,11 @@ public final class HeldLight {
      * far out, so within the 12 blocks a torch visibly lights it takes off under a few percent.
      */
     private static final float POINT_LIGHT_REACH = 40.0f;
+
+    /** Whether this item has a dedicated held light, including while that light is switched off. */
+    public static boolean isLightSource(ItemStack stack) {
+        return levelOf(stack) > 0;
+    }
 
     private static int levelOf(ItemStack stack) {
         if (stack.isEmpty()) {

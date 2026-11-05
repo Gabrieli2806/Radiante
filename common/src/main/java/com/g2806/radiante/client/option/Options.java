@@ -31,6 +31,7 @@ public class Options {
      * more, smaller lights.
      */
     public static boolean glowingPixelLight = false;
+    public static boolean unlitBlockLight = true;
     /** How far from the camera glowing dropped items and item frames still cast light, in blocks. */
     public static int entityLightReach = 64;
     /**
@@ -171,6 +172,8 @@ public class Options {
      * listed were never opened or folded and follow the default (see SettingsLayout).
      */
     public static String addonsOpen = "";
+    /** Per-texture emission percentages; omitted entries retain the active material's brightness. */
+    public static String blockEmissionOverrides = "{}";
     /** Set when the player chooses to run on OpenGL, where this renderer cannot work at all. */
     public static boolean useOpenGl = false;
     /** OpenGL for this session only, after Minecraft detected a failed start; never saved. */
@@ -251,6 +254,7 @@ public class Options {
         bool("chunkBuildingAuto", () -> chunkBuildingAuto, v -> chunkBuildingAuto = v),
         bool("collectChunkEmission", () -> collectChunkEmission, v -> setCollectChunkEmission(v, false)),
         bool("glowingPixelLight", () -> glowingPixelLight, v -> glowingPixelLight = v),
+        bool("unlitBlockLight", () -> unlitBlockLight, v -> unlitBlockLight = v),
         number("entityLightReach", () -> entityLightReach, v -> setEntityLightReach(v, false)),
         bool("debugLogging", () -> debugLogging, v -> setDebugLogging(v, false)),
         bool("advancedSettings", () -> advancedSettings, v -> advancedSettings = v),
@@ -293,6 +297,8 @@ public class Options {
         new Entry("cloudsBeforeDistantHorizons", () -> cloudsBeforeDistantHorizons,
             v -> cloudsBeforeDistantHorizons = v),
         new Entry("addonsOpen", () -> addonsOpen, v -> addonsOpen = v),
+        new Entry("blockEmissionOverrides", () -> blockEmissionOverrides,
+            v -> blockEmissionOverrides = EmissionOverrides.serialize(EmissionOverrides.parse(v))),
         bool("useOpenGl", () -> useOpenGl, v -> useOpenGl = v),
         bool("frameGeneration", () -> frameGeneration, v -> frameGeneration = v),
         number("generatedFrames", () -> generatedFrames, v -> generatedFrames = v),

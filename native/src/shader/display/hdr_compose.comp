@@ -38,6 +38,10 @@ layout(push_constant) uniform ComposeParams {
     int worldValid;
     int debugView;        // tints what is shown as SDR, to tell it from what is HDR
     int scaled;           // the world images are at a lower output resolution than shownImage
+    int calibration;      // the HDR calibration screen: 0 off, 1 peak pattern in rectA, 2 pictures in rectA and rectB
+    float testLevel;      // the scRGB value of the peak pattern's marks
+    vec4 rectA;           // x, y, width, height, as fractions of the image
+    vec4 rectB;
 } params;
 
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
@@ -111,6 +115,35 @@ vec3 bilinear(sampler2D image, vec2 uv) {
     return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
+bool inside(vec2 uv, vec4 rect) {
+    return all(greaterThanEqual(uv, rect.xy)) && all(lessThan(uv, rect.xy + rect.zw));
+}
+
+// Marks at the level under test, on the most scRGB asks of any display (10000 nits). A display clips both to its own
+// peak, so the marks vanish once the level under test reaches it.
+vec3 peakPattern(vec2 uv) {
+    const float CELLS = 7.0;
+    const float BACKGROUND = 125.0;
+    ivec2 cell = ivec2((uv - params.rectA.xy) / params.rectA.zw * CELLS);
+    bool mark = (cell.x & 1) == 1 && (cell.y & 1) == 1;
+    return vec3(mark ? params.testLevel : BACKGROUND);
+}
+
+// A screenshot's highlights back above SDR white: the shoulder of the SDR curve undone, and pbrNeutral's for the
+// display's peak applied, so a calibration picture behaves like the traced world does.
+vec3 pictureToScRgb(vec3 encoded) {
+    const float shoulderStart = 0.76;
+    const float headroom = 1.0 - shoulderStart;
+    vec3 color = pow(max(encoded, vec3(0.0)), vec3(2.2));
+    float top = largest(color);
+    if (top < shoulderStart) { return color * params.paperWhite; }
+    float radiance = headroom * headroom / (1.0 - min(top, 0.995)) - headroom + shoulderStart;
+    float peak = max(params.peak, 1.0);
+    float peakRoom = peak - shoulderStart;
+    float newTop = peak - peakRoom * peakRoom / (radiance + peakRoom - shoulderStart);
+    return color * (newTop / top) * params.paperWhite;
+}
+
 void main() {
     ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
     if (any(greaterThanEqual(pixel, imageSize(composed)))) { return; }
@@ -152,6 +185,17 @@ void main() {
                 }
                 fromRadiance = true;
             }
+        }
+    }
+
+    if (params.calibration != 0) {
+        vec2 uv = (vec2(pixel) + 0.5) / vec2(imageSize(composed));
+        if (inside(uv, params.rectA) && params.calibration == 1) {
+            result = peakPattern(uv);
+            fromRadiance = true;
+        } else if (params.calibration == 2 && (inside(uv, params.rectA) || inside(uv, params.rectB))) {
+            result = pictureToScRgb(shown);
+            fromRadiance = true;
         }
     }
 

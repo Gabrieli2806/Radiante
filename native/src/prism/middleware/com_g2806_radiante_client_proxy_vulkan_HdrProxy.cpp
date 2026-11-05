@@ -33,4 +33,20 @@ JNIEXPORT jboolean JNICALL Java_com_g2806_radiante_client_proxy_vulkan_HdrProxy_
     }));
 }
 
+JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_HdrProxy_setCalibration(JNIEnv *,
+                                                                                           jclass,
+                                                                                           jint mode,
+                                                                                           jfloat ax,
+                                                                                           jfloat ay,
+                                                                                           jfloat aw,
+                                                                                           jfloat ah,
+                                                                                           jfloat bx,
+                                                                                           jfloat by,
+                                                                                           jfloat bw,
+                                                                                           jfloat bh) {
+    jni::guard("[HDR] setCalibration", [&] {
+        HdrOutput::instance().setCalibration(mode, glm::vec4(ax, ay, aw, ah), glm::vec4(bx, by, bw, bh));
+    });
+}
+
 } // extern "C"

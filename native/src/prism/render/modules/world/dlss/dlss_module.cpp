@@ -390,8 +390,9 @@ void DLSSModuleContext::render() {
     const auto *ubo =
         worldUniforms == nullptr ? nullptr : static_cast<const gpu::Data::WorldUBO *>(worldUniforms->mappedPtr());
     if (ubo != nullptr) {
-        const bool reset = module->framesSinceBuild_ < kHistoryResetFrames;
-        if (reset) module->framesSinceBuild_++;
+        const bool starting = module->framesSinceBuild_ < kHistoryResetFrames;
+        if (starting) module->framesSinceBuild_++;
+        const bool reset = starting || Renderer::instance().buffers()->heldLightHistoryReset();
         const glm::uvec2 renderSize{module->inputWidth_, module->inputHeight_};
 
         if (module->rayReconstruction_) {

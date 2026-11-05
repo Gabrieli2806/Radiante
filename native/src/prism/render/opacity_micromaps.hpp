@@ -22,7 +22,11 @@
 //
 // The micromaps must answer exactly as the shaders do, and the shaders do not all ask the same question:
 // - Camera and bounce rays (default.rahit) test cut-out surfaces at the full-size texel at any distance, as shadow
-//   rays do, so every micro-triangle the full-size texture decides is known for them too.
+//   rays do, so every micro-triangle the full-size texture decides is answered the same for them too.
+// - Solid micro-triangles are stored as "unknown opaque", gaps as transparent. The rays above all trace with
+//   gl_RayFlagsForceOpacityMicromap2StateEXT and read them as opaque, so nothing changes for them; a ray traced
+//   without it has the any-hit shader asked on the solid parts of cut-out terrain and nowhere else, which is how a
+//   shader pack can let light through leaves (a shadow any-hit that tints it) without every opaque block asking too.
 // - Shadow rays (shadow.rahit) test the full-size texture only. They trace with
 //   gl_RayFlagsForceOpacityMicromap2StateEXT, which reads "unknown opaque" as opaque and "unknown transparent" as
 //   transparent, and each unknown micro-triangle is given the full-size answer that way: these rays never need the
@@ -63,7 +67,8 @@ struct BakedTriangle {
     // VK_OPACITY_MICROMAP_FORMAT_2_STATE_EXT or _4_STATE_EXT.
     uint16_t format = 0;
     std::vector<uint8_t> states;
-    // How many of its micro-triangles camera rays still ask the shader about, of 4^level.
+    // How many of its micro-triangles are stored unknown, of 4^level: its solid ones, which only a ray traced without
+    // gl_RayFlagsForceOpacityMicromap2StateEXT asks the shader about.
     uint32_t unknown = 0;
     // Why it cannot take a micromap (Stats::Left), when it cannot.
     uint8_t reason = 0;

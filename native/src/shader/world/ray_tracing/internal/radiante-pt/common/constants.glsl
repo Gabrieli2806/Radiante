@@ -10,7 +10,15 @@
 // The primary ray may cross several surfaces before it settles (stacked glass, a translucent cloud entered and
 // left again); each crossing costs one step and this caps them.
 const int VPT_PRIMARY_TRACE_STEP_LIMIT = 8;
+// Camera and bounce rays read the micromaps of cut-out terrain in two states, as shadow rays do (util/ray.glsl): the
+// solid parts are stored "unknown opaque" for a pack's rays that let light through foliage, and these read them as
+// opaque.
+// 0x400 is gl_RayFlagsForceOpacityMicromap2StateEXT, given by its value as in util/ray.glsl.
+#if defined(VPT_OMM_SUPPORTED) && VPT_OMM_SUPPORTED != 0
+const uint VPT_RAY_FLAGS = 0x400u;
+#else
 const uint VPT_RAY_FLAGS = gl_RayFlagsNoneEXT;
+#endif
 const uint VPT_TRANSPARENT_SPLIT_MODE_DETERMINISTIC = 0u;
 // Lifts a ray leaving the displaced water surface just off it, so it does not hit the same wave again.
 const float VPT_FFT_WATER_ORIGIN_BIAS = 0.0006;

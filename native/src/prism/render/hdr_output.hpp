@@ -49,6 +49,11 @@ class HdrOutput {
                  bool flipY,
                  bool debugView);
 
+    // The HDR calibration screen: from now on compose() draws, in these rectangles (x, y, width, height, as top-down
+    // fractions of the image), the peak pattern (mode 1, rectA) or Minecraft's image with its highlights brought back
+    // (mode 2). Mode 0 ends it.
+    void setCalibration(int mode, const glm::vec4 &rectA, const glm::vec4 &rectB);
+
     // Drops every Vulkan object; called when the renderer shuts down.
     void release();
 
@@ -64,6 +69,12 @@ class HdrOutput {
         float saturation = 1.0f;
         float manualExposure = 1.0f;
         bool autoExposure = true;
+    };
+
+    struct Calibration {
+        int mode = 0;
+        glm::vec4 rectA{0.0f};
+        glm::vec4 rectB{0.0f};
     };
 
     struct RetiredView {
@@ -100,4 +111,5 @@ class HdrOutput {
 
     WorldFrame world_;
     bool worldFresh_ = false;
+    Calibration calibration_;
 };

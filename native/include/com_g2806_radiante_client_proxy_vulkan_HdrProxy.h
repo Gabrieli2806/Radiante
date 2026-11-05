@@ -15,6 +15,14 @@ extern "C" {
 JNIEXPORT jboolean JNICALL Java_com_g2806_radiante_client_proxy_vulkan_HdrProxy_compose
   (JNIEnv *, jclass, jlong, jlong, jint, jint, jint, jint, jlong, jint, jint, jfloat, jfloat, jboolean, jboolean);
 
+/*
+ * Class:     com_g2806_radiante_client_proxy_vulkan_HdrProxy
+ * Method:    setCalibration
+ * Signature: (IFFFFFFFF)V
+ */
+JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_HdrProxy_setCalibration
+  (JNIEnv *, jclass, jint, jfloat, jfloat, jfloat, jfloat, jfloat, jfloat, jfloat, jfloat);
+
 #ifdef __cplusplus
 }
 #endif

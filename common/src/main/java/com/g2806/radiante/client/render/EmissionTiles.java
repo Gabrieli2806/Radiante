@@ -121,6 +121,7 @@ public final class EmissionTiles {
     private static boolean registeredFine;
     /** Whether the last registration gave light blocks the built-in glow (BedrockDefaults); a change registers again. */
     private static boolean registeredDefaults;
+    private static boolean registeredLevelless;
     /** Light level of each emissive sprite of the last registration, for {@link #uploadFromMer}. */
     private static Map<TextureAtlasSprite, Integer> lightLevels = Map.of();
     /**
@@ -129,6 +130,14 @@ public final class EmissionTiles {
      * cast light; before, every redstone ore in a cave lit the stone around it red, stepped on or not.
      */
     private static volatile Set<BlockState> unlitStates = Set.of();
+
+    private static final Set<Identifier> authoredEmission = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    static boolean authoredEmission(Identifier sprite) { return authoredEmission.contains(sprite); }
+    static Set<String> authoredEmissionProfiles() {
+        return authoredEmission.stream().map(Identifier::toString).collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+    static void beginAuthoredEmission() { authoredEmission.clear(); }
 
     private EmissionTiles() {
     }
@@ -144,6 +153,29 @@ public final class EmissionTiles {
         return unlitStates.contains(state);
     }
 
+    /**
+     * The share of its light a state casts. Unlit redstone ore keeps a quarter, so touching it brightens the room
+     * instead of turning a light on from nothing.
+     */
+    public static float castScale(BlockState state) {
+        return (state.is(net.minecraft.world.level.block.Blocks.REDSTONE_ORE)
+            || state.is(net.minecraft.world.level.block.Blocks.DEEPSLATE_REDSTONE_ORE))
+            && !state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.LIT) ? 0.25f : 1.0f;
+    }
+
+    /** Redstone ore's light level casts too little to notice touching it, so its light comes from its emissive map. */
+    static boolean castsFromEmissiveMap(TextureAtlasSprite sprite) {
+        String name = sprite.contents().name().toString();
+        return hasNoLightLevel(sprite) || name.equals("minecraft:block/redstone_ore")
+            || name.equals("minecraft:block/deepslate_redstone_ore");
+    }
+
+    /** Whether no block gives this sprite a light level, so all the light it casts comes from its emissive map. */
+    static boolean hasNoLightLevel(TextureAtlasSprite sprite) {
+        Integer level = lightLevels.get(sprite);
+        return level == null || level <= 0;
+    }
+
     /** Registers the emitters once per block atlas; call on the render thread once models are loaded. */
     public static void registerIfNeeded(Minecraft minecraft) {
         TextureAtlas atlas = minecraft.getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS);
@@ -151,8 +183,9 @@ public final class EmissionTiles {
         boolean withMer = com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow();
         boolean fine = com.g2806.radiante.client.option.Options.glowingPixelLight;
         boolean defaults = BedrockDefaults.emissionActive();
+        boolean levelless = com.g2806.radiante.client.option.Options.unlitBlockLight;
         if (key == null || (key == registeredFor && withMer == registeredWithMer && fine == registeredFine
-            && defaults == registeredDefaults)) {
+            && defaults == registeredDefaults && levelless == registeredLevelless)) {
             return;
         }
 
@@ -164,6 +197,7 @@ public final class EmissionTiles {
         registeredWithMer = withMer;
         registeredFine = fine;
         registeredDefaults = defaults;
+        registeredLevelless = levelless;
 
         Map<TextureAtlasSprite, Integer> emitters = collectEmissiveSprites(minecraft, atlas);
         lightLevels = emitters;
@@ -192,6 +226,7 @@ public final class EmissionTiles {
             RadianteRenderer.LOGGER.info("Registered {} emissive block textures, {} unlit block states",
                 emitters.size(), unlitStates.size());
         }
+        BlockEmissionControls.atlas(atlas, atlasId, emitters.keySet());
         ChunkManager.markAllDirty();
     }
 
@@ -499,8 +534,16 @@ public final class EmissionTiles {
      * A block whose MER marks nothing emissive casts nothing, as in Bedrock.
      */
     static void uploadFromMer(int atlasId, TextureAtlasSprite sprite, ByteBuffer mer, int atlasWidth, int atlasHeight) {
-        Integer level = lightLevels.get(sprite);
-        if (level == null || level <= 0 || !com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow()) {
+        uploadAuthoredEmission(atlasId, sprite, mer, atlasWidth, atlasHeight, false);
+    }
+
+    static void uploadFromLabPbr(int atlasId, TextureAtlasSprite sprite, ByteBuffer specular, int atlasWidth, int atlasHeight) {
+        uploadAuthoredEmission(atlasId, sprite, specular, atlasWidth, atlasHeight, true);
+    }
+
+    private static void uploadAuthoredEmission(int atlasId, TextureAtlasSprite sprite, ByteBuffer mer,
+        int atlasWidth, int atlasHeight, boolean labPbr) {
+        if (!labPbr && !com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow()) {
             return;
         }
         SpriteContents contents = sprite.contents();
@@ -538,8 +581,9 @@ public final class EmissionTiles {
                         if ((pixels.get(index + 3) & 0xFF) < 128) {
                             continue;
                         }
+                        int alpha = mer.get(merIndex + 3) & 0xFF;
                         float g = (mer.get(merIndex + 1) & 0xFF) / 255.0f;
-                        float weight = g * g;
+                        float weight = labPbr ? (alpha == 255 ? 0.0f : alpha / 254.0f) : g * g;
                         if (weight <= 0.0f) {
                             continue;
                         }
@@ -563,10 +607,15 @@ public final class EmissionTiles {
             }
         }
         long tileKey = ((long) sprite.getX() << 32) ^ sprite.getY() ^ ((long) width << 48) ^ height;
+        if (hasNoLightLevel(sprite) && !com.g2806.radiante.client.option.Options.unlitBlockLight) {
+            cells.clear();
+        }
         if (cells.isEmpty()) {
+            if (labPbr && (com.g2806.radiante.client.option.Options.unlitBlockLight || !hasNoLightLevel(sprite))) return;
             TextureProxy.uploadEmissionTile(atlasId, tileKey, 0L, 0);
             return;
         }
+        authoredEmission.add(sprite.contents().name());
         long address = MemoryUtil.nmemAllocChecked((long) cells.size() * CELL_BYTES);
         try {
             for (int i = 0; i < cells.size(); i++) {
