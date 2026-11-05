@@ -291,10 +291,17 @@ BakedTriangle CoverageAtlas::bakeUncached(const glm::vec2 uv[3], uint32_t maxLev
             baked.reason = fullSize.animated ? Stats::kAnimated : Stats::kStraddles;
             return baked;
         }
-        // Camera rays read the full size too (default.rahit), so the full-size answer is known for every ray.
+        // Camera rays read the full size too (default.rahit), so the full-size answer holds for every ray. A gap is
+        // known; a solid texel is left "unknown opaque": every ray that trusts the micromap traces with
+        // gl_RayFlagsForceOpacityMicromap2StateEXT and takes it as opaque without the shader, while a ray traced
+        // without that flag (light let through foliage) still has the any-hit shader asked there, and only there.
         const bool opaque = fullSize.opaque;
-        states[i] = opaque ? kOpaque : kTransparent;
-        known[opaque ? 1 : 0]++;
+        states[i] = opaque ? kUnknownOpaque : kTransparent;
+        if (opaque) {
+            hinted[1]++;
+        } else {
+            known[0]++;
+        }
     }
 
     baked.describable = true;
