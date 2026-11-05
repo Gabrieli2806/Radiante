@@ -1059,8 +1059,9 @@ public final class EntityManager {
         POSE_STACK.mulPose(new Matrix4f(cameraState.viewRotationMatrix).invert());
         COLLECTOR.held(true);
         // The previous stack is still rendered while its equip animation lowers it after a slot change.
-        var hands = playerState.firstPersonHandsAndItems;
-        configureHeldLights(minecraft, COLLECTOR, hands.mainHandItem, hands.offHandItem);
+        var hands = (com.g2806.radiante.mixin.render.ItemInHandRendererAccessor)
+            minecraft.gameRenderer.itemInHandRenderer;
+        configureHeldLights(minecraft, COLLECTOR, hands.radiante$mainHandItem(), hands.radiante$offHandItem());
         if (minecraft.player != null) {
             COLLECTOR.heldGlass(isGlassItem(minecraft.player.getMainHandItem())
                 || isGlassItem(minecraft.player.getOffhandItem()));
