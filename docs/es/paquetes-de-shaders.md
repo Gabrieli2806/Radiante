@@ -8,7 +8,7 @@ ajustes de Radiante ([opciones](opciones.md#paquetes-de-shaders)).
 
 Esta página es para quien hace paquetes, tal como está hoy. El soporte de paquetes es nuevo: la interfaz sobre la que se
 construyen todavía no está fijada, así que un paquete puede necesitar cambios tras una versión de Radiante. Lo planeado,
-y cómo los paquetes seguirán funcionando entre versiones, está en el [diseño de los paquetes de shaders](../dev/shader-packs/README.md)
+y cómo los paquetes seguirán funcionando entre versiones, está en el [diseño de los paquetes de shaders](../dev/shader-packs.md)
 (en inglés).
 
 ## Empieza desde un ejemplo
@@ -40,7 +40,7 @@ el manifiesto, Radiante pone Radiante PT debajo del paquete al cargarlo:
   sustituyen a los de Radiante PT, y un comando `{"base": true}` entre ellos ejecuta ahí los de Radiante PT.
 - **`lang/*.lang`**: los nombres de Radiante PT y después los tuyos.
 
-Las reglas exactas están en el [diseño, sección 5](../dev/shader-packs/design.md#5-inheritance-and-hook-points) (en
+Las reglas exactas están en el [diseño, sección 5](../dev/shader-packs.md#5-inheritance-and-hook-points) (en
 inglés).
 
 ## Hooks

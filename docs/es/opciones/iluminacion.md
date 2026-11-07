@@ -22,8 +22,7 @@
 
 ## Luz Rebotada y Luz del Cielo también son parte del Estilo de Imagen
 
-Cambian con el Estilo de Imagen (ver [Imagen](imagen.md) y
-[estilos-y-calidad.md](../estilos-y-calidad.md)). Tocarlas a mano deja el estilo en Personalizado.
+Cambian con el Estilo de Imagen (ver [Imagen](imagen.md#estilos-de-imagen)). Tocarlas a mano deja el estilo en Personalizado.
 
 
 ## Cambiar la luz en la mano

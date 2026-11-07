@@ -1,8 +1,9 @@
-[← Back to index](README.md)
+[← Developer docs](README.md)
 
 # Building and releasing
 
-For anyone building Radiante or publishing a version. Playing needs none of this.
+For anyone building Radiante or publishing a version. The development workflow (testing, conventions, pull
+requests) is in [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
 The mod has two parts: the native C++ renderer, PrismRT (`native/`, built with CMake), and the Java
 mod (Gradle, one jar per loader). The renderer is built per system: `prismrt.dll` on Windows,
@@ -62,6 +63,29 @@ The script builds in `native/build/linux-release` (or `RADIANTE_BUILD_DIR`) and 
 `-DVulkan_LIBRARY=/usr/lib/x86_64-linux-gnu/libvulkan.so.1`. For the result to load on
 Ubuntu 22.04, build on a system with glibc 2.35 (or check with
 `objdump -T libprismrt.so | grep -oE 'GLIBC_2\.[0-9]+' | sort -Vu | tail -1`).
+
+### Linux fixes to keep
+
+Fixes in the bundled third-party code that must survive any update of it:
+
+- **minizip-ng** is built with zlib-ng fetched and linked statically (`native/CMakeLists.txt`). Without zlib it
+  silently loses deflate, the built-in shader pack zip cannot be extracted, and the world is black.
+- **FidelityFX SDK:** `wchar_t` is 4 bytes on Linux. `FFX_RESOURCE_NAME_SIZE` stays 64 everywhere; the opaque context
+  sizes (`FFX_SDK_DEFAULT_CONTEXT_SIZE`, `FFX_DENOISER_CONTEXT_SIZE`) are doubled off Windows, and the `static_assert`s
+  that check the private contexts fit are on everywhere. Shortening the names instead truncated shader binding names
+  and made RT-FSR render black. Wide `swprintf` calls format names with `%ls`, never `%s`.
+- `libprismrt.so` exports only the JNI entry points (`native/src/prism/exports.map`) and keeps its static libstdc++
+  private; otherwise it clashes with the system libstdc++ already in the game and crashes at start.
+- glibc symbols are pinned (`native/glibc_compat.h`, `native/src/prism/glibc_shims.cpp`) so a library built on a newer
+  distribution still loads on glibc 2.35.
+
+When a Linux build fails at start, the log says which:
+
+| Log line | Cause |
+|---|---|
+| `version 'GLIBC_2.xx' not found` | Built against a newer glibc without the pinning above. |
+| `UnsatisfiedLinkError: ... RendererProxy.<method>` | The Java side is newer than `libprismrt.so`: run `native/build-linux.sh` again. |
+| `FSR3: CreateContext failed`, `Failed to load shared shader pack` | A FidelityFX or minizip build without the fixes above. |
 
 ## Hand-ray comparison
 

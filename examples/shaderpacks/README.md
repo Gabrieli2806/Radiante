@@ -3,7 +3,7 @@
 Packs built on Radiante PT, to show what a pack can change and to start your own from. Each one says
 `"extends": "radiante-pt@1"` in its manifest and holds only its own files: settings, names, and the hook files it
 replaces. The renderer puts radiante-pt under it when it loads it, so the pack follows Radiante PT's updates
-([design §5](../../docs/dev/shader-packs/design.md#5-inheritance-and-hook-points)).
+([design §5](../../docs/dev/shader-packs.md#5-inheritance-and-hook-points)).
 
 Their settings are on a page of their own in Radiante's settings, named after the pack: each pack groups them
 (`group`), describes them (`description`), marks their cost (`performance_impact`), hides the ones that do nothing as

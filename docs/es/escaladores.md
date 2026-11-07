@@ -1,95 +1,77 @@
 [← Volver al índice](README.md)
 
-# Escaladores: FSR, DLSS y XeSS
+# Escaladores, generación de fotogramas y Reflex
 
-Radiante traza el mundo a una resolución más baja que la pantalla y un escalador lo lleva a la
-resolución final. Solo FSR viene dentro del jar; DLSS y XeSS se descargan desde el juego cuando
-los quieres, así el jar sigue siendo pequeño y nadie descarga lo que su GPU no puede usar.
+Radiante traza el mundo por debajo de la resolución de pantalla y un escalador lo lleva al tamaño final. FSR viene
+incluido; DLSS y XeSS se descargan en el juego solo si los quieres, así el jar sigue siendo pequeño.
 
 | | FSR | DLSS | XeSS |
 |---|---|---|---|
-| Viene en el jar | Sí | No, ~115 MB | No, ~73 MB |
-| GPU | Cualquiera | Solo NVIDIA | Windows; Intel Arc recomendado, otras GPUs según su driver |
-| Sistema | Windows y Linux | Windows y Linux | Solo Windows |
-| Origen | Incluido | Repositorio de NVIDIA (DLSS `v310.9.1`) | Repositorio de Intel (XeSS `3.0.2`) |
-| Pipeline | RT-FSR | RT-DLSS (con o sin Reconstrucción de Rayos) | RT-XeSS |
-| Generación de fotogramas | FSR, 2x | DLSS, hasta 4x en RTX 50 | — |
+| Incluido | Sí | Se descarga, ~115 MB | Se descarga, ~73 MB |
+| GPU | Cualquiera | NVIDIA | Intel Arc recomendado; otras si el driver pasa la comprobación de XeSS |
+| Sistema | Windows, Linux | Windows, Linux | Windows |
+| Pipeline | RT-FSR | RT-DLSS | RT-XeSS |
+| Generación de fotogramas | 2x | Hasta 4x en RTX 50 | — |
 
-## Primer inicio
+Los pipelines (y RT-Native, sin escalador) se describen en la
+[sección Calidad](opciones/calidad-y-escalado.md#los-pipelines).
 
-FSR es el valor por defecto en todas las GPUs. Al llegar al menú principal por primera vez:
+## Instalar DLSS o XeSS
 
-- **NVIDIA:** aparece una ventana ofreciendo DLSS.
-- **Intel:** aparece una ventana ofreciendo XeSS (solo en Windows).
-- **AMD:** no aparece nada; FSR es lo que hay.
+**La primera vez**, a las GPUs NVIDIA se les ofrece DLSS y a las Intel XeSS: **Descargar**, **Ahora no** o **No volver
+a preguntar**. **Continuar en segundo plano** cierra la ventana mientras se descarga.
 
-La ventana tiene tres botones: **Descargar (N MB)**, **Ahora no** (vuelve a preguntar en el próximo
-inicio) y **No volver a preguntar**. Mientras descarga se ve el progreso; **Continuar en segundo
-plano** cierra la ventana y la descarga sigue.
+| Oferta | Descarga |
+|---|---|
+| ![Oferta de descargar DLSS al arrancar](../images/ui/download-offer.png) | ![Descarga de DLSS con barra de progreso](../images/ui/download-progress.png) |
 
-![Oferta de descargar DLSS en el primer inicio](../images/ui/download-offer.png)
+**Después, desde los ajustes:** la lista **Pipeline** muestra lo que tu GPU puede usar aunque no esté instalado, como
+`RT-DLSS (Instalar)` o `RT-DLSS (Requiere reinicio)`. Al elegir uno, la barra de abajo ofrece instalar, actualizar,
+reiniciar o borrar.
 
-![Descarga de DLSS con barra de progreso](../images/ui/download-progress.png)
+![Selector de pipeline con (Instalar) y el botón de instalar DLSS](../images/ui/pipeline-install.png)
 
-## Desde los ajustes
+> [!NOTE]
+> Los escaladores se cargan al arrancar el juego, así que instalar o borrar uno se hace fuera de un mundo y siempre
+> termina en un reinicio.
 
-En [Calidad](opciones/calidad-y-escalado.md), el selector **Pipeline** muestra los
-escaladores que tu GPU puede usar aunque no estén instalados:
+Tras reiniciar, el primer menú pregunta si cambiar al pipeline nuevo. Si mantienes el actual, elige **RT-DLSS** o
+**RT-XeSS** en la lista de Pipeline más tarde. Cuando una actualización de Radiante trae un DLSS o XeSS más nuevo, la
+misma ventana ofrece actualizar; el instalado sigue funcionando mientras tanto.
 
-- `RT-DLSS (Instalar)`: se puede descargar.
-- `RT-DLSS (Requiere reinicio)`: descargado, se carga al reiniciar.
+Los archivos se guardan en la carpeta `radiante/` del juego y se comprueban con su SHA-256 antes de usarlos. Si una
+descarga falla (casi siempre un firewall, un proxy o no hay conexión), FSR sigue funcionando: reintenta desde los
+ajustes.
 
-Al elegir uno así, la barra de abajo cambia a **Instalar DLSS (115 MB)**, **Reiniciar para usar
-DLSS**, **Actualizar DLSS (115 MB)** (cuando esta versión trae una más nueva; "Omitir esta versión" en el aviso del inicio
-solo oculta ese aviso, el botón sigue) o **Borrar DLSS**, según el caso. Instalar y borrar se hacen **fuera de un mundo**: dentro
-de una partida el botón pide salir primero. Los escaladores se cargan al iniciar el juego, así que
-instalar o borrar siempre termina en un reinicio forzado.
+## Comparación
 
-![Selector de pipeline con (Install) y el botón Instalar DLSS](../images/ui/pipeline-install.png)
+La misma vista con cada escalador. FSR y sin escalador también dibujan un cielo más claro, así que fíjate en las
+texturas.
 
-![Pantalla de reinicio obligatorio tras instalar o borrar un escalador](../images/ui/download-restart.png)
+| DLSS Quality | DLSS Ultra Performance |
+|---|---|
+| ![DLSS Quality](../images/compare/upscalers-dlss-quality.webp) | ![DLSS Ultra Performance](../images/compare/upscalers-dlss-ultra-performance.webp) |
+| **FSR 3** | **Sin escalador** |
+| ![FSR 3](../images/compare/upscalers-fsr.webp) | ![Sin escalador](../images/compare/upscalers-none.webp) |
 
-**Escaladores.** La misma vista con cada escalador. Los pipelines FSR y sin escalador también dibujan un cielo más nítido: compara las texturas.
+## Generación de fotogramas
 
-*DLSS Quality*
+Genera fotogramas extra entre los renderizados: movimiento más fluido en un monitor de alta frecuencia, a cambio de
+algo de latencia. Está en la sección Calidad y se aplica sin reiniciar.
 
-![DLSS Quality](../images/compare/upscalers-dlss-quality.webp)
+| Tipo | GPU | Hasta |
+|---|---|---|
+| **DLSS** | NVIDIA, con DLSS instalado | 4x en RTX 50, menos en tarjetas anteriores |
+| **FSR** | Cualquiera, con cualquier escalador | 2x |
+| **Auto** (por defecto) | DLSS si la GPU lo soporta, si no FSR | |
 
-*DLSS Ultra Performance*
+No fuerza V-Sync. No está disponible con **Salida HDR** activada.
 
-![DLSS Ultra Performance](../images/compare/upscalers-dlss-ultra-performance.webp)
+<!-- Captura pendiente: el F3 mostrando FPS reales y generados -->
 
-*FSR 3*
+## NVIDIA Reflex
 
-![FSR 3](../images/compare/upscalers-fsr.webp)
-
-*Sin escalador*
-
-![Sin escalador](../images/compare/upscalers-none.webp)
-
-## Después de instalar DLSS o XeSS
-
-Tras el reinicio, el primer menú pregunta si cambiar al pipeline nuevo: **Cambiar (recomendado)** o
-**Mantener el pipeline actual**. Si lo mantienes, elige **RT-DLSS** (o **RT-XeSS**) en el selector
-Pipeline cuando quieras. Un install nuevo donde DLSS ya estaba descargado empieza en RT-DLSS solo.
-
-Cuando una actualización de Radiante usa un DLSS o XeSS más nuevo que el instalado, la misma ventana
-lo ofrece como actualización (**Actualizar** u **Omitir esta versión**); el instalado sigue
-funcionando mientras tanto.
-
-**Restablecer valores** elige RT-DLSS si DLSS está cargado y FSR si no.
-
-## Dónde se guardan
-
-En la carpeta `radiante/` del juego (junto a `mods/`). Cada archivo se comprueba contra su SHA-256
-antes de usarse; uno que no coincide se descarta. Lo que rechazaste o borraste se recuerda en
-`radiante/downloads.properties`, para no volver a preguntarlo.
-
-Para quitar un escalador: **Borrar** en los ajustes. Los archivos en uso se borran en el próximo
-inicio.
-
-## Si la descarga falla
-
-La ventana muestra `La descarga falló: <motivo>`. Lo habitual es un firewall, un proxy o no tener
-conexión. FSR sigue funcionando mientras tanto; puedes reintentar desde los ajustes. Si el motivo
-no es obvio, el `latest.log` tiene el detalle: ver [Problemas comunes](problemas.md).
+Evita que la CPU encole fotogramas por delante de la GPU, así lo que haces llega antes a la pantalla. Se nota más con
+generación de fotogramas; las dos juntas son la combinación recomendada. Necesita una GPU NVIDIA con un driver
+reciente (`VK_NV_low_latency2`); en otras el ajuste no aparece. Funciona en Windows y Linux, con cualquier pipeline,
+sin reiniciar.

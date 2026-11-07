@@ -1,4 +1,4 @@
-[← Back to index](en/README.md)
+[← Developer docs](README.md)
 
 # How PrismRT works
 
@@ -14,17 +14,30 @@ top of each file are the most precise description of what it does.
 
 ## The big picture
 
-```
- Java (common/src/main/java/com/g2806/radiante)          native (native/src/prism)
- ─────────────────────────────────────────────          ─────────────────────────
- mixins: Vulkan instance/device creation   ──createMerged──▶  gpu/instance, gpu/device
- ChunkProxy / EntityProxy / PlayerProxy    ──geometry───▶  render/chunks, entities, world
- TextureProxy / BufferProxy                ──uploads────▶  render/textures, buffers
- Pipeline (pipeline.yaml, presets)         ──buildNative▶  render/pipeline (WorldPipeline)
- Pipeline.setRuntimeAttribute              ──live value─▶  module / shader pack / packParams
- RadianteRenderer → RendererProxy.renderFrame ─────────▶  render/render_framework (Framework)
-            ◀── VkCommandBuffer[] (upload, world, fuse) ──
- Minecraft submits them, then RendererProxy.markSubmitted(timeline, value)
+```mermaid
+flowchart LR
+    subgraph Java["Java (common/src/main/java/com/g2806/radiante)"]
+        M[Mixins: Vulkan instance and device creation]
+        G[ChunkProxy, EntityProxy, PlayerProxy]
+        T[TextureProxy, BufferProxy]
+        P[Pipeline: pipeline.yaml, presets]
+        R[RadianteRenderer]
+    end
+    subgraph Native["PrismRT (native/src/prism)"]
+        D[gpu/instance, gpu/device]
+        W[render/chunks, entities, world]
+        U[render/textures, buffers]
+        WP[render/pipeline: WorldPipeline]
+        F[render/render_framework: Framework]
+    end
+    MC[(Minecraft's Vulkan device and queue)]
+    M -- createMerged --> D
+    G -- geometry --> W
+    T -- uploads --> U
+    P -- buildNative, live values --> WP
+    R -- renderFrame --> F
+    F -- "command buffers: upload, world, fuse" --> MC
+    MC -- markSubmitted --> F
 ```
 
 The Java side decides *what* to draw: it meshes sections into the renderer's PBR vertex format, collects entities,
@@ -454,7 +467,7 @@ compiled at runtime.
 
 **Any change under `native/` needs a native build**, including pack shaders, since the pack is installed by the
 build. The build output is not in git, so build again after switching branches too. Full instructions, the DLSS SDK
-step and CI are in [Building and releasing](en/building.md).
+step and CI are in [Building and releasing](building.md).
 
 ## Source map
 

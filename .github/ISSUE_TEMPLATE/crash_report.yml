@@ -14,7 +14,7 @@ body:
       options:
         - label: I searched the [open issues](https://github.com/Gabrieli2806/Radiante/issues) and this crash is not already reported.
           required: true
-        - label: My GPU supports hardware ray tracing (see the [requirements](https://github.com/Gabrieli2806/Radiante/blob/mc/26.3/docs/en/requirements.md)).
+        - label: My GPU supports hardware ray tracing (see the [requirements](https://github.com/Gabrieli2806/Radiante/blob/mc/26.3/docs/en/getting-started.md#requirements)).
           required: true
   - type: dropdown
     id: when

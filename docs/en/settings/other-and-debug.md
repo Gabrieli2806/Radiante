@@ -1,6 +1,20 @@
 [← Settings](../settings.md) · [Index](../README.md)
 
-# Debug
+# Other and Debug
+
+![Radiante settings: Other](../../images/ui/settings-other.png)
+
+| Control | Values | Default | What it does |
+|---|---|---|---|
+| **Block Outline** | On/Off | Off | The outline around the block under the crosshair. |
+| **Other Mods' Overlays** | On / Off | On | Lets other mods draw into the traced world: Litematica schematics and selection boxes, MiniHUD shapes, waypoint beams, guides and markers. They are drawn Minecraft's way on top of the traced picture, hidden behind the world where they should be. Turn it off if a mod draws something wrong over the world. |
+| **Text Display Backgrounds** | On / Off | On | Draws the translucent plate behind text displays (leaderboards, holograms, server signs) as Minecraft does, so the text is easier to read. Off shows only the letters. |
+| **See-through Parallax Edges** | On/Off | Off | With resource packs that carve their textures (parallax), the carved part at the outer edges of a block becomes see-through, as if it were really cut away. Off, those edges show the border's colour instead of transparency. |
+
+None of these costs performance. The top left of the screen shows the Radiante version and the Bedrock pack
+converter's, for bug reports.
+
+## Debug
 
 Tools for finding out what the renderer is doing and for reporting problems. The section is only
 there while **Advanced** is on.
@@ -9,7 +23,7 @@ there while **Advanced** is on.
 |---|---|---|---|
 | **Debug View** | Off, and the views of the pack in use | Off (not saved) | Shows one of the renderer's inner images instead of the picture, the same as `/radiante debug view <view>`. Changing it rebuilds the shaders. |
 | **SHaRC Debug Mode** | Off, and the cache's views | Off | Shows the light cache's internal views instead of the picture. |
-| **HDR Debug View** | On/Off, only while HDR Output is on | Off (not saved) | Tints the SDR parts of the picture blue. See [HDR](../hdr.md). |
+| **HDR Debug View** | On/Off, only while HDR Output is on | Off (not saved) | Tints the SDR parts of the picture blue. See [HDR](../hdr.md#check-that-hdr-is-really-on). |
 | **GPU Timings in F3** | On / Off | On | Lists on the F3 screen the time of each render pass, and the scene: TLAS instances, entity BLAS built per frame, sections waiting to build, and the device memory of the renderer's own allocator (Minecraft's is not counted). Both can also be hidden on their own in the debug options screen (`F3` + `F6`). |
 | **Debug Logging** | On / Off | On | Writes Radiante's and the native renderer's detail to `latest.log` (`[native] ...` lines). On by default so one log is enough to report a problem. Renderer errors reach the log even with it off. |
 | **Bug Report Summary** | Copy | | Copies the versions, the GPU, the running pipeline and every pipeline setting to the clipboard, and writes them to the game log. Paste it into your report. |
@@ -17,7 +31,7 @@ there while **Advanced** is on.
 | **Game Logs** | Open Folder | | Opens the folder with `latest.log`. |
 | **Shader Packs** | Open Folder | | Opens the folder shader packs are loaded from. |
 
-## Debug views
+### Debug views
 
 | View | Shows |
 |---|---|

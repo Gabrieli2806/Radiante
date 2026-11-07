@@ -1,339 +1,157 @@
 # Contributing to Radiante
 
-Thanks for wanting to help. Bug reports, shader tweaks, translations, documentation and code are all welcome. This
-guide covers how the project is organised, how to build and test it, the conventions the code follows, and what a
-pull request needs to land.
+Thanks for helping. Bug reports, translations, shader packs, documentation and code are all welcome.
 
-Quick links: [Issues](https://github.com/Gabrieli2806/Radiante/issues) ·
-[Discord](https://discord.gg/DhBbAzugZ9) · [Building in detail](docs/en/building.md) ·
-[How the renderer works](docs/prismrt.md) · [Shader pack author guide](docs/en/shader-packs.md)
+Languages: **EN** · [ES](CONTRIBUTING.es.md) · Quick links: [Issues](https://github.com/Gabrieli2806/Radiante/issues) ·
+[Discord](https://discord.gg/DhBbAzugZ9) · [Developer docs](docs/dev/README.md)
 
-## Contents
-
-1. [Ways to help](#1-ways-to-help)
-2. [Before you start](#2-before-you-start)
-3. [How the project is organised](#3-how-the-project-is-organised)
-4. [Setting up a development build](#4-setting-up-a-development-build)
-5. [Running and testing](#5-running-and-testing)
-6. [Writing the change](#6-writing-the-change)
-7. [Branches and Minecraft versions](#7-branches-and-minecraft-versions)
-8. [Using AI tools](#8-using-ai-tools)
-9. [Commits](#9-commits)
-10. [Pull requests](#10-pull-requests)
-11. [Versions and releases](#11-versions-and-releases)
-12. [Licence of contributions](#12-licence-of-contributions)
+**Contents:** 1. [Ways to help](#1-ways-to-help) · 2. [Before you start](#2-before-you-start) ·
+3. [The project](#3-the-project) · 4. [Build](#4-build) · 5. [Test your change](#5-test-your-change) ·
+6. [Writing code](#6-writing-code) · 7. [Branches](#7-branches) · 8. [Using AI tools](#8-using-ai-tools) ·
+9. [Commits](#9-commits) · 10. [Pull requests](#10-pull-requests) · 11. [Versions and releases](#11-versions-and-releases) ·
+12. [Licence](#12-licence)
 
 ## 1. Ways to help
 
-- **Report a bug.** Use the bug report form in [Issues](https://github.com/Gabrieli2806/Radiante/issues/new/choose).
-  Include the Radiante and Minecraft versions, the loader, your GPU and driver, the log (`logs/latest.log`) and, for
-  anything visual, a screenshot. A bug that can be reproduced gets fixed far sooner.
-- **Suggest an idea.** Use the feature request form. Bigger directions are the issues labelled `roadmap`; there is no
-  separate roadmap file.
-- **Translate.** Player-facing text lives in `common/src/main/resources/assets/radiante/lang/` (`en_us`, `es_es`,
-  `zh_cn`); the player documentation is in `docs/en` and `docs/es`.
-- **Make a shader pack.** Looks other than the default are shader packs built on radiante-pt, not settings. See
-  [docs/en/shader-packs.md](docs/en/shader-packs.md) and the examples in [examples/shaderpacks/](examples/shaderpacks/).
-- **Write code.** Pick an open issue, or open one first for anything large (see below).
+| You want to | Do this |
+|---|---|
+| Report a bug or crash | Open an [issue](https://github.com/Gabrieli2806/Radiante/issues/new/choose) with the form; attach `logs/latest.log` |
+| Suggest an idea | Use the feature request form. Big directions are the issues labelled `roadmap` |
+| Translate | Texts are in `common/src/main/resources/assets/radiante/lang/` (`en_us`, `es_es`, `zh_cn`); docs in `docs/en` and `docs/es` |
+| Make a look | Make a [shader pack](docs/en/shader-packs.md), not a new setting |
+| Write code | Pick an open issue, or open one first for anything large |
 
 ## 2. Before you start
 
-- **Check the open issues** (`gh issue list`, or the Issues tab) before working on a bug or a feature: it may already
-  be known, in progress, or have notes on what was tried. Issues use the labels `bug`, `enhancement`, `visual`,
-  `lighting`, `noise`, `performance`, `stability`, `compatibility`, `needs-repro` and `roadmap`.
-- **Talk first about large changes.** New render passes, a new upscaler backend, changes to the shader pack
-  interface or loader-parity work are much easier to land if they are discussed in an issue or on
-  [Discord](https://discord.gg/DhBbAzugZ9) before the code is written.
-- **Put what you find in the issue.** Even a dead end ("tried X, it did not help because Y") saves the next person
-  time.
+- **Check the open issues.** Your bug or idea may already be known, in progress, or have notes on what was tried.
+- **Talk first about big changes** (new render passes, upscaler backends, the shader pack interface, loader work), in
+  an issue or on [Discord](https://discord.gg/DhBbAzugZ9).
+- **Write down what you find in the issue**, dead ends included.
 
-## 3. How the project is organised
+## 3. The project
 
-Radiante has two halves:
-
-- **The Java mod** (`common/` plus `fabric/`, `neoforge/` and `forge/`) collects the world, the entities and the
-  settings each frame and hands them to the renderer.
-- **PrismRT** (`native/`), a C++/Vulkan renderer, traces the scene on Minecraft's own Vulkan device. The path tracer
-  itself is PrismRT's built-in shader pack, **radiante-pt**.
+Radiante has two halves: the **Java mod** collects the world and the settings, and **PrismRT**, a C++/Vulkan
+renderer, traces it on Minecraft's own Vulkan device. The path tracer itself is PrismRT's built-in shader pack,
+**radiante-pt**.
 
 | Where | What |
 |---|---|
-| `common/` | Everything that is plain Minecraft: renderer glue, mixins, settings, screens, assets. Compiled against vanilla only, so loader code cannot creep in. |
-| `fabric/`, `neoforge/`, `forge/` | Each loader's small glue: entrypoint (key bindings, client tick, settings screen) and a `RadiantePlatform` implementation registered under `META-INF/services`. |
-| `common/.../client/pipeline/Pipeline.java` | Settings stored in `pipeline.yaml`, presets, building the pipeline. |
-| `common/.../client/option/Options.java` | Plain options saved in `radiante/options.properties`. |
-| `common/.../client/gui/` | The settings screen (`RadianteOptionsScreen`, `SettingsLayout`, `AdvancedOptions`, `Tunable`), the shader packs screens, toasts, background rebuild, start-up warm-up. |
-| `common/.../client/render/` | Chunk and entity collection, point lights, emission, held light, biome ambiance. |
-| `common/.../client/bedrock/` | Bedrock resource packs (converter, fog, lighting) and `BedrockRtxValues`, the Bedrock RTX values that are radiante-pt's defaults. |
-| `common/src/main/resources/assets/radiante/lang/` | Texts, in `en_us`, `es_es` and `zh_cn`. |
-| `native/src/prism/` | The renderer: `gpu/`, `render/` (modules, framework, pipeline), `middleware/` (JNI, one file per Java class). |
-| `native/src/shader/world/ray_tracing/internal/radiante-pt/` | The path tracer: `configs.json` (attributes, textures, passes), `world/`, `pt/`, `common/`, and `hooks/`, the points shader packs replace. |
-| `examples/shaderpacks/` | Example packs built on radiante-pt. |
-| `docs/en`, `docs/es` | Player documentation, one page per settings section. |
-| `docs/prismrt.md` | How the renderer works, in detail. When the code and this page disagree, the code wins. |
-| `changelog.md` | What changed in each version. |
-| `.github/workflows/build.yml` | CI and releases. |
+| `common/` | Everything that is plain Minecraft: mixins, settings, screens, collection of the world. No loader code. |
+| `fabric/`, `neoforge/`, `forge/` | Each loader's small entrypoint and its `RadiantePlatform` implementation |
+| `common/src/main/resources/assets/radiante/lang/` | Player-facing texts |
+| `native/src/prism/` | The renderer ([architecture](docs/dev/architecture.md)) |
+| `native/src/shader/world/ray_tracing/internal/radiante-pt/` | The path tracer, and the hooks shader packs replace |
+| `examples/shaderpacks/` | Example shader packs |
+| `docs/en`, `docs/es`, `docs/dev` | Player docs (two languages) and developer docs |
 
-## 4. Setting up a development build
+[AGENTS.md](AGENTS.md) has a finer map of the code.
 
-The full reference, including Linux and the CI, is [docs/en/building.md](docs/en/building.md). The short version:
+## 4. Build
 
-### Requirements
-
-- **Java 25** (JDK).
-- **Vulkan SDK 1.4.341 or newer**, with `VULKAN_SDK` set and `glslangValidator` on `PATH`.
-- **Windows:** Visual Studio 2026 with the C++ workload. **Linux:** cmake, ninja, g++ 13+, git.
-- **An RTX-capable GPU** to actually see the result (any GPU with Vulkan ray tracing support).
-- **The NGX libraries from NVIDIA's DLSS SDK.** They are not in the repository (and the DLSS runtimes are never
-  shipped; players download them in game). Get them once:
+You need Java 25, the Vulkan SDK 1.4.341+, Visual Studio 2026 with C++ (Windows) or cmake, ninja and g++ 13+ (Linux),
+and the DLSS SDK libraries. Full setup: [Building](docs/dev/building.md).
 
 ```sh
-git clone --depth 1 --branch v310.9.1 https://github.com/NVIDIA/DLSS.git /tmp/dlss
-mkdir -p native/extern/DLSS/lib
-cp -r /tmp/dlss/lib/Windows_x86_64 native/extern/DLSS/lib/   # or Linux_x86_64 on Linux
+native/build-windows.bat      # the renderer (Linux: native/build-linux.sh)
+./gradlew build               # the mod: one jar per loader in */build/libs
+./gradlew :fabric:runClient   # a development client (also :neoforge:, :forge:)
 ```
 
-### Steps
+> [!IMPORTANT]
+> Gradle does not rebuild the renderer, and its output is not in git. Run the native build again after any change
+> under `native/` and after every branch switch, or the game runs the old renderer and shaders.
 
-1. Fork the repository and clone your fork.
-2. Check out the branch of the Minecraft version you will work on (normally `mc/26.3`, see
-   [section 7](#7-branches-and-minecraft-versions)).
-3. Build the native renderer, then the mod:
-
-```sh
-native/build-windows.bat      # Linux: native/build-linux.sh
-./gradlew build               # one jar per loader in fabric/, neoforge/ and forge/ build/libs
+```mermaid
+flowchart LR
+    A{What changed?} -->|Java only| G[./gradlew build]
+    A -->|"native/: C++ or shaders"| N[native build] --> G
+    A -->|switched branch| N
 ```
 
-The native build installs `prismrt.dll` (or `libprismrt.so`), the shaders and the modules into
-`common/src/main/resources/radiante-native/`. That folder is **not in git**.
+`./gradlew build` regenerates the JNI headers in `native/include/`: revert them before committing unless they are
+part of your change.
 
-### Which build a change needs
+## 5. Test your change
 
-Gradle does **not** rebuild the native part. A change under `native/` followed by Gradle alone produces a jar with the
-**old** renderer and shaders, and the change never shows in game.
+- **Test in a world whose name starts with `Radiante`**, never in one you play in.
+- **Reproduce a bug before fixing it**, and compare screenshots of the **same view** before and after.
+- **Launch the game after touching a mixin.** A wrong mixin target compiles fine and only fails in game.
+- **Say plainly what you did not check.**
 
-| What changed | Run |
-| --- | --- |
-| Java only (`common/`, `fabric/`, `neoforge/`, `forge/`) | Gradle |
-| Shaders (`native/src/shader/**`: `.glsl`, `.rgen`, `.rchit`, `.rahit`, `.comp`, `configs.json`, `lang/`) | Native build, then Gradle |
-| Native C++ (`native/src/prism/**`, `native/src/common/**`) | Native build, then Gradle |
-| Switching branches | Native build, then Gradle (the native output is not in git) |
+Scripted runs, test worlds, settings files and unit tests: [Testing](docs/dev/testing.md).
 
-To make sure a native change made it in, check that `prismrt.dll` and
-`radiante-native/shaders/world/ray_tracing/radiante-pt.zip` are newer than your edit. If the system clock ever jumped
-back, MSBuild skips the edits and a clean build is needed.
+## 6. Writing code
 
-### Common pitfalls
+- **Keep `common/` free of loader code.** Behaviour that differs per loader goes behind `RadiantePlatform`.
+- **Comments explain why,** in full sentences, in the style of the code around them.
+- **Fix compatibility generally.** If a mod breaks because Radiante skips something vanilla does, restore that
+  behaviour for every mod instead of special-casing one. A mod-specific patch is the last resort, and optional
+  (reflection, no hard dependency).
+- **radiante-pt's defaults are the Bedrock RTX look.** Changing one means changing `configs.json` (or
+  `tone_mapping.yaml`) and `BedrockRtxValues` together; a test checks they agree. Other looks are shader packs.
+- **The hook files and `common/pack_*.glsl` are the shader pack interface** (`radiante-pt@1`): keep their
+  signatures. See [Shader packs: design](docs/dev/shader-packs.md).
 
-- **`./gradlew build` regenerates the JNI headers in `native/include/`.** Revert them before committing unless your
-  change is meant to alter them.
-- **Building from a git worktree** can make paths too long for the FidelityFX shader compiler. Map the worktree to a
-  short path (`subst W: <worktree>`, or a junction under `C:\rtb\`) and set `RADIANTE_BUILD_DIR` to a build folder of
-  its own.
-- **Shaders are loaded once at start.** Restart the game after a native build.
+**Texts:** every player-facing text goes in all three lang files, with the same keys, `%s` placeholders and `\n`.
+If you cannot translate one, copy the English and say so in the pull request. Tooltips stay short: what it does, and
+what raising or lowering it does.
 
-## 5. Running and testing
+**A new setting** usually needs: the attribute in radiante-pt's `configs.json` (`"runtime": true` if it can change
+without a rebuild), a `Tunable` or a row in `RadianteOptionsScreen`, its `OptionImpact`, the three lang files, its
+settings page in `docs/en` and `docs/es`, and a line in `changelog.md`.
 
-### Development clients
+## 7. Branches
 
-```sh
-./gradlew :fabric:runClient       # or :neoforge:runClient, :forge:runClient
-```
-
-Each loader runs in its own folder (`run-fabric/`, `run-neoforge/`, `run-forge/`), so they can run at the same time.
-Worlds, resource packs, shader packs, Radiante's settings, `options.txt` and the server list are shared through
-`run-shared/`; mods and mod configs stay per loader. Screenshots land in the repository's `screenshots/` folder, which
-git ignores (only its subfolders such as `art/` and `promo/` are tracked).
-
-Useful Fabric flags:
-
-- `-PquickPlay="<world name>"` boots straight into a world.
-- `-PvulkanValidation` turns on the Vulkan validation layers and debug labels.
-
-### Test worlds
-
-- **Test only in worlds whose name starts with `Radiante`** (for example `RadianteTest` or `RadianteParityA`) under
-  `run-shared/saves/`. A fresh superflat is usually enough. Never point a development run at a world you play in.
-- A copy of a test world needs a **different level name** too, not only a different folder name.
-
-### Scripted runs
-
-`DevAutomation` can drive the client from environment variables, which is how repeatable comparisons are made:
-
-- `RADIANTE_DEV_PRESCRIPT` runs steps counted in client ticks, before a world is open. Use
-  `testworld=<name>` to open (or create) a `Radiante*` test world; avoid `join=`, which hangs on the
-  experimental-features prompt.
-- `RADIANTE_DEV_SCRIPT` runs steps counted in world ticks, once a test world is open, for example `400:quit`.
-
-```sh
-RADIANTE_DEV_PRESCRIPT="100:testworld=RadianteSmoke" RADIANTE_DEV_SCRIPT="400:quit" ./gradlew :fabric:runClient
-```
-
-Scripts refuse to run in a world whose name does not start with `Radiante`.
-
-Settings tests write to the development `radiante/` files (`options.properties`, `pipeline.yaml`,
-`radiante-pt.zip.txt`) and to `options.txt`. Back them up first and restore them afterwards.
-
-### Unit tests
-
-`./gradlew build` runs the Java unit tests in `common/src/test` (code that needs no running game, such as the Bedrock
-pack reader and the check that `BedrockRtxValues` agrees with radiante-pt's defaults). Small native tests live in
-`native/src/tools/`.
-
-### Checking a visual change
-
-- **Reproduce the bug first**, then fix it.
-- Compare **before and after screenshots of the same view**: same world, position, time of day and settings. Toggle
-  the change at one spot rather than walking between shots.
-- Parity and visual runs need **SHaRC on** (`use_sharc`), which is the player's default; without it indirect light
-  reads noticeably low.
-- Say plainly in the pull request what you did **not** check in game.
-
-## 6. Writing the change
-
-### General
-
-- **Keep `common/` loader-agnostic.** Behaviour that differs per loader goes behind `RadiantePlatform` and is
-  implemented in `fabric/`, `neoforge/` and `forge/`, never with `instanceof` checks against a loader's classes in
-  `common/`.
-- **Comments explain why**, in full sentences, in the style of the surrounding code: why a value or check exists, not
-  what a line does.
-- **Match the surrounding code** for naming, structure and comment density.
-- **One logical change at a time.** Leave unrelated reformatting out.
-
-### Mixins
-
-- A mixin whose target method or descriptor is wrong **does not fail the compile**; it fails when the class loads in
-  game. Every mixin change must be checked by launching the game, and when porting, against that version's jar.
-- Prefer injections that leave vanilla behaviour in place for other mods (`@WrapOperation`, `@Inject`) over
-  overwriting.
-
-### Compatibility with other mods
-
-Fixes should be general, not tied to one mod. If mod X breaks because Radiante skips or replaces something vanilla
-does (for example `LevelRenderer.render`, whose head hooks still run through `LevelRendererSkipMixin`), restore that
-vanilla behaviour so every mod relying on it benefits, instead of special-casing X by name. Only fall back to a
-mod-specific patch when no general fix exists, and keep it optional (reflection, no hard dependency).
-
-### Shaders and radiante-pt
-
-- The path tracer is in `native/src/shader/world/ray_tracing/internal/radiante-pt/`. Any edit there needs the native
-  build (see [section 4](#which-build-a-change-needs)).
-- **radiante-pt's defaults are the Bedrock RTX look.** A change to one of them goes in `configs.json` (or
-  `tone_mapping.yaml`) **and** in `BedrockRtxValues`; a unit test checks they agree. Other looks are shader packs, not
-  new settings.
-- **The hook files and `common/pack_*.glsl` are the shader pack interface** (`radiante-pt@1`). Keep their signatures,
-  and with radiante-pt's own empty hooks the result must compile to the same shaders. Check a pack-facing change
-  offline with `shader_pack_stage` and `native/src/tools/compile_pack.py` (see
-  [examples/shaderpacks/README.md](examples/shaderpacks/README.md)).
-
-### Adding a setting
-
-A new setting usually touches all of these:
-
-1. The attribute in radiante-pt's `configs.json` (`"runtime": true` when it can change without a rebuild).
-2. A `Tunable`, or a row in `RadianteOptionsScreen`.
-3. Its entry in `OptionImpact`.
-4. The text and tooltip in **all three** lang files.
-5. The settings page in `docs/en` and `docs/es`.
-6. A line in `changelog.md`.
-
-### Text and translations
-
-- Every player-facing text goes in **all three** lang files (`en_us`, `es_es`, `zh_cn`) with the same keys, the same
-  `%s` placeholders and the same `\n` line breaks. If you cannot translate one, copy the English text and say so in
-  the pull request.
-- Tooltips stay short: what the setting does, and what raising or lowering it does.
-
-### Documentation and changelog
-
-- A change players will notice gets a line in `changelog.md`, under `## [Unreleased]`.
-- A change to a setting or a feature updates its page in `docs/en` and `docs/es`.
-
-## 7. Branches and Minecraft versions
-
-- Each Minecraft version has its own branch, named after it: `mc/26.2`, `mc/26.3` and `mc/26.4`. There is no `main`.
-- **`mc/26.3` is the default branch** for now; when a newer version becomes stable, its branch becomes the default.
-- Work on **`mc/26.3`** unless the change only applies to another version. Name your branch after what it does, for
-  example `fix/rain-motion-vectors` or `feat/end-crystal-tint`.
-- **Maintainers port** merged changes to the other branches: merge `mc/26.3` into them, adapt the API differences,
-  check the mixins against that version's jar, rebuild native and build. You do not need to port your own change,
-  but if you know it behaves differently on another version, say so.
-- Loaders per branch: 26.2 and 26.3 build for Fabric, NeoForge and Forge; the 26.4 snapshots are Fabric only until
-  NeoForge and Forge publish builds for them.
+- One branch per Minecraft version: `mc/26.2`, `mc/26.3` (the default) and `mc/26.4`. There is no `main`.
+- **Work on `mc/26.3`**, in a branch named after the change (`fix/rain-motion-vectors`, `feat/end-crystal-tint`).
+- The maintainer ports merged changes to the other versions. If you know your change behaves differently there, say
+  so.
 
 ## 8. Using AI tools
 
-AI coding assistants are welcome here; parts of Radiante itself are written with them. What matters is the result,
-and the same standard applies whoever or whatever typed the code:
+AI coding assistants are welcome; parts of Radiante are written with them. The same standard applies to all code:
 
-- **You are the author.** You must understand every line you submit and be able to explain why it is there and why it
-  is correct. "The assistant wrote it" is not an answer to a review question.
-- **Test it for real.** Build it (native build included when `native/` changed), run it in game in a `Radiante*` test
-  world, and compare before and after for visual changes. A change that compiles but was never run is not ready.
-- **Check what it claims.** Assistants confidently invent API methods, mixin targets, Vulkan behaviour and
-  benchmark results. Verify against the actual Minecraft jar, the code and the game, not against the assistant's
-  explanation.
-- **Keep it in scope.** Review the diff before opening the pull request and remove unrelated rewrites, reformatting,
-  renamed variables and comments that only restate the code.
-- **Respect licences.** Do not submit generated code that reproduces another project's code under an incompatible
-  licence.
-- **Be honest in the description.** State what you tested and what you did not. Pull requests that were plainly not
-  run, or whose author cannot answer questions about them, will be closed.
+- **You are the author.** Understand every line you submit and be able to explain why it is there.
+- **Test it for real:** build it, run it in game, compare before and after. Compiling is not enough.
+- **Check what it claims.** Assistants invent API methods, mixin targets and results. Verify against the Minecraft
+  jar, the code and the game.
+- **Keep it in scope.** Remove unrelated rewrites, reformatting and comments that only repeat the code.
+- **Respect licences.** Do not submit generated code copied from an incompatible project.
+
+Pull requests that were plainly not run, or whose author cannot answer questions about them, will be closed.
 
 ## 9. Commits
 
-- Subject: short and lowercase, as `area: what changed`. For example
-  `render: mark thin surfaces and particles, which let light through` or `docs: credit Radiance`.
-- Body, when the reason is not obvious: why the change was made, in full sentences.
-- **No AI attribution** in commits or pull requests: no `Co-Authored-By` lines for AI tools, no "Generated with ..."
-  trailers. Write them as your own.
-- Write `fixes #<n>` only when the fix is verified in game. Otherwise reference the issue (`#<n>`) and leave it open.
+- Subject: short, lowercase, `area: what changed`. For example `render: mark thin surfaces, which let light through`.
+- Body, when the reason is not obvious: why, in full sentences.
+- No AI attribution lines (`Co-Authored-By` for AI tools, "Generated with ..." trailers).
+- `fixes #<n>` only when the fix is verified in game; otherwise just `#<n>`.
 
 ## 10. Pull requests
 
-### Checklist
+Fill in the template: what changed and why, how you tested it, and what you did not check. Before opening:
 
-- [ ] Based on the right branch (normally `mc/26.3`).
-- [ ] Native build run, if anything under `native/` changed.
-- [ ] `./gradlew build` passes (all loaders, unit tests included).
-- [ ] Checked in game, in a `Radiante*` test world; screenshots before and after for visual changes.
-- [ ] Texts in all three lang files; docs and `changelog.md` updated where players will notice.
-- [ ] `native/include/` headers reverted unless they are part of the change.
-- [ ] No unrelated changes in the diff.
+- [ ] Based on `mc/26.3`
+- [ ] Native build run, if anything under `native/` changed; `./gradlew build` passes
+- [ ] Run in game in a `Radiante*` test world; screenshots before and after for visual changes
+- [ ] Texts in all three lang files; docs and `changelog.md` updated where players will notice
+- [ ] No unrelated changes, and no regenerated `native/include/` headers
 
-### Description
-
-Say:
-
-- **What** changed and **why**.
-- **How you tested it**: loader, GPU, world, settings, and what you compared.
-- **What you did not check.**
-- The issue it fixes or advances.
-
-Pull requests are built by CI (both renderers and every loader's jar) but never publish anything. A maintainer
-reviews, may ask for changes, and merges; changes are usually squashed into one commit that keeps you as the author.
+CI builds every pull request (both renderers, every loader) but never publishes. Changes are usually squashed into
+one commit that keeps you as the author.
 
 ## 11. Versions and releases
 
-Version numbers and releases are handled only by the maintainer. In a pull request, **do not change**:
+Only the maintainer changes versions. In a pull request, **do not change**:
 
-- `mod_version` in `gradle.properties`. Pushing a new value publishes a release to GitHub, Modrinth and CurseForge.
-- The Minecraft, loader or dependency versions in `gradle.properties` (`minecraft_version`, `loader_version`,
-  `fabric_api_version`, `neoforge_version`, `forge_version` and the like).
-- The version headings in `changelog.md`. Add your line under `## [Unreleased]`; the maintainer turns it into a
-  version when releasing.
+- `mod_version` in `gradle.properties`: pushing a new value publishes a release.
+- The Minecraft, loader or library versions in `gradle.properties`.
+- The version headings in `changelog.md`: add your line under `## [Unreleased]`.
 
-If your change needs a newer Minecraft, loader or library version, say so in the pull request or the issue instead.
-How releases are published is described in [docs/en/building.md](docs/en/building.md#publishing-a-version).
+If your change needs a newer version of something, say so in the pull request.
 
-## 12. Licence of contributions
+## 12. Licence
 
-Radiante is licensed under the GPL-3.0, with an additional permission under section 7
-([LICENSE-EXCEPTION.md](LICENSE-EXCEPTION.md)) that allows it to be distributed together with the NVIDIA DLSS,
-Streamline, Reflex and Intel XeSS runtime libraries. By submitting a contribution you agree that it is licensed under
-the GPL-3.0 with that same additional permission.
-
-Do not copy code from projects whose licence is not compatible with this, and name the source of anything you adapt
-from another project in the pull request.
+Radiante is GPL-3.0 with an [additional permission](LICENSE-EXCEPTION.md) to ship it with the NVIDIA and Intel
+runtime libraries. By contributing, you agree your contribution is licensed the same way. Name the source of
+anything you adapt from another project.

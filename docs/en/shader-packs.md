@@ -8,7 +8,7 @@ Radiante PT and one pack built on it, Pixelated Lighting; players add others in 
 
 This page is for pack authors, as things are today. Pack support is young: the interface packs build on is not
 frozen yet, so a pack may need updating after a Radiante release. What is planned, and how packs will stay working
-across releases, is in the [shader packs design](../dev/shader-packs/README.md).
+across releases, is in the [shader packs design](../dev/shader-packs.md).
 
 ## Start from an example
 
@@ -38,7 +38,7 @@ manifest, Radiante puts Radiante PT under the pack when it loads it:
   `{"base": true}` command among them runs Radiante PT's there.
 - **`lang/*.lang`**: Radiante PT's names, then yours.
 
-The exact rules are in the [design, section 5](../dev/shader-packs/design.md#5-inheritance-and-hook-points).
+The exact rules are in the [design, section 5](../dev/shader-packs.md#5-inheritance-and-hook-points).
 
 ## Hooks
 

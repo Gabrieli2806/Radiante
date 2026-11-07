@@ -8,7 +8,7 @@ Los valores por defecto son los de radiante-pt, el aspecto Bedrock RTX ([bedrock
 
 | Control | Rango / Valores | Por defecto | Qué hace |
 |---|---|---|---|
-| **Estilo de Imagen** | Natural · Bedrock · Vívido · Personalizado | Bedrock | Ajusta Saturación, Luz Rebotada, Luz del Cielo y la curva de tonos a la vez. Bedrock es el aspecto por defecto. Detalle completo en [estilos-y-calidad.md](../estilos-y-calidad.md#estilos-de-imagen). |
+| **Estilo de Imagen** | Natural · Bedrock · Vívido · Personalizado | Bedrock | Ajusta Saturación, Luz Rebotada, Luz del Cielo y la curva de tonos a la vez. Bedrock es el aspecto por defecto. Ver [Estilos de imagen](#estilos-de-imagen) abajo. |
 | **Mapeo de Tonos** | Bedrock RTX · PBR Neutral · ACES · Reinhard | Bedrock RTX | Cómo se ajusta la luz intensa a lo que la pantalla puede mostrar. Bedrock RTX es la curva propia de Bedrock, construida con el histograma de la imagen; PBR Neutral mantiene los colores fieles; ACES es más cinematográfico y con más contraste; Reinhard es suave y plano. |
 | **Saturación** | 50% – 200% | 100% | Qué tan colorida es la imagen. |
 | **Contraste de Texturas** | 46% – 109% | 100% | Qué tan profundos y contrastados se ven los colores de bloques y entidades bajo la luz. 100% coincide con Bedrock RTX; menos da el aspecto más pálido y plano de versiones anteriores. |
@@ -20,7 +20,7 @@ Los valores por defecto son los de radiante-pt, el aspecto Bedrock RTX ([bedrock
 | **Exposición de Noche** | 10% – 150% | 65% | Lo mismo de noche. |
 | **Límite en Oscuridad de Día** | 50% – 3200% | 250% | Cuánto puede abrirse la exposición de día en un lugar oscuro. Bajo mantiene oscuros los cuartos cerrados; alto aclara cuartos iluminados solo por una ventana. |
 | **Nitidez de FSR** | 0% – 100% | 70% | Cuánto afila FSR la imagen escalada. Más es más nítido pero puede mostrar halos en los bordes. Solo con RT-FSR. |
-| **Salida HDR** | Activado / Desactivado | Desactivado | HDR en una pantalla HDR; los controles de brillo aparecen debajo al activarlo. Ver [HDR](#hdr). |
+| **Salida HDR** | Activado / Desactivado | Desactivado | HDR en una pantalla HDR; los controles de brillo aparecen debajo al activarlo. Ver [HDR](../hdr.md). |
 | **Desenfoque de Movimiento** | Activado / Desactivado | Desactivado | Difumina lo que se mueve en pantalla a lo largo de su movimiento, como una cámara. Cambiarlo recompila los shaders (un breve tirón al aplicar). |
 | **Profundidad de Campo** | Activado / Desactivado | Desactivado | Mantiene nítido lo que miras y desenfoca lo mucho más cerca o más lejos, enfocando el centro de la pantalla. También recompila los shaders al cambiarlo. |
 | **Fuerza de Motion Blur** | 10% – 220% | 100% | Qué tan largo es el barrido del Desenfoque de Movimiento. Requiere Desenfoque de Movimiento. |
@@ -34,16 +34,22 @@ histograma de la imagen) y la exposición se mide sobre la luz que llega a las s
 vista, así que los sliders de exposición se comportan algo distinto que con las curvas PBR Neutral,
 ACES o Reinhard.
 
-## HDR
+## Estilos de imagen
 
-Salida HDR está en esta misma sección, entre Nitidez de FSR y Desenfoque de Movimiento. Se explica
-entera, con consideraciones de pantalla, en [hdr.md](../hdr.md) — resumen rápido:
+**Estilo de Imagen** ajusta a la vez Mapeo de Tonos, Saturación, Luz Rebotada y Luz del Cielo. Cambiar uno de ellos a
+mano muestra **Personalizado**.
 
-| Control | Rango | Por defecto |
+| Estilo | Mapeo de Tonos | Saturación | Luz Rebotada | Luz del Cielo | Aspecto |
+|---|---|---|---|---|---|
+| **Natural** | PBR Neutral | 100% | 100% | 100% | Físicamente correcto, sin nada ajustado encima |
+| **Bedrock** (por defecto) | Bedrock RTX | 100% | 150% | 180% | Bedrock RTX: sombras y luz rebotada más claras |
+| **Vívido** | ACES | 130% | 150% | 150% | Más contraste y color |
+
+| Natural | Bedrock | Vívido |
 |---|---|---|
-| Salida HDR | Activado/Desactivado | Desactivado |
-| Brillo Máximo HDR | 400 – 4000 nits | 1000 nits |
-| Blanco de Papel HDR | 80 – 400 nits | 200 nits |
+| ![Natural](../../images/compare/styles-natural.webp) | ![Bedrock](../../images/compare/styles-bedrock.webp) | ![Vívido](../../images/compare/styles-vivid.webp) |
 
-La Vista de Depuración HDR está en la sección [Depuración](depuracion.md). Activar o desactivar la Salida HDR necesita reiniciar el juego; los sliders de brillo se aplican con
-el resto de los ajustes, sin reiniciar.
+El Estilo de Imagen y la **Atmósfera** (en [Cielo y Agua](cielo-niebla-agua.md)) son independientes: la Atmósfera
+elige de dónde salen los colores del cielo, el Estilo cómo se procesa la imagen final.
+
+La Salida HDR y sus controles de brillo se explican en [HDR](../hdr.md).

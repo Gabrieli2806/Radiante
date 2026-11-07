@@ -1,7 +1,47 @@
+[← Developer docs](README.md)
+
 # Shader packs: design
 
-How shader packs work in Radiante today, and the contract they are moving to. "Today" is `mc/26.3` with the
-`feature/shaderpacks` work; "planned" items are in the [roadmap](roadmap.md). The code wins where this page disagrees.
+For Radiante contributors and pack authors: how shader packs work, the contract a pack builds on, and where the work
+stands. Pack authors starting out: [Making a shader pack](../en/shader-packs.md). The roadmap is
+[issue #55](https://github.com/Gabrieli2806/Radiante/issues/55). The code wins where this page disagrees.
+
+## The idea
+
+Radiante traces Minecraft on its own Vulkan renderer, PrismRT. The path tracer itself is a **shader pack**: a zip of
+GLSL shaders and a `configs.json` that PrismRT compiles and runs. Radiante ships one, **Radiante PT** (`radiante-pt`),
+and can load others from `radiante/shaderpacks/`.
+
+The goal is for Radiante to be to path-traced packs what Iris is to OpenGL shaders: a stable platform people build
+looks on, with the renderer's features (hardware ray tracing, opacity micromaps, SHaRC, ReSTIR, DLSS Ray
+Reconstruction, Distant Horizons, Bedrock RTX materials) open to every pack, not only the built-in one: a stable
+interface, versioning, error reporting and a settings layout around the pack format.
+
+## Principles
+
+1. **A pack keeps working while Radiante changes.** Packs build on a versioned public interface, never on the
+   renderer's internals. Breaking that interface needs a new major API version.
+2. **Small packs.** A pack holds what it changes, not a copy of Radiante PT. Copies drift and break.
+3. **Radiante PT is a pack like any other.** It uses the public interface too, so the interface is always enough for a
+   complete path tracer.
+4. **Failing packs never cost the player their game.** A pack that does not load, does not compile or crashes the
+   GPU is replaced by Radiante PT, and the reason is shown.
+5. **Every feature is opt-in and documented.** Nothing a pack can use is reachable only by reading the renderer's
+   source.
+
+## Where it stands
+
+| Area | State |
+| --- | --- |
+| Shader Packs screen (list, metadata, switch, open folder), laid out like the settings | Done |
+| Fallback to Radiante PT with the compiler's errors shown; crash recovery | Done |
+| Per-pack settings (`<pack>.zip.txt`), values checked against the pack's types | Done |
+| Example pack built as an overlay on Radiante PT (`examples/shaderpacks/`) | Done, replaced by `extends` |
+| Pack inheritance (`extends`) and hook points in Radiante PT | Done, roadmap phase 1 |
+| Example packs on `extends` and hooks (radiante-example, Inkwell, Pixelated Lighting) | Done; Inkwell's outlines shimmer |
+| A pack built on radiante-pt that comes with Radiante (Pixelated Lighting) | Done: zipped by the native build (`PRISM_BUILT_IN_EXTENDING_PACKS`), listed as built in (`ShaderPackLibrary.BUILT_IN_EXTRAS`) |
+| Versioned public headers (`radiante/v1`) | Planned, phase 2 |
+| `api_version` and `requires.radiante` checked in the list | Done (groundwork for phase 2) |
 
 ## 1. Moving parts
 
@@ -44,7 +84,7 @@ my-pack/
 ```
 
 Shaders are compiled with the pack's root as the include path. Today a pack carries its own copy of the renderer's
-headers (`common/shared.hpp`, `util/vertex.glsl`, SHaRC): this is the coupling [phase 2](roadmap.md) removes.
+headers (`common/shared.hpp`, `util/vertex.glsl`, SHaRC): this is the coupling phase 2 of the [roadmap](https://github.com/Gabrieli2806/Radiante/issues/55) removes.
 
 ## 3. Manifest
 
@@ -265,7 +305,7 @@ zips). `native/src/tools/compile_pack.py` compiles a staged pack's shaders with
 glslangValidator and the defines the loader gives at default settings (attributes, runtime attributes as
 `worldUBO.packParams` reads, debug view defines, pass defines, execution variables, SHaRC variants; `--debug-view`
 compiles with a view chosen). In game, `/radiante pack validate` does the same with the real settings. See
-[examples](../../../examples/shaderpacks/README.md#check-a-pack-without-the-game).
+[examples](../../examples/shaderpacks/README.md#check-a-pack-without-the-game).
 
 ## 6. Public headers (planned, phase 2)
 
@@ -407,3 +447,14 @@ Packs are code that runs on the GPU. Radiante does not sandbox shaders; it limit
   5); a folder pack that extends another has the same limits and its symbolic links are
   skipped. Shaders get no file or network access (GLSL has none).
 - Players should get packs from places they trust, as with any mod; the screen shows author and licence.
+
+## 12. Keeping this up to date
+
+- A change to anything a pack reads (vertex layout, surface flags, uniforms, bindings, `configs.json` keys, include
+  files) updates this page in the same commit, and says in `changelog.md` whether packs need changes.
+- Once `radiante/v1` exists, those changes go through it: append-only within a version, or a new version
+  ([versioning](#4-versioning-and-compatibility)).
+- The roadmap lives in [issue #55](https://github.com/Gabrieli2806/Radiante/issues/55); tick a phase there when it ships.
+- The example packs are rebuilt and tried after every change to Radiante PT they touch (`./gradlew shaderPackExamples`,
+  then select them in game); a change to a hook's call site is checked offline first (`native/src/tools/`,
+  [§5](#checking-a-pack-offline)).
