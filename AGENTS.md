@@ -2,6 +2,7 @@
 
 Notes for AI coding agents (and new contributors) working on Radiante. Read this before changing anything.
 For how the renderer works, see [docs/prismrt.md](docs/prismrt.md); the code wins when the two disagree.
+The contributor guide for people is [CONTRIBUTING.md](CONTRIBUTING.md); keep the two consistent.
 
 ## What this is
 

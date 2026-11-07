@@ -125,103 +125,15 @@ Arreglos específicos de Linux en el código de terceros incluido, que hay que c
 
 ## Compilación
 
-El mod incluye una librería nativa (`prismrt.dll` en Windows, `libprismrt.so` en Linux) compilada desde `native/`. Ambas
-se enlazan con las librerías NGX de NVIDIA del SDK de DLSS, que no está en este repositorio; los runtimes de DLSS
-nunca se distribuyen (los jugadores los descargan dentro del juego). Consigue las librerías del SDK una vez, en la
-versión que espera la compilación:
-
 ```sh
-git clone --depth 1 --branch v310.9.1 https://github.com/NVIDIA/DLSS.git /tmp/dlss
-mkdir -p native/extern/DLSS/lib
-cp -r /tmp/dlss/lib/Windows_x86_64 native/extern/DLSS/lib/   # o Linux_x86_64 en Linux
+native/build-windows.bat   # el renderizador nativo (Linux: native/build-linux.sh)
+./gradlew build            # un jar por loader en fabric/, neoforge/ y forge/ build/libs
 ```
 
-```sh
-# 1. renderizador nativo (Visual Studio 2026 con la carga de trabajo de C++, Vulkan SDK 1.4.341+)
-native/build-windows.bat
-
-# 2. el mod, un jar por loader en fabric/, neoforge/ y forge/ build/libs
-./gradlew.bat build
-```
-
-`native/build-windows.bat` configura, compila e instala con CMake (`-DPRISM_ENABLE_NRD=ON -DUSE_AMD=ON`) en
-`C:\rtb\radiante`, o en `RADIANTE_BUILD_DIR` si está definido. El paso de instalación copia `prismrt.dll`, los
-shaders y los módulos a `common/src/main/resources/radiante-native/`, que no está en git: vuelve a compilar la parte
-nativa al cambiar de rama. `./gradlew.bat :fabric:runClient`, `:neoforge:runClient` o `:forge:runClient` lanza un
-cliente de desarrollo; cada uno usa su propia carpeta (`run-fabric/`, `run-neoforge/`, `run-forge/`, que comparten mundos, packs y ajustes en `run-shared/`), así que pueden
-correr a la vez.
-
-#### Qué compilar según el cambio
-
-Gradle **no** recompila la parte nativa. Los shaders se empaquetan en
-`radiante-native/shaders/world/ray_tracing/radiante-pt.zip` (y las demás carpetas de shaders) solo en el paso de
-instalación de CMake: un cambio en `native/` seguido solo de Gradle genera un jar con los shaders **viejos**, y el
-cambio nunca se ve en el juego.
-
-| Qué cambió | Ejecutar |
-| --- | --- |
-| Solo Java (`common/`, `fabric/`, `neoforge/`, `forge/`) | Gradle |
-| Shaders (`native/src/shader/**`: `.glsl`, `.rgen`, `.rchit`, `.rahit`, `.comp`, `configs.json`, `lang/`) | compilación nativa (paso 1) y luego Gradle |
-| C++ nativo (`native/src/prism/**`, `native/src/common/**`, `native/include/**`) | compilación nativa y luego Gradle |
-
-Para comprobar que un cambio de shader entró, la fecha de
-`common/src/main/resources/radiante-native/shaders/world/ray_tracing/radiante-pt.zip` (y la de `prismrt.dll` para
-C++) debe ser posterior a la edición; si el reloj del sistema retrocedió, MSBuild se salta la edición y hace falta
-una compilación limpia. Reinicia el juego tras instalar el jar nuevo: los shaders se cargan una sola vez al arrancar.
-
-En Linux el renderizador nativo es `libprismrt.so` y se instala en `radiante-native/linux-x64/`:
-
-```sh
-# requiere cmake, ninja, g++ 13+, git y el Vulkan SDK (VULKAN_SDK definido, glslangValidator en el PATH)
-native/build-linux.sh            # añade -DVulkan_LIBRARY=/usr/lib/x86_64-linux-gnu/libvulkan.so.1 si CMake no lo encuentra
-./gradlew :fabric:build
-```
-
-Un jar compilado en Linux solo trae el renderizador de Linux (y uno compilado en Windows solo `prismrt.dll`); para
-una versión que funcione en ambos, compila la parte nativa en los dos sistemas antes de empaquetar. El workflow de
-GitHub Actions (`.github/workflows/build.yml`) lo hace: compila `prismrt.dll` en Windows y `libprismrt.so` en Linux,
-empaqueta un jar por loader con ambos y falla si falta alguno. Para revisar un jar:
-`unzip -l <jar> | grep -E 'prismrt.dll|libprismrt.so'`.
-
-### Publicar una versión
-
-Las versiones las publica el workflow de GitHub Actions, no se hacen a mano:
-
-1. Añade una sección `## [x.y.z] - fecha` a `changelog.md`.
-2. Sube `mod_version` en `gradle.properties` y haz push a la rama de la versión de Minecraft (`mc/26.2`, `mc/26.3` o `mc/26.4`).
-3. El workflow ve una versión que aún no tiene la etiqueta `v<mod_version>+<minecraft_version>`, compila ambos
-   renderizadores y los jars, y publica un release en GitHub con esa etiqueta. Sus notas son la sección del
-   changelog de esa versión. Una versión con `-` (como `1.2.0-beta.1`) se marca como preliminar y se queda en
-   GitHub.
-4. Si el repositorio los tiene configurados, la misma ejecución sube el jar de cada loader a Modrinth y CurseForge
-   (una versión `0.x` sube como beta, cualquier otra como release): secrets `MODRINTH_TOKEN` / `CURSEFORGE_TOKEN`,
-   variables `MODRINTH_ID` / `CURSEFORGE_ID`. Un sitio sin token o sin ID se omite, y también un loader para el que
-   la rama no compila jar (el port a 26.4 es solo Fabric).
-
-Los push que solo tocan Markdown, `docs/` o `screenshots/` no lanzan compilación. Los pull requests compilan pero
-nunca publican.
-
-### Estructura del proyecto
-
-- `common/` - todo lo que es Minecraft puro: el renderizador, mixins, ajustes, assets, archivos nativos. Se
-  compila solo contra Minecraft vanilla, para que no se cuele código específico de un loader.
-- `fabric/`, `neoforge/`, `forge/` - cada uno compila las fuentes comunes junto con su propio pegamento: el
-  entrypoint (keybinds, tick de cliente, pantalla de ajustes) y una implementación de `RadiantePlatform`
-  (carpeta del juego, envío de meshes de Fabric), registrada bajo `META-INF/services`.
-- `native/` - el renderizador Vulkan en C++ (pipelines de ray tracing, shaders bajo `native/src/shader/`,
-  integración de upscalers, generación de frames y denoiser) compilado con CMake, instalado en los recursos de
-  `common/`. Al empaquetar, las librerías se comprimen con xz y se anota su SHA-256, que se comprueba al
-  descomprimirlas al iniciar.
-- `.github/workflows/build.yml` - CI y publicación de versiones (ver [Publicar una versión](#publicar-una-versión));
-  `.github/ISSUE_TEMPLATE/` - los formularios de reporte de errores y de ideas.
-- Las versiones de todo esto viven en el `gradle.properties` de la raíz.
-- Ramas: una por versión de Minecraft, con su nombre (`mc/26.2`, `mc/26.3`, `mc/26.4`). `mc/26.3` es la de por defecto
-  ahora; la versión estable más nueva pasa a serlo.
-
-Flags útiles al ejecutar (Fabric):
-
-- `-PquickPlay="<nombre del mundo>"` — entra directo a un mundo.
-- `-PvulkanValidation` — activa las capas de validación de Vulkan y etiquetas de depuración de render.
+La compilación nativa necesita el Vulkan SDK y las librerías del DLSS SDK de NVIDIA, y Gradle no la rehace: vuelve a
+ejecutarla tras cualquier cambio en `native/` y al cambiar de rama. Requisitos, Linux, CI y publicación de versiones
+están en [docs/es/compilar.md](docs/es/compilar.md); el flujo de desarrollo, en [CONTRIBUTING.md](CONTRIBUTING.md)
+(en inglés).
 
 ## Cómo funciona
 
@@ -241,50 +153,10 @@ Una explicación técnica detallada del renderizador nativo está en [docs/prism
 
 ## Cómo contribuir
 
-Reportes de errores, ajustes de shaders y pull requests son bienvenidos. Los errores y las ideas se siguen en
-[GitHub Issues](https://github.com/Gabrieli2806/Radiante/issues); revisa los abiertos antes de empezar algo.
-
-### Preparar el entorno
-
-1. Haz fork del repo y clona tu fork.
-2. Sigue la sección [Compilación](#compilación) de arriba para tener una build nativa y un cliente de
-   desarrollo funcionando.
-
-### Al hacer cambios
-
-- Crea una rama a partir de `mc/26.3` (o de la versión en la que trabajas); dale un nombre corto y descriptivo (`fix/rain-motion-vectors`,
-  `feat/end-crystal-tint`).
-- Mantén `common/` independiente del loader. Si un cambio necesita comportamiento específico de un loader,
-  agrégalo detrás de `RadiantePlatform` e impleméntalo en `fabric/`, `neoforge/` y `forge/`, no con
-  `instanceof` contra clases de un loader dentro de `common/`.
-- Los cambios de shaders viven en `native/src/shader/` (el trazador de rayos es
-  `native/src/shader/world/ray_tracing/internal/radiante-pt/`); los cambios del renderizador nativo en C++ en
-  `native/src/prism/` y `native/src/common/`. Iguala la densidad de comentarios y el estilo de nombres del
-  código alrededor — los comentarios aquí explican *por qué* existe un valor o una comprobación, no qué hace
-  la línea.
-- Los arreglos de compatibilidad con mods deben ser generales, no atados a un solo mod. Si el mod X falla
-  porque Radiante omite o reemplaza algo que vanilla hace (p. ej. `LevelRenderer.render`, cuyos hooks al
-  inicio siguen ejecutándose gracias a `LevelRendererSkipMixin`), restaura ese comportamiento vanilla para que
-  cualquier mod que dependa de él se beneficie, en vez de tratar a X por nombre. Solo recurre a un parche
-  específico cuando no exista una solución general, y mantenlo opcional (reflexión, sin dependencia dura).
-- Prueba en un mundo con prefijo `Radiante*` dentro de `run-shared/saves/` (un superflat nuevo suele bastar) — nunca
-  apuntes una ejecución de prueba/desarrollo a un mundo que realmente juegas. `-PquickPlay="<mundo>"` entra
-  directo a uno.
-- Antes de abrir un PR: recompila los nativos (`native/build-windows.bat` o `native/build-linux.sh`), corre
-  `./gradlew.bat build` para los tres loaders, y verifica el cambio en el juego (con captura de pantalla si es
-  visual).
-- Sin atribución de IA (líneas de co-autor, trailers tipo "Generated with...", etc.) en mensajes de commit ni
-  descripciones de PR — escríbelos como propios.
-
-### Pull requests
-
-- Un cambio lógico por PR; mantén fuera del diff el formateo o reflow que no tenga que ver.
-- Describe qué cambió y por qué, y cómo lo probaste (las capturas de pantalla son especialmente útiles para
-  cambios visuales).
-- Referencia el issue que el PR arregla o avanza (`fixes #<n>` solo cuando el arreglo está verificado).
-- Los cambios grandes o arquitectónicos (nuevos render passes, nuevos backends de upscaler, trabajo de
-  paridad entre loaders) son más fáciles de aceptar si se discuten antes en un issue o en
-  [Discord](https://discord.gg/DhBbAzugZ9).
+Se agradecen reportes de bugs, traducciones, shader packs y pull requests. [CONTRIBUTING.md](CONTRIBUTING.md) (en
+inglés) explica cómo está organizado el proyecto, cómo compilarlo, ejecutarlo y probarlo, las convenciones del código,
+las ramas por versión de Minecraft y lo que necesita un pull request. Los bugs e ideas están en
+[GitHub Issues](https://github.com/Gabrieli2806/Radiante/issues).
 
 ## Licencia
 
