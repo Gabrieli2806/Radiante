@@ -1,0 +1,74 @@
+name: Crash
+description: The game crashes, freezes, or does not start with Radiante installed.
+labels: [bug, stability]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Sorry about the crash. The crash report or log is the most important part of this form: without it, a crash
+        can rarely be fixed.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before reporting
+      options:
+        - label: I searched the [open issues](https://github.com/Gabrieli2806/Radiante/issues) and this crash is not already reported.
+          required: true
+        - label: My GPU supports hardware ray tracing (see the [requirements](https://github.com/Gabrieli2806/Radiante/blob/mc/26.3/docs/en/requirements.md)).
+          required: true
+  - type: dropdown
+    id: when
+    attributes:
+      label: When does it crash?
+      options:
+        - On start, before the title screen
+        - When opening or joining a world
+        - While playing
+        - When changing a setting
+        - When closing the game
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What you were doing
+      description: The last thing you did before the crash, and whether it happens every time.
+    validations:
+      required: true
+  - type: input
+    id: radiante
+    attributes:
+      label: Radiante version
+      placeholder: "1.1.0"
+    validations:
+      required: true
+  - type: input
+    id: minecraft
+    attributes:
+      label: Minecraft version and loader
+      placeholder: "26.3, Fabric"
+    validations:
+      required: true
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU, driver version and operating system
+      placeholder: "RTX 4070, 591.74, Windows 11"
+    validations:
+      required: true
+  - type: textarea
+    id: mods
+    attributes:
+      label: Other mods
+      description: The full mod list, or at least the mods that touch rendering. Say if it also crashes with Radiante alone.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Crash report and log
+      description: |
+        Drag the files here (please do not paste them as text):
+        - the newest file in `crash-reports/`, if there is one
+        - `logs/latest.log`
+        - any `hs_err_pid*.log` in the game folder (a native crash)
+    validations:
+      required: true

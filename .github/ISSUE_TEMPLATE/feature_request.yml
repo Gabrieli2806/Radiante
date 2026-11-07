@@ -1,16 +1,43 @@
 name: Feature request
-description: An idea or an improvement
+description: An idea or an improvement.
 labels: [enhancement]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Bigger directions are tracked in the issues labelled
+        [roadmap](https://github.com/Gabrieli2806/Radiante/issues?q=is%3Aissue+is%3Aopen+label%3Aroadmap); check
+        whether yours fits one of them.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before suggesting
+      options:
+        - label: I searched the [issues](https://github.com/Gabrieli2806/Radiante/issues) and this is not already suggested.
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do, or what feels missing or wrong today.
+    validations:
+      required: true
   - type: textarea
     id: what
     attributes:
       label: What you would like
-      description: What it should do, and what problem it solves for you.
+      description: What it should do. If it is a visual idea, how it should look.
     validations:
       required: true
   - type: textarea
     id: alternatives
     attributes:
-      label: Anything similar you have seen
+      label: Examples or alternatives
       description: Another mod, game or shader that does it, with a link or a screenshot.
+  - type: dropdown
+    id: help
+    attributes:
+      label: Would you like to work on it?
+      options:
+        - "No"
+        - Yes, I would like to open a pull request (see CONTRIBUTING.md)
