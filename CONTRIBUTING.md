@@ -20,7 +20,7 @@ Quick links: [Issues](https://github.com/Gabrieli2806/Radiante/issues) ·
 8. [Using AI tools](#8-using-ai-tools)
 9. [Commits](#9-commits)
 10. [Pull requests](#10-pull-requests)
-11. [Releases (maintainers)](#11-releases-maintainers)
+11. [Versions and releases](#11-versions-and-releases)
 12. [Licence of contributions](#12-licence-of-contributions)
 
 ## 1. Ways to help
@@ -248,7 +248,7 @@ A new setting usually touches all of these:
 
 ### Documentation and changelog
 
-- A change players will notice gets a line in `changelog.md`.
+- A change players will notice gets a line in `changelog.md`, under `## [Unreleased]`.
 - A change to a setting or a feature updates its page in `docs/en` and `docs/es`.
 
 ## 7. Branches and Minecraft versions
@@ -315,18 +315,18 @@ Say:
 Pull requests are built by CI (both renderers and every loader's jar) but never publish anything. A maintainer
 reviews, may ask for changes, and merges; changes are usually squashed into one commit that keeps you as the author.
 
-## 11. Releases (maintainers)
+## 11. Versions and releases
 
-Releases are cut by the GitHub Actions workflow, never by hand. **Changing `mod_version` in `gradle.properties` and
-pushing publishes a release**, so only do it on purpose:
+Version numbers and releases are handled only by the maintainer. In a pull request, **do not change**:
 
-1. Add a `## [x.y.z] - date` section to `changelog.md`.
-2. Bump `mod_version` in `gradle.properties` and push to the branch of the Minecraft version.
-3. The workflow sees there is no `v<mod_version>+<minecraft_version>` tag yet, builds both renderers and the jars,
-   and publishes a GitHub release with that tag, with the changelog section as its notes. A version with a `-` (such
-   as `1.2.0-beta.1`) is a pre-release and stays on GitHub.
-4. When configured, the same run uploads each loader's jar to Modrinth and CurseForge. Details in
-   [docs/en/building.md](docs/en/building.md#publishing-a-version).
+- `mod_version` in `gradle.properties`. Pushing a new value publishes a release to GitHub, Modrinth and CurseForge.
+- The Minecraft, loader or dependency versions in `gradle.properties` (`minecraft_version`, `loader_version`,
+  `fabric_api_version`, `neoforge_version`, `forge_version` and the like).
+- The version headings in `changelog.md`. Add your line under `## [Unreleased]`; the maintainer turns it into a
+  version when releasing.
+
+If your change needs a newer Minecraft, loader or library version, say so in the pull request or the issue instead.
+How releases are published is described in [docs/en/building.md](docs/en/building.md#publishing-a-version).
 
 ## 12. Licence of contributions
 
