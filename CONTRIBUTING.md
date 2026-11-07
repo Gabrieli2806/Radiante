@@ -17,10 +17,11 @@ Quick links: [Issues](https://github.com/Gabrieli2806/Radiante/issues) ·
 5. [Running and testing](#5-running-and-testing)
 6. [Writing the change](#6-writing-the-change)
 7. [Branches and Minecraft versions](#7-branches-and-minecraft-versions)
-8. [Commits](#8-commits)
-9. [Pull requests](#9-pull-requests)
-10. [Releases (maintainers)](#10-releases-maintainers)
-11. [Licence of contributions](#11-licence-of-contributions)
+8. [Using AI tools](#8-using-ai-tools)
+9. [Commits](#9-commits)
+10. [Pull requests](#10-pull-requests)
+11. [Releases (maintainers)](#11-releases-maintainers)
+12. [Licence of contributions](#12-licence-of-contributions)
 
 ## 1. Ways to help
 
@@ -262,7 +263,26 @@ A new setting usually touches all of these:
 - Loaders per branch: 26.2 and 26.3 build for Fabric, NeoForge and Forge; the 26.4 snapshots are Fabric only until
   NeoForge and Forge publish builds for them.
 
-## 8. Commits
+## 8. Using AI tools
+
+AI coding assistants are welcome here; parts of Radiante itself are written with them. What matters is the result,
+and the same standard applies whoever or whatever typed the code:
+
+- **You are the author.** You must understand every line you submit and be able to explain why it is there and why it
+  is correct. "The assistant wrote it" is not an answer to a review question.
+- **Test it for real.** Build it (native build included when `native/` changed), run it in game in a `Radiante*` test
+  world, and compare before and after for visual changes. A change that compiles but was never run is not ready.
+- **Check what it claims.** Assistants confidently invent API methods, mixin targets, Vulkan behaviour and
+  benchmark results. Verify against the actual Minecraft jar, the code and the game, not against the assistant's
+  explanation.
+- **Keep it in scope.** Review the diff before opening the pull request and remove unrelated rewrites, reformatting,
+  renamed variables and comments that only restate the code.
+- **Respect licences.** Do not submit generated code that reproduces another project's code under an incompatible
+  licence.
+- **Be honest in the description.** State what you tested and what you did not. Pull requests that were plainly not
+  run, or whose author cannot answer questions about them, will be closed.
+
+## 9. Commits
 
 - Subject: short and lowercase, as `area: what changed`. For example
   `render: mark thin surfaces and particles, which let light through` or `docs: credit Radiance`.
@@ -271,7 +291,7 @@ A new setting usually touches all of these:
   trailers. Write them as your own.
 - Write `fixes #<n>` only when the fix is verified in game. Otherwise reference the issue (`#<n>`) and leave it open.
 
-## 9. Pull requests
+## 10. Pull requests
 
 ### Checklist
 
@@ -295,7 +315,7 @@ Say:
 Pull requests are built by CI (both renderers and every loader's jar) but never publish anything. A maintainer
 reviews, may ask for changes, and merges; changes are usually squashed into one commit that keeps you as the author.
 
-## 10. Releases (maintainers)
+## 11. Releases (maintainers)
 
 Releases are cut by the GitHub Actions workflow, never by hand. **Changing `mod_version` in `gradle.properties` and
 pushing publishes a release**, so only do it on purpose:
@@ -308,7 +328,7 @@ pushing publishes a release**, so only do it on purpose:
 4. When configured, the same run uploads each loader's jar to Modrinth and CurseForge. Details in
    [docs/en/building.md](docs/en/building.md#publishing-a-version).
 
-## 11. Licence of contributions
+## 12. Licence of contributions
 
 Radiante is licensed under the GPL-3.0, with an additional permission under section 7
 ([LICENSE-EXCEPTION.md](LICENSE-EXCEPTION.md)) that allows it to be distributed together with the NVIDIA DLSS,
