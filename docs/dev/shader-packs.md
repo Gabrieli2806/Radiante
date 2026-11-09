@@ -321,13 +321,18 @@ hashes them like the pack's own includes: a changed header recompiles the shader
 | `scene.glsl` | TLAS, instance and geometry lookup |
 | `vertex.glsl` | `radianteFetchTriangle(...)`: positions, normal, UVs, colour, light, surface flags, over both the full and the compact chunk layouts |
 | `surface.glsl` | What a ray hit, one function per surface flag: `radianteIsWater(surfaceFlags)`, lava, glass, pane and its open ends, leaves, plants, thin, frost, blend, layer, rain, held item and held light, unlit, glow light |
-| `uniforms.glsl` | Frozen v1 views of `WorldUBO`/`SkyUBO` and accessors (sun, moon and its phase, weather, wind, brightness, night vision) |
+| `uniforms.glsl` | `RadianteWorld` and `RadianteSky`: `WorldUBO` and `SkyUBO` under names of their own, for a pack that declares the uniform blocks itself; accessors (sun, moon and its phase, weather, wind, brightness, night vision) planned |
 | `material.glsl` | `radianteSampleMaterial(...)`: albedo, normal, roughness, metal, emission, subsurface from LabPBR and converted Bedrock RTX packs |
 | `payload.glsl`, `sharc.glsl`, `restir.glsl`, `omm.glsl`, `lod.glsl`, `debug.glsl` | Shared payloads, radiance cache, reservoirs, micromap state, Distant Horizons coverage, debug output |
 
 Radiante PT moves onto these headers first; a header is only published once Radiante PT uses it. Published so far:
-`surface.glsl`; the rest are planned. The surface tests it replaces (`isLeavesSurface`... in `util/vertex.glsl`) stay
-for the `radiante-pt@1` packs that call them.
+`surface.glsl`, and `uniforms.glsl`, the one exception: Radiante PT keeps the old names, since its `radiante-pt@1`
+hooks hand packs `worldUBO` by them. The native build checks it against `common/shared.hpp` instead, member by member
+(type, offset, matrix and array strides; `native/src/tools/check_v1_layout.py`, run whenever Python 3 and `spirv-dis`
+are found), so the two cannot drift apart. Its structs may stop short of the engine's (`handPrimaryBounds`, the
+renderer's own, is left out), and members are only ever added at their end. The rest are planned. The surface tests
+`surface.glsl` replaces (`isLeavesSurface`... in `util/vertex.glsl`) stay for the `radiante-pt@1` packs that call
+them.
 
 A pack that uses Radiante only through these headers and the `radiante-pt@1` hooks can have any licence
 ([LICENSE-EXCEPTION.md](../../LICENSE-EXCEPTION.md)), so they are written from scratch, with nothing copied from

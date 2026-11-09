@@ -228,7 +228,9 @@ herramientas de `native/src/tools/`: los errores salen con archivo y línea, com
 
 Ayudas útiles: qué golpeó un rayo, con `#include <radiante/v1/surface.glsl>` (`radianteIsLeaves`, `radianteIsPlant`,
 `radianteIsWater`, `radianteIsGlass` y una para cada otro tipo de superficie), siempre la del Radiante en el que corre
-tu paquete; el sol, la luna y el clima en `worldUBO` y `skyUBO`.
+tu paquete; el sol, la luna y el clima en `worldUBO` y `skyUBO`. Un paquete con pases propios declara esos uniforms
+con `#include <radiante/v1/uniforms.glsl>`: `RadianteWorld` (la cámara, la niebla, las luces de las manos, el viento,
+sus ajustes en vivo) y `RadianteSky` (el sol y la luna, el clima, el bioma, el agua).
 
 ## Si algo falla
 
@@ -245,5 +247,5 @@ tu paquete; el sol, la luna y el clima en `worldUBO` y `skyUBO`.
 Radiante y Radiante PT son GPL-3.0, pero un paquete que los usa solo a través de la interfaz para paquetes puede tener
 cualquier licencia ([LICENSE-EXCEPTION.md](../../LICENSE-EXCEPTION.md)): las cabeceras `radiante/v1` y los hooks de
 `radiante-pt@1` (tus propios archivos de hooks, `common/pack_*.glsl`). Un paquete que copia archivos de Radiante PT o
-lee otras partes del renderizador, como `worldUBO` y `util/`, es GPL-3.0. La interfaz crece con cada cabecera que
+lee otras partes del renderizador, como `common/shared.hpp` y `util/`, es GPL-3.0. La interfaz crece con cada cabecera que
 publica `radiante/v1`.

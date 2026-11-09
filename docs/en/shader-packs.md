@@ -220,7 +220,9 @@ in `native/src/tools/`: errors show with file and line, as they do under the lis
 
 Useful helpers: what a ray hit, from `#include <radiante/v1/surface.glsl>` (`radianteIsLeaves`, `radianteIsPlant`,
 `radianteIsWater`, `radianteIsGlass` and one for every other kind of surface), always the one of the Radiante your
-pack runs on; the sun, moon and weather in `worldUBO` and `skyUBO`.
+pack runs on; the sun, moon and weather in `worldUBO` and `skyUBO`. A pack with passes of its own declares those
+uniforms with `#include <radiante/v1/uniforms.glsl>`: `RadianteWorld` (the camera, the fog, the hands' lights, the
+wind, its live settings) and `RadianteSky` (the sun and the moon, the weather, the biome, the water).
 
 ## When something goes wrong
 
@@ -237,4 +239,4 @@ pack runs on; the sun, moon and weather in `worldUBO` and `skyUBO`.
 Radiante and Radiante PT are GPL-3.0, but a pack that uses them only through the pack interface can have any licence
 ([LICENSE-EXCEPTION.md](../../LICENSE-EXCEPTION.md)): the `radiante/v1` headers and the `radiante-pt@1` hooks (your
 own hook files, `common/pack_*.glsl`). A pack that copies Radiante PT's files or reads other parts of the renderer,
-such as `worldUBO` and `util/`, is GPL-3.0. The interface grows with each header `radiante/v1` publishes.
+such as `common/shared.hpp` and `util/`, is GPL-3.0. The interface grows with each header `radiante/v1` publishes.
