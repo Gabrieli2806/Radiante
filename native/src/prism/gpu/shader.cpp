@@ -180,8 +180,14 @@ void stripComments(std::string_view line, bool &inBlockComment, std::string &cod
     }
 }
 
-// The file of an #include "file" line. #include <file> is not followed, so it does not count towards the hash.
-std::optional<std::string_view> quotedInclude(std::string_view line) {
+// The file an #include line names. The compiler looks for a name in quotes next to the including file first, then in
+// the include directories; for one in angle brackets (radiante/v1/...), only in the include directories.
+struct IncludeLine {
+    std::string_view name;
+    bool angled = false;
+};
+
+std::optional<IncludeLine> includeLine(std::string_view line) {
     size_t i = 0;
     const auto skipSpace = [&] {
         while (i < line.size() && isSpace(line[i])) { i++; }
@@ -194,11 +200,12 @@ std::optional<std::string_view> quotedInclude(std::string_view line) {
     while (i < line.size() && isIdentifier(line[i])) { i++; }
     if (line.substr(directive, i - directive) != "include") { return std::nullopt; }
     skipSpace();
-    if (i == line.size() || line[i] != '"') { return std::nullopt; }
+    if (i == line.size() || (line[i] != '"' && line[i] != '<')) { return std::nullopt; }
+    const bool angled = line[i] == '<';
     const size_t start = i + 1;
-    const size_t end = line.find('"', start);
+    const size_t end = line.find(angled ? '>' : '"', start);
     if (end == std::string_view::npos) { return std::nullopt; }
-    return line.substr(start, end - start);
+    return IncludeLine{line.substr(start, end - start), angled};
 }
 
 // One source file of a SourceIndex. Read on first use, then never changed.
@@ -209,7 +216,7 @@ struct SourceFile {
     bool readable = false;
     uint64_t ownHash = 0; // of the key and the file's bytes
     uint64_t size = 0;
-    std::vector<SourceFile *> includes; // each #include "...", in order; null where it is not found
+    std::vector<SourceFile *> includes; // each #include, in order; null where a name in quotes is not found
 };
 
 // The source files read for the dependency hashes of a set of shaders that share their include directories. Each
@@ -260,17 +267,25 @@ class SourceIndex {
         for (size_t start = 0; start < text.size();) {
             const size_t end = std::min(text.find('\n', start), text.size());
             stripComments(text.substr(start, end - start), inBlockComment, code);
-            if (const auto include = quotedInclude(code)) { file.includes.push_back(resolve(directory, *include)); }
+            if (const auto include = includeLine(code)) {
+                // A name in angle brackets that no include directory has is a C++ header in a file C++ shares
+                // (common/mapping.hpp includes <cstdint> under __cplusplus); the shader compile never reads it.
+                SourceFile *included = resolve(directory, *include);
+                if (included != nullptr || !include->angled) { file.includes.push_back(included); }
+            }
             start = end + 1;
         }
     }
 
-    SourceFile *resolve(const fs::path &directory, std::string_view name) {
+    // The file the compiler includes (ShaderIncluder::GetInclude).
+    SourceFile *resolve(const fs::path &directory, const IncludeLine &include) {
         std::error_code error;
-        const fs::path beside = directory / fs::path(name);
-        if (fs::is_regular_file(beside, error)) { return &entry(makeCanonical(beside)); }
+        if (!include.angled) {
+            const fs::path beside = directory / fs::path(include.name);
+            if (fs::is_regular_file(beside, error)) { return &entry(makeCanonical(beside)); }
+        }
         for (const std::string &includeDirectory : includeDirectories_) {
-            const fs::path candidate = fs::path(includeDirectory) / fs::path(name);
+            const fs::path candidate = fs::path(includeDirectory) / fs::path(include.name);
             if (fs::is_regular_file(candidate, error)) { return &entry(makeCanonical(candidate)); }
         }
         return nullptr;

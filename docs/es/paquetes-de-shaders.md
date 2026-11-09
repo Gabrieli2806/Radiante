@@ -50,7 +50,7 @@ Radiante PT llama a una pequeña función en los sitios que un paquete suele que
 
 | Archivo | Función | Qué puedes hacer ahí |
 | --- | --- | --- |
-| `hooks/surface.glsl` | `hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce)` | Cambiar el color, la rugosidad, la normal o el brillo de una superficie tras leer sus texturas. `isLeavesSurface(surfaceFlags)` y las demás pruebas de `util/vertex.glsl` dicen qué se golpeó `hookTexelCentre(surface.uv, surface.worldPos)` da el centro del texel golpeado; mover `surface.worldPos` ahí y ajustar `g_hookViewDir` ilumina y refleja por texel (mira el paquete Pixelated Lighting) |
+| `hooks/surface.glsl` | `hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce)` | Cambiar el color, la rugosidad, la normal o el brillo de una superficie tras leer sus texturas. `radianteIsLeaves(surfaceFlags)` y las demás pruebas de `radiante/v1/surface.glsl` dicen qué se golpeó. `hookTexelCentre(surface.uv, surface.worldPos)` da el centro del texel golpeado; mover `surface.worldPos` ahí y ajustar `g_hookViewDir` ilumina y refleja por texel (mira el paquete Pixelated Lighting) |
 | `hooks/ray_origins.glsl` | `vec3 hookShadowOffset()`, `vec3 hookReflectionOffset()` | Mover de dónde salen los rayos de sombra y de reflejo de un impacto, aparte de dónde se ilumina: los rayos de sombra del sol, de las luces de bloque y de las luces en la mano (apuntando a la misma luz), el lóbulo de reflejo, el reflejo del agua y del cristal y los espejos (girados a la vista del punto movido; da a `material_state` `"depth": 4` en tus `textures`). Devuelve desplazamientos desde el impacto, calculados en `hookSurface`; cero deja los de Radiante PT. Mira Pixelated Lighting |
 | `hooks/rain_surface.glsl` | `vec3 hookRainPosition(vec3 worldPos)`, `float hookPuddleEdge(float puddle)` | Dónde se calculan los charcos y los anillos de las gotas de lluvia (relativo a la cámara; devuélvelo igual para dejar los de Radiante PT) y lo duro que es el borde de un charco. Mira Pixelated Lighting |
 | `hooks/direct_light.glsl` | `hookDirectLight(SampledSurface surface, vec3 viewDir, vec3 lightDir, float NoL, inout vec3 lightBRDF)` | Cambiar cómo iluminan el sol y la luna una superficie (bandas de cel, luz a través de las hojas cuando `NoL < 0`) |
@@ -226,9 +226,9 @@ herramientas de `native/src/tools/`: los errores salen con archivo y línea, com
 | Shaders | las carpetas del paquete, `hooks/` | GLSL, se compilan al elegir el paquete |
 | Base | `configs.json`, `"radiante"`, `"extends"` | `radiante-pt@1`: Radiante PT debajo del paquete |
 
-Ayudas útiles de las cabeceras de Radiante PT: `isLeavesSurface`, `isPlantSurface`, `isWaterSurface`,
-`isGlassSurface` y las demás pruebas de superficie en `util/vertex.glsl`; el sol, la luna y el clima en `worldUBO` y
-`skyUBO`.
+Ayudas útiles: qué golpeó un rayo, con `#include <radiante/v1/surface.glsl>` (`radianteIsLeaves`, `radianteIsPlant`,
+`radianteIsWater`, `radianteIsGlass` y una para cada otro tipo de superficie), siempre la del Radiante en el que corre
+tu paquete; el sol, la luna y el clima en `worldUBO` y `skyUBO`.
 
 ## Si algo falla
 

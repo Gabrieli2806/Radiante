@@ -15,6 +15,7 @@
 //
 // Wet Surfaces sets how wet the lingering ground is, Puddles how far they spread. The pack's debug view
 // (/radiante debug view aether_wetness) paints the wet ground blue and the puddles white.
+#include <radiante/v1/surface.glsl>
 #include "aether/aether_noise.glsl"
 
 bool g_aetherFoliage = false;
@@ -37,8 +38,8 @@ void aetherWetGround(inout SampledSurface surface, uint surfaceFlags, uint bounc
     float puddleSetting = clamp(float(AETHER_PUDDLES), 0.0, 1.0);
     if (wetSetting <= 0.0 && puddleSetting <= 0.0 && AETHER_DEBUG_WETNESS == 0) { return; }
     if (surface.geometricNormal.y < 0.5) { return; }
-    if (isWaterSurface(surfaceFlags) || isLavaSurface(surfaceFlags) || isGlassSurface(surfaceFlags) ||
-        isPaneSurface(surfaceFlags) || isHeldSurface(surfaceFlags) || isRainSurface(surfaceFlags)) {
+    if (radianteIsWater(surfaceFlags) || radianteIsLava(surfaceFlags) || radianteIsGlass(surfaceFlags) ||
+        radianteIsPane(surfaceFlags) || radianteIsHeld(surfaceFlags) || radianteIsRain(surfaceFlags)) {
         return;
     }
     if (surface.mat.transmission > 0.0 || surface.mat.emission > 0.0) { return; }
@@ -86,7 +87,7 @@ void aetherWetGround(inout SampledSurface surface, uint surfaceFlags, uint bounc
 }
 
 void hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce) {
-    g_aetherFoliage = isLeavesSurface(surfaceFlags) || isPlantSurface(surfaceFlags);
+    g_aetherFoliage = radianteIsLeaves(surfaceFlags) || radianteIsPlant(surfaceFlags);
     aetherWetGround(surface, surfaceFlags, bounce);
 }
 

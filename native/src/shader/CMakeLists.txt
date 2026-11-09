@@ -54,6 +54,13 @@ install(
     FILES_MATCHING PATTERN "*.spv"
 )
 
+# The public headers of the shader pack interface (radiante/v1/...), installed as they are. Every pack compile searches
+# this folder (shader_pack_loader.cpp), so a pack includes them instead of carrying copies of Radiante's internals.
+install(
+    DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
+    DESTINATION ${PRISM_INSTALL_LIB_DIR}/shaders/include
+)
+
 set(ZIP_INSTALL_DEST "${PRISM_INSTALL_LIB_DIR}/shaders/world/ray_tracing")
 set(RT_INTERNAL_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/world/ray_tracing/internal")
 set(RT_UTIL_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/util")

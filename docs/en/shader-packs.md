@@ -47,7 +47,7 @@ that does nothing in Radiante PT; put your own file at the same path:
 
 | File | Function | What you can do there |
 | --- | --- | --- |
-| `hooks/surface.glsl` | `hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce)` | Change a surface's colour, roughness, normal or glow after its textures are read. `isLeavesSurface(surfaceFlags)` and the other tests in `util/vertex.glsl` say what was hit `hookTexelCentre(surface.uv, surface.worldPos)` gives the centre of the texel hit; moving `surface.worldPos` there and setting `g_hookViewDir` lights and reflects per texel (see the Pixelated Lighting pack) |
+| `hooks/surface.glsl` | `hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce)` | Change a surface's colour, roughness, normal or glow after its textures are read. `radianteIsLeaves(surfaceFlags)` and the other tests in `radiante/v1/surface.glsl` say what was hit. `hookTexelCentre(surface.uv, surface.worldPos)` gives the centre of the texel hit; moving `surface.worldPos` there and setting `g_hookViewDir` lights and reflects per texel (see the Pixelated Lighting pack) |
 | `hooks/ray_origins.glsl` | `vec3 hookShadowOffset()`, `vec3 hookReflectionOffset()` | Move where a hit's shadow rays and reflection rays start, apart from where it is lit: the sun's, block lights' and held lights' shadow rays (still aimed at the same light), the reflection lobe, water's and glass's reflection and mirrors (turned to the view of the moved point; give `material_state` `"depth": 4` in your `textures`). Return offsets from the hit, set in `hookSurface`; zero keeps Radiante PT's. See Pixelated Lighting |
 | `hooks/rain_surface.glsl` | `vec3 hookRainPosition(vec3 worldPos)`, `float hookPuddleEdge(float puddle)` | Where rain's puddles and drop rings are looked up (camera-relative; return it unchanged to keep Radiante PT's) and how hard a puddle's rim is. See Pixelated Lighting |
 | `hooks/direct_light.glsl` | `hookDirectLight(SampledSurface surface, vec3 viewDir, vec3 lightDir, float NoL, inout vec3 lightBRDF)` | Change how the sun and moon light a surface (cel bands, light through leaves when `NoL < 0`) |
@@ -218,8 +218,9 @@ in `native/src/tools/`: errors show with file and line, as they do under the lis
 | Shaders | the pack's folders, `hooks/` | GLSL, compiled when the pack is chosen |
 | Base | `configs.json`, `"radiante"`, `"extends"` | `radiante-pt@1`: Radiante PT under the pack |
 
-Useful helpers from Radiante PT's headers: `isLeavesSurface`, `isPlantSurface`, `isWaterSurface`, `isGlassSurface`
-and the other surface tests in `util/vertex.glsl`; the sun, moon and weather in `worldUBO` and `skyUBO`.
+Useful helpers: what a ray hit, from `#include <radiante/v1/surface.glsl>` (`radianteIsLeaves`, `radianteIsPlant`,
+`radianteIsWater`, `radianteIsGlass` and one for every other kind of surface), always the one of the Radiante your
+pack runs on; the sun, moon and weather in `worldUBO` and `skyUBO`.
 
 ## When something goes wrong
 
