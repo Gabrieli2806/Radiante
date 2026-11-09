@@ -332,16 +332,16 @@ vec3 ptWindMotion(vec3 hitPos, float windCode) {
     world.xz -= floor(world.xz / double(WIND_PERIOD)) * double(WIND_PERIOD);
     vec3 p = vec3(world);
     vec3 now = windOffset(p, windCode, worldUBO.windTime, worldUBO.windStrength, worldUBO.windWeather) *
-               windFade(length(hitPos));
+               windFadeAt(hitPos, p, windCode);
     // The field is read where the point stands at rest, as the pass read it, not where it has been blown to.
     p -= now;
     vec3 restPos = hitPos - now;
     now = windOffset(p, windCode, worldUBO.windTime, worldUBO.windStrength, worldUBO.windWeather) *
-          windFade(length(restPos));
+          windFadeAt(restPos, p, windCode);
     vec3 restFromLastCamera = restPos + vec3(worldUBO.cameraPos.xyz - vptLastWorldUBO.cameraPos.xyz);
     vec3 before = windOffset(p, windCode, vptLastWorldUBO.windTime, vptLastWorldUBO.windStrength,
                              vptLastWorldUBO.windWeather) *
-                  windFade(length(restFromLastCamera));
+                  windFadeAt(restFromLastCamera, p, windCode);
     return now - before;
 }
 
