@@ -152,6 +152,8 @@ If your change needs a newer version of something, say so in the pull request.
 
 ## 12. Licence
 
-Radiante is GPL-3.0 with an [additional permission](LICENSE-EXCEPTION.md) to ship it with the NVIDIA and Intel
-runtime libraries. By contributing, you agree your contribution is licensed the same way. Name the source of
+Radiante is GPL-3.0 with [additional permissions](LICENSE-EXCEPTION.md) to ship it with the NVIDIA and Intel runtime
+libraries, and to let shader packs that use only its pack interface (`radiante/v1`, Radiante PT's hooks) keep their
+own licence. By contributing, you agree your contribution is licensed the same way. Write that interface from
+scratch: nothing copied from Radiance, MCVR or other projects, so the permission can cover it. Name the source of
 anything you adapt from another project.

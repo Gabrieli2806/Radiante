@@ -329,6 +329,10 @@ Radiante PT moves onto these headers first; a header is only published once Radi
 `surface.glsl`; the rest are planned. The surface tests it replaces (`isLeavesSurface`... in `util/vertex.glsl`) stay
 for the `radiante-pt@1` packs that call them.
 
+A pack that uses Radiante only through these headers and the `radiante-pt@1` hooks can have any licence
+([LICENSE-EXCEPTION.md](../../LICENSE-EXCEPTION.md)), so they are written from scratch, with nothing copied from
+Radiance, MCVR or Vanilla-PT.
+
 ## 7. Settings
 
 Every attribute of a pack is a setting, named through its `lang` files; `"runtime": true` attributes change live

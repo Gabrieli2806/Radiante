@@ -242,5 +242,8 @@ tu paquete; el sol, la luna y el clima en `worldUBO` y `skyUBO`.
 
 ## Licencia
 
-Radiante PT es GPL-3.0, así que un paquete hecho con sus archivos también es GPL-3.0. Si las futuras cabeceras públicas
-tendrán una licencia más permisiva está por decidir.
+Radiante y Radiante PT son GPL-3.0, pero un paquete que los usa solo a través de la interfaz para paquetes puede tener
+cualquier licencia ([LICENSE-EXCEPTION.md](../../LICENSE-EXCEPTION.md)): las cabeceras `radiante/v1` y los hooks de
+`radiante-pt@1` (tus propios archivos de hooks, `common/pack_*.glsl`). Un paquete que copia archivos de Radiante PT o
+lee otras partes del renderizador, como `worldUBO` y `util/`, es GPL-3.0. La interfaz crece con cada cabecera que
+publica `radiante/v1`.

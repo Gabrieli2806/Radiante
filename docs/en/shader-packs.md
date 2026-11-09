@@ -234,5 +234,7 @@ pack runs on; the sun, moon and weather in `worldUBO` and `skyUBO`.
 
 ## Licence
 
-Radiante PT is GPL-3.0, so a pack built from its files is GPL-3.0 too. Whether the future public headers get a more
-permissive licence is still open.
+Radiante and Radiante PT are GPL-3.0, but a pack that uses them only through the pack interface can have any licence
+([LICENSE-EXCEPTION.md](../../LICENSE-EXCEPTION.md)): the `radiante/v1` headers and the `radiante-pt@1` hooks (your
+own hook files, `common/pack_*.glsl`). A pack that copies Radiante PT's files or reads other parts of the renderer,
+such as `worldUBO` and `util/`, is GPL-3.0. The interface grows with each header `radiante/v1` publishes.

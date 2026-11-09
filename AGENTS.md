@@ -25,7 +25,7 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 | `common/src/main/resources/assets/radiante/lang/` | Texts: `en_us`, `es_es`, `zh_cn` |
 | `native/src/prism/` | Renderer: `gpu/`, `render/` (modules, framework, pipeline), `middleware/` (JNI, one file per Java class) |
 | `native/src/shader/world/ray_tracing/internal/radiante-pt/` | The path tracer: `configs.json` (attributes, textures, passes), `world/`, `pt/`, `common/`, and `hooks/`, the hook points shader packs replace |
-| `native/src/shader/include/radiante/v1/` | The public headers shader packs include (`#include <radiante/v1/surface.glsl>`), the same for every pack on this Radiante: within v1 functions are only added, never renamed, removed or changed |
+| `native/src/shader/include/radiante/v1/` | The public headers shader packs include (`#include <radiante/v1/surface.glsl>`), the same for every pack on this Radiante. Written from scratch, nothing copied, so packs on them can keep their own licence (`LICENSE-EXCEPTION.md`); within v1 functions are only added, never renamed, removed or changed |
 | `examples/shaderpacks/` | Example packs built on radiante-pt (`./gradlew shaderPackExamples`); the design is `docs/dev/shader-packs.md`, the author guide `docs/en/shader-packs.md`, the roadmap issue #55 |
 | `docs/en`, `docs/es` | Player documentation (same pages in both languages), one page per settings section in `settings/` (`opciones/`) |
 | `docs/dev` | Developer documentation, English only: building, testing, architecture, shader pack design |

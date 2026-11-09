@@ -159,6 +159,8 @@ Si tu cambio necesita una versión más nueva de algo, dilo en el pull request.
 
 ## 12. Licencia
 
-Radiante es GPL-3.0 con un [permiso adicional](LICENSE-EXCEPTION.md) para distribuirlo con las librerías de NVIDIA e
-Intel. Al contribuir, aceptas que tu contribución tenga la misma licencia. Indica de dónde sale cualquier cosa que
-adaptes de otro proyecto.
+Radiante es GPL-3.0 con [permisos adicionales](LICENSE-EXCEPTION.md) para distribuirlo con las librerías de NVIDIA e
+Intel, y para que los paquetes de shaders que usan solo su interfaz para paquetes (`radiante/v1`, los hooks de
+Radiante PT) conserven su propia licencia. Al contribuir, aceptas que tu contribución tenga la misma licencia. Esa
+interfaz se escribe desde cero: nada copiado de Radiance, MCVR ni otros proyectos, para que el permiso la cubra.
+Indica de dónde sale cualquier cosa que adaptes de otro proyecto.
