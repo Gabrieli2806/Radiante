@@ -67,6 +67,33 @@ float windFadeAt(vec3 relative, vec3 p, float code) {
     return windFade(length(relative + windPoint(p, code) - p));
 }
 
+// How grass or a leaf sways at one pace of the wind, its clock running pace times as fast as t. at is where the field
+// is read (windPoint); the rest as windOffset works them out.
+vec3 windSway(float kind, float weight, float phase, vec2 at, float t, float pace, float strength, float weather) {
+    // The wind blows along windDir. Gusts are slow swells rolling across the land with it (about a hundred blocks
+    // apart, a few blocks a second), so a whole patch leans and settles together.
+    const vec2 windDir = vec2(0.8, 0.6);
+    float swell = 0.5 + 0.5 * sin(dot(at, WIND_K * vec2(32.0, 24.0)) - 0.35 * pace * t);
+    float flurry = 0.5 + 0.5 * sin(dot(at, WIND_K * vec2(-9.0, 21.0)) - 0.21 * pace * t + 1.0);
+    float gust = mix(0.25, 1.0, swell * (0.4 + 0.6 * flurry));
+    float tf = t * pace;
+
+    if (kind >= WIND_KIND_LEAVES) {
+        float amplitude = 0.045 * weight * strength * weather;
+        vec3 rustle = vec3(sin(2.7 * tf + phase), 0.6 * sin(3.4 * tf + 1.6 * phase + 1.0),
+                           sin(2.3 * tf + 2.2 * phase + 2.0)) * (0.35 + 0.65 * gust);
+        rustle.xz += windDir * (0.6 * gust);
+        return rustle * amplitude;
+    }
+
+    float amplitude = 0.085 * weight * strength * weather;
+    float sway = 0.5 * sin(2.2 * tf + phase) + 0.2 * sin(3.7 * tf + 1.9 * phase);
+    vec2 lean = windDir * (0.6 * gust + sway * (0.4 + 0.6 * gust)) +
+                vec2(-windDir.y, windDir.x) * (0.25 * sin(2.9 * tf + 2.3 * phase));
+    lean *= amplitude;
+    return vec3(lean.x, -dot(lean, lean) / (2.0 * max(weight, 0.25)), lean.y);
+}
+
 // How far a vertex is moved from its rest position, in blocks. p: the rest position with x and z wrapped into
 // [0, WIND_PERIOD); t: the wind time in seconds (game time, so it stops with the game); strength: the player's
 // slider, 0 for no wind; weather: 1 in clear weather, more in rain and thunder.
@@ -90,30 +117,19 @@ vec3 windOffset(vec3 p, float code, float t, float strength, float weather) {
         return vec3(sway.x, -dot(sway, sway) / (2.0 * max(weight, 0.25)), sway.y);
     }
 
-    // The wind blows along windDir. Gusts are slow swells rolling across the land with it (about a hundred blocks
-    // apart, a few blocks a second), so a whole patch leans and settles together; rain and thunder blow harder and
-    // quicker.
-    const vec2 windDir = vec2(0.8, 0.6);
-    float rush = mix(1.0, 1.5, clamp(weather - 1.0, 0.0, 1.0));
-    float swell = 0.5 + 0.5 * sin(dot(at.xz, WIND_K * vec2(32.0, 24.0)) - 0.35 * rush * t);
-    float flurry = 0.5 + 0.5 * sin(dot(at.xz, WIND_K * vec2(-9.0, 21.0)) - 0.21 * rush * t + 1.0);
-    float gust = mix(0.25, 1.0, swell * (0.4 + 0.6 * flurry));
-    float tf = t * rush;
-
-    if (kind >= WIND_KIND_LEAVES) {
-        float amplitude = 0.045 * weight * strength * weather;
-        vec3 rustle = vec3(sin(2.7 * tf + phase), 0.6 * sin(3.4 * tf + 1.6 * phase + 1.0),
-                           sin(2.3 * tf + 2.2 * phase + 2.0)) * (0.35 + 0.65 * gust);
-        rustle.xz += windDir * (0.6 * gust);
-        return rustle * amplitude;
-    }
-
-    float amplitude = 0.085 * weight * strength * weather;
-    float sway = 0.5 * sin(2.2 * tf + phase) + 0.2 * sin(3.7 * tf + 1.9 * phase);
-    vec2 lean = windDir * (0.6 * gust + sway * (0.4 + 0.6 * gust)) +
-                vec2(-windDir.y, windDir.x) * (0.25 * sin(2.9 * tf + 2.3 * phase));
-    lean *= amplitude;
-    return vec3(lean.x, -dot(lean, lean) / (2.0 * max(weight, 0.25)), lean.y);
+    // Rain and thunder blow harder (weather scales the sway) and quicker. Quicker cannot scale the clock by the
+    // weather: each step of the scale as the rain sets in moves the sway on by that step times the whole clock, and
+    // thousands of seconds into a game the leaves jumped about on every frame until the weather settled. The sway runs
+    // at fixed paces instead, 1 in clear weather, 1.25 in rain and 1.5 in a storm, and weather in between blends the
+    // two either side of it.
+    float stage = clamp(weather - 1.0, 0.0, 1.0) * 2.0;
+    float lower = min(floor(stage), 1.0);
+    float blend = stage - lower;
+    float pace = 1.0 + 0.25 * lower;
+    if (blend <= 0.0) { return windSway(kind, weight, phase, at.xz, t, pace, strength, weather); }
+    if (blend >= 1.0) { return windSway(kind, weight, phase, at.xz, t, pace + 0.25, strength, weather); }
+    return mix(windSway(kind, weight, phase, at.xz, t, pace, strength, weather),
+               windSway(kind, weight, phase, at.xz, t, pace + 0.25, strength, weather), blend);
 }
 
 #endif

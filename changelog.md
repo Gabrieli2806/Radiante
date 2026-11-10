@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- With Wind on, leaves and plants no longer shake while the weather changes between clear, rain and thunder.
+
 - With Wind on, a plant sways in one piece: the front and back faces of its planes no longer cut through each other in patches.
 
 - Shader packs: opacity micromaps keep the solid parts of cut-out terrain (leaves, plants) as "unknown opaque", so a ray traced without the forced two-state reading asks the any-hit shader there and nowhere else, for light let through foliage. Radiante PT reads them in two states as before.
