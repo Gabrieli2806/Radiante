@@ -42,6 +42,26 @@ add_custom_target(shaders ALL
     DEPENDS ${SPIRV_OUTPUT_FILES} ${GLSL_DEPENDS}
 )
 
+# radiante/v1/uniforms.glsl gives the engine's per-frame uniforms (WorldUBO and SkyUBO in common/shared.hpp) names of its
+# own. The check stops the build when the two lay them out differently, so a member added on one side is added on the
+# other. It needs Python 3 and spirv-dis (both in the Vulkan SDK's usual setups); without them it is skipped.
+find_package(Python3 COMPONENTS Interpreter)
+find_program(SPIRV_DIS spirv-dis HINTS "$ENV{VULKAN_SDK}/Bin" "$ENV{VULKAN_SDK}/bin")
+if(Python3_Interpreter_FOUND AND SPIRV_DIS)
+    set(V1_LAYOUT_STAMP "${CMAKE_CURRENT_BINARY_DIR}/check_v1_layout.stamp")
+    add_custom_command(
+        OUTPUT "${V1_LAYOUT_STAMP}"
+        COMMAND ${Python3_EXECUTABLE} "${PROJECT_SOURCE_DIR}/src/tools/check_v1_layout.py" --glslang ${GLSLVALIDATOR}
+                --spirv-dis "${SPIRV_DIS}" --stamp "${V1_LAYOUT_STAMP}"
+        DEPENDS "${PROJECT_SOURCE_DIR}/src/tools/check_v1_layout.py"
+                "${CMAKE_CURRENT_SOURCE_DIR}/include/radiante/v1/uniforms.glsl" ${GLSL_DEPENDS}
+        VERBATIM
+    )
+    add_custom_target(check_v1_layout ALL DEPENDS "${V1_LAYOUT_STAMP}")
+else()
+    message(STATUS "radiante/v1 layout check skipped: it needs Python 3 and spirv-dis")
+endif()
+
 install(
     DIRECTORY ${SPIRV_OUTPUT_PATH}/
     DESTINATION ${PRISM_INSTALL_BIN_DIR}/res
@@ -52,6 +72,13 @@ install(
     DIRECTORY ${SPIRV_OUTPUT_PATH}/
     DESTINATION ${PRISM_INSTALL_LIB_DIR}/shaders
     FILES_MATCHING PATTERN "*.spv"
+)
+
+# The public headers of the shader pack interface (radiante/v1/...), installed as they are. Every pack compile searches
+# this folder (shader_pack_loader.cpp), so a pack includes them instead of carrying copies of Radiante's internals.
+install(
+    DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
+    DESTINATION ${PRISM_INSTALL_LIB_DIR}/shaders/include
 )
 
 set(ZIP_INSTALL_DEST "${PRISM_INSTALL_LIB_DIR}/shaders/world/ray_tracing")

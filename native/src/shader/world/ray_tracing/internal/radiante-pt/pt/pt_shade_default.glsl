@@ -94,6 +94,7 @@ layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer Ind
 indexBuffer;
 
 #include "util/vertex.glsl"
+#include <radiante/v1/surface.glsl>
 #include "common/constants.glsl"
 #include "common/water_medium.glsl"
 #include "common/rain_wetness.glsl"
@@ -282,7 +283,7 @@ void ptShadeDefault(bool viewMark) {
 
         float coneRadiusWorld = mainRay.coneWidth + g_hit.hitT * mainRay.coneSpread;
         computedposduDv(p0.pos, p1.pos, p2.pos, m0.textureUV, m1.textureUV, m2.textureUV, dposdu, dposdv);
-        if (isGlassSurface(packedData) && !isHeldSurface(packedData)) {
+        if (radianteIsGlass(packedData) && !radianteIsHeld(packedData)) {
             textureUV = seamlessGlassUV(textureUV, baryCoords.x * p0.pos + baryCoords.y * p1.pos + baryCoords.z * p2.pos,
                                         dposdu, dposdv, packedData);
             if (seamlessGlassUniform(packedData)) {
@@ -307,9 +308,9 @@ void ptShadeDefault(bool viewMark) {
         baseGeoNormal = planeGeoNormal;
         if (dot(baseGeoNormal, baseViewDir) < 0.0) { baseGeoNormal = -baseGeoNormal; }
 
-        isWaterMaterial = isWaterSurface(packedData);
-        g_hitIsGlass = isGlassSurface(packedData);
-        hitIsLayer = isLayerSurface(packedData);
+        isWaterMaterial = radianteIsWater(packedData);
+        g_hitIsGlass = radianteIsGlass(packedData);
+        hitIsLayer = radianteIsLayer(packedData);
         if (textureMap.flag >= 0) {
             ivec4 flags = ivec4(round(sampleTexture(textures[nonuniformEXT(textureMap.flag)], textureUV, ceil(lod), false) * 255.0));
             isWaterMaterial = isWaterMaterial || (flags.r & 0x1) > 0;
@@ -376,7 +377,7 @@ void ptShadeDefault(bool viewMark) {
         vec3 prevScenePos;
         if (loadPreviousScenePos(geometryBufferIndex, g_hit.primitiveId, baryCoords, prevScenePos)) {
             // A raindrop seen here was higher up the sheet last frame.
-            if (isRainSurface(packedData)) { prevScenePos.y += worldUBO.rainFallPerFrame; }
+            if (radianteIsRain(packedData)) { prevScenePos.y += worldUBO.rainFallPerFrame; }
             mainRay.prevScenePos = prevScenePos;
             mainRay.hasPrevScenePos = 1u;
         } else if (worldUBO.windStrength > 0.0 || vptLastWorldUBO.windStrength > 0.0) {
@@ -409,19 +410,19 @@ void ptShadeDefault(bool viewMark) {
                        baseGeoNormal, hasHeightMapSurface, maxDepthWorld, initialHit, hitWorldPos, viewDir,
                        isWaterMaterial, hasFftWaterSurface, surface);
     // A light block in a state that gives no light draws the sprite its lit state glows with (unlit redstone ore).
-    if (isUnlitSurface(packedData)) { surface.mat.emission = 0.0; }
+    if (radianteIsUnlit(packedData)) { surface.mat.emission = 0.0; }
     // Lava is a self-lit sheet: shown by its own colour at a steady brightness. Its glow was a fixed light, and the
     // eye opens and closes with the place (the darker, the further): in a dark cavern or at night the same glow was
     // far over white and lost its texture (a pale peach), by day in the open it was dull. The glow is now what the
     // current exposure brings to LAVA_DISPLAY of its colour, and the light other things throw on it counts for
     // little. (What lava casts on its surroundings is the light list's, unchanged.)
-    if (isLavaSurface(packedData) && bounce == 0u) { ptShapeLava(surface); }
+    if (radianteIsLava(packedData) && bounce == 0u) { ptShapeLava(surface); }
 #if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     // Small plants (grass, flowers, ferns) are lit as if they faced half way up, as Bedrock RTX lights them: side by
     // side its short grass is three quarters as bright as the grass block under it, where lit by their own upright
     // quads a noon sun only grazed the blades and they came out at two fifths (and facing straight up, brighter than
     // the block).
-    if (isPlantSurface(packedData)) {
+    if (radianteIsPlant(packedData)) {
         vec3 plantNormal = normalize(surface.geometricNormal + vec3(0.0, 0.75, 0.0));
         surface.shadingNormal = plantNormal;
         surface.geometricNormal = plantNormal;
@@ -454,11 +455,11 @@ void ptShadeDefault(bool viewMark) {
     hookSurface(surface, packedData, bounce);
     // What the sun lets through it from behind (translucentBackLight), after the pack's hookSurface, which may set
     // surface.mat.subSurface to say how much.
-    if (isLeavesSurface(packedData)) {
+    if (radianteIsLeaves(packedData)) {
         ptSetTranslucency(PT_TRANSLUCENCY_LEAVES, surface.mat.subSurface, TRANSLUCENCY_LEAVES);
-    } else if (isPlantSurface(packedData)) {
+    } else if (radianteIsPlant(packedData)) {
         ptSetTranslucency(PT_TRANSLUCENCY_FOLIAGE, surface.mat.subSurface, TRANSLUCENCY_PLANT);
-    } else if (isFrostSurface(packedData)) {
+    } else if (radianteIsFrost(packedData)) {
         ptSetTranslucency(PT_TRANSLUCENCY_FROST, surface.mat.subSurface, TRANSLUCENCY_FROST);
     } else {
         ptSetTranslucency(surface.mat.subSurface > 0.0 ? PT_TRANSLUCENCY_FOLIAGE : PT_TRANSLUCENCY_NONE,
@@ -466,11 +467,11 @@ void ptShadeDefault(bool viewMark) {
     }
 #ifdef PT_DEBUG_VIEW_FLAGS
     if (bounce == 0u) {
-        vec3 flagsColor = radianteDebugFlagsColor(isWaterSurface(packedData), isLavaSurface(packedData),
-                                                  isGlassSurface(packedData), isPaneSurface(packedData),
-                                                  isLeavesSurface(packedData), isPlantSurface(packedData),
-                                                  isHeldSurface(packedData), isUnlitSurface(packedData),
-                                                  isLayerSurface(packedData), isBlendSurface(packedData));
+        vec3 flagsColor = radianteDebugFlagsColor(radianteIsWater(packedData), radianteIsLava(packedData),
+                                                  radianteIsGlass(packedData), radianteIsPane(packedData),
+                                                  radianteIsLeaves(packedData), radianteIsPlant(packedData),
+                                                  radianteIsHeld(packedData), radianteIsUnlit(packedData),
+                                                  radianteIsLayer(packedData), radianteIsBlend(packedData));
         imageStore(radianteDebugViewImage, ivec2(gl_LaunchIDEXT.xy), vec4(radianteDebugDisplay(flagsColor), 1.0));
     }
 #endif
@@ -555,7 +556,7 @@ void ptShadeDefault(bool viewMark) {
     // The light held in the hand sits inside the held item, where it is: its own ray to the surface starts from the
     // point the surface really is at (a torch pushed into the wall lights its own handle), not from the shifted one.
     vec3 heldLightPos = currentSurface.worldPos;
-    if (bounce == 0u && isHeldSurface(packedData) && rayCameraPath(mainRay)) {
+    if (bounce == 0u && radianteIsHeld(packedData) && rayCameraPath(mainRay)) {
         vec3 lightPos = ptHandLightPos(g_hit.rayOrigin, currentSurface.worldPos);
         if (lightPos != currentSurface.worldPos) {
             currentSurface.worldPos = lightPos;
@@ -607,10 +608,10 @@ void ptShadeDefault(bool viewMark) {
             vertexGlow = (bounce == 0u || rayCameraPath(mainRay) || g_viewBounce) ? -vertexGlow : 0.0;
         }
         // A glow that is also in the light list (powered redstone dust) is not counted twice, as glowing texels.
-        if (isGlowLightSurface(packedData)) { vertexGlow *= blockEmissionWeight; }
+        if (radianteIsGlowLight(packedData)) { vertexGlow *= blockEmissionWeight; }
         emissionRadiance += currentSurface.tint * appearanceTint * vertexGlow * mainRay.throughput;
         // Diffuse paths use the dedicated held light once; camera and reflected views still see the item glow.
-        if (isHeldLightSurface(packedData) && !(bounce == 0u || rayCameraPath(mainRay) || g_viewBounce)) {
+        if (radianteIsHeldLight(packedData) && !(bounce == 0u || rayCameraPath(mainRay) || g_viewBounce)) {
             emissionRadiance = vec3(0.0);
         }
         mainRay.radiance += emissionRadiance;

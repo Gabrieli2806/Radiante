@@ -1,0 +1,46 @@
+name: Mod or pack compatibility
+description: Radiante does not work well together with another mod, a resource pack or a shader pack.
+labels: [compatibility]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Radiante replaces Minecraft's world rendering, so mods that draw their own things can need work to show up.
+        Please check first whether the problem disappears without the other mod or pack.
+  - type: input
+    id: other
+    attributes:
+      label: Mod, resource pack or shader pack, with its version and link
+      placeholder: "Distant Horizons 3.0.1, https://modrinth.com/mod/distanthorizons"
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: What goes wrong with both installed, and how it looks or works without Radiante.
+    validations:
+      required: true
+  - type: checkboxes
+    id: alone
+    attributes:
+      label: Checked
+      options:
+        - label: The problem goes away when I remove the other mod or pack.
+  - type: input
+    id: versions
+    attributes:
+      label: Radiante version, Minecraft version and loader
+      placeholder: "1.1.0, 26.3, Fabric"
+    validations:
+      required: true
+  - type: input
+    id: gpu
+    attributes:
+      label: GPU and driver version
+      placeholder: "RTX 4070, 591.74"
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshots, video or log
+      description: Screenshots with and without Radiante help the most. Attach `logs/latest.log` for errors.

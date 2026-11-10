@@ -38,6 +38,7 @@ layout(std430, buffer_reference, buffer_reference_align = 8) readonly buffer Ind
 indexBuffer;
 
 #include "util/vertex.glsl"
+#include <radiante/v1/surface.glsl>
 #include "common/lod_coverage.glsl"
 #include "common/seamless_glass.glsl"
 
@@ -67,7 +68,7 @@ void main() {
     // A ray already in the water passes the far water under the near one. Far terrain sits a little lower and stays
     // until the near terrain replaces it (lod_coverage.glsl); met from inside, its surface counted as leaving the
     // water, and the sea past it lost its colour in whole chunks and sections.
-    if (rayInWater(mainRay) && isWaterSurface(packedData) && VPT_LOD_HIT(ubo)) {
+    if (rayInWater(mainRay) && radianteIsWater(packedData) && VPT_LOD_HIT(ubo)) {
         ignoreIntersectionEXT;
         return;
     }
@@ -84,7 +85,7 @@ void main() {
         PositionVertex p0, p1, p2;
         loadTrianglePositions(geometryBufferIndex, i0, i1, i2, p0, p1, p2);
         // Seamless glass works from the block grid; a held block is not on it.
-        if (isGlassSurface(packedData) && !isHeldSurface(packedData)) {
+        if (radianteIsGlass(packedData) && !radianteIsHeld(packedData)) {
             if (seamlessGlassHidesFace(p0.pos, p1.pos, p2.pos, packedData)) {
                 ignoreIntersectionEXT;
                 return;
@@ -96,7 +97,7 @@ void main() {
         // cube of a slime or honey block, the far shell once out) are left out of its way, as Bedrock leaves them
         // out of its view's traversal. Met one by one by the hit shader, they used up the camera's steps: through a
         // wall of honey or slime the view ran out of them and ended dark.
-        if ((isGlassSurface(packedData) || isBlendSurface(packedData)) && !isHeldSurface(packedData) &&
+        if ((radianteIsGlass(packedData) || radianteIsBlend(packedData)) && !radianteIsHeld(packedData) &&
             (rayBounce(mainRay) == 0u || rayCameraPath(mainRay) || mainRay.pad0 == RAY_VIEW_BOUNCE_MARK)) {
             bool towards = dot(cross(p1.pos - p0.pos, p2.pos - p0.pos), gl_ObjectRayDirectionEXT) < 0.0;
             if (rayInGlass(mainRay) == towards) {
@@ -109,7 +110,7 @@ void main() {
         float coneRadiusWorld = mainRay.coneWidth + gl_HitTEXT * mainRay.coneSpread;
         vec3 dposdu, dposdv;
         computedposduDv(p0.pos, p1.pos, p2.pos, m0.textureUV, m1.textureUV, m2.textureUV, dposdu, dposdv);
-        if (isGlassSurface(packedData) && !isHeldSurface(packedData)) {
+        if (radianteIsGlass(packedData) && !radianteIsHeld(packedData)) {
             vec3 objectPos = baryCoords.x * p0.pos + baryCoords.y * p1.pos + baryCoords.z * p2.pos;
             uv = seamlessGlassUV(uv, objectPos, dposdu, dposdv, packedData);
             if (seamlessGlassUniform(packedData)) {
@@ -121,7 +122,7 @@ void main() {
         // Glass at its full-resolution alpha: mip levels blend a pane's frame into its clear middle. Cut-out surfaces
         // too: each texel of a leaf or a blade of grass stays a hole or not at any distance, as the shadow rays and the
         // opacity micromaps of terrain see it, so far trees keep their gaps instead of the mip levels' flatter shapes.
-        bool fullResolution = isGlassSurface(packedData) || alphaMode == ALPHA_MODE_CUTOUT;
+        bool fullResolution = radianteIsGlass(packedData) || alphaMode == ALPHA_MODE_CUTOUT;
         vec4 texel = sampleTexture(textures[nonuniformEXT(textureID)], uv, fullResolution ? 0.0 : lod, false);
         alpha *= texel.a;
         if (alphaMode == ALPHA_MODE_ADDITIVE) {
@@ -135,7 +136,7 @@ void main() {
     // Glass is always kept as a hit, clear parts included (shaded as fully see-through glass, alpha 0): the hit shader
     // sees through it and tints the view by the glass's colour. Skipped at random by its alpha instead, as other
     // see-through surfaces are, most rays missed tinted or stained glass and it looked nearly clear.
-    if (isGlassSurface(packedData)) {
+    if (radianteIsGlass(packedData)) {
         return;
     }
 
@@ -154,7 +155,7 @@ void main() {
 
     // Past a boat's water patch (world/water_mask.rchit) the water inside the boat is not there, as in vanilla.
     // Water from chunks is marked in its vertices, not in a flag texture, so this has to come first.
-    if (rayInsideBoat(mainRay) && isWaterSurface(packedData)) {
+    if (rayInsideBoat(mainRay) && radianteIsWater(packedData)) {
         ignoreIntersectionEXT;
         return;
     }

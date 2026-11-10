@@ -22,8 +22,7 @@
 
 ## Bounced Light and Sky Light are part of the Picture Style too
 
-They change with the Picture Style (see [Image](image.md) and
-[styles-and-quality.md](../styles-and-quality.md)). Changing them by hand turns the style into
+They change with the Picture Style (see [Image](image.md#picture-styles)). Changing them by hand turns the style into
 Custom.
 
 

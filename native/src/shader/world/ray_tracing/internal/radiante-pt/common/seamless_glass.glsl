@@ -17,7 +17,7 @@
 #endif
 
 bool seamlessGlassApplies(uint packedData) {
-    bool pane = isPaneSurface(packedData);
+    bool pane = radianteIsPane(packedData);
     return VPT_SEAMLESS_GLASS_SCOPE == 0u || (VPT_SEAMLESS_GLASS_SCOPE == 1u && !pane) ||
            (VPT_SEAMLESS_GLASS_SCOPE == 2u && pane);
 }
@@ -69,7 +69,7 @@ vec2 seamlessGlassUV(vec2 uv, vec3 objectPos, vec3 dposdu, vec3 dposdv, uint pac
 // as a grid all the same. The middle texel keeps the glass's colour and clarity (a stained glass stays its colour).
 bool seamlessGlassUniform(uint packedData) {
 #if VPT_SEAMLESS_GLASS != 0
-    return seamlessGlassApplies(packedData) && !isPaneSurface(packedData);
+    return seamlessGlassApplies(packedData) && !radianteIsPane(packedData);
 #else
     return false;
 #endif
@@ -96,7 +96,7 @@ bool seamlessGlassHidesFace(vec3 p0, vec3 p1, vec3 p2, uint packedData) {
     // Only a cap with glass on the other side: the top of the highest pane and the bottom of the lowest stay, or a
     // window seen from above or below had a hollow edge. (Vanilla winds faces outward, so the normal says which.)
     bool up = faceNormal.y > 0.0;
-    return up ? (packedData & PANE_CAP_UP_BIT) == 0u : (packedData & PANE_CAP_DOWN_BIT) == 0u;
+    return up ? !radiantePaneTopOpen(packedData) : !radiantePaneBottomOpen(packedData);
 #else
     return false;
 #endif

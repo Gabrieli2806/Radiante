@@ -2,47 +2,23 @@
 
 # Distant Horizons (experimental)
 
-[Distant Horizons](https://modrinth.com/mod/distanthorizons) generates and shows terrain far beyond
-Minecraft's normal render distance, at a progressively lower level of detail the farther away it is.
-Radiante can trace that far terrain along with the rest of the world, instead of leaving it out of
-ray tracing entirely.
-
-It is entirely optional: without Distant Horizons installed, nothing changes. With it installed and
-active, Radiante detects it by itself — there is no setting to turn on in Radiante's own screen.
-
-## What the far terrain looks like
-
-Distant Horizons' terrain is simplified to one colour per block face (rather than the fully textured
-geometry near terrain uses), and is traced just like any other section of the world: it receives
-light, casts shadows, and shows up in reflections. The farther away, the coarser the sections DH
-hands Radiante to trace.
+[Distant Horizons](https://modrinth.com/mod/distanthorizons) shows terrain far beyond the normal render distance.
+With it installed, Radiante traces that far terrain too: it is lit, casts shadows and shows in reflections. There is
+nothing to turn on; without Distant Horizons nothing changes.
 
 ![Distant Horizons: near terrain ray traced, far terrain from Distant Horizons](../images/scenes/distant-horizons.webp)
 
-## How it meets the near terrain
+## What to expect
 
-Since 0.5.0 far terrain is no longer rebuilt when near chunks load. It is hidden **per column and
-per ray** where the near terrain is already built. A far area only counts
-as replaced once the renderer actually draws what replaces it, so no holes are left when flying
-fast.
+- **One colour per block face.** Far terrain has no textures, so the band where normal terrain ends shows.
+- **Cost grows with Distant Horizons' distance.** The farther it generates, the more the GPU traces, and the more
+  video memory it uses.
+- **No holes when flying.** Far terrain is hidden column by column only once the near terrain that replaces it is
+  drawn.
+- **Closing while it generates.** Distant Horizons' threads can keep the game from closing; Radiante detects this and
+  lets it close. Nothing to do.
 
-## What to expect, honestly
+Tested on Fabric and NeoForge: day, night, rain, clouds, under water, from 70 to 4000 blocks up, toggling ray
+tracing, rejoining and teleporting 4000 blocks.
 
-- **Cost grows with Distant Horizons' distance.** The farther DH generates, the more the GPU traces.
-- DH sections use a flat colour per face, not textures: the band where normal terrain ends shows.
-- Still marked experimental.
-
-## If you quit while Distant Horizons is still generating
-
-If you close the world or the game while DH is still generating terrain, its own generation threads
-can be left waiting on data from a server that has already stopped, which without help would only
-close once Minecraft's own shutdown watchdog kills it with a crash report — this happens with ray
-tracing off too, it is Distant Horizons' behaviour, not Radiante's. Radiante helps the process close
-as soon as it detects only DH threads are left waiting, so the watchdog is not needed. There is
-nothing you need to do about it.
-
-## Tested compatibility
-
-Verified in a fresh test world, on both Fabric and NeoForge: day, sunset, night, rain, clouds,
-underwater, from 70 to 4000 blocks up, toggling ray tracing on/off in a running world, leaving and
-rejoining, and teleporting 4000 blocks.
+If something looks wrong, lower Distant Horizons' own distance and check again.

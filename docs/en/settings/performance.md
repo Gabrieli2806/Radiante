@@ -1,11 +1,8 @@
 [← Settings](../settings.md) · [Index](../README.md)
 
-# Performance (settings section)
+# Performance
 
-> This page is the reference for the controls that live in the "Performance" section of the
-> settings screen. If you are after general tips for gaining FPS (which quality level to pick, how
-> your GPU compares, Distant Horizons' cost), that is a different page:
-> **[performance.md](../performance.md)**, at the root of the documentation.
+For tips on which of these to change first, see [Quality and performance](../quality-and-performance.md).
 
 ![Radiante settings: Performance](../../images/ui/settings-performance.png)
 

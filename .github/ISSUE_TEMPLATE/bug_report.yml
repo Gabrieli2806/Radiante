@@ -1,11 +1,33 @@
 name: Bug report
-description: Something looks wrong, is slow, or crashes
+description: Something looks wrong, is slow, or does not work as described.
 labels: [bug]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting. The more of this you fill in, the faster it can be reproduced.
+        Thanks for taking the time to report this. A bug that can be reproduced gets fixed far sooner, so the more
+        of this you fill in, the better. For a crash, use the **Crash** form instead.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before reporting
+      options:
+        - label: I searched the [open issues](https://github.com/Gabrieli2806/Radiante/issues) and this is not already reported.
+          required: true
+        - label: I am on the latest Radiante version for my Minecraft version, or I say below which one I use.
+          required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of problem
+      options:
+        - Visual (lighting, reflections, noise, wrong colours, missing blocks or entities)
+        - Performance (low FPS, stutter, memory)
+        - Settings or menus
+        - Upscaler, frame generation, Reflex or HDR
+        - Something else
+    validations:
+      required: true
   - type: textarea
     id: what
     attributes:
@@ -17,9 +39,13 @@ body:
     id: steps
     attributes:
       label: How to reproduce
-      description: Where you are in the world, what you did, whether it always happens. "Not always" is fine, say so.
+      description: Where you are in the world, what you did, and whether it always happens. "Not always" is fine, say so.
+      placeholder: |
+        1. Open a world at night in a jungle
+        2. Hold a torch
+        3. The leaves around the player flicker
     validations:
-      required: false
+      required: true
   - type: input
     id: radiante
     attributes:
@@ -30,8 +56,18 @@ body:
   - type: input
     id: minecraft
     attributes:
-      label: Minecraft version and loader
-      placeholder: "26.3, Fabric"
+      label: Minecraft version
+      placeholder: "26.3"
+    validations:
+      required: true
+  - type: dropdown
+    id: loader
+    attributes:
+      label: Loader
+      options:
+        - Fabric
+        - NeoForge
+        - Forge
     validations:
       required: true
   - type: input
@@ -41,18 +77,31 @@ body:
       placeholder: "RTX 4070, 591.74"
     validations:
       required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows 11
+        - Windows 10
+        - Linux
+    validations:
+      required: true
   - type: input
     id: settings
     attributes:
       label: Renderer profile, pipeline and upscaler
+      description: As shown in Radiante's settings.
       placeholder: "Bedrock RTX (Enhanced), RT-DLSS with Ray Reconstruction, Balanced"
   - type: input
     id: packs
     attributes:
-      label: Resource packs and other mods that touch rendering
+      label: Resource packs, shader packs and other mods that touch rendering
       placeholder: "Vanilla RTX 1.26.34, Distant Horizons"
   - type: textarea
     id: media
     attributes:
       label: Screenshots, video or log
-      description: Drag files here. For a crash or an error, attach `logs/latest.log` and any `hs_err_pid*.log`.
+      description: |
+        Drag files here. Attach `logs/latest.log` for anything that is not purely visual. For visual problems, a
+        screenshot with and without Radiante (or with the setting on and off) helps the most.

@@ -27,6 +27,9 @@ import tempfile
 from pathlib import Path
 
 HIT_EXTENSIONS = (".rchit", ".rahit", ".rint", ".rmiss")
+# Radiante's public headers (radiante/v1/...), searched before the pack's folder as the loader does
+# (shader_pack_loader.cpp).
+PUBLIC_INCLUDE = Path(__file__).resolve().parents[1] / "shader" / "include"
 
 
 def is_true(value):
@@ -274,7 +277,8 @@ def main():
         tag = "_".join(f"{k}" for k in ("USE_SHARC", "SHARC_QUERY", "SHARC_UPDATE") if own.get(k) == "1")
         name = str(path.relative_to(root)).replace(os.sep, "_").replace("/", "_") + (f".{tag}" if tag else "") + ".spv"
         spv = (out / name) if out else Path(temp + ".spv")
-        command = [args.glslang, "-V", "--target-env", "vulkan1.4", f"-I{root}", "-o", str(spv), temp]
+        command = [args.glslang, "-V", "--target-env", "vulkan1.4", f"-I{PUBLIC_INCLUDE}", f"-I{root}", "-o", str(spv),
+                   temp]
         command[1:1] = [f"-D{key}={value}" for key, value in sorted(defines.items())]
         result = subprocess.run(command, capture_output=True, text=True)
         os.remove(temp)
