@@ -61,9 +61,9 @@ Versiones exactas: [Primeros pasos](docs/es/primeros-pasos.md).
 
 ## Licencia
 
-GPL-3.0, con un [permiso adicional](LICENSE-EXCEPTION.md) para las librerías de NVIDIA e Intel. Radiante comenzó como
-un fork de Radiance y su renderer MCVR. Desde entonces se ha rehecho buena parte, y el proyecto sigue alejándose de
-ellos.
+GPL-3.0, con [permisos adicionales](LICENSE-EXCEPTION.md) para las librerías de NVIDIA e Intel y para los paquetes de
+shaders, que conservan su propia licencia si usan solo la interfaz para paquetes de Radiante. Radiante comenzó como un
+fork de Radiance y su renderer MCVR. Desde entonces se ha rehecho buena parte, y el proyecto sigue alejándose de ellos.
 
 Radiante no está afiliado, respaldado ni patrocinado por Mojang, Microsoft ni NVIDIA. Minecraft, Minecraft Bedrock,
 Bedrock RTX y NVIDIA son marcas de sus dueños; sus nombres se usan solo para describir la compatibilidad con sus

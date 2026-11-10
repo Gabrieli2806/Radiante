@@ -66,8 +66,14 @@ void stripComments(std::string_view line, bool &inBlockComment, std::string &cod
     }
 }
 
-// The file an #include "file" line names. Includes in angle brackets are not followed.
-std::optional<std::string_view> quotedInclude(std::string_view line) {
+// The file an #include line names, and whether in angle brackets (radiante/v1/...), which the compiler looks for only
+// in the include folders.
+struct IncludeLine {
+    std::string_view name;
+    bool angled = false;
+};
+
+std::optional<IncludeLine> includeLine(std::string_view line) {
     size_t i = 0;
     const auto skipSpaces = [&] {
         while (i < line.size() && isSpace(line[i])) i++;
@@ -80,26 +86,30 @@ std::optional<std::string_view> quotedInclude(std::string_view line) {
     while (i < line.size() && isIdentifierChar(line[i])) i++;
     if (line.substr(directive, i - directive) != "include") return std::nullopt;
     skipSpaces();
-    if (i >= line.size() || line[i] != '"') return std::nullopt;
+    if (i >= line.size() || (line[i] != '"' && line[i] != '<')) return std::nullopt;
+    const bool angled = line[i] == '<';
     const size_t start = i + 1;
-    const size_t end = line.find('"', start);
+    const size_t end = line.find(angled ? '>' : '"', start);
     if (end == std::string_view::npos) return std::nullopt;
-    return line.substr(start, end - start);
+    return IncludeLine{line.substr(start, end - start), angled};
 }
 
-// An included file next to the file including it, else in the first include folder that has it.
+// An included file next to the file including it when its name is in quotes, else in the first include folder that
+// has it.
 std::optional<fs::path> resolveInclude(const fs::path &includingFile,
-                                       std::string_view include,
+                                       const IncludeLine &include,
                                        const std::vector<fs::path> &includeDirectories) {
     std::error_code error;
     const auto isFile = [&](const fs::path &candidate) {
         return fs::exists(candidate, error) && fs::is_regular_file(candidate, error);
     };
-    if (fs::path candidate = includingFile.parent_path() / fs::path(include); isFile(candidate)) {
-        return fs::weakly_canonical(candidate, error);
+    if (!include.angled) {
+        if (fs::path candidate = includingFile.parent_path() / fs::path(include.name); isFile(candidate)) {
+            return fs::weakly_canonical(candidate, error);
+        }
     }
     for (const auto &directory : includeDirectories) {
-        if (fs::path candidate = directory / fs::path(include); isFile(candidate)) {
+        if (fs::path candidate = directory / fs::path(include.name); isFile(candidate)) {
             return fs::weakly_canonical(candidate, error);
         }
     }
@@ -167,9 +177,12 @@ class SourceScanner {
                 if (attributeNames_.contains(identifier)) use.attributes->emplace(identifier);
             }
 
-            const auto include = quotedInclude(code);
+            const auto include = includeLine(code);
             if (!include.has_value()) continue;
             const auto resolved = resolveInclude(file, *include, includeDirectories_);
+            // A name in angle brackets that no include folder has is a C++ header in a file C++ shares
+            // (common/mapping.hpp includes <cstdint> under __cplusplus); the shader compile never reads it.
+            if (!resolved.has_value() && include->angled) continue;
             if (!resolved.has_value()) {
                 use.attributes.reset();
                 return use;

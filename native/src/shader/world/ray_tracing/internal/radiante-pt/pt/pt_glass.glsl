@@ -33,10 +33,10 @@ bool ptBedrockGlassHit(uint textureID,
     // Glass, and the other blocks Bedrock draws blended (ice, slime, honey): the camera sees through their
     // see-through texels, bent at each face by the glass's index, coloured by each face it crosses, with the
     // world reflected on the face it enters by.
-    if (g_hitIsGlass || isBlendSurface(g_hit.packedData)) {
+    if (g_hitIsGlass || radianteIsBlend(g_hit.packedData)) {
         vec4 texel = sampleTexture(textures[nonuniformEXT(textureID)], textureUV, 0.0, false);
         float alpha = clamp(texel.a * colorLayerValue.a, 0.0, 1.0);
-        bool hidden = !isHeldSurface(g_hit.packedData) && seamlessGlassHidesFace(g_hit.p0.pos, g_hit.p1.pos, g_hit.p2.pos, g_hit.packedData);
+        bool hidden = !radianteIsHeld(g_hit.packedData) && seamlessGlassHidesFace(g_hit.p0.pos, g_hit.p1.pos, g_hit.p2.pos, g_hit.packedData);
         // What the camera sees: straight on, or off and through the surfaces before (a mirror, the water), as
         // Bedrock's view goes on through one surface after another.
         bool cameraView = bounce == 0u || rayCameraPath(mainRay);
@@ -46,7 +46,7 @@ bool ptBedrockGlassHit(uint textureID,
         // away: the faces in between (the inner cube of a slime or honey block) are not there for it, nor is the
         // far shell once it is out. Crossed one by one, each bent the view again and coloured it twice over.
         // Not what is held: its faces may be wound either way. (The any-hit shader leaves them out already.)
-        if (viewRay && !isHeldSurface(g_hit.packedData) &&
+        if (viewRay && !radianteIsHeld(g_hit.packedData) &&
             inside == (dot(windingNormal, g_hit.rayDir) < 0.0)) {
             hidden = true;
         }
@@ -147,7 +147,7 @@ bool ptGlassPassThrough(uint textureID,
         float glassAlpha = clamp(glassTexel.a * colorLayerValue.a, 0.0, 1.0);
         // The thin top of a pane between two stacked panes (seamless glass) is inside the sheet: seen through as
         // if it were not there. Opaque glass geometry never reaches the any-hit shader that leaves it out.
-        bool hiddenPaneTop = !isHeldSurface(g_hit.packedData) && seamlessGlassHidesFace(g_hit.p0.pos, g_hit.p1.pos, g_hit.p2.pos, g_hit.packedData);
+        bool hiddenPaneTop = !radianteIsHeld(g_hit.packedData) && seamlessGlassHidesFace(g_hit.p0.pos, g_hit.p1.pos, g_hit.p2.pos, g_hit.packedData);
         // Tinted glass is nearly opaque in its texture but still a window: seen through, darkened.
         // Only texels that are see-through: the opaque dark pixels along a glass texture's frame, let through as
         // if tinted, came out as black dashes along the joins (an opaque texel's tint lets nothing through).
@@ -239,7 +239,7 @@ const float RAIN_STREAK_SKY = 0.35;
 // ground behind it, which smeared and sparkled through every storm, and each streak paid for sun and lamp shadow
 // rays. The glint is worked out from the sky over it, with no rays. Bounced rays never meet rain (prepareSecondaryBase).
 bool ptRainPassThrough(uint textureID, vec2 textureUV, vec4 colorLayerValue) {
-    if (!isRainSurface(g_hit.packedData)) { return false; }
+    if (!radianteIsRain(g_hit.packedData)) { return false; }
     vec4 texel = sampleTexture(textures[nonuniformEXT(textureID)], textureUV, 0.0, false);
     float coverage = clamp(texel.a * colorLayerValue.a, 0.0, 1.0);
     float opacity = clamp(VPT_RAIN_OPACITY, 0.0, 1.0);

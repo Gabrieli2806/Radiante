@@ -51,6 +51,7 @@ layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer Ind
 indexBuffer;
 
 #include "util/vertex.glsl"
+#include <radiante/v1/surface.glsl>
 
 layout(location = 0) rayPayloadInEXT MainRay mainRay;
 hitAttributeEXT vec2 attribs;
@@ -151,7 +152,7 @@ void main() {
         vec3 prevScenePos;
         if (loadPreviousScenePos(geometryBufferIndex, gl_PrimitiveID, bary, prevScenePos)) {
             // A raindrop seen here was higher up the sheet last frame.
-            if (isRainSurface(m0.packedData)) { prevScenePos.y += worldUBO.rainFallPerFrame; }
+            if (radianteIsRain(m0.packedData)) { prevScenePos.y += worldUBO.rainFallPerFrame; }
             mainRay.prevScenePos = prevScenePos;
             mainRay.hasPrevScenePos = 1u;
         }

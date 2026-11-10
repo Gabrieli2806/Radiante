@@ -442,7 +442,7 @@ void sampleSurfaceState(bool useTexture,
     // sheet of water. It lets the view through (tinted a little blue-grey, by Rain Opacity), takes the sun, the sky
     // and the lamps as a faint glint through Fresnel, glows with nothing of its own, and keeps its face's normal.
     // The pack's own rain texture and material are read only for the shape of the streaks.
-    bool isRainStreak = isRainSurface(g_hit.packedData);
+    bool isRainStreak = radianteIsRain(g_hit.packedData);
     if (isRainStreak) {
         float rainOpacity = clamp(VPT_RAIN_OPACITY, 0.0, 1.0);
         albedoValue.a = rainOpacity;

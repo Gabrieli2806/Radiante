@@ -1056,7 +1056,9 @@ PackConfig parseConfigFile(const fs::path &root, const std::string &language) {
     PackConfig pack;
     pack.rootPath = root;
     pack.requiresEmission = optionalBool(config, Loader::KEY_REQUIRES_EMISSION, false, "root");
-    pack.includeDirectories = {root.string()};
+    // Radiante's public headers (radiante/v1/...) are searched before the pack's own folder, so a pack that includes
+    // them gets the ones of the Radiante it runs on, not a copy it carries.
+    pack.includeDirectories = {(Renderer::folderPath / "shaders/include").string(), root.string()};
     pack.translations = loadLanguage(root, language);
     const HitShadersByGroup hitShaders = findHitShaders(root);
 

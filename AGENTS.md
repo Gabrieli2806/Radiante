@@ -25,6 +25,7 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 | `common/src/main/resources/assets/radiante/lang/` | Texts: `en_us`, `es_es`, `zh_cn` |
 | `native/src/prism/` | Renderer: `gpu/`, `render/` (modules, framework, pipeline), `middleware/` (JNI, one file per Java class) |
 | `native/src/shader/world/ray_tracing/internal/radiante-pt/` | The path tracer: `configs.json` (attributes, textures, passes), `world/`, `pt/`, `common/`, and `hooks/`, the hook points shader packs replace |
+| `native/src/shader/include/radiante/v1/` | The public headers shader packs include (`#include <radiante/v1/surface.glsl>`; `uniforms.glsl`, the per-frame uniforms under names of their own), the same for every pack on this Radiante. Written from scratch, nothing copied, so packs on them can keep their own licence (`LICENSE-EXCEPTION.md`); within v1 functions are only added, never renamed, removed or changed |
 | `examples/shaderpacks/` | Example packs built on radiante-pt (`./gradlew shaderPackExamples`); the design is `docs/dev/shader-packs.md`, the author guide `docs/en/shader-packs.md`, the roadmap issue #55 |
 | `docs/en`, `docs/es` | Player documentation (same pages in both languages), one page per settings section in `settings/` (`opciones/`) |
 | `docs/dev` | Developer documentation, English only: building, testing, architecture, shader pack design |
@@ -78,6 +79,9 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 - The hook files and `common/pack_*.glsl` in radiante-pt are the shader pack interface (`radiante-pt@1`): keep their
   signatures, and with radiante-pt's own empty hooks it must compile to the same shaders. Check a pack change offline
   with `shader_pack_stage` and `native/src/tools/compile_pack.py` (`examples/shaderpacks/README.md`).
+- `WorldUBO` and `SkyUBO` (`common/shared.hpp`) only grow at their end: `radiante/v1/uniforms.glsl` describes them to
+  packs, and the native build stops when the two lay out differently (`native/src/tools/check_v1_layout.py`). A
+  member packs should read gets its twin at the end of `RadianteWorld` or `RadianteSky`.
 
 ## Bugs and ideas
 

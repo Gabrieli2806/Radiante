@@ -56,6 +56,7 @@ layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer Ind
 indexBuffer;
 
 #include "util/vertex.glsl"
+#include <radiante/v1/surface.glsl>
 #include "common/lod_coverage.glsl"
 // A pack's waves (hooks/water_waves.glsl) shape the caustics as they shape the surface. This shader names its world
 // uniform ubo; the hook sees it as worldUBO, as everywhere else.
@@ -151,7 +152,7 @@ void main() {
     uint flags = m0.packedData;
     // A query for the open sky goes through water whatever its texture says (see below): chunk water, marked in its
     // vertices, is let through before anything of it is read.
-    if ((shadowRay.pad0 == SKY_VISIBILITY_QUERY || shadowRay.pad0 == HAND_CLEARANCE_QUERY) && isWaterSurface(flags)) {
+    if ((shadowRay.pad0 == SKY_VISIBILITY_QUERY || shadowRay.pad0 == HAND_CLEARANCE_QUERY) && radianteIsWater(flags)) {
         ignoreIntersectionEXT;
     }
     uint albedoID = m0.textureID;
@@ -169,7 +170,7 @@ void main() {
     if (textured) {
         uv = bary.x * m0.textureUV + bary.y * m1.textureUV + bary.z * m2.textureUV;
         // Seamless glass is laid out on the block grid, which a block held in hand is not on.
-        if (isGlassSurface(flags) && !isHeldSurface(flags)) {
+        if (radianteIsGlass(flags) && !radianteIsHeld(flags)) {
             if (seamlessGlassHidesFace(p0.pos, p1.pos, p2.pos, flags)) {
                 ignoreIntersectionEXT;
             }
@@ -185,7 +186,7 @@ void main() {
     }
 
     // Water is marked either in the vertex flags (chunk water) or by bit 0 of the flag texture's red channel.
-    bool water = isWaterSurface(flags);
+    bool water = radianteIsWater(flags);
     if (textured) {
         int flagTextureID = mapping.entries[albedoID].flag;
         if (flagTextureID >= 0) {
@@ -200,7 +201,7 @@ void main() {
     // Java's cut-out/stochastic layer, so shadow rays use that coverage too instead of rounding it to opaque.
     bool authoredCoverage = false;
 #if SHADOW_BEDROCK_PROFILE
-    authoredCoverage = (isGlassSurface(flags) || isBlendSurface(flags)) && !water;
+    authoredCoverage = (radianteIsGlass(flags) || radianteIsBlend(flags)) && !water;
 #endif
 
     // ---- Coverage ----
