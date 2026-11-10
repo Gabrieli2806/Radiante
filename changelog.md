@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Shader packs: the first public header, `radiante/v1/surface.glsl`, says what a ray hit, one function per surface flag (`radianteIsWater(surfaceFlags)`, `radianteIsLeaves`, `radianteIsThin`...). A pack includes it with `#include <radiante/v1/surface.glsl>` and gets the one of the Radiante it runs on, not a copy it carries; Radiante PT and the example packs use it. The old tests in `util/vertex.glsl` (`isLeavesSurface`...) stay, so packs need no change.
+
+- Shader packs: `radiante/v1/uniforms.glsl` gives a pack with passes of its own the per-frame uniforms under names of their own: `RadianteWorld` (the camera, the fog, the hands' lights, the wind, the pack's live settings) and `RadianteSky` (the sun and the moon, the weather, the biome, the water). The native build checks they lay out as the renderer's `WorldUBO` and `SkyUBO` do.
+
+- Shader packs: a pack that uses Radiante only through `radiante/v1` and the `radiante-pt@1` hooks can keep its own licence, through an additional permission in LICENSE-EXCEPTION.md like the one for DLSS and XeSS.
+
+- With Wind on, leaves and plants no longer shake while the weather changes between clear, rain and thunder.
+
+- With Wind on, a plant sways in one piece: the front and back faces of its planes no longer cut through each other in patches.
+
 - Shader packs: opacity micromaps keep the solid parts of cut-out terrain (leaves, plants) as "unknown opaque", so a ray traced without the forced two-state reading asks the any-hit shader there and nowhere else, for light let through foliage. Radiante PT reads them in two states as before.
 
 - Shader packs: vines, hanging roots and moss, lily pads, sugar cane, kelp, bamboo, cobwebs and particles carry a thin surface flag (bit 27, isThinSurface), so a pack can let light through them as through leaves and plants.
@@ -251,7 +261,7 @@ All notable changes to this project are documented in this file.
   metadata, its name and version); Radiante stores their values in `radiante/addons/<id>.properties`. The section
   only shows when an addon is installed. Each addon's options fold away under its heading (open when it is the only
   addon, folded when there are more, remembered per addon; a search opens the ones it finds something in). See
-  [docs/en/addons.md](docs/en/addons.md).
+  [docs/en/api.md](docs/en/api.md#radianteaddons).
 - When a newer DLSS or XeSS is available, the settings button for it reads "Update DLSS" instead of "Delete DLSS" and
   opens the update offer, so skipping the start-up prompt for a version no longer leaves no way to update.
 - Faster in forests, fields and villages where the GPU driver offers opacity micromaps (`VK_EXT_opacity_micromap`):

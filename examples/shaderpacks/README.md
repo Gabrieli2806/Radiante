@@ -3,7 +3,7 @@
 Packs built on Radiante PT, to show what a pack can change and to start your own from. Each one says
 `"extends": "radiante-pt@1"` in its manifest and holds only its own files: settings, names, and the hook files it
 replaces. The renderer puts radiante-pt under it when it loads it, so the pack follows Radiante PT's updates
-([design §5](../../docs/dev/shader-packs/design.md#5-inheritance-and-hook-points)).
+([design §5](../../docs/dev/shader-packs.md#5-inheritance-and-hook-points)).
 
 Their settings are on a page of their own in Radiante's settings, named after the pack: each pack groups them
 (`group`), describes them (`description`), marks their cost (`performance_impact`), hides the ones that do nothing as
@@ -21,7 +21,7 @@ thicker Nether haze. Each change is a pack setting:
 | Colour grade, Grade Strength | `hooks/post_grade.glsl` (turned on with `RADIANTE_HOOK_POST_GRADE` in `configs.json`) | Warm highlights, cool shadows, more contrast in the mids. The strength changes live |
 | Bloom (0-1) | `hooks/post_grade.glsl` | A glow round bright things from Radiante's bloom pyramid, which the pack asks for with `RADIANTE_POST_BLOOM` in `configs.json` (`radianteAddBloom`, `common/pack_post.glsl`). Changes live |
 | Lens Flare and Fringes (0-1) | `hooks/post_grade.glsl` | Ghosts of bright lights mirrored through the centre (the bloom read at mirrored places) and colour fringes towards the edges. Changes live |
-| Light through leaves, strength | `hooks/surface.glsl`, `hooks/direct_light.glsl` | Sunlight behind leaves and small plants lights them from the back (`isLeavesSurface`, `isPlantSurface`); works with opacity micromaps. The strength changes live |
+| Light through leaves, strength | `hooks/surface.glsl`, `hooks/direct_light.glsl` | Sunlight behind leaves and small plants lights them from the back (`radianteIsLeaves`, `radianteIsPlant`); works with opacity micromaps. The strength changes live |
 | Water tint | `hooks/water.glsl` | Water absorption: deeper, bluer water |
 | Sky tint | `hooks/sky.glsl` | A cooler clear sky |
 | Underwater Ripple (0-1) | `hooks/underwater.glsl` | With the camera under water the picture ripples (read a few pixels aside from `hookPostGradeInput`) and its edges darken; 0 turns it off |

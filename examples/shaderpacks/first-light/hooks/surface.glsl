@@ -1,6 +1,8 @@
 #ifndef RADIANTE_HOOK_SURFACE_GLSL
 #define RADIANTE_HOOK_SURFACE_GLSL
 
+#include <radiante/v1/surface.glsl>
+
 // First Light: the polished look of the showcase worlds, where glazed terracotta, quartz, gold and polished stone read
 // as glossy and caught the sky and the lights. Surfaces that are already somewhat smooth (roughness under about 0.5,
 // from a PBR or Bedrock material) get smoother in proportion; rough ones (dirt, grass, wool) stay as they are, so the
@@ -13,8 +15,8 @@
 void hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce) {
     float polish = clamp(float(FL_POLISH), 0.0, 1.0);
     if (polish <= 0.0) { return; }
-    if (isWaterSurface(surfaceFlags) || isLeavesSurface(surfaceFlags) || isPlantSurface(surfaceFlags) ||
-        isHeldSurface(surfaceFlags)) {
+    if (radianteIsWater(surfaceFlags) || radianteIsLeaves(surfaceFlags) || radianteIsPlant(surfaceFlags) ||
+        radianteIsHeld(surfaceFlags)) {
         return;
     }
     float r = surface.mat.roughness;

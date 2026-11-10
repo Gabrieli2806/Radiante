@@ -7,7 +7,7 @@
 | Control | Values | Default | What it does |
 |---|---|---|---|
 | **Ray Tracing** | On / Off | On | Switches between Radiante's ray traced renderer and Minecraft's own, at once, like the Toggle Ray Tracing key (unbound by default; set it in Controls). The world is rebuilt for the renderer that takes over. Shown in a world. |
-| **Quality** | Low · Medium · High · Ultra · Custom | — | Sets the costliest settings at once. See [Quality and Reset to Defaults](../settings.md#quality-and-reset-to-defaults). |
+| **Quality** | Low · Medium · High · Ultra · Custom | — | Sets the costliest settings at once. See [Quality and performance](../quality-and-performance.md). |
 | **Pipeline** | RT-DLSS · RT-Native · RT-FSR · RT-XeSS. Those not installed show as `(Install)` or `(Restart required)` | RT-DLSS when DLSS is installed and the GPU runs it; otherwise RT-XeSS if installed, else RT-FSR | Denoiser and upscaler. See below and [Upscalers](../upscalers.md). |
 | **DLSS Mode** | Ultra Performance · Performance · Balanced · Quality · DLAA · Custom | Ultra Performance | RT-DLSS only. The resolution DLSS renders at before upscaling. Custom shows Render Resolution. |
 | **Ray Reconstruction** | On / Off | On | RT-DLSS only. DLSS's own denoiser; off, NRD denoises and DLSS only upscales, which can help against ghosting. Shown only where the GPU can run both. |
@@ -16,7 +16,7 @@
 | **Output Resolution** | Native · 1440p · 1080p · 900p · 720p · Custom (only the sizes below the window's are listed) | Native | The size the world is rendered and upscaled to before a final FSR 1 upscale fills the window. The HUD and text stay sharp. On a 4K screen this saves the most. |
 | **Output Scale** | 25% – 99% | 75% | Only with Output Resolution set to Custom: the share of the window's size the world is rendered at. Shows the size that comes out. |
 | **Frame Generation Type** | Auto · DLSS · FSR | Auto | Shown where the GPU runs both. Auto picks DLSS when the GPU supports it, FSR otherwise. FSR works with any upscaler but only doubles. |
-| **Frame Generation** | Off · 2x … 4x | Off | Extra frames between the rendered ones. Hidden with HDR Output. See [frame-generation-reflex.md](../frame-generation-reflex.md). |
+| **Frame Generation** | Off · 2x … 4x | Off | Extra frames between the rendered ones. Hidden with HDR Output. See [Frame generation](../upscalers.md#frame-generation). |
 | **NVIDIA Reflex** | On / Off | Off | Low latency. NVIDIA with `VK_NV_low_latency2` only; hidden on other GPUs. No restart. |
 
 ## The pipelines

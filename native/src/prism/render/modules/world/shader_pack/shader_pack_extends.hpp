@@ -5,7 +5,7 @@
 // renderer (no Vulkan, no Renderer folder; minizip and nlohmann json only) so the offline tool in src/tools compiles
 // it on its own; the loader calls extractPackZip and stageExtendedPack before parsing.
 //
-// The rules (docs/dev/shader-packs/design.md, section 5, says the same for pack authors):
+// The rules (docs/dev/shader-packs.md, section 5, says the same for pack authors):
 // - files: the base's, then the pack's over them, same relative path = the pack's file.
 // - configs.json: merged key by key. "attributes", "textures", "buffers" and "passes" are lists merged by "name": an
 //   entry with a base entry's name is merged into it field by field (the pack's fields win), a new one is appended.

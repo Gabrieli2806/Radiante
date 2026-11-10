@@ -1,6 +1,8 @@
 #ifndef RADIANTE_HOOK_SURFACE_GLSL
 #define RADIANTE_HOOK_SURFACE_GLSL
 
+#include <radiante/v1/surface.glsl>
+
 // Neon Dusk: wet ground everywhere, rain or not, so the neon lights and the sky shine back from the streets. Faces
 // that look up get darker and glossy, the way radiante-pt's own rain wets the ground (common/rain_wetness.glsl: the
 // rough, non-metal ones darken the most as water fills their pores), and in puddles nearly mirror smooth. The
@@ -55,9 +57,9 @@ float neonPuddle(vec3 worldPos, float amount) {
 void hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce) {
     float wet = clamp(float(NEON_WET), 0.0, 1.0);
     if (wet <= 0.0) { return; }
-    if (isWaterSurface(surfaceFlags) || isLavaSurface(surfaceFlags) || isGlassSurface(surfaceFlags) ||
-        isPaneSurface(surfaceFlags) || isLeavesSurface(surfaceFlags) || isPlantSurface(surfaceFlags) ||
-        isHeldSurface(surfaceFlags)) {
+    if (radianteIsWater(surfaceFlags) || radianteIsLava(surfaceFlags) || radianteIsGlass(surfaceFlags) ||
+        radianteIsPane(surfaceFlags) || radianteIsLeaves(surfaceFlags) || radianteIsPlant(surfaceFlags) ||
+        radianteIsHeld(surfaceFlags)) {
         return;
     }
     if (surface.mat.transmission > 0.0 || surface.mat.emission > 0.0 || surface.mat.metallic > 0.5) { return; }

@@ -1,57 +1,45 @@
 [← Volver al índice](README.md)
 
-# Salida HDR
+# HDR
 
-Muestra el mundo trazado en HDR real en una pantalla HDR: el sol, la lava, las lámparas y los
-reflejos brillan por encima del blanco, en vez de recortarse en blanco plano como en SDR. Los
-controles están en la sección [Imagen](opciones/imagen.md), entre Nitidez de FSR y Desenfoque de Movimiento.
+En una pantalla HDR, la luz del sol, la lava, las lámparas y los reflejos brillan más que el blanco en vez de
+quedarse en un blanco plano.
 
-## Requisitos
+## Activarlo
 
-- Una pantalla que soporte HDR, con el **HDR activado en la configuración de pantalla de Windows**
-  (no basta con que la pantalla lo soporte; Windows tiene que estar usándolo).
-- Activar el ajuste "Salida HDR" en Radiante.
-
-## Cómo activarlo
-
-1. Activa HDR en Windows: Configuración → Sistema → Pantalla → HDR, y actívalo para tu monitor.
+1. Activa HDR en Windows: Configuración → Sistema → Pantalla → HDR, para tu monitor. Que el monitor soporte HDR no
+   basta: Windows tiene que estar usándolo.
 2. En Radiante, activa **Salida HDR** (sección Imagen).
-3. **Reinicia el juego.** El formato de la ventana se decide al crearla, así que el cambio no se
-   aplica en caliente — si acabas de activarlo, el tooltip del ajuste te avisa de que está
-   "activado, pero no en uso" hasta que reinicies.
-4. Tras reiniciar, comprueba que el tooltip ya no avisa de nada pendiente; si sigue avisando,
-   revisa que Windows realmente tenga HDR activo para ese monitor.
+3. **Reinicia el juego.** Hasta entonces el ajuste dice que está activado pero aún no funciona.
 
 | Control | Rango | Por defecto | Se aplica |
 |---|---|---|---|
-| Salida HDR | Activado/Desactivado | Desactivado | Al reiniciar el juego |
-| Brillo Máximo HDR | 400 – 4000 nits | 1000 nits | Al aplicar, sin reiniciar |
-| Blanco de Papel HDR | 80 – 400 nits | 200 nits | Al aplicar, sin reiniciar |
-| Vista de Depuración HDR | Activado/Desactivado | Desactivado (no se guarda) | Al aplicar, sin reiniciar |
+| Salida HDR | Sí / No | No | Tras reiniciar |
+| Brillo Máximo HDR | 400 – 4000 nits | 1000 | Al momento |
+| Blanco de Papel HDR | 80 – 400 nits | 200 | Al momento |
 
-## Brillo Máximo y Blanco de Papel
+- **Brillo Máximo:** lo más brillante que puede mostrar tu pantalla. Usa la especificación del monitor o la
+  Calibración HDR de Windows. El sol y la lava de cerca se ajustan por debajo.
+- **Blanco de Papel:** qué tan brillantes se ven los menús, el texto y las superficies normales. En la práctica, el
+  brillo general: súbelo en una habitación con luz, bájalo a oscuras.
 
-- **Brillo Máximo HDR** — lo más brillante que tu pantalla puede mostrar, en nits. Míralo en las
-  especificaciones de tu monitor o en la calibración de HDR de Windows. Las luces intensas del
-  mundo (el sol, la lava de cerca) se ajustan para no pasarse de este valor.
-- **Blanco de Papel HDR** — qué tan brillantes se ven los menús, el texto y las superficies
-  normales del mundo (lo que en SDR sería "blanco"), en nits. Súbelo en una habitación iluminada,
-  bájalo en una oscura — es, en la práctica, el control de brillo general para todo lo que no es
-  una fuente de luz intensa.
+> [!NOTE]
+> La generación de fotogramas no está disponible con Salida HDR activada.
 
 ## Calibrar HDR
 
-**Calibrar HDR** aparece bajo Salida HDR cuando el HDR está funcionando, y ajusta esos mismos dos valores con imágenes
-en lugar de números: sube el máximo hasta que desaparezcan las marcas de un cuadrado, elige el blanco de papel con dos
-capturas y comprueba el resultado. Listo los deja pendientes como los controles, y Aplicar los guarda. Para cambiar las
-imágenes, sustituye `dark.png` y `bright.png` en `assets/radiante/textures/gui/hdr_calibration/`.
+**Calibrar HDR**, bajo Salida HDR cuando HDR ya funciona, ajusta los mismos dos valores con imágenes en vez de
+números:
 
-## Vista de Depuración HDR
+1. Sube el máximo hasta que desaparezcan las marcas del cuadrado.
+2. Elige el blanco de papel sobre dos capturas.
+3. Revisa el resultado, luego **Listo** y **Aplicar**.
 
-En la sección [Depuración](opciones/depuracion.md) (con Avanzado activado), mientras la Salida HDR está activada.
-Tiñe de azul todo lo que se muestra en rango SDR (menús, texto de la interfaz). Lo que conserva su
-color normal es exactamente lo que se está mostrando en HDR real. Sirve para confirmar que el mundo
-sí está usando el rango HDR y no solo pareciendo más brillante — no se guarda entre sesiones,
-así que vuelve a desactivarse cada vez que abres el juego.
+<!-- Captura pendiente: las tres páginas de Calibrar HDR -->
 
-<!-- Captura pendiente: la misma escena con una fuente de luz intensa, HDR activado vs. desactivado. Una foto de pantalla o un GIF corto capturan la diferencia mejor que un PNG normal, que se muestra en SDR. -->
+## Comprobar que HDR funciona de verdad
+
+**Vista de Depuración HDR** (sección Depuración, con Avanzado activado) tiñe de azul todo lo que se muestra en rango
+SDR. Lo que conserva su color se está mostrando en HDR real. No se guarda y se apaga al siguiente arranque.
+
+<!-- Captura pendiente: la misma escena con una luz intensa, HDR activado y desactivado. Una foto de la pantalla capta la diferencia mejor que un PNG, que se ve en SDR. -->

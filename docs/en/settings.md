@@ -1,152 +1,73 @@
 [← Back to index](README.md)
 
-# Radiante settings
+# Settings
 
-Opened with `F6` in a world, or from Radiante's button in Options → Video Settings (title screen
-included). The sections are listed on the left (Quality, Image, Lighting, Sky & Water, Performance,
-Other) and one is shown at a time; the panel on the right describes the option under the mouse.
-Changes add up and are applied together with **Apply** (the screen stays open) or **Done**, so the
-renderer rebuilds once; **Undo** drops what was changed since the last Apply. While a change
-compiles, a popup in the top right corner shows the progress (compiling shaders, building pipelines,
-then "Settings applied" or the error); you can keep using the menus and the game meanwhile. This
-works the same in a world and on the title screen.
+Open them with `F6` in a world, or from Options → Video Settings → Radiante (title screen included).
 
 ![Radiante settings: Quality](../images/ui/settings-quality.png)
 
-## Search
+## How the screen works
 
-The **Search...** box filters settings across every section by name. The quickest way to find
-something without knowing its section. With Advanced off, a section says how many more matches it
-has among the advanced settings.
+- **Sections** are on the left; the panel on the right describes the setting under the mouse.
+- **Apply** applies your changes and keeps the screen open; **Done** applies and closes; **Undo** drops what changed
+  since the last Apply. Changes compile in the background with a progress popup at the top right.
+- **Search** finds a setting in any section by name.
+- **Advanced** (bottom) shows the fine-tuning controls of each section in folding groups, and adds the Debug section.
+- **Reset to Defaults** (bottom left) returns everything to a fresh install. Hold **Ctrl** to turn it into **Rebuild
+  Shaders**, for when the picture looks wrong after a change.
+- **HDR Output** and installing an upscaler apply after a restart. Leaving the screen lists what is pending.
 
-## Keyboard
-
-Up and Down move through the options and the headings of the advanced groups, and on past the last
-one to the buttons along the bottom; Up from the first option goes to the search box. Left and Right
-move a slider by one step (ten with Shift), step a list, fold a group shut or open, or move between
-the buttons. Enter or Space flips a switch, steps a list, folds a group or presses the button. Tab
-moves to the next section (Shift+Tab: the previous one).
-
-## Controller
-
-The screen works with controller mods: those that move through menus the way Minecraft's arrow keys
-do (Controlify and the like) and those that press keys for the controller's buttons. The D-pad or
-left stick moves as the arrow keys above, A acts as Enter and B leaves the screen like **Done**. With
-Controlify, also:
-
-| Button | Does |
-|---|---|
-| LB / RB | Previous / next section |
-| X | Apply |
-| Y | Undo |
-| Right stick | Up and down scroll the list (the focus stays on a row in view); left and right move a slider ten steps |
-
-Controlify shows its button pictures beside Done, Apply and Undo and under the sections. Its virtual
-mouse stays off on this screen unless you turn it on there.
-
-## What the panel says
-
-- **Performance impact: None / Low / Medium / High / Varies** for the settings that cost frame
-  time. Varies means it depends on the scene (for example, on how many lights there are).
-- A row that does nothing as things are set is grey, and the panel says why: another setting has to
-  be turned on first, another one takes its place, ray tracing is off, or Bedrock's files are missing.
-- **Also decides:** the settings this one switches off or takes the place of.
-
-## Quality and Reset to Defaults
-
-**Quality** (Low / Medium / High / Ultra / Custom) sets the costliest controls at once: upscaler
-mode, light bounces, volumetric fog, clouds, render distance and more. Changing one of those by
-hand turns it into Custom. Details in
-[styles-and-quality.md](styles-and-quality.md#quality-levels).
-
-**Reset to Defaults**, at the bottom left, returns everything to a fresh install, including
-pipeline and shader pack settings that have no control here, which brings back radiante-pt's
-Bedrock RTX look. Holding **Ctrl** turns it into **Rebuild Shaders**: it applies the changes and
-builds the shaders again, for when the picture looks wrong after changing settings.
-
-## Settings that need a restart
-
-HDR Output, and installing or deleting an upscaler, only apply after a restart. HDR Output is
-marked **(restart)** and, when you leave the screen, a notice lists the pending changes with
-**Close the game now** or **Later**.
+The panel also shows each setting's **performance impact** (None, Low, Medium, High or Varies), why a grey row does
+nothing right now, and which other settings it replaces.
 
 ## Sections
 
-| Section | Contents |
+| Section | What is in it |
 |---|---|
-| [Quality](settings/quality-and-upscaling.md) | Ray tracing switch, quality level, pipeline, DLSS or upscaling mode, Ray Reconstruction, render and output resolution, frame generation, Reflex. |
-| [Image](settings/image.md) | Picture style, tone mapping, exposure, FSR sharpness, HDR, motion blur, depth of field. |
-| [Lighting](settings/lighting.md) | Brightness, bounced and sky light, block light sampling, ReSTIR, SER, held item light, first person shadow. |
-| [Sky & Water](settings/sky-fog-water.md) | Atmosphere, clouds, stars, sun, sun path, rain, glass, biome ambiance, volumetric fog, water. |
-| [Performance](settings/performance.md) | Light bounces, mirrors, glass, water texture, portal, rain, cache, checkerboard, parallax, Bedrock pack materials, fog quality, chunk building. |
-| [Other](settings/other.md) | Block outline, other mods' overlays, text backgrounds, parallax edges. |
-| *The pack's name* | Only with a shader pack other than Radiante PT: that pack's own settings ([below](#the-packs-own-page)). |
-| [Addons](addons.md) | Only with an addon installed: its own options, under its name. |
-| [Debug](settings/debug.md) | Only with Advanced on: debug views, GPU timings, debug logging, bug report summary, log and pack folders. |
+| [Quality](settings/quality-and-upscaling.md) | Ray tracing on/off, quality level, pipeline and upscaler, resolution, frame generation, Reflex |
+| [Image](settings/image.md) | Picture style, tone mapping, exposure, sharpness, HDR, motion blur, depth of field |
+| [Lighting](settings/lighting.md) | Brightness, bounced and sky light, block light sampling, ReSTIR, held light |
+| [Sky & Water](settings/sky-fog-water.md) | Atmosphere, clouds, stars, sun, rain, glass, biome ambiance, fog, water |
+| [Performance](settings/performance.md) | Light bounces, reflections, cache, parallax, chunk building |
+| [Other and Debug](settings/other-and-debug.md) | Block outline, other mods' overlays; debug views and logs (Advanced) |
+| *A shader pack's name* | That pack's own settings, when one other than Radiante PT is in use |
+| Addons | Options of mods built on Radiante ([API](api.md#radianteaddons)) |
 
-A setting only shows when the pipeline, GPU or shader pack supports it: DLSS Mode only with
-RT-DLSS, Upscaling Mode only with RT-FSR or RT-XeSS, Reflex only on NVIDIA, frame generation not
-with HDR Output. If something in these docs is missing from your screen, that is why.
+A setting only shows when the pipeline, GPU or shader pack supports it: DLSS Mode only with RT-DLSS, Reflex only on
+NVIDIA, frame generation not with HDR. If something here is missing from your screen, that is why.
 
 ## Presets
 
-**Presets**, next to the search box, keeps your looks: save the current one under a name, switch
-between them with a click, copy one as a code to share, or import a code someone sent you. A
-preset holds lighting, sky, fog, water, tone and camera effects; the upscaler, frame generation
-and HDR stay as they are.
+**Presets**, next to the search box, keeps your looks: save the current one, switch with a click, copy one as a code
+to share, or import a code. A preset holds lighting, sky, fog, water, tone and camera effects; the upscaler, frame
+generation and HDR stay as they are.
+
+<!-- Screenshot pending: the Presets screen -->
 
 ## Shader packs
 
-**Shader Packs**, beside Presets, chooses the path tracer: the built-in **Radiante PT** (the
-default), the built-in **Pixelated Lighting** (Radiante PT with pixelated shadows and reflections,
-in the texture's pixels while the light stays smooth, like BetterRTX's preset of that name), or a pack you added. Built-in
-packs are marked as such and come back with every start, so they cannot be removed. Packs go in `radiante/shaderpacks/` inside the game folder (**Open
-Folder** opens it), as a `.zip` or as a folder, with the pack's `configs.json` at the top: a zip
-of a folder that holds the pack (as GitHub's "Download ZIP" makes) is listed with that problem.
-This is Radiante's own folder, not the game's `shaderpacks/`, which Iris and OptiFine use for a
-different kind of pack.
+**Shader Packs**, beside Presets, chooses the path tracer:
 
-The list shows each pack's icon, name, version, author and licence, where the pack gives them.
-Click a pack and press **Use** (or double-click it, or press Enter) to switch: the shaders compile
-as for any other change. If the pack does not load or a shader does not compile, Radiante goes
-back to Radiante PT and shows what went wrong under the list (the compiler's messages, with file
-and line); **Copy Error** copies it for the pack's author. If the game closes while a pack is
-being tried (a crash, or the GPU stops responding), the next start goes back to Radiante PT and
-says so here. Each pack keeps its own settings in a
-file next to it (`<pack>.zip.txt`), so switching back and forth keeps them. Most of Radiante's
-settings belong to Radiante PT; another pack shows the ones it shares with Radiante PT where they
-always are, and its own on a page of its own.
+- **Radiante PT** (default): the Bedrock RTX look.
+- **Pixelated Lighting** (built in): shadows and reflections in the texture's pixels.
+- Packs you add to `radiante/shaderpacks/` (**Open Folder**), as a `.zip` or a folder. This is Radiante's own
+  folder, not the `shaderpacks/` folder Iris and OptiFine use.
 
-### The pack's own page
+Select a pack and press **Use**. If it fails to load or compile, Radiante goes back to Radiante PT and shows the
+error (**Copy Error** for the pack's author). Each pack keeps its own settings, and a pack other than Radiante PT
+adds a section named after it, with its presets and settings.
 
-With a pack other than Radiante PT in use, the sidebar gets one more section, named after the pack
-and with its icon. It holds the settings the pack adds:
+<!-- Screenshot pending: the Shader Packs screen and a pack's settings page -->
 
-- **Pack Preset** at the top, when the pack has presets: sets of its settings made by its author.
-  Picking one sets them all; change one afterwards and it shows **Custom**.
-- The settings under headings the pack chooses (Sky, Clouds, Colour Grade...), each heading
-  folding like an addon's. The pack's finer controls show only with **Advanced** on.
-- Some settings only show while another one has a given value (a cloud's amount while the pack's
-  clouds are on, for example).
-- The panel shows the pack's description of each setting and, where the pack says, its
-  **Performance impact**.
+Making your own: [Making a shader pack](shader-packs.md).
 
-Changes are applied with **Apply** or **Done** like the rest: some change at once, others compile
-the pack's shaders again.
+## Keyboard and controller
 
-A pack kept as a folder reloads by itself when one of its files changes, for pack authors: it is
-checked in the background first, and an edit that does not compile leaves the picture as it was
-and shows the error here. `/radiante pack validate [name]` checks a pack without switching to it,
-and `/radiante debug view <view>`, or the [Debug](settings/debug.md) section, shows the albedo, normals,
-depth and other frame images instead of the picture (`off` goes back). See [Making a shader pack](shader-packs.md#working-on-a-pack-in-game).
-
-Packs made for Radiance (the mod Radiante grew from) use the same format but an older renderer
-interface, and do not work as they are yet.
-
-## Advanced
-
-**Advanced: OFF / ON**, at the bottom, shows the fine-tuning controls of each section in folding
-groups under its main ones (exposure and tone, camera effects, light, clouds, atmosphere, water,
-fog, stars, sun and moon path, denoiser, renderer, upscaler, other pipeline settings), and adds the [Debug](settings/debug.md) section.
-Their values apply whether or not they are shown. They are the pipeline's own parameters: change
-them one at a time, and use **Undo** or **Reset to Defaults** to come back.
+| Keyboard | Controller (Controlify) | Does |
+|---|---|---|
+| Up / Down | D-pad, left stick | Move through settings and buttons |
+| Left / Right (Shift: ×10) | Right stick left / right (×10) | Move a slider, step a list |
+| Enter / Space | A | Toggle, press, fold a group |
+| Tab / Shift+Tab | RB / LB | Next / previous section |
+| | B | Leave, like **Done** |
+| | X / Y | Apply / Undo |

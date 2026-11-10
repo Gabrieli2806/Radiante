@@ -1,11 +1,8 @@
 [← Ajustes](../opciones.md) · [Índice](../README.md)
 
-# Rendimiento (sección de ajustes)
+# Rendimiento
 
-> Esta página es la referencia de los controles que viven en la sección "Rendimiento" de la
-> pantalla de ajustes. Si buscas consejos generales para ganar FPS (qué nivel de calidad elegir,
-> cómo se compara tu GPU, el coste de Distant Horizons), esa es una página distinta:
-> **[rendimiento.md](../rendimiento.md)**, en la raíz de la documentación.
+Para saber cuáles cambiar primero, ver [Calidad y rendimiento](../calidad-y-rendimiento.md).
 
 ![Ajustes de Radiante: Rendimiento](../../images/ui/settings-performance.png)
 

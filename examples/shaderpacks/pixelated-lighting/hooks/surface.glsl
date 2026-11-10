@@ -1,6 +1,8 @@
 #ifndef RADIANTE_HOOK_SURFACE_GLSL
 #define RADIANTE_HOOK_SURFACE_GLSL
 
+#include <radiante/v1/surface.glsl>
+
 // Pixelated Lighting: shadows and reflections on the texture's pixel grid, the light itself left smooth. The surface
 // is shaded where it is, with its own normal: the angle to the sun, the falloff of a torch, the bounce light and the
 // glow are radiante-pt's, pixel by pixel. Only where the shadow rays and the reflection rays start moves, to the
@@ -21,7 +23,7 @@ void hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce) {
 #if PIXEL_LIGHT_TEXELS > 0
     // What the camera's hand holds is lit from a point moved out of the wall it is pushed into (radiante-pt's
     // ptHandLightPos); its rays are left where radiante-pt starts them.
-    if (isHeldSurface(surfaceFlags)) { return; }
+    if (radianteIsHeld(surfaceFlags)) { return; }
     vec3 centre = hookTexelCentre(surface.uv, surface.worldPos);
     // Coarser than the texture: a texel bigger than 1/PIXEL_LIGHT_TEXELS of a block is kept, smaller ones are merged
     // by snapping the centre once more on the block grid, along the face.
@@ -39,7 +41,7 @@ void hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce) {
     // reflected a little differently and the squares smeared back into a smooth reflection. With pixelated
     // reflections the ripples are read at the texel's centre, so a texel of water is one flat facet and reflects one
     // thing, as in BetterRTX's Pixelated Lighting.
-    if (int(PIXEL_LIGHT_REFLECTIONS) != 0 && isWaterSurface(surfaceFlags) && abs(surface.geometricNormal.y) > 0.75) {
+    if (int(PIXEL_LIGHT_REFLECTIONS) != 0 && radianteIsWater(surfaceFlags) && abs(surface.geometricNormal.y) > 0.75) {
         vec3 viewDir = -normalize(g_hit.rayDir);
         float footprint = mainRay.coneWidth + g_hit.hitT * mainRay.coneSpread;
 #ifdef RADIANTE_HOOK_WATER_WAVES_DEFAULT

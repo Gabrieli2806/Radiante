@@ -92,6 +92,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     public static final int WIND_NONE = -1;
     private static final float WIND_KIND_STRIDE = 8.0f;
     private static final float WIND_MAX_WEIGHT = 4.0f;
+    private static final float WIND_COLUMN_STRIDE = 32.0f;
 
     /**
      * Furthest a vertex may sit from the origin of its coordinate space. Minecraft occasionally poses something at
@@ -134,6 +135,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private float windBaseY;
     private float windRise;
     private float windScale;
+    private int windColumn;
     private boolean leaves;
     private boolean frost;
     private boolean thin;
@@ -335,14 +337,16 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
      * How the vertices from here on sway in the wind (util/wind.glsl), carried to the renderer as a wind code in
      * postBase.x. Each gets a weight, how far it is from where the plant is held: {@code (y - baseY) * scale + rise}
      * for grass and water plants, so a stalk's foot stays where it grows and its tip moves most; {@code scale} alone
-     * for leaves, which move the same at every corner so that neighbouring blocks never part. WIND_NONE (the default)
-     * keeps them still.
+     * for leaves, which move the same at every corner so that neighbouring blocks never part. {@code column}, the
+     * block's x and z modulo 8 ({@code x + 8 * z}), tells the shader which block a plant grows in, so it can move the
+     * whole plant alike. WIND_NONE (the default) keeps them still.
      */
-    public PBRVertexWriter wind(int kind, float baseY, float rise, float scale) {
+    public PBRVertexWriter wind(int kind, float baseY, float rise, float scale, int column) {
         this.windKind = kind;
         this.windBaseY = baseY;
         this.windRise = rise;
         this.windScale = scale;
+        this.windColumn = column;
         return this;
     }
 
@@ -354,8 +358,8 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
             : (y - this.windBaseY) * this.windScale + this.windRise;
         weight = Math.max(0.0f, Math.min(WIND_MAX_WEIGHT, weight));
         // A leaf or water plant vertex keeps its kind even without weight: a code interpolated across a triangle must
-        // never read as another kind (util/wind.glsl). Grass, the first kind, is 0 at its foot, the same as still.
-        return this.windKind * WIND_KIND_STRIDE + weight;
+        // never read as another kind (util/wind.glsl). Grass, the first kind, has no weight at its foot, which holds it.
+        return this.windColumn * WIND_COLUMN_STRIDE + this.windKind * WIND_KIND_STRIDE + weight;
     }
 
     /** Marks what follows as ice or snow (FROST_SURFACE_BIT in the shaders). */

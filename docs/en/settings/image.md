@@ -8,7 +8,7 @@ Defaults are radiante-pt's, the Bedrock RTX look ([bedrock-rtx.md](../bedrock-rt
 
 | Control | Range / Values | Default | What it does |
 |---|---|---|---|
-| **Picture Style** | Natural · Bedrock · Vivid · Custom | Bedrock | Sets Saturation, Bounced Light, Sky Light and the tone curve at once. Bedrock is the default look. Full detail in [styles-and-quality.md#picture-styles](../styles-and-quality.md#picture-styles). |
+| **Picture Style** | Natural · Bedrock · Vivid · Custom | Bedrock | Sets Saturation, Bounced Light, Sky Light and the tone curve at once. Bedrock is the default look. See [Picture styles](#picture-styles) below. |
 | **Tone Mapping** | Bedrock RTX · PBR Neutral · ACES · Reinhard | Bedrock RTX | How bright light is fitted to what the screen can show. Bedrock RTX is Bedrock's own curve, built from the picture's histogram; PBR Neutral keeps colours true; ACES is more filmic with more contrast; Reinhard is soft and flat. |
 | **Saturation** | 50% – 200% | 100% | How colourful the image is. |
 | **Texture Contrast** | 46% – 109% | 100% | How deep and contrasted block and entity colours look under the light. 100% matches Bedrock RTX; lower gives the paler, flatter look of earlier versions. |
@@ -20,7 +20,7 @@ Defaults are radiante-pt's, the Bedrock RTX look ([bedrock-rtx.md](../bedrock-rt
 | **Night-time Exposure** | 10% – 150% | 65% | The same at night. |
 | **Daytime Low-Light Limit** | 50% – 3200% | 250% | How far the exposure may open by day in a dark place. Low keeps closed rooms dark; high brightens rooms lit only through a window. |
 | **FSR Sharpness** | 0% – 100% | 70% | How much FSR sharpens the upscaled image. Higher is crisper but can show halos on edges. RT-FSR only. |
-| **HDR Output** | On / Off | Off | HDR on an HDR display; the brightness controls below it show when it is on. See [HDR](#hdr). |
+| **HDR Output** | On / Off | Off | HDR on an HDR display; the brightness controls below it show when it is on. See [HDR](../hdr.md). |
 | **Motion Blur** | On / Off | Off | Smears what moves across the screen along its motion, as a camera does. Changing it rebuilds the shaders (a brief hitch when applying). |
 | **Depth of Field** | On / Off | Off | Keeps what you look at sharp and blurs what is much nearer or farther, focusing on the centre of the screen. Also rebuilds the shaders when changed. |
 | **Motion Blur Strength** | 10% – 220% | 100% | How long the smear of Motion Blur is. Needs Motion Blur. |
@@ -33,16 +33,22 @@ With the Bedrock RTX tone curve (the default) the tone mapper is Bedrock-style (
 histogram) and the exposure is metered on the light reaching the surfaces in view, so the exposure
 sliders behave a little differently than with the PBR Neutral, ACES or Reinhard curves.
 
-## HDR
+## Picture styles
 
-HDR Output sits in this same section, between FSR Sharpness and Motion Blur. It is covered in full,
-with display considerations, in [hdr.md](../hdr.md) — quick summary:
+**Picture Style** sets Tone Mapping, Saturation, Bounced Light and Sky Light at once. Changing one of them by hand
+shows **Custom**.
 
-| Control | Range | Default |
+| Style | Tone Mapping | Saturation | Bounced Light | Sky Light | Look |
+|---|---|---|---|---|---|
+| **Natural** | PBR Neutral | 100% | 100% | 100% | Physically correct, nothing tuned on top |
+| **Bedrock** (default) | Bedrock RTX | 100% | 150% | 180% | Bedrock RTX: brighter shade and bounced light |
+| **Vivid** | ACES | 130% | 150% | 150% | More contrast and colour |
+
+| Natural | Bedrock | Vivid |
 |---|---|---|
-| HDR Output | On/Off | Off |
-| HDR Peak Brightness | 400 – 4000 nits | 1000 nits |
-| HDR Paper White | 80 – 400 nits | 200 nits |
+| ![Natural](../../images/compare/styles-natural.webp) | ![Bedrock](../../images/compare/styles-bedrock.webp) | ![Vivid](../../images/compare/styles-vivid.webp) |
 
-HDR Debug View is in the [Debug](debug.md) section. Turning HDR Output on or off needs a game restart; the brightness sliders apply with the rest of
-the settings, without one.
+Picture Style and **Atmosphere** (in [Sky & Water](sky-fog-water.md)) are independent: Atmosphere picks where the
+sky's colours come from, Picture Style how the final picture is processed.
+
+HDR Output and its brightness controls are explained in [HDR](../hdr.md).

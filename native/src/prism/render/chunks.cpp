@@ -1248,7 +1248,7 @@ void Chunks::recordWind(const std::shared_ptr<gpu::CommandBuffer> &commandBuffer
     };
 
     // The sections within the wind's reach of the camera move. The reach is measured to the nearest point of the
-    // section, as the fade in util/wind.glsl is measured to each vertex.
+    // section, as the fade in util/wind.glsl is measured to a point in it (windFadeAt).
     if (blowing) {
         for (int64_t id : windSlots_.slots()) {
             Chunk1 &slot = *chunks_[id];

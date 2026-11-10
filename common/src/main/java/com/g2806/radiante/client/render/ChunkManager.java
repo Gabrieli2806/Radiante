@@ -112,9 +112,9 @@ public final class ChunkManager {
     }
 
     /**
-     * Sets the scratch's wind for one block: its kind, and the rise and scale that turn a vertex's height in the block
-     * into its weight (PBRVertexWriter.wind). The top half of a tall plant starts where the bottom half ends; a stalk
-     * of sugar cane or kelp counts the blocks of it below, so its blocks bend as one and never come apart.
+     * Sets the scratch's wind for one block: its kind, its column, and the rise and scale that turn a vertex's height
+     * in the block into its weight (PBRVertexWriter.wind). The top half of a tall plant starts where the bottom half
+     * ends; a stalk of sugar cane or kelp counts the blocks of it below, so its blocks bend as one and never come apart.
      */
     private static void setWind(SectionCompileScratch scratch, RenderSectionRegion region, BlockPos pos,
         BlockState state, int sy) {
@@ -126,6 +126,8 @@ public final class ChunkManager {
         if (kind == PBRVertexWriter.WIND_NONE) {
             return;
         }
+        // The low three bits of x and z are enough: with a vertex's position they single out its block.
+        scratch.windColumn = (pos.getX() & 7) | (pos.getZ() & 7) << 3;
         net.minecraft.world.level.block.Block block = state.getBlock();
         if (kind == PBRVertexWriter.WIND_LEAVES) {
             // Leaves move most; what hangs a little less, a lily pad least, as it floats.
@@ -1074,6 +1076,7 @@ public final class ChunkManager {
         private float windBaseY;
         private float windRise;
         private float windScale;
+        private int windColumn;
         /** The block being written is leaves; see PBRVertexWriter.leaves. */
         private boolean blockIsLeaves;
         /** The block being written is ice or snow; see PBRVertexWriter.frost. */
@@ -1135,7 +1138,7 @@ public final class ChunkManager {
             }
             writer.textureId(atlasId).alphaMode(alphaModeOf(layer)).coordinate(0).water(false).lava(false).glass(this.blockIsGlass).plant(this.blockIsPlant).leaves(this.blockIsLeaves).frost(this.blockIsFrost)
                 .thin(this.blockIsThin).glassPane(this.blockIsPane, this.paneCapUp, this.paneCapDown).blend(this.blockIsBlend)
-                .unlit(this.blockIsUnlit).castScale(this.blockCastScale).wind(this.windKind, this.windBaseY, this.windRise, this.windScale);
+                .unlit(this.blockIsUnlit).castScale(this.blockCastScale).wind(this.windKind, this.windBaseY, this.windRise, this.windScale, this.windColumn);
             this.current = writer;
             return writer;
         }
@@ -1152,7 +1155,7 @@ public final class ChunkManager {
             }
             writer.textureId(atlasId).alphaMode(alphaModeOf(layer)).coordinate(0).water(false).lava(false).glass(false)
                 .plant(false).leaves(false).frost(false).thin(false).glassPane(false, false, false).blend(false).unlit(true).glowLight(true)
-                .wind(PBRVertexWriter.WIND_NONE, 0.0f, 0.0f, 0.0f);
+                .wind(PBRVertexWriter.WIND_NONE, 0.0f, 0.0f, 0.0f, 0);
             this.current = writer;
             return writer;
         }

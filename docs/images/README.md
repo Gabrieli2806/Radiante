@@ -35,6 +35,13 @@ in `en` and `es`) and reference it from the docs.
 - Atmosphere: Java vs. Bedrock sky at the same time of day.
 - Frame generation: the F3 counter showing real vs. generated frames.
 - The "Radiante: ray tracing unavailable" screen.
-- HDR: a bright scene with HDR on vs. off (a photo of the screen works better than a screenshot).
+- HDR: a bright scene with HDR on vs. off (a photo of the screen works better than a screenshot), and the three
+  pages of Calibrate HDR.
+- The Presets screen, the Shader Packs screen and a pack's settings page.
 
 The docs mark each of these with a `Screenshot pending` / `Captura pendiente` comment.
+
+## Other pictures
+
+Calibrate HDR shows two pictures of its own, `dark.png` and `bright.png` in
+`common/src/main/resources/assets/radiante/textures/gui/hdr_calibration/` (960x540). Replace them with the same names.

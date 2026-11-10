@@ -1,7 +1,47 @@
+[← Developer docs](README.md)
+
 # Shader packs: design
 
-How shader packs work in Radiante today, and the contract they are moving to. "Today" is `mc/26.3` with the
-`feature/shaderpacks` work; "planned" items are in the [roadmap](roadmap.md). The code wins where this page disagrees.
+For Radiante contributors and pack authors: how shader packs work, the contract a pack builds on, and where the work
+stands. Pack authors starting out: [Making a shader pack](../en/shader-packs.md). The roadmap is
+[issue #55](https://github.com/Gabrieli2806/Radiante/issues/55). The code wins where this page disagrees.
+
+## The idea
+
+Radiante traces Minecraft on its own Vulkan renderer, PrismRT. The path tracer itself is a **shader pack**: a zip of
+GLSL shaders and a `configs.json` that PrismRT compiles and runs. Radiante ships one, **Radiante PT** (`radiante-pt`),
+and can load others from `radiante/shaderpacks/`.
+
+The goal is for Radiante to be to path-traced packs what Iris is to OpenGL shaders: a stable platform people build
+looks on, with the renderer's features (hardware ray tracing, opacity micromaps, SHaRC, ReSTIR, DLSS Ray
+Reconstruction, Distant Horizons, Bedrock RTX materials) open to every pack, not only the built-in one: a stable
+interface, versioning, error reporting and a settings layout around the pack format.
+
+## Principles
+
+1. **A pack keeps working while Radiante changes.** Packs build on a versioned public interface, never on the
+   renderer's internals. Breaking that interface needs a new major API version.
+2. **Small packs.** A pack holds what it changes, not a copy of Radiante PT. Copies drift and break.
+3. **Radiante PT is a pack like any other.** It uses the public interface too, so the interface is always enough for a
+   complete path tracer.
+4. **Failing packs never cost the player their game.** A pack that does not load, does not compile or crashes the
+   GPU is replaced by Radiante PT, and the reason is shown.
+5. **Every feature is opt-in and documented.** Nothing a pack can use is reachable only by reading the renderer's
+   source.
+
+## Where it stands
+
+| Area | State |
+| --- | --- |
+| Shader Packs screen (list, metadata, switch, open folder), laid out like the settings | Done |
+| Fallback to Radiante PT with the compiler's errors shown; crash recovery | Done |
+| Per-pack settings (`<pack>.zip.txt`), values checked against the pack's types | Done |
+| Example pack built as an overlay on Radiante PT (`examples/shaderpacks/`) | Done, replaced by `extends` |
+| Pack inheritance (`extends`) and hook points in Radiante PT | Done, roadmap phase 1 |
+| Example packs on `extends` and hooks (radiante-example, Inkwell, Pixelated Lighting) | Done; Inkwell's outlines shimmer |
+| A pack built on radiante-pt that comes with Radiante (Pixelated Lighting) | Done: zipped by the native build (`PRISM_BUILT_IN_EXTENDING_PACKS`), listed as built in (`ShaderPackLibrary.BUILT_IN_EXTRAS`) |
+| Versioned public headers (`radiante/v1`) | In progress, phase 2: `surface.glsl`, used by Radiante PT and the example packs |
+| `api_version` and `requires.radiante` checked in the list | Done (groundwork for phase 2) |
 
 ## 1. Moving parts
 
@@ -43,8 +83,9 @@ my-pack/
   util/ common/ extern/ renderer headers the pack must carry today (vertex fetch, uniforms, SHaRC)
 ```
 
-Shaders are compiled with the pack's root as the include path. Today a pack carries its own copy of the renderer's
-headers (`common/shared.hpp`, `util/vertex.glsl`, SHaRC): this is the coupling [phase 2](roadmap.md) removes.
+Shaders are compiled with Radiante's public headers (`radiante/v1`, section 6) and then the pack's root as the include
+path. For what those headers do not cover yet, a pack carries its own copy of the renderer's headers
+(`common/shared.hpp`, `util/vertex.glsl`, SHaRC): this is the coupling phase 2 of the [roadmap](https://github.com/Gabrieli2806/Radiante/issues/55) removes.
 
 ## 3. Manifest
 
@@ -124,7 +165,7 @@ the file, keeping the include guard (`RADIANTE_HOOK_<NAME>_GLSL`). The signature
 
 | File | Function | Called | Notes |
 | --- | --- | --- | --- |
-| `hooks/surface.glsl` | `void hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce)` | Default closest-hit shader, once per hit, after the material is sampled, before the denoiser guides, the mirror test and the lights read it | `surfaceFlags` is the packed vertex data: `isLeavesSurface(surfaceFlags)`, `isPlantSurface`, `isWaterSurface`... (`util/vertex.glsl`). Globals declared here are visible to `direct_light.glsl`, included right after it. Change `albedoValue` and `mat.albedo` together: `albedoValue` is the denoiser's albedo guide `hookTexelCentre(surface.uv, surface.worldPos)` gives the centre of the texture texel hit, on the face; moving `surface.worldPos` moves where shadow, light, bounce and reflection rays start; `g_hookViewDir` is the view the surface is shaded with (Pixelated Lighting tilts the normal instead, so every pixel of a texel reflects the same way) |
+| `hooks/surface.glsl` | `void hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce)` | Default closest-hit shader, once per hit, after the material is sampled, before the denoiser guides, the mirror test and the lights read it | `surfaceFlags` is the packed vertex data: `radianteIsLeaves(surfaceFlags)`, `radianteIsPlant`, `radianteIsWater`... (`radiante/v1/surface.glsl`). Globals declared here are visible to `direct_light.glsl`, included right after it. Change `albedoValue` and `mat.albedo` together: `albedoValue` is the denoiser's albedo guide `hookTexelCentre(surface.uv, surface.worldPos)` gives the centre of the texture texel hit, on the face; moving `surface.worldPos` moves where shadow, light, bounce and reflection rays start; `g_hookViewDir` is the view the surface is shaded with (Pixelated Lighting tilts the normal instead, so every pixel of a texel reflects the same way) |
 | `hooks/ray_origins.glsl` | `vec3 hookShadowOffset()`, `vec3 hookReflectionOffset()` | Default closest-hit shader: `ptDeferShadowRay` (`pt/pt_deferred_shadow.glsl`, every shadow ray of the sun or moon, the block light and the held lights; not the water's open-sky test), the reflection lobe and the mirror path (`ptHookMoveReflection`, `pt/pt_shade_default.glsl`); for the surface the camera sees, layer 3 of `material_state` | Offsets from the shaded point, which `hookSurface` can set. radiante-pt's file only defines `RADIANTE_HOOK_RAY_ORIGINS_DEFAULT`. Without it: shadow rays start that far away, aimed at the same point of a block or held light (the sun's and moon's keep their direction); a reflection starts there, turned by `reflect(view of the moved point) - reflect(view of the hit)`; the closest hit writes the reflection origin's offset into layer 3 of `material_state` (the pack sets its `depth` to 4), `tracePrimary` reads it back (`FirstHitPayload.reflectionPos`, `reflectionIncoming`) and the ray generation's reflection branch of water and glass (`initTransparent`) starts there, seen from there. Shading, diffuse bounces and refraction keep the shaded point. Included by `pt_deferred_shadow.glsl` and `pt_primary.glsl` |
 | `hooks/rain_surface.glsl` | `vec3 hookRainPosition(vec3 worldPos)`, `float hookPuddleEdge(float puddle)` | `pt/pt_material.glsl` through `vptRainSurfacePosition` / `vptRainPuddleEdge` (`common/rain_wetness.glsl`): the puddle and the rain rings on puddles and water | radiante-pt's file only defines `RADIANTE_HOOK_RAIN_SURFACE_DEFAULT`, which compiles both out. Included by `common/rain_wetness.glsl` |
 | `hooks/direct_light.glsl` | `void hookDirectLight(SampledSurface surface, vec3 viewDir, vec3 lightDir, float NoL, inout vec3 lightBRDF)` | Every sun or moon sample at a surface, before its shadow ray | `lightBRDF` is the BRDF times the cosine. Behind an opaque surface it arrives as zero; left zero, no shadow ray is traced, as before; made non-zero, the surface is lit from behind (light through leaves, keeps opacity micromaps) |
@@ -265,23 +306,37 @@ zips). `native/src/tools/compile_pack.py` compiles a staged pack's shaders with
 glslangValidator and the defines the loader gives at default settings (attributes, runtime attributes as
 `worldUBO.packParams` reads, debug view defines, pass defines, execution variables, SHaRC variants; `--debug-view`
 compiles with a view chosen). In game, `/radiante pack validate` does the same with the real settings. See
-[examples](../../../examples/shaderpacks/README.md#check-a-pack-without-the-game).
+[examples](../../examples/shaderpacks/README.md#check-a-pack-without-the-game).
 
-## 6. Public headers (planned, phase 2)
+## 6. Public headers (phase 2)
 
-`#include <radiante/v1/...>`, from an include root the loader adds to every pack compile (`shader_compile.cpp`):
+`#include <radiante/v1/...>`, from an include root the loader puts before the pack's own folder in every pack compile
+(`shader_pack_loader.cpp`), so a pack gets the headers of the Radiante it runs on, not a copy it carries. They live in
+`native/src/shader/include/`, and the native build installs them with the renderer's other shaders. The shader cache
+hashes them like the pack's own includes: a changed header recompiles the shaders that include it.
 
 | Header | Contents |
 | --- | --- |
 | `bindings.glsl` | Every built-in set/binding as named declarations |
 | `scene.glsl` | TLAS, instance and geometry lookup |
 | `vertex.glsl` | `radianteFetchTriangle(...)`: positions, normal, UVs, colour, light, surface flags, over both the full and the compact chunk layouts |
-| `surface.glsl` | Surface flag accessors: water, lava, glass, pane, leaves, plants, layer overlays, held item, rain, unlit, blend… |
-| `uniforms.glsl` | Frozen v1 views of `WorldUBO`/`SkyUBO` and accessors (sun, moon and its phase, weather, wind, brightness, night vision) |
+| `surface.glsl` | What a ray hit, one function per surface flag: `radianteIsWater(surfaceFlags)`, lava, glass, pane and its open ends, leaves, plants, thin, frost, blend, layer, rain, held item and held light, unlit, glow light |
+| `uniforms.glsl` | `RadianteWorld` and `RadianteSky`: `WorldUBO` and `SkyUBO` under names of their own, for a pack that declares the uniform blocks itself; accessors (sun, moon and its phase, weather, wind, brightness, night vision) planned |
 | `material.glsl` | `radianteSampleMaterial(...)`: albedo, normal, roughness, metal, emission, subsurface from LabPBR and converted Bedrock RTX packs |
 | `payload.glsl`, `sharc.glsl`, `restir.glsl`, `omm.glsl`, `lod.glsl`, `debug.glsl` | Shared payloads, radiance cache, reservoirs, micromap state, Distant Horizons coverage, debug output |
 
-Radiante PT moves onto these headers first; a header is only published once Radiante PT uses it.
+Radiante PT moves onto these headers first; a header is only published once Radiante PT uses it. Published so far:
+`surface.glsl`, and `uniforms.glsl`, the one exception: Radiante PT keeps the old names, since its `radiante-pt@1`
+hooks hand packs `worldUBO` by them. The native build checks it against `common/shared.hpp` instead, member by member
+(type, offset, matrix and array strides; `native/src/tools/check_v1_layout.py`, run whenever Python 3 and `spirv-dis`
+are found), so the two cannot drift apart. Its structs may stop short of the engine's (`handPrimaryBounds`, the
+renderer's own, is left out), and members are only ever added at their end. The rest are planned. The surface tests
+`surface.glsl` replaces (`isLeavesSurface`... in `util/vertex.glsl`) stay for the `radiante-pt@1` packs that call
+them.
+
+A pack that uses Radiante only through these headers and the `radiante-pt@1` hooks can have any licence
+([LICENSE-EXCEPTION.md](../../LICENSE-EXCEPTION.md)), so they are written from scratch, with nothing copied from
+Radiance, MCVR or Vanilla-PT.
 
 ## 7. Settings
 
@@ -330,7 +385,7 @@ Not done: `requires_feature`; rows for `vec3` attributes. (Live settings in post
 
 - Per-material ids (planned, phase 5): a `materials` block maps block/entity tags or ids to the pack's own material
   ids (`"#minecraft:leaves": "foliage"`), carried per geometry so shaders can branch on them; the surface flags cover
-  the common cases today (`isLeavesSurface`, `isPlantSurface`).
+  the common cases today (`radianteIsLeaves`, `radianteIsPlant`).
 - **Foliage translucency and micromaps**: with opacity micromaps the GPU answers cut-out hits without the any-hit
   shader, so light cannot be tinted while passing through leaves. Two ways for a pack:
   1. **Light at the leaf** (works today, keeps micromaps): add the light arriving from behind when shading the leaf;
@@ -407,3 +462,14 @@ Packs are code that runs on the GPU. Radiante does not sandbox shaders; it limit
   5); a folder pack that extends another has the same limits and its symbolic links are
   skipped. Shaders get no file or network access (GLSL has none).
 - Players should get packs from places they trust, as with any mod; the screen shows author and licence.
+
+## 12. Keeping this up to date
+
+- A change to anything a pack reads (vertex layout, surface flags, uniforms, bindings, `configs.json` keys, include
+  files) updates this page in the same commit, and says in `changelog.md` whether packs need changes.
+- What `radiante/v1` publishes changes only through it: append-only within a version, or a new version
+  ([versioning](#4-versioning-and-compatibility)).
+- The roadmap lives in [issue #55](https://github.com/Gabrieli2806/Radiante/issues/55); tick a phase there when it ships.
+- The example packs are rebuilt and tried after every change to Radiante PT they touch (`./gradlew shaderPackExamples`,
+  then select them in game); a change to a hook's call site is checked offline first (`native/src/tools/`,
+  [§5](#checking-a-pack-offline)).
