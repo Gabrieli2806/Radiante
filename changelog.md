@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Less fog by default: Volumetric Fog Strength starts at 60% (was 100%), where the morning air no longer stands as a pale veil over everything. A value already saved is kept; Reset to Defaults gives the new one.
+
+- Aerial Perspective is off by default (0%, was 100%). It is a second haze over the distance, on top of the fog's; it is still there for those who want far terrain (Distant Horizons' too) to fade into the sky. Aerial Perspective Start is grey while it is off. A value already saved is kept.
+
 - More Advanced settings say when they have no effect instead of doing nothing: Indirect Light Strength while Bedrock Pack Materials is on, and the exposure and curve settings that belong to another light meter or tone mapping curve than the one chosen (the histogram's range and percentiles, the centre's size, the least and the manual exposure, middle grey, the white point, clamping).
 
 - Shader Execution Reordering is removed. It broke water (a flat pale sheet, nothing seen through or mirrored) and, kept away from water, stopped the game on the card it was tried on; it was experimental and off by default.

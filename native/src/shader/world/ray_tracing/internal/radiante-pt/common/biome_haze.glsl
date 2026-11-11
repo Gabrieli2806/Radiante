@@ -112,8 +112,9 @@ void biomeHaze(vec3 rayDir, bool hitSky, float hitDistance, out float transmitta
 // horizon), which is what a deep enough layer of that air converges to. That sky carries the sun's glow around a low
 // sun, so the haze warms towards a sunset without a phase function of its own. No ray, no noise, and the same at every
 // distance, so chunks and LODs fade alike.
+// Off unless the player turns it up: the fog of the air is enough for most, and with both the distance was hazed twice.
 #ifndef VPT_AERIAL_PERSPECTIVE
-#    define VPT_AERIAL_PERSPECTIVE 1.0
+#    define VPT_AERIAL_PERSPECTIVE 0.0
 #endif
 #ifndef VPT_AERIAL_PERSPECTIVE_START
 #    define VPT_AERIAL_PERSPECTIVE_START 128.0

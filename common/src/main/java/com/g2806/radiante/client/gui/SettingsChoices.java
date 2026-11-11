@@ -396,7 +396,7 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
         stage("nightBrightness", 35);
         stage("emissionBrightness", 12);
         stage("heldLightBrightness", 12);
-        stage("volumetricFogStrength", 100);
+        stage("volumetricFogStrength", Options.DEFAULT_FOG_STRENGTH);
         stage("starAltitude", 100);
         stage("cloudHeightOffset", 0);
         stage("sunPathTilt", 0);

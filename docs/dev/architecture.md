@@ -220,7 +220,7 @@ refreshed only when that list does.
 ### Wind: refit foliage
 
 With the pack's Wind setting on, Java gives every vertex of leaves, grass, flowers, vines and water plants a wind
-code (`ChunkManager.setWind`, `PBRVertexWriter.wind`, carried in `PBRVertex::postBase.x`): its kind and how far it is
+code (`BlockKinds.setWind`, `PBRVertexWriter.wind`, carried in `PBRVertex::postBase.x`): its kind and how far it is
 from where the plant is held. A geometry with such vertices is packed with float positions (the code in their fourth
 component, read by the shaders as `PositionVertex::pad0`) and a copy of them at rest, and its section's BLAS is built
 with `ALLOW_UPDATE` and left uncompacted. Every frame `Chunks::recordWind`, ahead of the TLAS build, takes the
