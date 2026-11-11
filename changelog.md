@@ -14,6 +14,8 @@ All notable changes to this project are documented in this file.
 
 - Options changed while the game runs are read safely by the render and chunk building threads, in the mod and in the renderer.
 
+- A graphics driver failure while the renderer queues work is reported in the log and stops that step, where the game could wait for ever before.
+
 - For contributors: native method signatures, the vertex layout and the modules' image counts are checked when building; the example shader packs are compiled and the native tests run in the CI; a test looks up every mixin's targets in the Minecraft the build compiles against. `native/extern` holds only what the build reads (about 4200 files fewer).
 
 - ReSTIR Block Lights and ReSTIR Bounced Light now reuse light across frames and neighbouring pixels: neither ever found last frame's samples, so each ran on its new samples alone. With the reuse, block lights are far less noisy before denoising but their shadows are softer where several lights meet.

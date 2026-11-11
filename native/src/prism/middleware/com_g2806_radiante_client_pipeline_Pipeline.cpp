@@ -169,7 +169,8 @@ JNIEXPORT void JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_prewarmS
 
 // The GPU time of the world pipeline, averaged over the last 60 frames, per stage (GpuProfiler::summary), for F3.
 JNIEXPORT jstring JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_gpuStats(JNIEnv *env, jclass) {
-    const std::string summary = GpuProfiler::summary();
+    const std::string summary =
+        jni::guard("[Radiante] gpuStats", std::string(), [] { return GpuProfiler::summary(); });
     return env->NewStringUTF(summary.c_str());
 }
 
@@ -178,7 +179,9 @@ JNIEXPORT jstring JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_gpuSt
 JNIEXPORT jlongArray JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_sceneStats(JNIEnv *env, jclass) {
     jlong values[4] = {static_cast<jlong>(SceneStats::tlasInstances.load(std::memory_order_relaxed)),
                        static_cast<jlong>(SceneStats::entityBlasLastFrame.load(std::memory_order_relaxed)), 0, 0};
-    if (auto framework = jni::framework(); framework != nullptr && framework->vma() != nullptr) {
+    jni::guard("[Radiante] sceneStats", [&values] {
+        auto framework = jni::framework();
+        if (framework == nullptr || framework->vma() == nullptr) return;
         VmaAllocator allocator = framework->vma()->allocator();
         const VkPhysicalDeviceMemoryProperties *memory = nullptr;
         vmaGetMemoryProperties(allocator, &memory);
@@ -189,7 +192,7 @@ JNIEXPORT jlongArray JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_sc
             values[2] += static_cast<jlong>(budgets[heap].statistics.blockBytes >> 20);
             values[3] += static_cast<jlong>(budgets[heap].budget >> 20);
         }
-    }
+    });
     jlongArray out = env->NewLongArray(4);
     if (out != nullptr) env->SetLongArrayRegion(out, 0, 4, values);
     return out;

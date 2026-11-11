@@ -910,8 +910,10 @@ void Chunks::reset(uint32_t numChunks, uint32_t sizeX, uint32_t sizeY, uint32_t 
     // Minecraft reference the old buffers and structures: finish the builds, and keep the old sections alive until
     // those frames are done.
     if (chunkBuildScheduler_ != nullptr) chunkBuildScheduler_->waitAllBatchesFinish();
-    vkQueueWaitIdle(device->mainVkQueue());
-    vkQueueWaitIdle(device->secondaryQueue());
+    gpu::diagnostics::onResult(vkQueueWaitIdle(device->mainVkQueue()), device->mainVkQueue(),
+                               device->secondaryQueue());
+    gpu::diagnostics::onResult(vkQueueWaitIdle(device->secondaryQueue()), device->mainVkQueue(),
+                               device->secondaryQueue());
     // The old slots point into occupied_, which is about to be replaced.
     for (const auto &slot : chunks_) {
         if (slot != nullptr) slot->occupiedFlag = nullptr;
