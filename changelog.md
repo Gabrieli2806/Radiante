@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- `/radiante benchmark`: builds a scene of its own in a test world (a lake, a waterfall, a cave with ores and lava, a house, coloured glass, lamps) and flies the camera through it from dawn to night, then reports frames a second, the slowest 1% of frames and the GPU time of each stage. Only in a singleplayer world whose name starts with "Radiante".
+
 - ReSTIR Block Lights and ReSTIR Bounced Light now reuse light across frames and neighbouring pixels: neither ever found last frame's samples, so each ran on its new samples alone. With the reuse, block lights are far less noisy before denoising but their shadows are softer where several lights meet.
 
 - ReSTIR Block Lights is off by default: the plain sampler is quicker (about an eighth off the ray tracing pass in a lit room), gives sharp shadows, and was less noisy than ReSTIR had been without its reuse. A setting saved as on stays on.

@@ -21,6 +21,7 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 | `common/.../client/pipeline/ShaderPack*.java` | Shader packs in `radiante/shaderpacks/`: manifest, library, settings page keys, validation |
 | `common/.../client/gui/` | Settings screen (`RadianteOptionsScreen`, `SettingsLayout`, `AdvancedOptions`, `Tunable`), Shader Packs screen and a pack's settings page (`ShaderPacksScreen`, `PackSettingsPage`), toasts, background rebuild, start-up warm-up |
 | `common/.../client/render/` | Chunk and entity collection, point lights (`BedrockPointLights`), emission (`EmissionTiles`), held light, biome ambiance |
+| `common/.../client/benchmark/` | `/radiante benchmark`: the scene it builds (`BenchmarkScene`), the camera's shots (`BenchmarkPath`), the run and its report (`Benchmark`) |
 | `common/.../client/option/Options.java` | Plain options saved in `radiante/options.properties` |
 | `common/src/main/resources/assets/radiante/lang/` | Texts: `en_us`, `es_es`, `zh_cn` |
 | `native/src/prism/` | Renderer: `gpu/`, `render/` (modules, framework, pipeline), `middleware/` (JNI, one file per Java class) |

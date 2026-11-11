@@ -681,6 +681,10 @@ public final class DevAutomation {
         } else if (action.equals("warmup")) {
             com.g2806.radiante.client.gui.PipelineWarmUp.force();
             RadianteClient.LOGGER.info("[dev] warm-up forced");
+        } else if (action.startsWith("benchmark")) {
+            // benchmark, or benchmark=quit to close the game when it ends: /radiante benchmark from a script.
+            com.g2806.radiante.client.benchmark.Benchmark.start(minecraft, action.endsWith("=quit"));
+            RadianteClient.LOGGER.info("[dev] benchmark");
         } else if (action.equals("fps")) {
             RadianteClient.LOGGER.info("[dev] fps {} at tick {}", minecraft.getFps(), worldTicks);
         } else if (action.equals("quit")) {
