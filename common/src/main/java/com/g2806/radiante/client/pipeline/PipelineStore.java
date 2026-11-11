@@ -15,6 +15,7 @@ import static com.g2806.radiante.client.pipeline.Pipeline.connect;
 import static com.g2806.radiante.client.pipeline.Pipeline.isModuleAvailable;
 
 import com.g2806.radiante.client.RadianteClient;
+import com.g2806.radiante.client.option.SettingsFile;
 import com.g2806.radiante.client.pipeline.Pipeline.PipelineConfigStorage;
 import com.g2806.radiante.client.pipeline.Pipeline.PipelineMode;
 import com.g2806.radiante.client.pipeline.Pipeline.PipelineStorage;
@@ -76,7 +77,7 @@ final class PipelineStore {
                 String stored = Files.readString(PIPELINE_CONFIG_PATH);
                 String moved = stored.replace("ray_tracing/vanilla-pt.zip", "ray_tracing/radiante-pt.zip");
                 if (!moved.equals(stored)) {
-                    Files.writeString(PIPELINE_CONFIG_PATH, moved);
+                    SettingsFile.write(PIPELINE_CONFIG_PATH, moved);
                 }
             }
         } catch (IOException | RuntimeException e) {
@@ -100,7 +101,7 @@ final class PipelineStore {
             String moved = stored.replaceAll("(?m)^([ \\t]*value: )['\"]?" + ShaderPackLibrary.FOLDER
                 + "/pixel-light(\\.zip)?['\"]?[ \\t]*$", "$1" + ShaderPackLibrary.BUILT_IN_EXTRAS.get(0));
             if (!moved.equals(stored)) {
-                Files.writeString(PIPELINE_CONFIG_PATH, moved);
+                SettingsFile.write(PIPELINE_CONFIG_PATH, moved);
                 RadianteClient.LOGGER.info("The Pixel Light pack is built in now, as Pixelated Lighting; using it");
             }
         } catch (IOException | RuntimeException e) {
@@ -281,10 +282,7 @@ final class PipelineStore {
             }
 
             try {
-                if (storagePath.getParent() != null) {
-                    Files.createDirectories(storagePath.getParent());
-                }
-                Files.writeString(storagePath, builder.toString(), StandardCharsets.UTF_8);
+                SettingsFile.write(storagePath, builder.toString());
                 module.dynamicAttributeStoragePath = storagePath.toAbsolutePath().normalize().toString();
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -432,8 +430,7 @@ final class PipelineStore {
         String yamlText = yaml.dump(storage);
 
         try {
-            Files.createDirectories(PIPELINE_CONFIG_PATH.getParent());
-            Files.writeString(PIPELINE_CONFIG_PATH, yamlText, StandardCharsets.UTF_8);
+            SettingsFile.write(PIPELINE_CONFIG_PATH, yamlText);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -460,7 +457,11 @@ final class PipelineStore {
             }
             return storage;
         } catch (Exception e) {
-            RadianteClient.LOGGER.error("Error while loading pipeline config.", e);
+            // The caller takes null for "no file yet" and writes the defaults over it: what could not be read is
+            // kept beside it first, so a pipeline the player set up is not lost to one bad line.
+            Path kept = SettingsFile.keepDamaged(PIPELINE_CONFIG_PATH);
+            RadianteClient.LOGGER.error("Could not read {}; starting from the defaults. The file was kept as {}.",
+                PIPELINE_CONFIG_PATH, kept, e);
             return null;
         }
     }

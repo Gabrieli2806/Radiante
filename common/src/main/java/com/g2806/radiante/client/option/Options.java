@@ -6,7 +6,7 @@ import com.g2806.radiante.client.proxy.vulkan.TextureProxy;
 import com.g2806.radiante.client.proxy.world.ChunkProxy;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -370,8 +370,12 @@ public class Options {
         Properties props = new Properties();
         try (InputStream in = Files.newInputStream(path)) {
             props.load(in);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        } catch (IOException | IllegalArgumentException e) {
+            // A file that cannot be read (a damaged escape, a disk error) must not stop the game from starting: it
+            // is kept beside itself, and what did load is used over the defaults.
+            Path kept = SettingsFile.keepDamaged(path);
+            RadianteClient.LOGGER.error("Could not read {}; using the defaults for what is missing. The file was "
+                + "kept as {}.", path, kept, e);
         }
         for (Entry entry : ENTRIES) {
             String text = props.getProperty(entry.key());
@@ -411,13 +415,9 @@ public class Options {
         }
 
         try {
-            Files.createDirectories(path.getParent());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        try (OutputStream out = Files.newOutputStream(path)) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
             props.store(out, "Options");
+            SettingsFile.write(path, out.toByteArray());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

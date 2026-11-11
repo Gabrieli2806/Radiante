@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.pipeline;
 
 import com.g2806.radiante.client.RadianteClient;
+import com.g2806.radiante.client.option.SettingsFile;
 import com.g2806.radiante.platform.RadiantePlatform;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -113,7 +114,7 @@ public final class ShaderPackLibrary {
                 .replace("value: '" + path + "'", "value: " + builtIn)
                 .replace("value: \"" + path + "\"", "value: " + builtIn);
             if (!moved.equals(stored)) {
-                Files.writeString(pipelineFile, moved, StandardCharsets.UTF_8);
+                SettingsFile.write(pipelineFile, moved);
                 crashedTrial = path;
                 RadianteClient.LOGGER.warn("The game ended while shader pack {} was being tried; using the built-in "
                     + "pack", path);

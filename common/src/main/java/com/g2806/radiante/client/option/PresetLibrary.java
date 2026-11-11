@@ -153,7 +153,7 @@ public final class PresetLibrary {
         JsonObject root = new JsonObject();
         root.add("presets", array);
         try {
-            Files.writeString(path, GSON.toJson(root), StandardCharsets.UTF_8);
+            SettingsFile.write(path, GSON.toJson(root));
         } catch (IOException e) {
             RadianteClient.LOGGER.warn("Could not save the presets to {}", path, e);
         }

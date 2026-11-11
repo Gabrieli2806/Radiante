@@ -239,9 +239,21 @@ public final class RadianteRenderer {
         FrameGeneration.setGeneratedFrames(Options.frameGeneration ? Options.generatedFrames : 0);
         FrameGeneration.applyReflex();
         reserveFallbackTexture();
-        Pipeline.migrateStoredDefaults();
-        Pipeline.loadPipeline();
-        com.g2806.radiante.client.option.OptionsMigration.applyAfterPipelineLoad();
+        // This runs inside the constructor of Minecraft's Vulkan device: anything thrown here ends the game before
+        // its first frame. A stored pipeline that cannot be applied is a settings problem, not a reason for that, so
+        // the default pipeline takes its place (build() below deals with its own failures the same way).
+        try {
+            Pipeline.migrateStoredDefaults();
+            Pipeline.loadPipeline();
+            com.g2806.radiante.client.option.OptionsMigration.applyAfterPipelineLoad();
+        } catch (RuntimeException e) {
+            LOGGER.error("Radiante: the stored pipeline settings could not be applied; using the default pipeline", e);
+            try {
+                Pipeline.assembleDefault();
+            } catch (RuntimeException second) {
+                LOGGER.error("Radiante: the default pipeline could not be assembled either", second);
+            }
+        }
         Pipeline.build();
         LOGGER.info("Radiante renderer initialised on {} with the {} pipeline", gpuName,
             Pipeline.INSTANCE.getActivePresetName());

@@ -489,6 +489,7 @@
   "options.radiante.applying.window_title.finishing": "Minecraft - Radiante: terminando...",
   "message.radiante.showcase.usage": "Radiante: /radiante showcase [1-14|blocks|clear] y /radiante biome [next|back|list|<nombre>]",
   "message.radiante.showcase.singleplayer": "Radiante: la galería de pruebas solo se puede construir en un mundo de un jugador.",
+  "message.radiante.showcase.cheats": "Radiante: la galería de pruebas y el recorrido de biomas cambian el mundo y te mueven, así que necesitan un mundo con comandos (trucos) permitidos.",
   "message.radiante.showcase.built": "Radiante: galería construida hacia el este. Cada sala tiene un cartel con lo que revisar. /radiante showcase 1-14 salta a una sala.",
   "message.radiante.showcase.none": "Radiante: no hay galería construida en esta sesión. Ponte donde debe empezar y usa /radiante showcase.",
   "message.radiante.showcase.cleared": "Radiante: galería eliminada.",
