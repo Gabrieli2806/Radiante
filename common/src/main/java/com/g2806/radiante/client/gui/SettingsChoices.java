@@ -9,10 +9,10 @@ import com.g2806.radiante.client.render.OutputResolution;
 import com.g2806.radiante.client.pipeline.Pipeline;
 import com.g2806.radiante.client.pipeline.RtAttributes;
 import com.g2806.radiante.client.pipeline.Presets;
+import com.g2806.radiante.compat.VersionCompat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 /**
@@ -22,7 +22,7 @@ import net.minecraft.network.chat.Component;
  * written as, each on top of the last; the rows that show and change these values are {@link SettingsRows}, and the
  * screen itself is {@link RadianteOptionsScreen}.
  */
-abstract class SettingsChoices extends Screen {
+abstract class SettingsChoices extends VersionCompat.DrawnScreen {
 
     Presets pendingPreset;
     /** A pipeline picked that needs a download or a restart first: shown, with Install / Restart below, not applied. */

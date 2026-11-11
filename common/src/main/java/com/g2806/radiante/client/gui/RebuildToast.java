@@ -1,5 +1,6 @@
 package com.g2806.radiante.client.gui;
 
+import com.g2806.radiante.compat.VersionCompat;
 import com.google.common.collect.ImmutableList;
 import java.util.List;
 import net.minecraft.client.Minecraft;
@@ -7,7 +8,6 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.toasts.Toast;
 import net.minecraft.client.gui.components.toasts.ToastManager;
-import net.minecraft.client.gui.GuiPipeline;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
@@ -172,8 +172,8 @@ final class RebuildToast implements Toast {
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, Font font, long fullyVisibleForMs) {
         int height = this.height();
-        graphics.blitSprite(GuiPipeline.TEXTURED, BACKGROUND_SPRITE, 0, 0, WIDTH, height);
-        graphics.blit(GuiPipeline.TEXTURED, ICON, 6, (height - ICON_SIZE) / 2, 0.0f, 0.0f, ICON_SIZE,
+        VersionCompat.blitSprite(graphics, BACKGROUND_SPRITE, 0, 0, WIDTH, height);
+        VersionCompat.blit(graphics, ICON, 6, (height - ICON_SIZE) / 2, 0.0f, 0.0f, ICON_SIZE,
             ICON_SIZE, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE, ICON_SOURCE_SIZE);
         graphics.text(font, this.title, TEXT_X, 7, this.state == State.FAILED ? FAILED_TITLE_COLOR : TITLE_COLOR,
             false);

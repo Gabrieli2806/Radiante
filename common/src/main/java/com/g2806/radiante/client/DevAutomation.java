@@ -1,5 +1,6 @@
 package com.g2806.radiante.client;
 
+import com.g2806.radiante.compat.VersionCompat;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.Minecraft;
@@ -509,7 +510,7 @@ public final class DevAutomation {
             if (codes != null && screen != null) {
                 // Shift's modifier bit, as the event carries it.
                 int modifiers = parts.length > 1 && parts[1].equals("shift") ? 1 : 0;
-                var event = new net.minecraft.client.input.KeyEvent(codes[0], codes[1], modifiers, false);
+                var event = VersionCompat.keyEvent(codes[0], codes[1], modifiers);
                 boolean used = screen.keyPressed(event);
                 screen.keyReleased(event);
                 RadianteClient.LOGGER.info("[dev] key {} on {}: {}", action.substring(4),
@@ -659,7 +660,7 @@ public final class DevAutomation {
             RadianteClient.LOGGER.info("[dev] slot {}", slot);
         } else if (action.startsWith("debug=")) {
             String value = action.substring(6);
-            net.minecraft.resources.ResourceKey<net.minecraft.client.gui.components.debug.DebugScreenEntry> entry = switch (value) {
+            var entry = switch (value) {
                 case "hitboxes" -> net.minecraft.client.gui.components.debug.DebugScreenEntries.ENTITY_HITBOXES;
                 case "chunkborders" -> net.minecraft.client.gui.components.debug.DebugScreenEntries.CHUNK_BORDERS;
                 default -> null;

@@ -2,13 +2,13 @@ package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.proxy.vulkan.HdrProxy;
+import com.g2806.radiante.compat.VersionCompat;
 import java.util.function.BiConsumer;
 import java.util.function.IntConsumer;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.gui.GuiPipeline;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
@@ -18,7 +18,7 @@ import net.minecraft.util.FormattedCharSequence;
  * section, and in the same nits. The pictures are ordinary screenshots in textures/gui/hdr_calibration, shown through
  * the HDR composition (HdrProxy.setCalibration), since nothing the interface draws goes above paper white.
  */
-final class HdrCalibrationScreen extends Screen {
+final class HdrCalibrationScreen extends VersionCompat.DrawnScreen {
     private static final String KEY = "options.radiante.hdr_calibration.";
     private static final Identifier DARK =
         Identifier.fromNamespaceAndPath("radiante", "textures/gui/hdr_calibration/dark.png");
@@ -82,14 +82,14 @@ final class HdrCalibrationScreen extends Screen {
     }
 
     @Override
-    public void extractBackground(GuiGraphicsExtractor g) {
+    protected boolean extractOwnBackground(GuiGraphicsExtractor g) {
         // Black, as what is around a brightness test changes what the eye makes of it.
         g.fill(0, 0, width, height, 0xFF000000);
+        return true;
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor g) {
-        super.extractRenderState(g);
+    protected void extractContents(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         g.centeredText(font, title, width / 2, 10, 0xFFFFFFFF);
         int y = 26;
         for (FormattedCharSequence line : font.split(Component.translatable(KEY + "hint." + page),
@@ -126,7 +126,7 @@ final class HdrCalibrationScreen extends Screen {
     }
 
     private static void picture(GuiGraphicsExtractor g, Identifier texture, int x, int y, int w, int h) {
-        g.blit(GuiPipeline.TEXTURED, texture, x, y, 0.0f, 0.0f, w, h, w, h);
+        VersionCompat.blit(g, texture, x, y, 0.0f, 0.0f, w, h, w, h);
     }
 
     private void setCalibration(int mode, int ax, int ay, int aw, int ah, int bx, int by, int bw, int bh) {

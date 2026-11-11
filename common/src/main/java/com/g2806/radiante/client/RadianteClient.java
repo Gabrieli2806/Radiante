@@ -2,6 +2,7 @@ package com.g2806.radiante.client;
 
 import com.g2806.radiante.client.gui.RadianteOptionsScreen;
 import com.g2806.radiante.client.render.RadianteRenderer;
+import com.g2806.radiante.compat.VersionCompat;
 import com.g2806.radiante.platform.RadiantePlatform;
 import net.minecraft.client.Minecraft;
 
@@ -74,6 +75,7 @@ public final class RadianteClient {
         com.g2806.radiante.client.compat.distanthorizons.DistantHorizonsCompat.init();
         com.g2806.radiante.client.compat.controlify.ControlifyCompat.init();
         DevAutomation.register();
+        VersionCompat.registerDebugEntries();
         LOGGER.info("Radiante {} running on {} (Bedrock pack converter {})", RadiantePlatform.INSTANCE.modVersion(),
             RadiantePlatform.INSTANCE.loaderName(), com.g2806.radiante.client.bedrock.BedrockPackConverter.converterVersion());
     }

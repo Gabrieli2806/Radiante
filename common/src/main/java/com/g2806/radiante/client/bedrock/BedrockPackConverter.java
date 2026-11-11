@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.bedrock;
 
 import com.g2806.radiante.client.RadianteClient;
+import com.g2806.radiante.compat.VersionCompat;
 import com.g2806.radiante.platform.RadiantePlatform;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -48,8 +49,8 @@ public final class BedrockPackConverter {
     public static String converterVersion() {
         return CONVERTER_VERSION.substring(CONVERTER_VERSION.lastIndexOf(' ') + 1);
     }
-    /** Resource pack format of Minecraft 26.4. */
-    private static final int PACK_FORMAT = 100;
+    /** Resource pack format of the Minecraft version this branch is for. */
+    private static final int PACK_FORMAT = VersionCompat.RESOURCE_PACK_FORMAT;
     /** Slope of normals built from a height map: height units per texel. */
     private static final float HEIGHT_TO_NORMAL = 2.0f;
     /**

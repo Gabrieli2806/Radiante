@@ -2,6 +2,7 @@ package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.option.PresetLibrary;
 import com.g2806.radiante.client.option.SettingsCode;
+import com.g2806.radiante.compat.VersionCompat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -9,7 +10,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.gui.GuiPipeline;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
@@ -20,7 +20,7 @@ import net.minecraft.util.FormattedCharSequence;
  * is, applied with a second one - what the picked preset is on the right, and flat buttons along the bottom for
  * what is done with it.
  */
-final class ShareSettingsScreen extends Screen {
+final class ShareSettingsScreen extends VersionCompat.DrawnScreen {
 
     // The settings screen's own (SettingsLayout), so the two read as one place.
     private static final int ACCENT = 0xFF8FE3C8;
@@ -301,10 +301,7 @@ final class ShareSettingsScreen extends Screen {
     // ---- drawing ----
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor g) {
-        int mouseX = g.mouseX();
-        int mouseY = g.mouseY();
-        super.extractRenderState(g);
+    protected void extractContents(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         drawSidebar(g, mouseX, mouseY);
         drawList(g, mouseX, mouseY);
         drawDetails(g);
@@ -323,7 +320,7 @@ final class ShareSettingsScreen extends Screen {
     private void drawSidebar(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         g.fill(this.sidebarX, this.top, this.sidebarX + this.sidebarW, this.bottom, PANEL);
         int headerY = this.top + 6;
-        g.blit(GuiPipeline.TEXTURED, ICON, this.sidebarX + PAD, headerY, 0.0f, 0.0f, 24, 24, 24, 24);
+        VersionCompat.blit(g, ICON, this.sidebarX + PAD, headerY, 0.0f, 0.0f, 24, 24, 24, 24);
         int nameX = this.sidebarX + PAD + 30;
         g.text(this.font, Component.literal("Radiante").withStyle(ChatFormatting.BOLD), nameX, headerY + 3, TEXT);
         g.text(this.font, this.title, nameX, headerY + 14, TEXT_DIM);

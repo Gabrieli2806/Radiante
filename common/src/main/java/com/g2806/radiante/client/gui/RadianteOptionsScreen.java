@@ -7,6 +7,7 @@ import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.pipeline.Pipeline;
 import com.g2806.radiante.client.pipeline.RtAttributes;
 import com.g2806.radiante.client.pipeline.Presets;
+import com.g2806.radiante.compat.VersionCompat;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.OptionInstance;
@@ -385,10 +386,7 @@ public class RadianteOptionsScreen extends SettingsRows {
     }
 
     @Override
-    public void extractRenderState(net.minecraft.client.gui.GuiGraphicsExtractor graphics) {
-        int mouseX = graphics.mouseX();
-        int mouseY = graphics.mouseY();
-        super.extractRenderState(graphics);
+    protected void extractContents(net.minecraft.client.gui.GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         if (this.layout != null) {
             this.layout.extract(graphics, mouseX, mouseY);
         }
@@ -485,7 +483,7 @@ public class RadianteOptionsScreen extends SettingsRows {
         // A change from a controller has no key to let go of: controller mods press keys without releasing them, or
         // move the focus without a key at all. Laid out again once no key or mouse button holds it.
         if (this.refreshPending && !this.mouseHeld
-            && (this.refreshKey < 0 || !com.mojang.blaze3d.platform.InputConstants.isKeyDown(this.refreshKey))) {
+            && (this.refreshKey < 0 || !VersionCompat.isKeyDown(this.refreshKey))) {
             this.refreshPending = false;
             reopenWithSameChoices();
         }

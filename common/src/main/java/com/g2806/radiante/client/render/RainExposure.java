@@ -2,8 +2,7 @@ package com.g2806.radiante.client.render;
 
 import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.proxy.vulkan.TextureProxy;
-import com.mojang.renderpearl.api.GpuFormat;
-import com.mojang.renderpearl.backend.vulkan.VulkanConst;
+import com.g2806.radiante.compat.VersionCompat;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import net.minecraft.client.Minecraft;
@@ -114,7 +113,7 @@ public final class RainExposure {
 
         if (texture < 0) {
             texture = TextureProxy.generateTextureId();
-            TextureProxy.prepareImage(texture, 1, SIZE, SIZE, VulkanConst.toVk(GpuFormat.RGBA8_UNORM));
+            TextureProxy.prepareImage(texture, 1, SIZE, SIZE, VersionCompat.vkFormatRgba8());
             TextureProxy.setFilter(texture, 0, 0);
             cleared = false;
         }
