@@ -33,7 +33,7 @@ final class RebuildToast implements Toast {
     private static final int TITLE_COLOR = 0xFFFFFF00;
     private static final int FAILED_TITLE_COLOR = 0xFFFF5555;
     private static final int MESSAGE_COLOR = 0xFFFFFFFF;
-    private static final int BAR_COLOR = 0xFF8FE3C8;
+    private static final int BAR_COLOR = Theme.ACCENT;
     private static final int BAR_BACKGROUND = 0xFF000000;
     /** How long the "applied" or failed state stays after the work ended (scaled by the player's notification time). */
     private static final long RESULT_MS = 4000L;

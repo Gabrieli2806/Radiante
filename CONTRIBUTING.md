@@ -77,7 +77,12 @@ part of your change.
 
 - **Test in a world whose name starts with `Radiante`**, never in one you play in.
 - **Reproduce a bug before fixing it**, and compare screenshots of the **same view** before and after.
-- **Launch the game after touching a mixin.** A wrong mixin target compiles fine and only fails in game.
+- **Run `./gradlew :common:test`.** It needs no game. Besides the unit tests it checks that every mixin names
+  things this Minecraft has (a wrong mixin target compiles fine), and that the lists kept by hand in two places
+  still agree (lang files, slider defaults, module images).
+- **Launch the game after touching a mixin** all the same: the test checks names, not descriptors.
+- **After a shader change** run `python native/src/tools/check_shaders.py`, and after a change to a hook or an
+  example pack `python native/src/tools/check_example_packs.py --stage <shader_pack_stage>`.
 - **Say plainly what you did not check.**
 
 Scripted runs, test worlds, settings files and unit tests: [Testing](docs/dev/testing.md).
@@ -104,7 +109,8 @@ what raising or lowering it does.
 
 **A new setting** usually needs: the attribute in radiante-pt's `configs.json` (`"runtime": true` if it can change
 without a rebuild), a `Tunable` or a row in `SettingsRows`, its `OptionImpact`, the three lang files, its
-settings page in `docs/en` and `docs/es`, and a line in `changelog.md`.
+settings page in `docs/en` and `docs/es`, and a line in `changelog.md`. [AGENTS.md](AGENTS.md) lists every place,
+for a slider, a switch and a plain option; tests say when the default or the name differs between two of them.
 
 ## 7. Branches
 
@@ -159,7 +165,7 @@ If your change needs a newer version of something, say so in the pull request.
 
 ## 12. Licence
 
-Radiante is GPL-3.0 with [additional permissions](LICENSE-EXCEPTION.md) to ship it with the NVIDIA and Intel runtime
+Radiante is [GPL-3.0](LICENSE) with [additional permissions](LICENSE-EXCEPTION.md) to ship it with the NVIDIA and Intel runtime
 libraries, and to let shader packs that use only its pack interface (`radiante/v1`, Radiante PT's hooks) keep their
 own licence. By contributing, you agree your contribution is licensed the same way. Write that interface from
 scratch: nothing copied from Radiance, MCVR or other projects, so the permission can cover it. Name the source of

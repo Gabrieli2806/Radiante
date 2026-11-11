@@ -180,13 +180,13 @@ public class UpscalerDownloadScreen extends VersionCompat.DrawnScreen {
         int centerX = this.width / 2;
         int y = this.height / 2 - 8;
         net.minecraft.network.chat.Component status;
-        int color = 0xFFB0B8B4;
+        int color = Theme.TEXT_DIM;
         if (current.error != null) {
             status = text("screen.radiante.download.failed", current.error);
-            color = 0xFFFF8080;
+            color = Theme.BAD;
         } else if (current.finished) {
             status = text("screen.radiante.download.finished");
-            color = 0xFF8FE3C8;
+            color = Theme.ACCENT;
         } else {
             status = text("screen.radiante.download.progress", current.done / 1_000_000, current.total / 1_000_000,
                 Math.round(current.fraction() * 100.0f));
@@ -197,7 +197,7 @@ public class UpscalerDownloadScreen extends VersionCompat.DrawnScreen {
         graphics.fill(x - 1, y - 1, x + barWidth + 1, y + 7, 0xFFFFFFFF);
         graphics.fill(x, y, x + barWidth, y + 6, 0xFF000000);
         graphics.fill(x, y, x + Math.round(barWidth * current.fraction()), y + 6,
-            current.error != null ? 0xFFE06060 : 0xFF8FE3C8);
+            current.error != null ? 0xFFE06060 : Theme.ACCENT);
     }
 
     @Override

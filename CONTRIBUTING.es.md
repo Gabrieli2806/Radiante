@@ -79,7 +79,13 @@ que formen parte de tu cambio.
 
 - **Prueba en un mundo cuyo nombre empiece por `Radiante`**, nunca en uno en el que juegues.
 - **Reproduce un error antes de arreglarlo**, y compara capturas de **la misma vista** antes y después.
-- **Abre el juego tras tocar un mixin.** Un mixin con un objetivo equivocado compila bien y solo falla en el juego.
+- **Ejecuta `./gradlew :common:test`.** No necesita el juego. Además de los tests comprueba que cada mixin nombra
+  cosas que este Minecraft tiene (un mixin con un objetivo equivocado compila bien), y que las listas que se
+  mantienen a mano en dos sitios siguen coincidiendo (archivos de idioma, valores por defecto de los deslizadores,
+  imágenes de los módulos).
+- **Abre el juego tras tocar un mixin** igualmente: el test comprueba nombres, no descriptores.
+- **Tras cambiar un shader** ejecuta `python native/src/tools/check_shaders.py`, y tras cambiar un hook o un
+  paquete de ejemplo `python native/src/tools/check_example_packs.py --stage <shader_pack_stage>`.
 - **Di claramente qué no comprobaste.**
 
 Ejecuciones con scripts, mundos de prueba, archivos de ajustes y tests: [Testing](docs/dev/testing.md) (en inglés).
@@ -108,7 +114,9 @@ hace, y qué pasa al subirlo o bajarlo.
 
 **Un ajuste nuevo** suele necesitar: el atributo en el `configs.json` de radiante-pt (`"runtime": true` si puede
 cambiar sin recompilar), un `Tunable` o una fila en `SettingsRows`, su `OptionImpact`, los tres archivos de
-idioma, su página de ajustes en `docs/en` y `docs/es`, y una línea en `changelog.md`.
+idioma, su página de ajustes en `docs/en` y `docs/es`, y una línea en `changelog.md`. [AGENTS.md](AGENTS.md) (en
+inglés) lista cada sitio, para un deslizador, un interruptor y una opción simple; hay tests que avisan cuando el
+valor por defecto o el nombre difiere entre dos de ellos.
 
 ## 7. Ramas
 
@@ -167,7 +175,7 @@ Si tu cambio necesita una versión más nueva de algo, dilo en el pull request.
 
 ## 12. Licencia
 
-Radiante es GPL-3.0 con [permisos adicionales](LICENSE-EXCEPTION.md) para distribuirlo con las librerías de NVIDIA e
+Radiante es [GPL-3.0](LICENSE) con [permisos adicionales](LICENSE-EXCEPTION.md) para distribuirlo con las librerías de NVIDIA e
 Intel, y para que los paquetes de shaders que usan solo su interfaz para paquetes (`radiante/v1`, los hooks de
 Radiante PT) conserven su propia licencia. Al contribuir, aceptas que tu contribución tenga la misma licencia. Esa
 interfaz se escribe desde cero: nada copiado de Radiance, MCVR ni otros proyectos, para que el permiso la cubra.

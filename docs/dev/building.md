@@ -118,8 +118,8 @@ Check a jar: `unzip -l <jar> | grep -E 'prismrt.dll|libprismrt.so'`.
 |---|---|
 | `version` | Reads `mod_version` and `minecraft_version` and decides whether this is a new version. |
 | `native-windows` | Builds `prismrt.dll` on Windows with the Vulkan SDK and the DLSS SDK. |
-| `native-linux` | Builds `libprismrt.so` on Ubuntu 22.04 with g++ 13 and checks the glibc version it needs. |
-| `jars` | Brings both renderers together, builds the jars and fails if any lacks either. |
+| `native-linux` | Builds `libprismrt.so` on Ubuntu 22.04 with g++ 13 and checks the glibc version it needs. Compiles Radiante PT under every setting and every example shader pack, and runs the native tests. |
+| `jars` | Brings both renderers together, runs the Java tests, builds the jars and fails if any lacks either. |
 | `release` | Only for a new version: a GitHub release. |
 | `publish` | Only for a new version that is not a pre-release, when configured: Modrinth and CurseForge. |
 

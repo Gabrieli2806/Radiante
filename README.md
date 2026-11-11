@@ -59,7 +59,7 @@ Something not working? See [Troubleshooting](docs/en/troubleshooting.md).
 
 ## Licence
 
-GPL-3.0, with [additional permissions](LICENSE-EXCEPTION.md) for the NVIDIA and Intel runtime libraries and for shader
+[GPL-3.0](LICENSE), with [additional permissions](LICENSE-EXCEPTION.md) for the NVIDIA and Intel runtime libraries and for shader
 packs, which keep their own licence when they use only Radiante's pack interface. Radiante began as a fork of Radiance
 and its MCVR renderer. Much of it has been rebuilt since, and the project keeps moving further away from them.
 

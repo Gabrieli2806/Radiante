@@ -489,6 +489,7 @@
   "options.radiante.applying.window_title.finishing": "Minecraft - Radiante: finishing...",
   "message.radiante.showcase.usage": "Radiante: /radiante showcase [1-14|blocks|clear] and /radiante biome [next|back|list|<name>]",
   "message.radiante.showcase.singleplayer": "Radiante: the showcase can only be built in a singleplayer world.",
+  "message.radiante.showcase.cheats": "Radiante: the showcase and the biome tour change the world and move you, so they need a world with commands (cheats) allowed.",
   "message.radiante.showcase.built": "Radiante: showcase built to the east. Each room has a sign saying what to check. /radiante showcase 1-14 jumps to a room.",
   "message.radiante.showcase.none": "Radiante: no showcase built in this session. Stand where it should start and run /radiante showcase.",
   "message.radiante.showcase.cleared": "Radiante: showcase removed.",

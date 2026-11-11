@@ -195,6 +195,29 @@ static_assert(sizeof(VertexFormat::MaterialVertex) == 96);
 static_assert(offsetof(VertexFormat::MaterialVertex, lightUV) == 64);
 static_assert(offsetof(VertexFormat::MaterialVertex, packedData) == 72);
 
+// PBRVertex is written by Java at fixed offsets (PBRVertexWriter.STRIDE and its OFF_* constants): a member moved
+// here without moving it there would be read as another one, with nothing else to say so.
+static_assert(sizeof(VertexFormat::PBRVertex) == 128, "PBRVertexWriter.STRIDE");
+static_assert(offsetof(VertexFormat::PBRVertex, pos) == 0, "PBRVertexWriter.OFF_POS");
+static_assert(offsetof(VertexFormat::PBRVertex, useNorm) == 12, "PBRVertexWriter.OFF_USE_NORM");
+static_assert(offsetof(VertexFormat::PBRVertex, norm) == 16, "PBRVertexWriter.OFF_NORM");
+static_assert(offsetof(VertexFormat::PBRVertex, useColorLayer) == 28, "PBRVertexWriter.OFF_USE_COLOR");
+static_assert(offsetof(VertexFormat::PBRVertex, colorLayer) == 32, "PBRVertexWriter.OFF_COLOR");
+static_assert(offsetof(VertexFormat::PBRVertex, useTexture) == 48, "PBRVertexWriter.OFF_USE_TEXTURE");
+static_assert(offsetof(VertexFormat::PBRVertex, useOverlay) == 52, "PBRVertexWriter.OFF_USE_OVERLAY");
+static_assert(offsetof(VertexFormat::PBRVertex, textureUV) == 56, "PBRVertexWriter.OFF_TEXTURE_UV");
+static_assert(offsetof(VertexFormat::PBRVertex, overlayUV) == 64, "PBRVertexWriter.OFF_OVERLAY_UV");
+static_assert(offsetof(VertexFormat::PBRVertex, useGlint) == 72, "PBRVertexWriter.OFF_USE_GLINT");
+static_assert(offsetof(VertexFormat::PBRVertex, textureID) == 76, "PBRVertexWriter.OFF_TEXTURE_ID");
+static_assert(offsetof(VertexFormat::PBRVertex, glintUV) == 80, "PBRVertexWriter.OFF_GLINT_UV");
+static_assert(offsetof(VertexFormat::PBRVertex, glintTexture) == 88, "PBRVertexWriter.OFF_GLINT_TEXTURE");
+static_assert(offsetof(VertexFormat::PBRVertex, useLight) == 92, "PBRVertexWriter.OFF_USE_LIGHT");
+static_assert(offsetof(VertexFormat::PBRVertex, lightUV) == 96, "PBRVertexWriter.OFF_LIGHT_UV");
+static_assert(offsetof(VertexFormat::PBRVertex, coordinate) == 104, "PBRVertexWriter.OFF_COORDINATE");
+static_assert(offsetof(VertexFormat::PBRVertex, albedoEmission) == 108, "PBRVertexWriter.OFF_ALBEDO_EMISSION");
+static_assert(offsetof(VertexFormat::PBRVertex, postBase) == 112, "PBRVertexWriter.OFF_WIND, OFF_CAST_LIGHT, OFF_CAST_COLOR");
+static_assert(offsetof(VertexFormat::PBRVertex, alphaMode) == 124, "PBRVertexWriter.OFF_ALPHA_MODE");
+
 namespace Data {
 #endif
 

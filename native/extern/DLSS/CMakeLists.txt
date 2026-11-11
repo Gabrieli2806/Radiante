@@ -1,6 +1,8 @@
 set(DLSS_REPO_URL "https://github.com/NVIDIA/DLSS.git")
 set(DLSS_TARGET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
-set(DLSS_BRANCH "main")
+# The tag the CI (DLSS_SDK_TAG in .github/workflows/build.yml) and the setup scripts fetch: keep the three the
+# same, or a fresh checkout links other libraries than the released jars.
+set(DLSS_BRANCH "v310.9.1")
 
 if(NOT EXISTS "${DLSS_TARGET_DIR}")
     message(STATUS "DLSS lib not found. Downloading from ${DLSS_REPO_URL}...")

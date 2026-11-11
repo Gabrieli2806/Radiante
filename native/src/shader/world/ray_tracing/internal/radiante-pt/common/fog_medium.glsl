@@ -7,8 +7,10 @@
 //
 // Needs worldUBO, skyUBO, skyFull, common/celestial.glsl and hooks/fog.glsl.
 
+#include "util/numeric.glsl"
+
 float volumetricLightLuminance(vec3 value) {
-    return dot(value, vec3(0.2126, 0.7152, 0.0722));
+    return luminance709(value);
 }
 
 float henyeyGreenstein(float cosTheta, float g) {

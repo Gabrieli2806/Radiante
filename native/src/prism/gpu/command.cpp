@@ -2,6 +2,7 @@
 
 #include "prism/gpu/buffer.hpp"
 #include "prism/gpu/descriptor.hpp"
+#include "prism/gpu/diagnostics.hpp"
 #include "prism/gpu/device.hpp"
 #include "prism/gpu/framebuffer.hpp"
 #include "prism/gpu/image.hpp"
@@ -13,6 +14,7 @@
 #include "prism/gpu/sync.hpp"
 
 #include <stdexcept>
+#include <string>
 
 namespace gpu {
 
@@ -297,7 +299,14 @@ void CommandBuffer::submitMainQueueIndividual(std::shared_ptr<Device> device, st
     VkSubmitInfo info{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     info.commandBufferCount = 1;
     info.pCommandBuffers = &commandBuffer_;
-    vkQueueSubmit(device->mainVkQueue(), 1, &info, fence == nullptr ? VK_NULL_HANDLE : fence->vkFence());
+    const VkResult result =
+        vkQueueSubmit(device->mainVkQueue(), 1, &info, fence == nullptr ? VK_NULL_HANDLE : fence->vkFence());
+    if (result != VK_SUCCESS) {
+        // Nothing was queued, so the fence will never be signalled: a caller that went on to wait for it would
+        // wait for ever. The usual cause is a lost device, which is reported with its checkpoints.
+        gpu::diagnostics::onResult(result, device->mainVkQueue(), device->secondaryQueue());
+        throw std::runtime_error("vkQueueSubmit failed with VkResult " + std::to_string(static_cast<int>(result)));
+    }
 }
 
 } // namespace gpu

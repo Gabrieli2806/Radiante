@@ -4,6 +4,20 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- A settings file is no longer lost to a crash or a full disk in the middle of a save: it is written whole beside the old one and then takes its place. A `pipeline.yaml` or `options.properties` that cannot be read is kept as `pipeline.yaml.bak` or `options.properties.bak` before the defaults replace it.
+
+- `/radiante showcase` and `/radiante biome` need a world with commands (cheats) allowed: they build with `fill` and move the player, which a survival world without commands should not allow.
+
+- `/radiante showcase` and `/radiante biome` work again: since `/radiante pack` and `/radiante debug` were added they answered "Incorrect argument".
+
+- A stored pipeline that cannot be applied no longer stops the game from starting: the default pipeline is used.
+
+- Options changed while the game runs are read safely by the render and chunk building threads, in the mod and in the renderer.
+
+- A graphics driver failure while the renderer queues work is reported in the log and stops that step, where the game could wait for ever before.
+
+- For contributors: native method signatures, the vertex layout and the modules' image counts are checked when building; the example shader packs are compiled and the native tests run in the CI; a test looks up every mixin's targets in the Minecraft the build compiles against. `native/extern` holds only what the build reads (about 4200 files fewer).
+
 - ReSTIR Block Lights and ReSTIR Bounced Light now reuse light across frames and neighbouring pixels: neither ever found last frame's samples, so each ran on its new samples alone. With the reuse, block lights are far less noisy before denoising but their shadows are softer where several lights meet.
 
 - ReSTIR Block Lights is off by default: the plain sampler is quicker (about an eighth off the ray tracing pass in a lit room), gives sharp shadows, and was less noisy than ReSTIR had been without its reuse. A setting saved as on stays on.

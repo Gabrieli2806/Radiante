@@ -28,17 +28,11 @@ layout(set = 5, binding = 35, rgba16f) uniform image2DArray volumetricCloudHisto
 // Alpha of an empty history / non-sky entry.
 const vec4 NO_CLOUD = vec4(0.0, 0.0, 0.0, -1.0);
 
-bool finiteFloat(float value) {
-    return !isnan(value) && !isinf(value);
-}
-
-bool finiteVec3(vec3 value) {
-    return !any(isnan(value)) && !any(isinf(value));
-}
+#include "util/numeric.glsl"
 
 // Rec. 709 luma, used to compare history and current brightness.
 float lumaOf(vec3 color) {
-    return dot(color, vec3(0.2126, 0.7152, 0.0722));
+    return luminance709(color);
 }
 
 // The raygen marks pixels whose primary ray reached the sky with a positive alpha in the first-hit image.

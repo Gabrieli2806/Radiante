@@ -50,6 +50,10 @@ public final class Showcase {
                 say(minecraft, "message.radiante.showcase.singleplayer");
                 return true;
             }
+            if (!commandsAllowed(server)) {
+                say(minecraft, "message.radiante.showcase.cheats");
+                return true;
+            }
             BiomeTour.handle(minecraft, server, java.util.Arrays.copyOfRange(parts, 2, parts.length));
             return true;
         }
@@ -60,6 +64,10 @@ public final class Showcase {
         MinecraftServer server = minecraft.getSingleplayerServer();
         if (server == null || minecraft.player == null) {
             say(minecraft, "message.radiante.showcase.singleplayer");
+            return true;
+        }
+        if (!commandsAllowed(server)) {
+            say(minecraft, "message.radiante.showcase.cheats");
             return true;
         }
         String action = parts.length > 2 ? parts[2] : "build";
@@ -86,6 +94,16 @@ public final class Showcase {
             }
         });
         return true;
+    }
+
+    /**
+     * The gallery and the biome tour run fill, setblock and tp with the server's own permission, so they are only
+     * for a world whose owner allowed commands: in a survival world without them they would be a way around that
+     * choice, and the gallery clears the ground it is built on. A development script runs in its own test worlds.
+     */
+    private static boolean commandsAllowed(MinecraftServer server) {
+        return server.getWorldData().isAllowCommands() || System.getenv("RADIANTE_DEV_SCRIPT") != null
+            || System.getenv("RADIANTE_DEV_PRESCRIPT") != null;
     }
 
     /** Runs on the server thread; returns the message to show the player, if any. */
