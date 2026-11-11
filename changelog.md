@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Turning ReSTIR Block Lights off no longer leaves the world undrawn: its shaders did not compile, as the wind's motion vectors read last frame's uniforms, which were only declared with ReSTIR on.
+
+- Cache Deep Bounces, One Bounce + Cache and Glass/Water Checkerboard apply at once, without rebuilding the shaders.
+
 - Shader packs: the first public header, `radiante/v1/surface.glsl`, says what a ray hit, one function per surface flag (`radianteIsWater(surfaceFlags)`, `radianteIsLeaves`, `radianteIsThin`...). A pack includes it with `#include <radiante/v1/surface.glsl>` and gets the one of the Radiante it runs on, not a copy it carries; Radiante PT and the example packs use it. The old tests in `util/vertex.glsl` (`isLeavesSurface`...) stay, so packs need no change.
 
 - Shader packs: `radiante/v1/uniforms.glsl` gives a pack with passes of its own the per-frame uniforms under names of their own: `RadianteWorld` (the camera, the fog, the hands' lights, the wind, the pack's live settings) and `RadianteSky` (the sun and the moon, the weather, the biome, the water). The native build checks they lay out as the renderer's `WorldUBO` and `SkyUBO` do.
