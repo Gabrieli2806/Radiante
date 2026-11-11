@@ -16,12 +16,13 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 
 | Where | What |
 |---|---|
-| `common/src/main/java/com/g2806/radiante/client/pipeline/Pipeline.java` | The pipeline: its modules and their values, what the settings read and set, which preset to use, building it, and the `native` methods |
+| `common/src/main/java/com/g2806/radiante/client/pipeline/Pipeline.java` | The pipeline itself: its modules and connections, which preset to use, storing it, and the `native` methods (they stay here: their JNI names carry the class, and `pipeline.yaml` names its nested storage classes) |
+| `common/.../client/pipeline/Pipeline*.java` | `PipelineSettings` (what the settings read and set: DLSS mode, clouds, fog, any attribute of the pack or of a module), `PipelineBuild` (building it, the warm-up, the values pushed live, falling back to a pipeline this machine can run), `PipelineShaderPack` (the pack the ray tracing module uses, and where its settings file is) |
 | `common/.../client/pipeline/` beside it | `PresetAssembly` (each preset's modules and connections), `PipelineStore` (`pipeline.yaml`, each pack's settings file, their migrations), `ModuleAttributes` (a module's attributes as the shader pack declares them), `NativePipelineParams` (the layout the renderer reads), `RtAttributes` (the ray tracing attributes' names) |
 | `common/.../client/bedrock/` | Bedrock packs (converter, fog, lighting) and `BedrockRtxValues`, the Bedrock RTX values that are radiante-pt's and tone mapping's defaults (a test checks they agree) |
 | `common/.../client/pipeline/ShaderPack*.java` | Shader packs in `radiante/shaderpacks/`: manifest, library, settings page keys, validation |
-| `common/.../client/gui/` | Settings screen (`RadianteOptionsScreen`, on top of `SettingsChoices`, what is chosen until Apply and applying it, and `SettingsRows`, each section's rows; `SettingsLayout`, `AdvancedOptions`, `Tunable`), Shader Packs screen and a pack's settings page (`ShaderPacksScreen`, `PackSettingsPage`), toasts, background rebuild, start-up warm-up |
-| `common/.../client/render/` | Chunk and entity collection, point lights (`BedrockPointLights`), emission (`EmissionTiles`), held light, biome ambiance |
+| `common/.../client/gui/` | Settings screen (`RadianteOptionsScreen`, on top of `SettingsChoices`, what is chosen until Apply and applying it, and `SettingsRows`, each section's rows; `SettingsLayout`, `AdvancedOptions`, `Tunable`), Shader Packs and Share Settings (`ShaderPacksScreen`, `ShareSettingsScreen`, both a `PanelScreen`: sidebar, list, panel), a pack's settings page (`PackSettingsPage`), the shared colours and measures (`Theme`), toasts, background rebuild, start-up warm-up |
+| `common/.../client/render/` | Chunk collection (`ChunkManager`); what is traced as entities: `EntityManager` (a frame's collection), `EntityBlockEntities`, `EntityWeather` (rain, snow, vanilla clouds), `EntityHands` (first person and VR hands, held lights), `EntityUpload` (handing them to the renderer); point lights (`BedrockPointLights`), emission (`EmissionTiles`), held light, biome ambiance |
 | `common/.../client/option/Options.java` | Plain options saved in `radiante/options.properties` |
 | `common/.../client/option/SettingsFile.java` | How every settings file is written (whole, then moved over the old one) and how one that cannot be read is kept as `<name>.bak` |
 | `common/.../compat/VersionCompat.java` | Where Minecraft's API differs between the versions Radiante is built for: one small static method per differing call, with the same signatures on every version branch and each branch's own bodies. Not `client/compat/`, which is for other mods |
@@ -30,7 +31,9 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 | `native/src/shader/world/ray_tracing/internal/radiante-pt/` | The path tracer: `configs.json` (attributes, textures, passes), `world/` (the ray generation shader's `main()` is one file a stage in `world/main/`), `pt/`, `common/`, and `hooks/`, the hook points shader packs replace |
 | `native/src/prism/render/chunks*.cpp`, `chunk_*.cpp` | The sections: `chunks.cpp` (the grid and its slots), `chunk_geometry.cpp` (packing a section for the GPU), `chunk_build_scheduler.cpp` (building structures in batches), `chunks_wind.cpp` (the wind pass); what they share is in `chunks_internal.hpp` |
 | `native/src/prism/render/modules/world/ray_tracing/` | The ray tracing module: `ray_tracing_module.cpp` (set-up and build steps), `ray_tracing_passes.cpp`, `ray_tracing_frames.cpp`; what they share is in `ray_tracing_internal.hpp` |
-| `native/src/prism/render/modules/world/upscaler_common.hpp` | What the upscaler modules do the same way (when to drop history, taking or making their images) |
+| `native/src/prism/render/modules/world/upscaler_common.hpp` | What the upscaler modules do the same way: when to drop history, taking or making their images at the sizes they adopt or choose, the helper pass, the three guide upscales, the stretched copy. A new upscaler module uses these rather than writing its own |
+| `native/src/prism/render/entities.cpp`, `entity_geometry.cpp` | Entities: reading a task as Java sends it and turning it into triangles (`entity_geometry.cpp`), and the structures built from them (`entities.cpp`) |
+| `native/src/prism/render/modules/world/post_render/` | The post render module: `post_render_module.cpp` (set-up and its own resources), `post_render_passes.cpp` (the shader pack's passes), `post_render_frames.cpp` (a frame's recording); what they share is in `post_render_internal.hpp` |
 | `native/include/` | The JNI headers `javac` generates from the Java classes with `native` methods; each middleware file includes its own, so a signature that differs between Java and C++ does not compile |
 | `native/extern/` | Third-party libraries, only what the build reads; `native/extern/README.md` lists versions, what was left out and what was changed here |
 | `native/src/tools/` | Offline checks: `check_shaders.py`, `check_example_packs.py`, `check_v1_layout.py`, `compile_pack.py`, `shader_pack_stage` and the small C++ tests (`native_tests` target, `ctest`) |
@@ -88,6 +91,11 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 - Measure a performance change with `python dev/smoke/bench.py`, with nothing else using the GPU (check
   `nvidia-smi`): its last variant repeats the default, and a run where that differs from the first is not a
   measurement. Say the numbers, and what the change does to the picture.
+- A scripted run switches pipelines with `pipe=preset:<key>`, the key being the translation key
+  (`render_pipeline.preset.rt_nrd_fsr`, `rt_nrd_xess`, `rt_nrd`, `rt_dlss`, `rt_nrd_dlss`), not the enum's
+  name: an unknown key falls back to the best pipeline without saying so. The GPU times of `fps=` name the
+  passes that ran (`Nrd`, `XessSr`, `FSRUpscaler`, `DLSS`): check them. XeSS needs its runtime, which a
+  development folder gets with `download=xess` and a restart.
 - Never touch the user's worlds. Test only in worlds whose name starts with `Radiante` (for example
   `RadianteParityA`, `RadianteRealisticTerrain`); copies get a distinct level name; never delete a copy while a client
   is running.
@@ -138,6 +146,11 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
   (`util/numeric.glsl` has `finiteFloat`, `finiteVec3` and `luminance709`), not in each file.
 - What assembling a pipeline asks of the renderer goes through `Pipeline.host` (`Pipeline.Host`), not a `native`
   method called directly: a test puts its own answers there, which is how the presets are checked without a game.
+- Another mod is asked for with `OtherMods.has(<one of its classes>)` before anything of it is touched.
+- A file that passes about a thousand lines is usually two things: give the second a file of its own (as
+  `PipelineSettings`, `EntityWeather`, `chunk_geometry.cpp` were), with what both need in an `_internal.hpp`
+  on the native side. Two files that carry the same code get one copy both call (`PanelScreen`,
+  `upscaler_common.hpp`, `util/numeric.glsl`).
 - Settings files are written with `SettingsFile.write`, never with `Files.writeString`: a crash in the middle of a
   save must leave the old file. Code that gives up on a file it cannot read calls `SettingsFile.keepDamaged` first.
 - A command or tool that changes the world or moves the player (`/radiante showcase`, `/radiante biome`) checks that
