@@ -22,7 +22,7 @@ struct SampledSurface {
     bool authoredMer;
 };
 
-// How much of lava's colour its surface shows once the exposure is applied (the Bedrock profile; linear, before
+// How much of lava's colour its surface shows once the exposure is applied (linear, before
 // the tone curve), and the share of its colour that is left to the light other things throw on it.
 #ifndef LAVA_DISPLAY
 #    define LAVA_DISPLAY 1.3
@@ -31,10 +31,9 @@ struct SampledSurface {
 #    define LAVA_LIT_SHARE 0.1
 #endif
 
-// Lava as a self-lit sheet; see pt_shade_default.glsl. Only the Bedrock profile has the meter that tells the
+// Lava as a self-lit sheet; see pt_shade_default.glsl. Radiante PT has the meter that tells the
 // exposure here, so the others keep lava's fixed glow.
 void ptShapeLava(inout SampledSurface surface) {
-#if VPT_BEDROCK_SPECULAR
     float exposure = 1.0;
     if (lightMeter.bedrockMeter.w == 1.0) {
         exposure = exp2(clamp(lightMeter.bedrockMeter.x, -1.0, 6.0) + log2(clamp(lightMeter.daylight.y, 0.05, 1.0)));
@@ -43,7 +42,6 @@ void ptShapeLava(inout SampledSurface surface) {
     surface.mat.f0 *= LAVA_LIT_SHARE;
     surface.mat.emission = LAVA_DISPLAY / (max(exposure, 1e-3) * VPT_BEDROCK_SEEN_EMISSION *
                                             max(worldUBO.emissionBrightness, 1e-3));
-#endif
 }
 
 vec3 applyNormalMapToBasis(vec3 matNormal,
@@ -97,8 +95,7 @@ vec3 g_frontNormal = vec3(0.0, 1.0, 0.0);
 /** The texture's level of detail at this hit before it is clamped at the full-size level (see main). */
 float g_textureLodUnclamped = 0.0;
 
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
-// Bedrock RTX's shading of a texture set's height map, in the experimental Bedrock profile. Every texel of it stays
+// Bedrock RTX's shading of a texture set's height map, in Radiante PT. Every texel of it stays
 // flat; only across each edge between two texels, a band reaching heightMapPixelEdgeWidth of a texel into both,
 // slopes by how much one stands above the other: the normal there is (h(left) - h(right), h(above) - h(below),
 // recipHeightMapDepth), normalised, in the face's frame (along u, along v, out of the face). The slopes fade out as a
@@ -180,7 +177,6 @@ bool bedrockHeightMapNormal(int map,
     if (facing < 0.15) { normal = normalizeF(normal + viewDir * (0.15 - facing), viewNormal); }
     return true;
 }
-#endif
 
 #ifndef VPT_PORTAL_TRANSPARENCY
 #    define VPT_PORTAL_TRANSPARENCY 0.5
@@ -267,30 +263,22 @@ void sampleSurfaceState(bool useTexture,
     // Bedrock's meaning of the channels: R metalness, B roughness (GGX alpha = roughness^2, as Radiante's own
     // roughness); alpha only marks the texels the map covers. Emission stays the converted one, which Radiante's
     // light levels are tuned to.
-    // Not glass, whose clear texels shade as plain smooth glass (above) - but under the experimental Bedrock profile
-    // only its frame reaches here (the rest is seen through, see main), and the frame is the pack's material too.
-    if (useTexture && textureMap.rawMer >= 0 && (!g_hitIsGlass || VPT_BEDROCK_SPECULAR != 0)) {
+    // Glass too: only its frame reaches here (the rest is seen through, see main), and the frame is the pack's
+    // material like any other.
+    if (useTexture && textureMap.rawMer >= 0) {
         vec4 mer = samplePBRTexture(textures[nonuniformEXT(textureMap.rawMer)], uv, atlasUvMin, atlasUvMax, lod,
                                     VPT_PBR_SAMPLING_MODE);
         if (mer.a > 0.5 / 255.0) {
             authoredMer = true;
             mat.metallic = mer.r;
-#if VPT_BEDROCK_SPECULAR
             mat.roughness = mer.b;
-#else
-            // Never smoother than LabPBR's smoothest: a pack's perfectly smooth texels (the specks of its ice, a
-            // beacon's core) gave the lobes no width at all, and showed as black dots.
-            mat.roughness = max(mer.b, 0.01);
-#endif
             mat.albedo = albedoValue.rgb;
             mat.f0 = mix(vec3(0.04), albedoValue.rgb, mer.r);
-#if VPT_BEDROCK_SPECULAR
-            // The experimental profile takes the pack's emission too (MER green squared, scaled further on) and
+            // Radiante PT takes the pack's emission too (MER green squared, scaled further on) and
             // Bedrock's fixed index of refraction; the others keep the converted emission their light levels are
             // tuned to.
             mat.ior = 1.5;
             mat.emission = mer.g * mer.g;
-#endif
         }
     }
 #endif
@@ -310,19 +298,17 @@ void sampleSurfaceState(bool useTexture,
         mat.roughness = 0.02;
         mat.ior = 1.5;
     }
-#if VPT_BEDROCK_SPECULAR
-    // A texture no Bedrock pack covers (vanilla's, a Java pack's) glows as it does under the other profiles: its
+    // A texture no Bedrock pack covers (vanilla's, a Java pack's) glows on the scale of its light level: its
     // emission is brought to the scale this one shows a pack's own at (see main and VPT_BEDROCK_SEEN_EMISSION).
     if (!authoredMer) {
-#    if defined(VPT_EMISSION_MODEL) && VPT_EMISSION_MODEL != 0
+#if defined(VPT_EMISSION_MODEL) && VPT_EMISSION_MODEL != 0
         float seen = sqrt(max(mat.emission, 0.0));
-#    else
+#else
         float seen = mat.emission;
-#    endif
+#endif
         mat.emission = 14.0 * VPT_DIRECT_LIGHT_STRENGTH * seen / VPT_BEDROCK_SEEN_EMISSION;
     }
-#    if defined(VPT_BEDROCK_ENHANCED) && VPT_BEDROCK_ENHANCED != 0
-    // The enhanced profile, beyond Bedrock: a light block looks lit by its own light. Bedrock RTX shows the glow a
+    // Beyond Bedrock RTX: a light block looks lit by its own light. Bedrock RTX shows the glow a
     // pack authors, and Vanilla RTX authors little for some (its redstone torch 13 of 255, redstone ore 4), which then
     // lit the room around them without seeming to glow themselves. The converted LabPBR map holds four times the
     // green, raised for such blocks to what their light level shows (EmissionTiles.keepVisibleGlow): read back as a
@@ -333,8 +319,6 @@ void sampleSurfaceState(bool useTexture,
         float convertedGreen = storedEmission == 255 ? 0.0 : float(storedEmission) / 1020.0;
         mat.emission = max(mat.emission, convertedGreen * convertedGreen);
     }
-#    endif
-#endif
     // In the Nether the glow a surface shows is held down by as much as the eye is opened up there (pt_fog.glsl's
     // NETHER_EXPOSURE_SCALE): held low for the sake of the lava, the eye left torchlit rock barely readable, and
     // opened up, lava itself came out a pale peach. Lights cast as before; only what the glowing surface shows. Raised
@@ -352,25 +336,16 @@ void sampleSurfaceState(bool useTexture,
         // The biome's water colour, as vanilla tints it; the refraction takes its square root, so the surface reads
         // the colour lightly and depth (the pack's water medium, when there is one) does the rest.
         vec3 waterTint = clamp(colorLayer, vec3(0.05), vec3(1.0));
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
         // Bedrock RTX's own mode keeps the texel's colour, untinted, and its alpha: the faint, pale layer the pack's
         // water texture draws over the surface (see the default closest-hit shader).
         albedoValue.rgb = vptSurfaceColour(texelColour);
         tint = albedoValue.rgb;
-#else
-        albedoValue.rgb = waterTint;
-        tint = waterTint;
-#endif
         mat.f0 = vec3(0.02);
         mat.albedo = waterTint;
         mat.roughness = 0.01;
         mat.metallic = 0.0;
         mat.transmission = 1.0;
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
         mat.ior = 1.33;
-#else
-        mat.ior = 1.333;
-#endif
 
         if (isFftWaterSurface) {
             vec3 absWorldPos = worldPos + vec3(worldUBO.cameraPos.xyz);
@@ -411,11 +386,9 @@ void sampleSurfaceState(bool useTexture,
     // Glass keeps its face's own normal: the bevel a pack's normal map gives the frame, seen from inside the block
     // through the clear part, faced away from the view and went black along every join.
     bool allowSurfaceNormalMap = !g_hitIsGlass;
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     // Transparent glass exits before this surface path. Opaque borders/pane caps
     // keep their authored normal map and the existing surface denoising guides.
     allowSurfaceNormalMap = allowSurfaceNormalMap || (mat.transmission <= EPS && textureMap.normal >= 0);
-#endif
     if (!isFftWaterSurface && !localHit.sideWall && !useWaterMaterial && allowSurfaceNormalMap) {
         vec3 tangent, bitangent;
         tangent = normalizeF(dPduWorld - geometricNormal * dot(geometricNormal, dPduWorld),
@@ -424,9 +397,8 @@ void sampleSurfaceState(bool useTexture,
         tangent = normalizeF(cross(bitangent, geometricNormal), tangent);
         shadingNormal = applyNormalMapToBasis(mat.normal, tangent, bitangent, geometricNormal, viewDir);
     }
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     // A Bedrock pack's height map, shaded as Bedrock RTX shades one, in place of the smooth normal map the converter
-    // made from it for the other profiles.
+    // made from it.
     if (useTexture && textureMap.rawMer >= 0 && !isFftWaterSurface && !localHit.sideWall && !useWaterMaterial &&
         !g_hitIsGlass) {
         vec3 bevelled;
@@ -435,7 +407,6 @@ void sampleSurfaceState(bool useTexture,
             shadingNormal = bevelled;
         }
     }
-#endif
 
     // A rain streak is falling water, not a grey slab: the stochastic any-hit decides where a streak is (by the
     // texture's alpha and the rain's strength) and a kept one is shaded here as a thin, nearly clear, very smooth

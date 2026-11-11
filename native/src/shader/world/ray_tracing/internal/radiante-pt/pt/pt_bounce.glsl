@@ -23,12 +23,10 @@ bool initTransparent(MainRay rayState,
     // as through a pane (default.rchit). Water keeps its refraction.
     bool bedrockGlass = VPT_FRESNEL_MODEL != 0 && !isWaterSurface;
     if (bedrockGlass) { eta = 1.0 / mat.ior; }
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     if (isWaterSurface) {
         eta = branchAux.y > 1.5 ? mat.ior : 1.0 / mat.ior;
         if (dot(incident, normal) > 0.0) { normal = -normal; }
     }
-#endif
     float fresnel = clamp(vptInterfaceFresnel(abs(dot(viewDir, normal)), eta), 0.0, 1.0);
 
     vec3 branchDirection = isReflection ? reflect(incident, normal) :
@@ -65,16 +63,8 @@ bool initTransparent(MainRay rayState,
     raySetIgnoreWaterSelf(branchRay, isWaterSurface);
     // The same rule as a water hit's own bounce (see default.rchit): off the top by direction, through a side by swap.
     if (isWaterSurface) {
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
         bool incomingWater = branchAux.y > 1.5;
         raySetInWater(branchRay, isReflection ? incomingWater : !incomingWater);
-#else
-        if (abs(normal.y) > 0.5) {
-            raySetInWater(branchRay, branchDirection.y < 0.0);
-        } else if (!isReflection) {
-            raySetInWater(branchRay, !rayInWater(rayState));
-        }
-#endif
     }
     raySetIndirectVolumetricCloud(
         branchRay, vptShouldCaptureIndirectVolumetricCloud(isReflection ? 1u : 2u, mat.roughness));
@@ -89,12 +79,6 @@ bool initTransparent(MainRay rayState,
 // value known when the shader is compiled.
 #define MIRROR_EXTRA_BOUNCES VPT_MIRROR_EXTRA_BOUNCES
 
-#ifndef VPT_EXPOSURE_DAY_SCALE
-#    define VPT_EXPOSURE_DAY_SCALE 0.48
-#endif
-#ifndef VPT_EXPOSURE_NIGHT_SCALE
-#    define VPT_EXPOSURE_NIGHT_SCALE 0.65
-#endif
 #ifndef VPT_EXPOSURE_DAY_MAX
 #    define VPT_EXPOSURE_DAY_MAX 2.5
 #endif

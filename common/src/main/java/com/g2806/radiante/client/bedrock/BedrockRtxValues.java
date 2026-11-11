@@ -8,8 +8,8 @@ import java.util.List;
 /**
  * The settings that make radiante-pt look like Bedrock RTX, in one place, with how well each value is known. They are
  * the plain defaults of the shader pack (radiante-pt's configs.json) and of the tone mapping module
- * (modules/tone_mapping.yaml); this table repeats them so that the settings of an older version can be put back to
- * them (OptionsMigration) and so that a test can check that the defaults still say the same.
+ * (modules/tone_mapping.yaml); this table repeats them with where each one comes from, and a test checks that the
+ * defaults still say the same (BedrockRtxValuesTest).
  *
  * <p>Each entry says how well its value is known ({@link ParameterStatus}). Structure known to be Bedrock RTX's is
  * implemented; behaviour inferred from it is implemented and said to be inferred; numbers nobody has measured are
@@ -31,12 +31,6 @@ public final class BedrockRtxValues {
         new CompatParameter("hands", null, RT + "hand_samples", "3", ParameterStatus.APPROXIMATE,
             "Radiante's existing hand-lighting sample count; not a measured Bedrock RTX value"),
         // ---- mode
-        new CompatParameter("mode", null, RtAttributes.BEDROCK_ORIGINAL_ATTRIBUTE, TRUE,
-            ParameterStatus.MATCHES_BEDROCK,
-            "Bedrock RTX's own sky, sunlight, exposure and materials"),
-        new CompatParameter("mode", null, RtAttributes.BEDROCK_ENHANCED_ATTRIBUTE, TRUE, ParameterStatus.INFERRED,
-            "the few things that go beyond Bedrock on purpose: light blocks lit by their own light, the end portal's "
-                + "glow"),
         new CompatParameter("mode", null, RtAttributes.BEDROCK_MATERIALS_ATTRIBUTE, TRUE,
             ParameterStatus.MATCHES_BEDROCK,
             "the pack's own metalness and roughness, which its specular response is made for"),
@@ -108,8 +102,6 @@ public final class BedrockRtxValues {
                 + "at full strength (the multiplier is a run-time value, not known)"),
 
         // ---- transmission
-        new CompatParameter("transmission", null, RT + "glass_reflection", "1.0", ParameterStatus.INFERRED,
-            "Bedrock does not dim the Fresnel reflection of glass"),
         new CompatParameter("transmission", null, RT + "bedrock_glass_tint", TRUE, ParameterStatus.INFERRED,
             "the view through glass is coloured by colour x (1 - saturate(2 alpha - 1)), the rule Bedrock's sun "
                 + "shadow uses (observed)"),

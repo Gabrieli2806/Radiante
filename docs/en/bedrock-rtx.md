@@ -47,8 +47,7 @@ back after changing settings.
 Without a Bedrock pack, Radiante uses built-in values for each biome's fog and water and each light block's
 brightness. Any Bedrock pack you enable replaces them.
 
-Other looks are [shader packs](settings.md#shader-packs). The old **Realistic** profile is now the `realistic`
-example pack.
+Other looks are [shader packs](settings.md#shader-packs).
 
 ## Files from a Bedrock install
 

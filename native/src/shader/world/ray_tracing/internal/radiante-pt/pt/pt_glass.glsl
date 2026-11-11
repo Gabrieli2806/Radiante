@@ -1,16 +1,13 @@
 #ifndef VPT_PT_GLASS_GLSL
 #define VPT_PT_GLASS_GLSL
 
-// Glass seen at a hit: under the Bedrock profile every blended block (glass, ice, slime, honey) is refracted
+// Glass seen at a hit: in Radiante PT every blended block (glass, ice, slime, honey) is refracted
 // through and coloured face by face; otherwise the clear part of glass and panes is seen straight through with a
 // Fresnel reflection. Moved out of the default closest-hit shader unchanged; the hit is read through g_hit. Each
 // function returns true when it finished the hit as a pass-through.
 
-#ifndef VPT_GLASS_REFLECTION
-#    define VPT_GLASS_REFLECTION 1.0
-#endif
 
-// The colour one face of see-through glass gives the view through it under the Bedrock profiles. Bedrock RTX filters
+// The colour one face of see-through glass gives the view through it in Radiante PT. Bedrock RTX filters
 // at every face the view crosses, by the colour as light times how clear the texel is (the lower half of the alpha
 // range counts as fully clear). A Bedrock pack paints its glass for exactly that: pale, and filtered twice through a
 // block it comes out as deep as the glass looks. Glass painted for vanilla's blending (vanilla's own, a Java pack's)
@@ -21,7 +18,6 @@ vec3 bedrockGlassFaceFilter(vec3 stored, float alpha, bool authored) {
     return sqrt(clamp(viewGlassTintBedrock(stored, alpha), vec3(0.0), vec3(1.0)));
 }
 
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
 bool ptBedrockGlassHit(uint textureID,
                        vec2 textureUV,
                        TextureMapEntry textureMap,
@@ -128,100 +124,6 @@ bool ptBedrockGlassHit(uint textureID,
     }
     return false;
 }
-#else
-bool ptGlassPassThrough(uint textureID,
-                        vec2 textureUV,
-                        TextureMapEntry textureMap,
-                        vec4 colorLayerValue,
-                        vec3 colorLayer,
-                        vec3 baseGeoNormal,
-                        uint bounce) {
-    // The clear or tinted part of glass and panes is seen straight through by the camera, as in Bedrock RTX:
-    // the view carries on, filtered by the glass's colour, with a faint Fresnel reflection of the sky on top.
-    // Refracted as a surface, what lay behind was denoised as if it were on the glass and came out noisy and
-    // soft. The frame (opaque texels) stays a surface.
-    if (g_hitIsGlass && (bounce == 0u || rayCameraPath(mainRay))) {
-        vec4 glassTexel = sampleTexture(textures[nonuniformEXT(textureID)], textureUV, 0.0, false);
-        // The texture's own alpha, not the alpha mode's: stained glass is drawn as a stochastic surface, which rounds
-        // every texel to fully opaque, and it then never let the view through.
-        float glassAlpha = clamp(glassTexel.a * colorLayerValue.a, 0.0, 1.0);
-        // The thin top of a pane between two stacked panes (seamless glass) is inside the sheet: seen through as
-        // if it were not there. Opaque glass geometry never reaches the any-hit shader that leaves it out.
-        bool hiddenPaneTop = !radianteIsHeld(g_hit.packedData) && seamlessGlassHidesFace(g_hit.p0.pos, g_hit.p1.pos, g_hit.p2.pos, g_hit.packedData);
-        // Tinted glass is nearly opaque in its texture but still a window: seen through, darkened.
-        // Only texels that are see-through: the opaque dark pixels along a glass texture's frame, let through as
-        // if tinted, came out as black dashes along the joins (an opaque texel's tint lets nothing through).
-        if (hiddenPaneTop || glassAlpha < 0.9) {
-            vec3 incident = normalize(g_hit.rayDir);
-            float cosTheta = clamp(abs(dot(incident, baseGeoNormal)), 0.0, 1.0);
-            // Capped: at a grazing angle the full Fresnel term turned the edges of every window into bright rims of
-            // sky, glowing at night as if the glass gave off light.
-#if VPT_FRESNEL_MODEL != 0
-            // Bedrock: the glass face's own Fresnel, air into glass (n 1.5), uncapped.
-            float fresnel = vptInterfaceFresnel(cosTheta, 1.0 / 1.5);
-#else
-            float fresnel = min(0.04 + 0.96 * pow(1.0 - cosTheta, 5.0), 0.25);
-#endif
-            if (hiddenPaneTop) { fresnel = 0.0; }
-            // Only the sky above reflects: what the glass reflects below the horizon is the ground, not the bright
-            // haze at the bottom of the sky.
-            vec3 reflected = reflect(incident, baseGeoNormal);
-            // And the sky well above the horizon at that: a level view reflects level, and the haze along the
-            // horizon is the brightest stretch of the whole sky - it lay as a pale band at eye height across
-            // every window, over whatever was behind the glass.
-            vec3 skyDirection = normalize(vec3(reflected.x, max(reflected.y, 0.45), reflected.z));
-            vec3 skyReflection = texture(skyFull, skyDirection).rgb * smoothstep(-0.3, 0.1, reflected.y);
-            // Only where that sky is really open: a window inside a room, seen level or from below, reflected
-            // the bright sky through the ceiling and glowed as a pale blue sheet.
-            if (!hiddenPaneTop && max(skyReflection.r, max(skyReflection.g, skyReflection.b)) > 0.0) {
-                vec3 glassPos = g_hit.rayOrigin + incident * g_hit.hitT;
-                skyReflection *= skyVisibilityAlong(glassPos - incident * 0.01, skyDirection);
-            }
-#if VPT_FRESNEL_MODEL != 0
-            // Bedrock: the glass reflects the world, not only the sky. The ray generation shader traces that
-            // reflection once the view behind is done (ptRequestReflection below, with the reflected direction and
-            // this weight).
-            vec3 glassReflectionWeight = mainRay.throughput * fresnel * clamp(VPT_GLASS_REFLECTION, 0.0, 1.0);
-#else
-            mainRay.radiance += mainRay.throughput * fresnel * skyReflection * clamp(VPT_GLASS_REFLECTION, 0.0, 1.0);
-#endif
-            vec3 filterColour = hiddenPaneTop ? vec3(1.0) : viewGlassTint(glassTexel.rgb * colorLayer, glassAlpha);
-            // Dark (tinted) glass shows its own texture lit by the sky, as a dark pane does, not only a dimmed view.
-            float tintedness = hiddenPaneTop ? 0.0 : glassDarkness(glassTexel.rgb * colorLayer);
-#if VPT_GLASS_TINT_MODEL == 0
-            mainRay.radiance += mainRay.throughput * (1.0 - fresnel) * tintedness * 0.35 * glassTexel.rgb *
-                                texture(skyFull, vec3(0.0, 1.0, 0.0)).rgb;
-#endif
-#if VPT_GLASS_TINT_MODEL != 0
-            // Bedrock's own rule for a Bedrock pack's glass; any other glass by its colour once a block.
-            vec3 faceFilter = hiddenPaneTop ? vec3(1.0) :
-                bedrockGlassFaceFilter(glassTexel.rgb * colorLayer, glassAlpha,
-                                       bedrockAuthoredTexel(textureMap, textureUV));
-            mainRay.throughput *= faceFilter * (1.0 - fresnel);
-#else
-            // Squared: light crossing a stained pane is coloured as deeply as the pane looks, not washed out.
-            mainRay.throughput *= pow(clamp(filterColour, 0.0, 1.0), vec3(2.0)) * (1.0 - fresnel);
-#endif
-            mainRay.hitT = g_hit.hitT;
-            mainRay.coneWidth += mainRay.hitT * mainRay.coneSpread;
-            mainRay.origin = g_hit.rayOrigin + incident * (g_hit.hitT + PASS_THROUGH_STEP);
-#if VPT_FRESNEL_MODEL != 0
-            ptRequestReflection(reflected, glassReflectionWeight, 0u);
-#else
-            ptClearReflectionRequest();
-#endif
-            mainRay.hasPrevScenePos = 0u;
-            ptStoreMaterial(vec4(1.0), vec3(0.04), 1.0, 0.0, 1.0, 1.0, 0.0);
-            raySetNoisy(mainRay, false);
-            raySetContinue(mainRay, true);
-            raySetPassThrough(mainRay, true);
-            raySetStop(mainRay, false);
-            return true;
-        }
-    }
-    return false;
-}
-#endif
 
 // How bright a raindrop streak is: the share of the light around it that it sends to the eye at full coverage.
 #ifndef VPT_RAIN_STREAK_BRIGHTNESS

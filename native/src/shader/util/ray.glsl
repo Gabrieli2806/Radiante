@@ -195,7 +195,7 @@ vec3 rayEmissionTint(MainRay ray, vec3 tint, bool viewBounce) {
 #    define VPT_ALBEDO_GAMMA 2.2
 #endif
 // Bedrock compatibility (observed): Bedrock RTX linearises the colour texture with the exact piecewise sRGB curve
-// rather than a power. Off by default, so the power above remains Radiante's own look; the Bedrock RTX profile
+// rather than a power. Off by default, so the power above remains Radiante's own look; Radiante PT
 // turns it on.
 #ifndef VPT_ALBEDO_SRGB_EXACT
 #    define VPT_ALBEDO_SRGB_EXACT 0

@@ -752,10 +752,8 @@ public final class BiomeAmbiance {
         Vector3f extinction = new Vector3f();
         Vector3f albedo = new Vector3f();
         Vector4f fog = new Vector4f(0.0f);
-        boolean bedrock = com.g2806.radiante.client.pipeline.PipelineSettings.isShaderPackToggleOn(
-            com.g2806.radiante.client.pipeline.RtAttributes.BEDROCK_ORIGINAL_ATTRIBUTE);
         for (int i = 0; i < SAMPLES; i++) {
-            Water water = waterOf(sampled[i], styled, bedrock);
+            Water water = waterOf(sampled[i], styled);
             float weight = SAMPLE_WEIGHT[i];
             extinction.add(water.extinctionR() * weight, water.extinctionG() * weight, water.extinctionB() * weight);
             albedo.add(water.albedoR() * weight, water.albedoG() * weight, water.albedoB() * weight);
@@ -865,19 +863,19 @@ public final class BiomeAmbiance {
     private static final float WATER_FOG_MIN_CHANNEL = 0.04f;
 
     /**
-     * The water of a biome. bedrock: Bedrock RTX's own mode is on, which takes a pack's water as the pack writes it:
+     * The water of a biome. A Bedrock pack's water is taken as the pack writes it, as Bedrock RTX does:
      * its absorption and scattering per block, neither thinned nor coloured by the biome's water colour, and lit
      * per colour channel by the shaders (water_medium.glsl). Side by side with Bedrock RTX (Vanilla RTX, plains) the
      * turquoise and the thinning below made a pool teal-green where Bedrock shows it blue, and the sea under water
      * a dark teal where Bedrock's is a bright blue.
      */
-    private static Water waterOf(Holder<Biome> biome, boolean styled, boolean bedrock) {
+    private static Water waterOf(Holder<Biome> biome, boolean styled) {
         String id = biome.unwrapKey().map(key -> key.identifier().toString()).orElse(null);
         float[] pack = id == null ? null : PACK_WATER_BY_BIOME.get(id);
         // A Bedrock pack's own water colour for the biome where it gives one, as Bedrock tints its water.
         Integer packColour = id == null ? null : PACK_WATER_COLOUR_BY_BIOME.get(id);
         int colour = packColour != null ? packColour : biome.value().getWaterColor();
-        boolean asPacked = bedrock && pack != null;
+        boolean asPacked = pack != null;
         WaterStyle style = styled && !asPacked ? waterStyleOf(biome) : PLAIN_WATER;
 
         float[] medium = pack == null ? vanillaWater(colour) : (asPacked ? pack : coloured(pack, colour));

@@ -15,7 +15,7 @@
 // look_up_tables.png, 128 x 4: across, the sun's angle from the zenith (the horizon at the middle); row 0 the colour
 // of the sunlight, row 1 its strength.
 //
-// The experimental Bedrock profile (VPT_BEDROCK_ORIGINAL) reads them as Bedrock RTX itself does, with the values the
+// Radiante PT reads them as Bedrock RTX itself does, with the values the
 // game hands its shaders each frame (calibrated to Bedrock RTX at every hour of the day): both tables are looked up
 // at w = acos(sun height) / pi, the lookup table end to end over its 128 texels; the sky takes strip 7w, blending the
 // two nearest; the light of the sun is 2 x row 0 squared, and by night, past the table's middle, the same row gives
@@ -46,13 +46,7 @@ float bedrockDayCoord(float sunHeight) {
 
 // Which strip, fractional, for a sun this high.
 float bedrockSkyStrip(float sunHeight) {
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     return 7.0 * bedrockDayCoord(sunHeight);
-#else
-    // Overhead to the horizon over strips 0 to 3, then down to the antipode over 3 to 7.
-    float elevation = asin(clamp(sunHeight, -1.0, 1.0)) / (0.5 * PI);
-    return elevation >= 0.0 ? (1.0 - elevation) * 3.0 : 3.0 + min(-elevation, 1.0) * 4.0;
-#endif
 }
 
 // One row of the lookup table at this time of day, as the texture holds it.
@@ -74,16 +68,8 @@ float bedrockSkyIntensityAdjustment(float sunHeight) {
 }
 
 vec3 bedrockSkyStripSample(float strip, float across, float down) {
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     vec2 uv = vec2((across * 63.0 + 0.5) / 64.0, (strip * 32.0 + down * 31.0 + 0.5) / 256.0);
-#else
-    vec2 uv = vec2((across * 63.0 + 0.5) / 64.0, (strip * 32.0 + clamp(down * 32.0, 0.5, 31.5)) / 256.0);
-#endif
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     return textureLod(bedrockSkyTexture, uv, 0.0).rgb;
-#else
-    return texture(bedrockSkyTexture, uv).rgb;
-#endif
 }
 
 // The sky's radiance in this direction, in the units of the Java sky (VPT_BEDROCK_SKY_INTENSITY scales it).
@@ -95,17 +81,14 @@ vec3 bedrockSkyRadiance(vec3 dir, vec3 sunDir) {
     if (dot(flatDir, flatDir) > 1e-8 && dot(flatSun, flatSun) > 1e-8) {
         across = acos(clamp(dot(normalize(flatDir), normalize(flatSun)), -1.0, 1.0)) / PI;
     }
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     float azimuth = dot(flatDir, flatDir) > 1e-8 ? atan(dir.z, dir.x) : 0.0;
     float sunAzimuth = dot(flatSun, flatSun) > 1e-8 ? atan(sunDir.z, sunDir.x) : 0.0;
     across = abs(2.0 * fract((azimuth - sunAzimuth) / (2.0 * PI)) - 1.0);
-#endif
     float down = 0.5 - asin(clamp(dir.y, -1.0, 1.0)) / PI;
     float strip = bedrockSkyStrip(sunDir.y);
     float first = floor(strip);
     vec3 a = bedrockSkyStripSample(min(first, 7.0), across, down);
     vec3 b = bedrockSkyStripSample(min(first + 1.0, 7.0), across, down);
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     // And the glow around the sun (the moon by night): 0.05 x max(cos, 0)^7 of the light's colour, part of the sky
     // that lights the world as much as of the one the camera sees.
     vec3 toLight = sunDir.y >= 0.0 ? sunDir : celestialMoonDirection();
@@ -114,9 +97,6 @@ vec3 bedrockSkyRadiance(vec3 dir, vec3 sunDir) {
     vec3 glow = 0.05 * pow(max(dot(dir, normalize(toLight)), 0.0), 7.0) * bedrockCelestialLight(sunDir.y) * glowPhase;
     return (mix(a * a, b * b, strip - first) + glow) * bedrockSkyIntensityAdjustment(sunDir.y) *
            VPT_BEDROCK_SKY_INTENSITY;
-#else
-    return bedrockSrgbToLinear(mix(a, b, strip - first)) * VPT_BEDROCK_SKY_INTENSITY;
-#endif
 }
 
 // The sunlight's colour and strength for a sun this high, as a factor on the sun's radiance.

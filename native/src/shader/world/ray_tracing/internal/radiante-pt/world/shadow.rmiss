@@ -54,12 +54,10 @@ void main() {
         shadowRay.radiance = vec3(1.0);
         return;
     }
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     // An underwater celestial query pays for the water it crossed only once it is known to reach the sky.
     if (query == UNDERWATER_CELESTIAL_QUERY) {
         shadowRay.throughput *= shadowRay.waterTransmission;
     }
-#endif
 
     // A lightning flash takes the sun's or moon's place while it lasts (celestial.glsl).
     float lightning = lightningFlash();
@@ -77,7 +75,6 @@ void main() {
     vec3 toSun = celestialSunDirection();
     float worldHeight = gl_WorldRayOriginEXT.y + float(worldUBO.cameraPos.y);
 
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     const float BEDROCK_SUN_SCALE = 0.8;
     if (bedrockAtmosphereActive()) {
         // Bedrock RTX's own sun/moon light for this time of day (bedrock_atmosphere.glsl), already faded at the
@@ -91,7 +88,6 @@ void main() {
         shadowRay.radiance += bedrockLight * shadowRay.throughput;
         return;
     }
-#endif
 
     vec3 light = celestialRadiance(toSun);
     light *= biomeFogLightTransmittance(worldHeight, toSun);

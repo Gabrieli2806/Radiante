@@ -24,7 +24,7 @@ struct VptPackedLight {
     vec4 p3;
     vec4 normal;
     // rgb; w how it is scaled: 0 a light level's scale, 1 exactly the glow its surface shows (a Bedrock pack's MER
-    // emission, under the experimental profile: see vptCastLight), 2 one of Bedrock RTX's point lights (below).
+    // emission: see vptCastLight), 2 one of Bedrock RTX's point lights (below).
     vec4 radiance;
     vec4 sourceIDData;
 };

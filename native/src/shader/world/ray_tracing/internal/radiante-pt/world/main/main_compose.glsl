@@ -11,7 +11,6 @@
     // shadows of its own. It goes into the emission channel, which the NRD compose reads and leaves undenoised,
     // and onto the radiance below, which is what DLSS Ray Reconstruction is handed; neither pass reads both.
     vec3 nightVisionAmbient = vec3(0.0);
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     // Bedrock RTX's ambient, added to the light on the surface in view before the surface's colour multiplies it:
     // 5 a (0.2 + 0.8 (N.V)^1.1) on the scale Bedrock works at (2^bedrockMeter.y), most where the surface faces the
     // camera. a is night vision's strength, with a floor of its own in a dark place: none while the metered level
@@ -25,12 +24,6 @@
         nightVisionAmbient = firstHitMat.albedoValue.rgb * firstHitMat.albedoValue.a * (1.0 - firstHitMat.metallic) *
                              (5.0 * ambientLevel * (0.2 + 0.8 * facing) * exp2(-bedrockMeter.y));
     }
-#else
-    if (skyUBO.nightVision > 0.0 && !hitSky) {
-        nightVisionAmbient = skyUBO.nightVision * NIGHT_VISION_AMBIENT * firstHitMat.albedoValue.rgb *
-                             firstHitMat.albedoValue.a;
-    }
-#endif
 #if VPT_NRD_SIGNALS
     // The glow the surface was seen with, as the closest hit added it.
     if (nrdSplit) { firstHitEmission = nrdEmission; }
@@ -42,9 +35,7 @@
     }
     if (!psrHitSky) { firstHitEmission += glassReflectionRadiance; }
     imageStore(firstHitBaseEmissionImage, ivec2(pixel), vec4(firstHitEmission, 1.0));
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     if (composeFogIsRgb) { composeFogTransmittance = -2.0; }
-#endif
     bool applyVolumetricCompose =
         useVolumetricFog && !raySkipFog(mainRay) && skyUBO.cameraSubmersionType != 1 && !cameraInMedium &&
         worldUBO.skyType == 1 && skyUBO.hasBlindnessOrDarkness == 0;
@@ -71,7 +62,7 @@
                                volumetricTransmittance, volumetricLight);
         volumetricLight *= fogGlassTint(volumetricDistance);
         mainRay.radiance = mainRay.radiance * volumetricTransmittance + volumetricLight;
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0 && VPT_BEDROCK_FOG != 0
+#if VPT_BEDROCK_FOG != 0
         composeFogTransmissionRGB = volumetricTransmittance * (composeFogTransmittance < 0.0 ? 1.0 : composeFogTransmittance);
         composeFogAdditive = (composeFogTransmittance < 0.0 ? vec3(0.0) : composeFogAdditive * volumetricTransmittance) + volumetricLight;
         // -1 means no fog; -2 explicitly selects RGB transmission in compose, preserving legacy packs.
@@ -133,9 +124,7 @@
         imageStore(firstHitClearImage, ivec2(pixel), vec4(glowRadiance, 1.0));
         imageStore(diffuseAlbedoImage, ivec2(pixel), vec4(glowColor, 0.0));
         imageStore(specularAlbedoImage, ivec2(pixel), vec4(0.0));
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
         imageStore(fogImage, ivec2(pixel), vec4(0.0, 0.0, 0.0, -1.0));
-#endif
         imageStore(outputImage, ivec2(pixel), vec4(glowRadiance, 1.0));
 #if VPT_FROXEL_ACTIVE && !(SHARC_UPDATE && USE_SHARC)
         clearFogMarchRecord(ivec2(pixel));

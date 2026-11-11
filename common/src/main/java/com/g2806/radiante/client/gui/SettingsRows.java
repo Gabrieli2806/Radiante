@@ -701,8 +701,7 @@ abstract class SettingsRows extends SettingsChoices {
         addRows(style, method, tunable(Tunable.SATURATION, true), tunable(Tunable.TEXTURE_CONTRAST, false),
             tunable(Tunable.EXPOSURE_ADAPTATION, false),
             tunable(Tunable.EXPOSURE_SPEED, false), tunable(Tunable.EXPOSURE_BIAS, false),
-            tunable(Tunable.LOW_LIGHT_BOOST, false), tunable(Tunable.EXPOSURE_DAY, false),
-            tunable(Tunable.EXPOSURE_NIGHT, false), tunable(Tunable.DAY_LOW_LIGHT_LIMIT, false),
+            tunable(Tunable.LOW_LIGHT_BOOST, false), tunable(Tunable.DAY_LOW_LIGHT_LIMIT, false),
             tunable(Tunable.FSR_SHARPNESS, false));
         addHdrOptions();
         if (PipelineSettings.supportsShaderPackToggle(RtAttributes.MOTION_BLUR_ATTRIBUTE)
@@ -735,7 +734,7 @@ abstract class SettingsRows extends SettingsChoices {
                 value -> stage("emissionBrightness", value)),
             brightnessSlider("options.radiante.held_light_brightness", staged("heldLightBrightness", Options.heldLightBrightness),
                 value -> stage("heldLightBrightness", value)),
-            tunable(Tunable.BOUNCE_LIGHT, true), tunable(Tunable.SKY_LIGHT, true), tunable(Tunable.TRANSLUCENCY, true),
+            tunable(Tunable.TRANSLUCENCY, false),
             OptionInstance.createBoolean("options.radiante.block_light_sampling",
                 tooltip("options.radiante.block_light_sampling"), staged("blockLightSampling", Options.blockLightSampling),
                 value -> {
@@ -752,6 +751,11 @@ abstract class SettingsRows extends SettingsChoices {
             OptionInstance.createBoolean("options.radiante.held_item_light",
                 tooltip("options.radiante.held_item_light"), staged("heldItemLight", Options.heldItemLight),
                 value -> stage("heldItemLight", value)),
+            new OptionInstance<Integer>("options.radiante.entity_light_reach",
+                SettingsRows.<Integer>tooltip("options.radiante.entity_light_reach"),
+                (caption, value) -> Component.translatable("options.radiante.blocks_value", caption, value),
+                new OptionInstance.IntRange(8, 256, false), this.pendingEntityLightReach,
+                value -> this.pendingEntityLightReach = value),
             OptionInstance.createBoolean("options.radiante.first_person_shadow",
                 OptionInstance.cachedConstantTooltip(Component.translatable("options.radiante.first_person_shadow.tooltip")),
                 this.pendingFirstPersonShadow, value -> this.pendingFirstPersonShadow = value));
@@ -986,7 +990,6 @@ abstract class SettingsRows extends SettingsChoices {
                 refreshQualityLater();
             });
         addRows(bounces, tunable(Tunable.MIRROR_BOUNCES, false), tunable(Tunable.MIRROR_SMOOTHNESS, false),
-            tunable(Tunable.GLASS_REFLECTIONS, false),
             tunable(Tunable.WATER_TEXTURE, false),
             tunable(Tunable.WATER_CLEAR_TEAL, false),
             tunable(Tunable.PORTAL_TRANSPARENCY, false),

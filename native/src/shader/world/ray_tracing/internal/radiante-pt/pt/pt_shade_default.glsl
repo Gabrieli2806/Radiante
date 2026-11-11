@@ -110,9 +110,6 @@ vec3 g_radianteDebugRain = vec3(0.0);
 #endif
 #include "common/bedrock_water.glsl"
 
-#ifndef VPT_BOUNCE_LIGHT_BOOST
-#    define VPT_BOUNCE_LIGHT_BOOST 1.0
-#endif
 
 #ifndef PT_IN_HIT_STAGE
 // Until the raygen owns the path state, the payloads below are a closest hit's, so only a hit stage can include this.
@@ -180,7 +177,7 @@ layout(set = 5, binding = RADIANTE_DEBUG_VIEW_STORAGE_BINDING, rgba16f) uniform 
 // value known when the shader is compiled.
 #define MIRROR_MAX_ROUGHNESS VPT_MIRROR_MAX_ROUGHNESS
 const float MIRROR_MIN_METALLIC = 0.5;
-// Under how rough a Bedrock pack's full metal is a mirror in the experimental Bedrock profile.
+// Under how rough a Bedrock pack's full metal is a mirror in Radiante PT.
 const float BEDROCK_MIRROR_ROUGHNESS = 0.01;
 
 #if VPT_NRD_SIGNALS
@@ -319,20 +316,11 @@ void ptShadeDefault(bool viewMark) {
 
         if (ptRainPassThrough(textureID, textureUV, colorLayerValue)) { return; }
 
-#if !defined(VPT_BEDROCK_ORIGINAL) || VPT_BEDROCK_ORIGINAL == 0
-        if (ptWaterSidePassThrough(isWaterMaterial, planeGeoNormal, baseGeoNormal, bounce)) { return; }
-#endif
 
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
         if (ptBedrockGlassHit(textureID, textureUV, textureMap, colorLayerValue, colorLayer, windingNormal,
                               baseGeoNormal, bounce)) {
             return;
         }
-#else
-        if (ptGlassPassThrough(textureID, textureUV, textureMap, colorLayerValue, colorLayer, baseGeoNormal, bounce)) {
-            return;
-        }
-#endif
 
         if (!isWaterMaterial && parallaxEnabled && bounce == 0u && textureMap.normal >= 0 && coordinate != 1u) {
             maxDepthWorld = heightMapMaxDepthWorld(atlasUvMin, atlasUvMax, dPduWorld, dPdvWorld);
@@ -417,7 +405,6 @@ void ptShadeDefault(bool viewMark) {
     // current exposure brings to LAVA_DISPLAY of its colour, and the light other things throw on it counts for
     // little. (What lava casts on its surroundings is the light list's, unchanged.)
     if (radianteIsLava(packedData) && bounce == 0u) { ptShapeLava(surface); }
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     // Small plants (grass, flowers, ferns) are lit as if they faced half way up, as Bedrock RTX lights them: side by
     // side its short grass is three quarters as bright as the grass block under it, where lit by their own upright
     // quads a noon sun only grazed the blades and they came out at two fifths (and facing straight up, brighter than
@@ -427,7 +414,6 @@ void ptShadeDefault(bool viewMark) {
         surface.shadingNormal = plantNormal;
         surface.geometricNormal = plantNormal;
     }
-#endif
 #ifndef RADIANTE_HOOK_WATER_SURFACE_DEFAULT
     // A pack's water (hooks/water_surface.glsl), with the height of the waves where they bend the surface.
     if (isWaterMaterial) {
@@ -497,12 +483,8 @@ void ptShadeDefault(bool viewMark) {
     mainRay.normal = surface.shadingNormal;
     ptStoreMaterial(surface.albedoValue, surface.mat.f0, surface.mat.roughness, surface.mat.metallic,
                     surface.mat.transmission, surface.mat.ior, surface.mat.emission * emissionMultiplier);
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     // Save the incoming medium before the sampled bounce changes it. The deterministic split needs it too.
     ptStoreAux(isWaterMaterial ? vec2(VPT_FFT_WATER_ORIGIN_BIAS, rayInWater(mainRay) ? 2.0 : 1.0) : vec2(0.0));
-#else
-    ptStoreAux(isWaterMaterial ? vec2(VPT_FFT_WATER_ORIGIN_BIAS, 1.0) : vec2(0.0));
-#endif
 
     // A mirror (a smooth metal: SPBR's mirror block, polished metal packs) seen by the camera is looked into, not
     // shaded: the view carries on along the reflection, tinted by the mirror's Fresnel colour, and what it shows
@@ -510,17 +492,15 @@ void ptShadeDefault(bool viewMark) {
     // went through the specular denoiser and came out blurred and noisy.
     // Not what glows: a pack's light with a smooth metallic core (Vanilla RTX's beacon) was looked into there, and
     // its brightest texels, the ones that glow most, showed the room instead of their light.
-    // The experimental Bedrock profile: a pack's metal is a mirror only when perfect (metalness 1, roughness under a
+    // Radiante PT: a pack's metal is a mirror only when perfect (metalness 1, roughness under a
     // hundredth), as Bedrock RTX shows it; anything rougher keeps its glossy highlight instead of turning into a flat
     // mirror. Other materials (vanilla's, a Java pack's) keep the rule above.
     bool mirrorSurface = surface.mat.metallic > MIRROR_MIN_METALLIC && surface.mat.roughness <= MIRROR_MAX_ROUGHNESS;
     bool bedrockMirror = false;
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     if (surface.authoredMer) {
         mirrorSurface = surface.mat.metallic >= 1.0 - EPS && surface.mat.roughness < BEDROCK_MIRROR_ROUGHNESS;
         bedrockMirror = true;
     }
-#endif
     if ((bounce == 0u || rayCameraPath(mainRay)) && !isWaterMaterial && mirrorSurface &&
         surface.mat.transmission <= EPS && surface.mat.emission <= EPS) {
         vec3 incident = normalize(g_hit.rayDir);
@@ -573,30 +553,24 @@ void ptShadeDefault(bool viewMark) {
             (bounce == 0u && localBounce == 0) ? 14.0 * VPT_DIRECT_LIGHT_STRENGTH : VPT_INDIRECT_LIGHT_STRENGTH;
         // Seen, a texel glows in proportion to its emissive value, not its square: the dim parts of glowstone
         // between its bright specks glow too instead of going near black. The light cast keeps the square law.
-#if VPT_BEDROCK_SPECULAR
-        // The experimental Bedrock profile: emission is on Bedrock's own scale there, seen and bounced alike
+        // Radiante PT: emission is on Bedrock's own scale there, seen and bounced alike
         // (sampleSurfaceState brings what no pack authored to it).
         emissionFactor = VPT_BEDROCK_SEEN_EMISSION;
-#endif
         float seenEmission = currentSurface.mat.emission;
-#if defined(VPT_EMISSION_MODEL) && VPT_EMISSION_MODEL != 0 && !VPT_BEDROCK_SPECULAR
-        if (bounce == 0u && localBounce == 0) { seenEmission = sqrt(max(seenEmission, 0.0)); }
-#endif
         float blockEmissionWeight =
             (localBounce == 0 && bounce > 0u && vptBlockLightAlreadyCounted(g_hit.rayOrigin, currentSurface.worldPos)) ?
                 0.0 : 1.0;
-        // (The experimental profile desaturates the glow seen as Bedrock does, as much as the light it casts.)
-        bool keepGlowColour = bounce == 0u && localBounce == 0 && VPT_BEDROCK_SPECULAR == 0;
+        // The glow seen is desaturated as Bedrock does it, as much as the light it casts.
 #ifdef RADIANTE_HOOK_BLOCK_LIGHT_DEFAULT
         vec3 emissionRadiance =
             blockEmissionWeight * emissionFactor *
             worldUBO.emissionBrightness *
-            (keepGlowColour ? currentSurface.tint : vptEmissiveColour(currentSurface.tint)) *
+            vptEmissiveColour(currentSurface.tint) *
             seenEmission * mainRay.throughput;
 #else
         // The glow through a pack's hooks/block_light.glsl, only where there is one: the hook sees the glow's
         // colour, as it sees a light's.
-        vec3 glowColour = keepGlowColour ? currentSurface.tint : vptEmissiveColour(currentSurface.tint);
+        vec3 glowColour = vptEmissiveColour(currentSurface.tint);
         if (seenEmission > 0.0) { hookBlockLight(glowColour, RADIANTE_BLOCK_LIGHT_GLOW); }
         vec3 emissionRadiance = blockEmissionWeight * emissionFactor * worldUBO.emissionBrightness * glowColour *
                                 seenEmission * mainRay.throughput;
@@ -643,26 +617,19 @@ void ptShadeDefault(bool viewMark) {
         // leaving it, lamps included. Reached deeper than the first bounce, a wall went into the cache unlit by the
         // lamp beside it, and every room lit by block lights came out darker the more its light bounced around.
         bool blockLightView = false;
-#if VPT_BEDROCK_SPECULAR
         // A reflected/refracted view is not a diffuse deep bounce. Sample its emitters explicitly
         // even after multiple interfaces, without writing the primary pixel's ReSTIR reservoir.
         blockLightView = g_viewBounce;
-#endif
-        // The experimental profile samples them on every bounce (with the few candidates of the first): its lights
-        // are a pack's glowing texels and Bedrock's point lights, and a bounce that has to find a glowing texel by
-        // itself finds it rarely and, from far away, at a level of detail where the average of greens squared
-        // undercounts it - a room lit by lamps came out a fifth darker on its walls and floor, and the light of a
-        // torch, which has no surface to be found, stopped after the second bounce.
-        bool blockLightSkipped = !blockLightPrimary && !blockLightView && rayBounce(mainRay) >= 2u &&
-                                 !rayCacheUpdate(mainRay) && VPT_BEDROCK_SPECULAR == 0;
-        vec3 blockLight = vec3(0.0);
-        if (!blockLightSkipped) {
-            blockLight = blockLightView && !blockLightPrimary ?
-                sampleBlockLight(litSurface.worldPos, litSurface.geometricNormal,
-                                 litSurface.shadingNormal, currentViewDir, litSurface.mat, false) :
-                sampleBlockLightAt(litSurface.worldPos, litSurface.geometricNormal,
-                                   litSurface.shadingNormal, currentViewDir, litSurface.mat, blockLightPrimary);
-        }
+        // They are sampled on every bounce (with the few candidates of the first): the lights are a pack's glowing
+        // texels and Bedrock's point lights, and a bounce that has to find a glowing texel by itself finds it rarely
+        // and, from far away, at a level of detail where the average of greens squared undercounts it - a room lit
+        // by lamps came out a fifth darker on its walls and floor, and the light of a torch, which has no surface to
+        // be found, stopped after the second bounce.
+        vec3 blockLight = blockLightView && !blockLightPrimary ?
+            sampleBlockLight(litSurface.worldPos, litSurface.geometricNormal,
+                             litSurface.shadingNormal, currentViewDir, litSurface.mat, false) :
+            sampleBlockLightAt(litSurface.worldPos, litSurface.geometricNormal,
+                               litSurface.shadingNormal, currentViewDir, litSurface.mat, blockLightPrimary);
         directLight += blockLight;
         directLight += sampleHeldLight(handShifted ? heldLightPos : litSurface.worldPos, litSurface.geometricNormal,
                                        litSurface.shadingNormal, litSurface.mat);
@@ -679,34 +646,14 @@ void ptShadeDefault(bool viewMark) {
             vec3 incident = -currentViewDir;
             vec3 waterNormal = currentSurface.shadingNormal;
             vec3 waterUpNormal = waterNormal.y >= 0.0 ? waterNormal : -waterNormal;
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
             float eta = rayInWater(mainRay) ? currentSurface.mat.ior : 1.0 / currentSurface.mat.ior;
             if (dot(incident, waterNormal) > 0.0) { waterNormal = -waterNormal; }
-#else
-            float eta = dot(incident, waterUpNormal) < 0.0 ? (1.0 / currentSurface.mat.ior) : currentSurface.mat.ior;
-#endif
             float fresnel = clamp(vptInterfaceFresnel(abs(dot(currentViewDir, waterNormal)), eta), 0.0, 1.0);
             vec3 refractionDir = refract(incident, waterNormal, eta);
             // Seen from under the water, the surface is let through everywhere with a light cyan tint and little
             // reflection, as in Bedrock RTX: physically only a circle overhead (Snell's window) shows the sky and
             // the rest mirrors the water below, which read as a hole in a turquoise ceiling.
             bool fromBelow = dot(incident, waterUpNormal) > 0.0;
-#if !defined(VPT_BEDROCK_ORIGINAL) || VPT_BEDROCK_ORIGINAL == 0
-            if (abs(baseGeoNormal.y) <= 0.5) {
-                // A side has no up: which way the light crosses it is whether the ray is in the water. Read off the
-                // sign of a normal with no vertical part, the medium flipped at random from texel to texel.
-                waterNormal = dot(incident, waterNormal) < 0.0 ? waterNormal : -waterNormal;
-                eta = rayInWater(mainRay) ? currentSurface.mat.ior : 1.0 / currentSurface.mat.ior;
-                fresnel = clamp(vptInterfaceFresnel(abs(dot(currentViewDir, waterNormal)), eta), 0.0, 1.0);
-                refractionDir = refract(incident, waterNormal, eta);
-                fromBelow = false;
-            }
-            if (fromBelow) {
-                refractionDir = normalize(mix(incident, waterUpNormal, 0.15));
-                fresnel = min(fresnel, 0.08);
-            }
-#endif
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
             // The pack's water texture over the surface, seen from above: as far as a texel is opaque (the upper half
             // of its alpha, Bedrock's rule for every blended face) it is a lit surface of its own colour, untinted,
             // over what is seen through it. Bedrock RTX shows it so: a faint, pale pattern of the texture over every
@@ -734,7 +681,6 @@ void ptShadeDefault(bool viewMark) {
                     mainRay.radiance += layer;
                 }
             }
-#endif
             bool hasRefraction = dot(refractionDir, refractionDir) > 1e-6;
             bool chooseReflection = !hasRefraction ||
                                     (VPT_TRANSPARENT_SPLIT_MODE != VPT_TRANSPARENT_SPLIT_MODE_DETERMINISTIC &&
@@ -752,11 +698,7 @@ void ptShadeDefault(bool viewMark) {
                 // the biome's water colour); the surface itself is clear.
                 vec3 surfaceTint = waterMediumActive() ? vec3(1.0) :
                                                          pow(max(currentSurface.albedoValue.rgb, vec3(0.0)), vec3(0.5));
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
                 surfaceTint = vec3(1.0); // Water colour is accumulated over the medium, not a cyan sheet.
-#else
-                if (fromBelow) { surfaceTint *= vec3(0.85, 0.97, 1.0); }
-#endif
                 bsdf = surfaceTint * (1.0 - fresnel);
             }
         } else {
@@ -767,18 +709,10 @@ void ptShadeDefault(bool viewMark) {
         // Leaving the water's surface, through it or off it. Off the top, down goes into the water and up out of it;
         // through a side, the ray swaps sides.
         if (isWaterMaterial) {
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
             if (lobeType == 2u) { raySetInWater(mainRay, !rayInWater(mainRay)); }
-#else
-            if (abs(baseGeoNormal.y) > 0.5) {
-                raySetInWater(mainRay, sampleDir.y < 0.0);
-            } else if (lobeType == 2u) {
-                raySetInWater(mainRay, !rayInWater(mainRay));
-            }
-#endif
         }
 
-        raySetBlockLightSampled(mainRay, worldUBO.blockLightSampling != 0u && !blockLightSkipped && lobeType == 0u &&
+        raySetBlockLightSampled(mainRay, worldUBO.blockLightSampling != 0u && lobeType == 0u &&
                                              vptBlockLightDiffuseWeight(currentSurface.mat) > 1e-4);
         raySetBlockLightLean(mainRay, !blockLightPrimary && !blockLightView);
 
@@ -803,16 +737,7 @@ void ptShadeDefault(bool viewMark) {
         // The next hit's texture level comes from a cone as wide as the lobe this bounce was drawn from (ray_cone.glsl).
         mainRay.coneSpread = coneSpreadAfterScatter(mainRay.coneSpread, currentSurface.mat.roughness, lobeType);
 
-        vec3 throughputBefore = mainRay.throughput;
         mainRay.throughput *= bsdf / max(pdf, 1e-4);
-        // Bedrock RTX fills a room from a single patch of sunlight: light off rough surfaces carries on stronger than
-        // their albedo alone lets it (VPT_BOUNCE_LIGHT_BOOST), kept under 0.95 a bounce so it still dies out.
-        // (Not in the experimental profile: Bedrock's own light, exposure and tone curve fill the room there.)
-        if (lobeType == 0u && VPT_BOUNCE_LIGHT_BOOST > 1.0 && VPT_BEDROCK_SPECULAR == 0) {
-            vec3 ratio = mainRay.throughput / max(throughputBefore, vec3(1e-6));
-            float bounceAlbedo = max(ratio.r, max(ratio.g, ratio.b));
-            mainRay.throughput *= clamp(0.95 / max(bounceAlbedo, 1e-3), 1.0, VPT_BOUNCE_LIGHT_BOOST);
-        }
 
         if (!traceLocalHeight || handShifted) {
             if (hasFftWaterSurface) {

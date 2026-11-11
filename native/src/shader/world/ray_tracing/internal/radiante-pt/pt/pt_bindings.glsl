@@ -34,8 +34,8 @@ layout(set = 2, binding = 1) uniform LastWorldUniform {
 layout(set = 2, binding = 3) buffer LightMeterBuffer {
     vec4 samples[256];
     vec4 daylight;
-    vec4 bedrockMeter; // The experimental Bedrock profile's meter state, from exposure.comp (see there).
-    // The experimental Bedrock profile's samples over time: the light accumulated and its frames, and the surface it
+    vec4 bedrockMeter; // Radiante PT's meter state, from exposure.comp (see there).
+    // Radiante PT's samples over time: the light accumulated and its frames, and the surface it
     // lies on (render-space point, and its face's axis as 1 to 6).
     vec4 sampleHistory[256];
     vec4 sampleSurface[256];
