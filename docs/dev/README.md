@@ -6,7 +6,7 @@ They are in English only.
 | Page | What it covers |
 |---|---|
 | [Building and releasing](building.md) | Requirements, Windows and Linux builds, the Linux fixes to keep, CI, publishing a version |
-| [Testing](testing.md) | Development clients, test worlds, scripted runs, visual comparisons, unit tests |
+| [Testing](testing.md) | Development clients, test worlds, scripted runs, the shader check under every setting, visual comparisons, unit tests |
 | [Architecture](architecture.md) | How PrismRT works: JNI, frames, acceleration structures, pipelines, the path tracer |
 | [Shader packs: design](shader-packs.md) | The pack contract: manifest, `extends`, hooks, settings, versioning, safety |
 | [Bedrock RTX defaults](bedrock-defaults.md) | How radiante-pt's defaults were matched to Bedrock RTX, and what still differs |

@@ -448,7 +448,7 @@ Rebuilds that change shaders are usually preceded by a prewarm, so the wait is s
 
 The native build is CMake (`native/CMakeLists.txt`). The scripts are the usual entry point:
 
-- **Windows:** `native/build-windows.bat` (Visual Studio 2026, x64). Builds into `%RADIANTE_BUILD_DIR%`
+- **Windows:** `native/build-windows.bat` (Visual Studio 2026 or its Build Tools, x64). Builds into `%RADIANTE_BUILD_DIR%`
   (default `C:\rtb\radiante`) and installs `prismrt.dll` and the shaders into the mod's resources.
 - **Linux:** `native/build-linux.sh` (cmake, ninja or make, g++ 13+, Vulkan SDK with `VULKAN_SDK` set). Builds into
   `native/build/linux-release` by default and installs `linux-x64/libprismrt.so`. Extra arguments go to CMake.

@@ -51,8 +51,9 @@ incluido en PrismRT, **radiante-pt**.
 
 ## 4. Compilar
 
-Necesitas Java 25, el Vulkan SDK 1.4.341+, Visual Studio 2026 con C++ (Windows) o cmake, ninja y g++ 13+ (Linux), y
-las librerías del DLSS SDK. Preparación completa: [Building](docs/dev/building.md) (en inglés).
+Necesitas Java 25, el Vulkan SDK 1.4.341+, Visual Studio 2026 o sus Build Tools con C++ (Windows) o cmake, ninja y
+g++ 13+ (Linux), Python 3 y las librerías del DLSS SDK. `native/setup-windows.ps1` y `native/setup-linux.sh` dicen qué
+le falta a un equipo. Preparación completa: [Building](docs/dev/building.md) (en inglés).
 
 ```sh
 native/build-windows.bat      # el renderizador (Linux: native/build-linux.sh)
