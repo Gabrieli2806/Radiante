@@ -1,5 +1,6 @@
 #pragma once
 
+#include "prism/render/modules/world/upscaler_common.hpp"
 #include "prism/render/modules/world/world_module.hpp"
 
 #include <array>
@@ -78,13 +79,6 @@ class XessSrModule : public WorldModule, public SharedObject<XessSrModule> {
         std::shared_ptr<gpu::DescriptorTable> descriptors;       // one set for all four helper passes
     };
 
-    // The camera when XeSS last ran, to tell when its history no longer fits the view.
-    struct CameraHistory {
-        glm::vec3 position = glm::vec3(0.0f);
-        glm::vec3 direction = glm::vec3(0.0f, 0.0f, -1.0f);
-        bool seen = false;
-    };
-
     void updateRenderResolution();
     // The preset XeSS is set up with: the chosen one, or the one whose ratio is nearest a custom render scale.
     QualityMode effectiveQualityMode() const;
@@ -123,7 +117,8 @@ class XessSrModule : public WorldModule, public SharedObject<XessSrModule> {
     std::shared_ptr<gpu::ComputePipeline> motionUpscalePipeline_;
     std::shared_ptr<gpu::ComputePipeline> normalRoughnessUpscalePipeline_;
 
-    CameraHistory camera_;
+    // The camera when XeSS last ran, to tell when its history no longer fits the view.
+    upscaler::CameraCut camera_;
 };
 
 class XessSrModuleContext : public WorldModuleContext {

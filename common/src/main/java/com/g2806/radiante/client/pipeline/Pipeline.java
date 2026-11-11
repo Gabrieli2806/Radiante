@@ -38,6 +38,47 @@ import org.yaml.snakeyaml.Yaml;
 public class Pipeline {
 
     public static Pipeline INSTANCE = new Pipeline();
+
+    /**
+     * What assembling a pipeline asks of the game and of the native renderer: which modules this build of the
+     * renderer has, what a module says about its attributes, whether DLSS can do Ray Reconstruction, and the
+     * language the attributes' names come in. In the game that is the renderer itself; a test puts its own answers
+     * here, so the presets and the stored pipeline can be checked without a game or a GPU.
+     */
+    interface Host {
+
+        boolean hasModule(String name);
+
+        String attributes(String name, String[] attributes, String language);
+
+        boolean rayReconstruction();
+
+        String language();
+    }
+
+    static final Host RENDERER = new Host() {
+        @Override
+        public boolean hasModule(String name) {
+            return isNativeModuleAvailable(name);
+        }
+
+        @Override
+        public String attributes(String name, String[] attributes, String language) {
+            return getAttributes(name, attributes, language);
+        }
+
+        @Override
+        public boolean rayReconstruction() {
+            return isRayReconstructionAvailable();
+        }
+
+        @Override
+        public String language() {
+            return ModuleAttributes.getCurrentLanguageCode();
+        }
+    };
+
+    static Host host = RENDERER;
     public static final String RAY_TRACING_MODULE_NAME = "render_pipeline.module.ray_tracing.name";
     static final String RAY_TRACING_SHADER_PACK_PATH_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.shader_pack_path";
     static final String BUILT_IN_SHADER_PACK_PATH = "shaders/world/ray_tracing/radiante-pt.zip";
@@ -112,7 +153,7 @@ public class Pipeline {
         if (INSTANCE.moduleEntries == null || !INSTANCE.moduleEntries.containsKey(moduleName)) {
             return false;
         }
-        return isNativeModuleAvailable(moduleName);
+        return host.hasModule(moduleName);
     }
 
     private static boolean areModulesAvailable(String... moduleNames) {
@@ -182,7 +223,7 @@ public class Pipeline {
      */
     private static boolean rayReconstructionAvailable() {
         try {
-            return isRayReconstructionAvailable();
+            return host.rayReconstruction();
         } catch (UnsatisfiedLinkError olderRenderer) {
             // A renderer from before the question: DLSS meant Ray Reconstruction then.
             return true;
