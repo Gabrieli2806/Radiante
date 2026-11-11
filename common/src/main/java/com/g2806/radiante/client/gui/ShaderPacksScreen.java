@@ -41,21 +41,21 @@ import java.util.function.Supplier;
  */
 public final class ShaderPacksScreen extends VersionCompat.DrawnScreen {
 
-    // The settings screen's own (SettingsLayout), so the screens read as one place.
-    private static final int ACCENT = 0xFF8FE3C8;
-    private static final int TEXT = 0xFFFFFFFF;
-    private static final int TEXT_DIM = 0xFFB0B8B4;
-    private static final int PANEL = 0xC0101212;
-    private static final int PANEL_DARK = 0xD0060707;
-    private static final int ROW_HOVER = 0x30FFFFFF;
-    private static final int DISABLED = 0xFF606060;
-    private static final int BAD = 0xFFFF8080;
-    private static final int ROW = 20;
-    private static final int HEADER = 22;
-    private static final int GAP = 6;
-    private static final int PAD = 8;
-    private static final int ENTRY = 18;
-    private static final int BUTTON = 16;
+    // The colours and measures every Radiante screen shares (Theme).
+    private static final int ACCENT = Theme.ACCENT;
+    private static final int TEXT = Theme.TEXT;
+    private static final int TEXT_DIM = Theme.TEXT_DIM;
+    private static final int PANEL = Theme.PANEL;
+    private static final int PANEL_DARK = Theme.PANEL_DARK;
+    private static final int ROW_HOVER = Theme.ROW_HOVER;
+    private static final int DISABLED = Theme.DISABLED;
+    private static final int BAD = Theme.BAD;
+    private static final int ROW = Theme.ROW;
+    private static final int HEADER = Theme.HEADER;
+    private static final int GAP = Theme.GAP;
+    private static final int PAD = Theme.PAD;
+    private static final int ENTRY = Theme.ENTRY;
+    private static final int BUTTON = Theme.BUTTON;
     /** The side of a pack's icon in its row, and in the panel. */
     private static final int ROW_ICON = 16;
     /** An Iris or OptiFine pack put in Radiante's folder: named as one in its row rather than marked as broken. */

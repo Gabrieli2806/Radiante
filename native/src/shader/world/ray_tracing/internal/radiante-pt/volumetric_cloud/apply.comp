@@ -15,13 +15,7 @@ layout(set = 3, binding = 15, rgba16f) uniform readonly image2D fogTransmissionI
 layout(set = 5, binding = 32, r16f) uniform image2D postStarCloudTransmittanceImage;
 layout(set = 5, binding = 34, rgba16f) uniform readonly image2D volumetricCloudTemporalImage;
 
-bool finiteFloat(float value) {
-    return !isnan(value) && !isinf(value);
-}
-
-bool finiteVec3(vec3 value) {
-    return !any(isnan(value)) && !any(isinf(value));
-}
+#include "util/numeric.glsl"
 
 void main() {
     ivec2 texel = ivec2(gl_GlobalInvocationID.xy);

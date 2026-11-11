@@ -55,8 +55,10 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 - `./gradlew build` regenerates the headers in `native/include/`, which the middleware includes. A change to a
   `native` method changes its header: commit the header with it and change the C++ function to match, or the native
   build stops. Revert a header that changed without such a change.
-- `-DPRISM_ENABLE_NRD=OFF` builds the renderer without the NRD module (its pipelines are then not offered). DLSS's
-  NGX libraries are always needed to link.
+- `-DPRISM_ENABLE_NRD=OFF` builds the renderer without the NRD module (its pipelines are then not offered). DLSS is
+  not optional: NGX is part of the device set-up and of frame generation. Its libraries are not in the repository;
+  the setup scripts and the CI fetch the pinned version, and CMake fetches them itself when `native/extern/DLSS/lib`
+  is missing.
 
 ## Testing
 
@@ -117,6 +119,12 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 - A new render module needs: the C++ class (`NAME`, `inputImageNum`, `outputImageNum`), its `registerWorldModule`
   line in `pipeline.cpp`, its YAML in `common/src/main/resources/modules/` with the same name and as many images
   (`ModuleLayoutTest`), its name constant in `Pipeline.java` and its place in `PresetAssembly`.
+- The fields of `Options` are `volatile`, and the native `Options` (`renderer.hpp`) is made of atomics: the
+  settings screen writes them while the render thread and the builders read them. A new option field is declared
+  the same way. Two values that must change together do not belong in two such fields.
+- Radiante's screens take their shared colours and measures from `gui/Theme`; a screen keeps only its own.
+- A shader helper with no bindings that more than one file needs goes in `native/src/shader/util/` once
+  (`util/numeric.glsl` has `finiteFloat`, `finiteVec3` and `luminance709`), not in each file.
 - Settings files are written with `SettingsFile.write`, never with `Files.writeString`: a crash in the middle of a
   save must leave the old file. Code that gives up on a file it cannot read calls `SettingsFile.keepDamaged` first.
 - A command or tool that changes the world or moves the player (`/radiante showcase`, `/radiante biome`) checks that

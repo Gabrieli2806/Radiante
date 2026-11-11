@@ -41,13 +41,7 @@ layout(set = 3, binding = 13, rgba16f) uniform image2D fogImage;
 layout(set = 3, binding = 15, rgba16f) uniform image2D fogTransmissionImage;
 layout(set = 5, binding = 50, rgba32ui) uniform readonly uimage2D fogMarchRecordImage;
 
-bool finiteFloat(float value) {
-    return !isnan(value) && !isinf(value);
-}
-
-bool finiteVec3(vec3 value) {
-    return !any(isnan(value)) && !any(isinf(value));
-}
+#include "util/numeric.glsl"
 
 #include "common/celestial.glsl"
 #include "hooks/fog.glsl"

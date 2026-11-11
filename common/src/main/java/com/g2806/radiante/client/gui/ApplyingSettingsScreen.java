@@ -39,14 +39,14 @@ final class ApplyingSettingsScreen extends VersionCompat.DrawnScreen {
         drawIcon(graphics, centerX, centerY - 62);
         graphics.centeredText(this.font, this.title, centerX, centerY - 20, 0xFFFFFFFF);
         graphics.centeredText(this.font, Component.translatable("options.radiante.applying.detail"), centerX,
-            centerY - 6, 0xFFB0B8B4);
+            centerY - 6, Theme.TEXT_DIM);
         int barWidth = Math.min(240, this.width - 40);
         int x = centerX - barWidth / 2;
         int y = centerY + 12;
         graphics.fill(x - 1, y - 1, x + barWidth + 1, y + 7, 0xFFFFFFFF);
         graphics.fill(x, y, x + barWidth, y + 6, 0xFF000000);
         int filled = Math.min(barWidth, barWidth * (this.framesShown + 1) / (FRAMES_BEFORE_BUILD + 2));
-        graphics.fill(x, y, x + filled, y + 6, 0xFF8FE3C8);
+        graphics.fill(x, y, x + filled, y + 6, Theme.ACCENT);
         this.framesShown++;
     }
 

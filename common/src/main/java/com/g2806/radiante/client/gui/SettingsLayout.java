@@ -168,21 +168,21 @@ final class SettingsLayout {
         focusedButton = -1;
     }
 
-    private static final int ACCENT = 0xFF8FE3C8;
-    private static final int TEXT = 0xFFFFFFFF;
-    private static final int TEXT_DIM = 0xFFB0B8B4;
-    private static final int PANEL = 0xC0101212;
-    private static final int PANEL_DARK = 0xD0060707;
-    private static final int ROW_HOVER = 0x30FFFFFF;
+    private static final int ACCENT = Theme.ACCENT;
+    private static final int TEXT = Theme.TEXT;
+    private static final int TEXT_DIM = Theme.TEXT_DIM;
+    private static final int PANEL = Theme.PANEL;
+    private static final int PANEL_DARK = Theme.PANEL_DARK;
+    private static final int ROW_HOVER = Theme.ROW_HOVER;
     private static final int GROUP = 0x60000000;
     /** An option that does nothing as things are set. */
     private static final int TEXT_BLOCKED = 0xFF6A716E;
     private static final int NOTICE = 0xFFF0B040;
 
-    private static final int ROW = 20;
-    private static final int HEADER = 22;
-    private static final int GAP = 6;
-    private static final int PAD = 8;
+    private static final int ROW = Theme.ROW;
+    private static final int HEADER = Theme.HEADER;
+    private static final int GAP = Theme.GAP;
+    private static final int PAD = Theme.PAD;
     /** The side of the square an addon's icon is drawn in, beside its heading. */
     private static final int ICON = 16;
 

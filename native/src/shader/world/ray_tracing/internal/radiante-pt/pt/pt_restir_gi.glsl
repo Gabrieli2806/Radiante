@@ -65,7 +65,9 @@ struct RestirGiReservoir {
 /** The second hit's normal the first bounce reached; set by traceSecondary. */
 vec3 g_restirGiSecondNormal = vec3(0.0);
 
-float restirGiLuminance(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+#include "util/numeric.glsl"
+
+float restirGiLuminance(vec3 c) { return luminance709(c); }
 
 RestirGiReservoir restirGiEmpty() {
     RestirGiReservoir r;
