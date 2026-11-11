@@ -7,7 +7,8 @@ It walks a development client through the views of a bench file (default bench.j
 variant's actions, waits for the picture to settle, and reads the renderer's own GPU time per pass (the numbers of
 the F3 screen, averaged over 60 frames), then puts the settings back with the variant's "undo" actions. GPU times do
 not move with the frame limiter or with what the CPU is doing, so two variants can be compared from one run; compare
-within one run only, since the scene's lights differ a little between launches.
+within one run only, since the scene's lights differ a little between launches. Each view's variants are gone through
+--repeat times (3) and the lowest time of each counts: another program using the GPU only adds time.
 
 It prints a table per view (total and world pass in milliseconds, and the change against the first variant) and
 writes it with a picture of every variant to <out>/bench.md, so what a cheaper setting does to the picture can be
@@ -35,7 +36,9 @@ def main():
     parser.add_argument("--bench", default=str(HERE / "bench.json"))
     parser.add_argument("--out")
     parser.add_argument("--loader", default="fabric", choices=("fabric", "neoforge", "forge"))
-    parser.add_argument("--timeout", type=int, default=1800)
+    parser.add_argument("--repeat", type=int, default=3,
+                        help="how many times each view's variants are gone through; the lowest time counts")
+    parser.add_argument("--timeout", type=int, default=3000)
     args = parser.parse_args()
 
     config = json.loads(Path(args.bench).read_text(encoding="utf-8"))
@@ -52,19 +55,22 @@ def main():
             steps.append((tick, action))
             tick += 4
         tick += settle
-        for variant in config["variants"]:
+        for variant, turn in [(v, t) for t in range(args.repeat) for v in config["variants"]]:
             name = f"{view['name']}__{variant['name']}"
+            first = turn == 0
             for action in variant.get("actions", []):
                 steps.append((tick, action))
                 tick += 4
             tick += variant.get("settle_ticks", settle)
             steps.append((tick, f"fps={name}"))
-            steps.append((tick + 1, f"shot=bench_{name}"))
+            if first:
+                steps.append((tick + 1, f"shot=bench_{name}"))
             tick += 6
             for action in variant.get("undo", []):
                 steps.append((tick, action))
                 tick += 4
-            names.append((view["name"], variant["name"], name))
+            if first:
+                names.append((view["name"], variant["name"], name))
     steps.append((tick + 20, "quit"))
 
     stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -94,7 +100,11 @@ def main():
     measured = {}
     for match in re.finditer(r"\[dev\] fps (\S+) \d+ presented \S+ gpu ([\d.]+) ms \((.*?)\)", text):
         passes = dict(re.findall(r"(\w+) ([\d.]+)", match.group(3)))
-        measured[match.group(1)] = (float(match.group(2)), {k: float(v) for k, v in passes.items()})
+        # Another program on the GPU only ever adds time, so of a variant's turns the lowest is the nearest to its
+        # own cost.
+        found = (float(match.group(2)), {k: float(v) for k, v in passes.items()})
+        if match.group(1) not in measured or found[0] < measured[match.group(1)][0]:
+            measured[match.group(1)] = found
 
     lines = [f"# GPU cost of settings, {stamp}", ""]
     for view in config["views"]:

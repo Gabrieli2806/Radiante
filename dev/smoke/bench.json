@@ -9,7 +9,7 @@
     "cmd=/radiante showcase"
   ],
   "setup_ticks": 320,
-  "settle_ticks": 140,
+  "settle_ticks": 100,
   "views": [
     {
       "name": "walkway",
@@ -21,12 +21,6 @@
       "name": "room_09",
       "actions": [
         "cmd=/radiante showcase 9"
-      ]
-    },
-    {
-      "name": "room_01_glass",
-      "actions": [
-        "cmd=/radiante showcase 1"
       ]
     }
   ],
