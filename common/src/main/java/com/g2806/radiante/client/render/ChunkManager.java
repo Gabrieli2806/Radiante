@@ -37,6 +37,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 import org.joml.Vector3fc;
 import org.lwjgl.system.MemoryUtil;
+import static com.g2806.radiante.client.render.BlockKinds.*;
 
 /**
  * Compiles world sections into the renderer's PBR geometry. Sections are laid out exactly like Minecraft's
@@ -44,149 +45,9 @@ import org.lwjgl.system.MemoryUtil;
  */
 public final class ChunkManager {
     /** Blocks a quad lying on another's plane is lifted: enough for the tracer to tell them apart, too little to see. */
-    private static final float COPLANAR_LIFT = 0.0008f;
+    static final float COPLANAR_LIFT = 0.0008f;
 
-    /**
-     * Glass blocks (plain, stained, tinted) and glass panes. Their see-through texels are clear glass for the tracer,
-     * as Bedrock RTX renders them: a surface that reflects and refracts, not a hole. Iron bars share the pane class.
-     */
-    static boolean isGlass(BlockState state) {
-        net.minecraft.world.level.block.Block block = state.getBlock();
-        // Tinted glass too: seen through like the rest, only darkened by its own deep tint.
-        // Not copper grates, which share glass's class: their holes are holes, and as clear glass they mirrored the
-        // sky and bent the view through them.
-        return block instanceof net.minecraft.world.level.block.TransparentBlock
-                && !(block instanceof net.minecraft.world.level.block.WaterloggedTransparentBlock)
-            || state.is(Blocks.TINTED_GLASS)
-            || block instanceof net.minecraft.world.level.block.StainedGlassPaneBlock
-            || state.is(net.minecraft.world.level.block.Blocks.GLASS_PANE);
-    }
-
-
-
-    /**
-     * The other blocks Bedrock draws blended, as it does glass: ice, frosted ice, slime and honey. Bedrock RTX sees
-     * through them the way it sees through glass; radiante-pt does the same.
-     */
-    private static boolean isBlend(BlockState state) {
-        net.minecraft.world.level.block.Block block = state.getBlock();
-        return block instanceof net.minecraft.world.level.block.HalfTransparentBlock
-            && !(block instanceof net.minecraft.world.level.block.TransparentBlock);
-    }
-
-    /** Glass panes (plain and stained), as opposed to glass blocks: seamless glass can treat them apart. */
-    private static boolean isGlassPane(BlockState state) {
-        return state.getBlock() instanceof net.minecraft.world.level.block.StainedGlassPaneBlock
-            || state.is(net.minecraft.world.level.block.Blocks.GLASS_PANE);
-    }
-
-    /** Grass, ferns, flowers, bushes and the like: what the tracer may leave out far away (foliage culling). */
-    private static boolean isPlant(BlockState state) {
-        return state.getBlock() instanceof net.minecraft.world.level.block.VegetationBlock;
-    }
-
-    /** Blocks of a column a stalk of sugar cane or kelp counts below itself for how far its top may sway. */
-    private static final int WIND_COLUMN_LIMIT = 6;
-
-    /**
-     * How a block sways in the wind (PBRVertexWriter.WIND_*), or WIND_NONE. Leaves and what hangs (vines, roots, moss)
-     * rustle in place; grass, flowers, crops, saplings and sugar cane sway about their foot; seagrass and kelp sway
-     * slowly with the current. Mushrooms stay still: they are stiff caps, not stalks.
-     */
-    private static int windKindOf(BlockState state) {
-        net.minecraft.world.level.block.Block block = state.getBlock();
-        if (state.is(BlockTags.LEAVES) || block instanceof net.minecraft.world.level.block.VineBlock
-            || block == Blocks.CAVE_VINES || block == Blocks.CAVE_VINES_PLANT || block == Blocks.WEEPING_VINES
-            || block == Blocks.WEEPING_VINES_PLANT || block == Blocks.HANGING_ROOTS
-            || block == Blocks.PALE_HANGING_MOSS || block == Blocks.LILY_PAD) {
-            return PBRVertexWriter.WIND_LEAVES;
-        }
-        if (block == Blocks.SEAGRASS || block == Blocks.TALL_SEAGRASS || block == Blocks.KELP
-            || block == Blocks.KELP_PLANT) {
-            return PBRVertexWriter.WIND_WATER;
-        }
-        if (block == Blocks.SUGAR_CANE || block instanceof net.minecraft.world.level.block.VegetationBlock
-            && !(block instanceof net.minecraft.world.level.block.MushroomBlock)) {
-            return PBRVertexWriter.WIND_GROUND;
-        }
-        return PBRVertexWriter.WIND_NONE;
-    }
-
-    /**
-     * Sets the scratch's wind for one block: its kind, its column, and the rise and scale that turn a vertex's height
-     * in the block into its weight (PBRVertexWriter.wind). The top half of a tall plant starts where the bottom half
-     * ends; a stalk of sugar cane or kelp counts the blocks of it below, so its blocks bend as one and never come apart.
-     */
-    private static void setWind(SectionCompileScratch scratch, RenderSectionRegion region, BlockPos pos,
-        BlockState state, int sy) {
-        int kind = windKindOf(state);
-        scratch.windKind = kind;
-        scratch.windBaseY = sy;
-        scratch.windRise = 0.0f;
-        scratch.windScale = 1.0f;
-        if (kind == PBRVertexWriter.WIND_NONE) {
-            return;
-        }
-        // The low three bits of x and z are enough: with a vertex's position they single out its block.
-        scratch.windColumn = (pos.getX() & 7) | (pos.getZ() & 7) << 3;
-        net.minecraft.world.level.block.Block block = state.getBlock();
-        if (kind == PBRVertexWriter.WIND_LEAVES) {
-            // Leaves move most; what hangs a little less, a lily pad least, as it floats.
-            scratch.windScale = state.is(BlockTags.LEAVES) ? 1.0f : block == Blocks.LILY_PAD ? 0.4f : 0.7f;
-            return;
-        }
-        if (state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF)
-            && state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.DOUBLE_BLOCK_HALF)
-                == net.minecraft.world.level.block.state.properties.DoubleBlockHalf.UPPER) {
-            scratch.windRise = 1.0f;
-        }
-        boolean column = block == Blocks.SUGAR_CANE || block == Blocks.KELP || block == Blocks.KELP_PLANT;
-        if (column) {
-            int below = 0;
-            BlockPos.MutableBlockPos cursor = pos.mutable();
-            while (below < WIND_COLUMN_LIMIT) {
-                net.minecraft.world.level.block.Block under =
-                    region.getBlockState(cursor.move(Direction.DOWN)).getBlock();
-                boolean same = block == Blocks.SUGAR_CANE ? under == Blocks.SUGAR_CANE
-                    : under == Blocks.KELP || under == Blocks.KELP_PLANT;
-                if (!same) {
-                    break;
-                }
-                below++;
-            }
-            // Stiffer than grass: a stalk of three sways at its top as far as a tall flower.
-            scratch.windScale = 0.5f;
-            scratch.windRise = below * 0.5f;
-        }
-    }
-
-    /** Leaves of every tree (the LEAVES tag): foliage a shader pack may treat apart from small plants. */
-    private static boolean isLeaves(BlockState state) {
-        return state.is(BlockTags.LEAVES);
-    }
-
-    /** Ice of every kind and snow, which the sun lights a little past the edge of its light (PBRVertexWriter.frost). */
-    private static boolean isFrost(BlockState state) {
-        return state.is(BlockTags.ICE) || state.is(BlockTags.SNOW);
-    }
-
-    /**
-     * Thin foliage and fibres that let light through, besides leaves and small plants (isLeaves, isPlant): what hangs
-     * (vines, roots, moss), stalks and floating leaves, and cobwebs. Not marked as plants, which the tracer leaves out
-     * far away.
-     */
-    private static boolean isThin(BlockState state) {
-        net.minecraft.world.level.block.Block block = state.getBlock();
-        return block instanceof net.minecraft.world.level.block.VineBlock || block == Blocks.CAVE_VINES
-            || block == Blocks.CAVE_VINES_PLANT || block == Blocks.WEEPING_VINES || block == Blocks.WEEPING_VINES_PLANT
-            || block == Blocks.TWISTING_VINES || block == Blocks.TWISTING_VINES_PLANT || block == Blocks.HANGING_ROOTS
-            || block == Blocks.PALE_HANGING_MOSS || block == Blocks.LILY_PAD || block == Blocks.SUGAR_CANE
-            || block == Blocks.KELP || block == Blocks.KELP_PLANT || block == Blocks.BIG_DRIPLEAF
-            || block == Blocks.BIG_DRIPLEAF_STEM || block == Blocks.SPORE_BLOSSOM || block == Blocks.GLOW_LICHEN
-            || block == Blocks.BAMBOO || block == Blocks.BAMBOO_SAPLING || block == Blocks.COBWEB;
-    }
-
-    private static final int VERTEX_FORMAT_PBR = 12;
+    static final int VERTEX_FORMAT_PBR = 12;
     public static final int GEOMETRY_TYPE_WORLD_SOLID = 1;
     public static final int GEOMETRY_TYPE_WORLD_TRANSPARENT = 2;
     /**
@@ -194,59 +55,59 @@ public final class ChunkManager {
      * see compat.distanthorizons). They are traced like any section, but no section coordinate ever maps to one.
      */
     public static final int EXTRA_SLOTS = 2048;
-    private static final int MAX_REGION_SNAPSHOTS_PER_FRAME = 96;
+    static final int MAX_REGION_SNAPSHOTS_PER_FRAME = 96;
     /**
      * Rebuilds of nearby sections compiled on the render thread per frame. A falling block landing or a piston
      * finishing its move swaps the moving block for terrain in one tick; built in the background, the terrain
      * arrives a frame or more after the moving block is gone and the block blinks out in between.
      */
-    private static final int MAX_SYNC_REBUILDS_PER_FRAME = 4;
+    static final int MAX_SYNC_REBUILDS_PER_FRAME = 4;
 
-    private static final ThreadLocal<SectionCompileScratch> SCRATCH = ThreadLocal.withInitial(SectionCompileScratch::new);
+    static final ThreadLocal<SectionCompileScratch> SCRATCH = ThreadLocal.withInitial(SectionCompileScratch::new);
 
-    private static ExecutorService executor;
-    private static final AtomicInteger pendingBuilds = new AtomicInteger();
+    static ExecutorService executor;
+    static final AtomicInteger pendingBuilds = new AtomicInteger();
     /** Section uploads hold the read lock; replacing the section grid takes the write lock. */
-    private static final ReentrantReadWriteLock GRID_LOCK = new ReentrantReadWriteLock();
-    private static volatile int generation;
+    static final ReentrantReadWriteLock GRID_LOCK = new ReentrantReadWriteLock();
+    static volatile int generation;
 
     // Written when the grid is replaced (render thread, under the write lock) and read by the section builders.
-    private static volatile int gridSizeXZ;
-    private static volatile int gridSizeY;
-    private static volatile int minSectionY;
-    private static final LongOpenHashSet compiledSections = new LongOpenHashSet();
+    static volatile int gridSizeXZ;
+    static volatile int gridSizeY;
+    static volatile int minSectionY;
+    static final LongOpenHashSet compiledSections = new LongOpenHashSet();
     /** Columns whose sections changed since {@link #updateLodCoverage} last looked; guarded by compiledSections. */
-    private static final LongOpenHashSet dirtyColumns = new LongOpenHashSet();
+    static final LongOpenHashSet dirtyColumns = new LongOpenHashSet();
     /** Columns {@link #isColumnBuilt} held for when last looked at; guarded by compiledSections. */
-    private static final LongOpenHashSet builtColumns = new LongOpenHashSet();
-    private static boolean coverageDirty = true;
-    private static int coverageOriginX = Integer.MIN_VALUE;
-    private static int coverageOriginZ = Integer.MIN_VALUE;
-    private static int coverageSize;
-    private static boolean forceAllDirty;
+    static final LongOpenHashSet builtColumns = new LongOpenHashSet();
+    static boolean coverageDirty = true;
+    static int coverageOriginX = Integer.MIN_VALUE;
+    static int coverageOriginZ = Integer.MIN_VALUE;
+    static int coverageSize;
+    static boolean forceAllDirty;
     /** Whether block faces keep vanilla's face shading in their colour (RtAttributes.FACE_SHADING_ATTRIBUTE). */
-    private static volatile boolean faceShading = true;
+    static volatile boolean faceShading = true;
     /**
      * Whether foliage is meshed with wind codes (RtAttributes.WIND_ATTRIBUTE). Without them nothing sways, and the
      * renderer neither moves nor refits anything: the wind costs nothing while it is off.
      */
-    private static volatile boolean wind;
+    static volatile boolean wind;
     /**
      * Newest build handed out for each section. A synchronous rebuild can overtake an older one still running in
      * the background, and the older one must not land on top of it afterwards.
      */
-    private static final java.util.concurrent.ConcurrentHashMap<Long, Integer> latestBuild =
+    static final java.util.concurrent.ConcurrentHashMap<Long, Integer> latestBuild =
         new java.util.concurrent.ConcurrentHashMap<>();
-    private static final AtomicInteger buildSequence = new AtomicInteger();
+    static final AtomicInteger buildSequence = new AtomicInteger();
     /**
      * The section each grid slot currently holds. Builds are queued faster than they run, so after a teleport the
      * queue is still full of sections from where the player was; by the time one of those finishes, its slot belongs
      * to a section at the new location. Checking ownership drops that work before it is compiled, and stops a late
      * one from writing the old area back into a slot that now stands somewhere else.
      */
-    private static java.util.concurrent.atomic.AtomicLongArray slotOwner =
+    static java.util.concurrent.atomic.AtomicLongArray slotOwner =
         new java.util.concurrent.atomic.AtomicLongArray(0);
-    private static final long NO_OWNER = Long.MIN_VALUE;
+    static final long NO_OWNER = Long.MIN_VALUE;
 
     private ChunkManager() {
     }
@@ -263,7 +124,7 @@ public final class ChunkManager {
         }
     }
 
-    private static void resetGrid(int renderDistance, int minSection, int maxSection) {
+    static void resetGrid(int renderDistance, int minSection, int maxSection) {
         gridSizeXZ = renderDistance * 2 + 1;
         gridSizeY = maxSection - minSection + 1;
         minSectionY = minSection;
@@ -365,12 +226,12 @@ public final class ChunkManager {
         }
     }
 
-    private static int extraSlotBase() {
+    static int extraSlotBase() {
         return gridSizeXZ * gridSizeXZ * gridSizeY;
     }
 
     /** Hands geometry to the renderer; the vertex blocks stay the caller's to free. */
-    private static void submitGeometry(int slot, BlockPos origin, int[] geometryTypes, String[] names, int atlasId,
+    static void submitGeometry(int slot, BlockPos origin, int[] geometryTypes, String[] names, int atlasId,
         int[] vertexCounts, long[] vertices, boolean important) {
         int count = vertices.length;
         long geometryTypesPtr = MemoryUtil.nmemCalloc(count, Integer.BYTES);
@@ -425,13 +286,13 @@ public final class ChunkManager {
      * Sections whose tracker state changed since the last frame: made dirty by a block change, or scrolled into view
      * by the tracker's rotating grid. Filled from {@code SectionDirtyStateMixin}.
      */
-    private static final LongArrayList CHANGED = new LongArrayList();
+    static final LongArrayList CHANGED = new LongArrayList();
     /** Dirty sections still waiting to be built, typically because their neighbours are not loaded yet. */
-    private static final LongOpenHashSet pendingDirty = new LongOpenHashSet();
+    static final LongOpenHashSet pendingDirty = new LongOpenHashSet();
     /** Per frame: whether all chunks around a column are loaded. All sections of a column share the answer. */
-    private static final Long2ByteOpenHashMap columnReady = new Long2ByteOpenHashMap();
-    private static long[] readyNodes = new long[256];
-    private static long[] readyKeys = new long[256];
+    static final Long2ByteOpenHashMap columnReady = new Long2ByteOpenHashMap();
+    static long[] readyNodes = new long[256];
+    static long[] readyKeys = new long[256];
 
     public static void onSectionChanged(long sectionNode) {
         // Nothing drains the list while the renderer is off for good, so it would only grow.
@@ -443,7 +304,7 @@ public final class ChunkManager {
         }
     }
 
-    private static long[] drainChanged() {
+    static long[] drainChanged() {
         synchronized (CHANGED) {
             long[] nodes = CHANGED.toLongArray();
             CHANGED.clear();
@@ -600,7 +461,7 @@ public final class ChunkManager {
     }
 
     /** Points a grid slot at the section now occupying it, dropping whatever the old section left there. */
-    private static void relocateIfMoved(long node, boolean[] relocating) {
+    static void relocateIfMoved(long node, boolean[] relocating) {
         int slot = slotOf(node);
         if (slot < 0 || slot >= slotOwner.length() || slotOwner.get(slot) == node) {
             return;
@@ -626,21 +487,21 @@ public final class ChunkManager {
             SectionPos.sectionToBlockCoord(SectionPos.y(node)), SectionPos.sectionToBlockCoord(SectionPos.z(node)));
     }
 
-    private static double distanceSqr(long sectionNode, BlockPos cameraBlock) {
+    static double distanceSqr(long sectionNode, BlockPos cameraBlock) {
         return SectionPos.of(sectionNode).center().distSqr(cameraBlock);
     }
 
-    private static boolean ownsSlot(int slot, long sectionNode) {
+    static boolean ownsSlot(int slot, long sectionNode) {
         java.util.concurrent.atomic.AtomicLongArray owners = slotOwner;
         return slot >= 0 && slot < owners.length() && owners.get(slot) == sectionNode;
     }
 
-    private static boolean isLatestBuild(long sectionNode, int sequence) {
+    static boolean isLatestBuild(long sectionNode, int sequence) {
         Integer latest = latestBuild.get(sectionNode);
         return latest == null || latest == sequence;
     }
 
-    private static void compile(int slot, long sectionNode, RenderSectionRegion region, boolean important,
+    static void compile(int slot, long sectionNode, RenderSectionRegion region, boolean important,
         int buildGeneration, int sequence) {
         // Queued before a teleport or superseded by a newer build: compiling it would only delay the sections that
         // are actually around the player.
@@ -741,7 +602,6 @@ public final class ChunkManager {
                 scratch.paneCapDown = !isGlass(region.getBlockState(pos.below()));
             }
 
-
             FluidState fluidState = blockState.getFluidState();
             if (!fluidState.isEmpty()) {
                 scratch.blockIsGlass = false;
@@ -821,7 +681,7 @@ public final class ChunkManager {
      * block behind it with mirrored UVs. Traced, the two break up into large triangles of mismatched texture across
      * the surface. The inward faces only show from inside the block, where the powder snow fog covers everything.
      */
-    private static boolean facesInward(BakedQuad quad) {
+    static boolean facesInward(BakedQuad quad) {
         Vector3fc corner = quad.position0();
         Direction direction = quad.direction();
         return direction.getStepX() * (corner.x() - 0.5f) + direction.getStepY() * (corner.y() - 0.5f)
@@ -876,11 +736,11 @@ public final class ChunkManager {
         }
     }
 
-    private static long columnKey(int chunkX, int chunkZ) {
+    static long columnKey(int chunkX, int chunkZ) {
         return ((long) chunkX << 32) | (chunkZ & 0xFFFFFFFFL);
     }
 
-    private static long columnOf(long sectionNode) {
+    static long columnOf(long sectionNode) {
         return columnKey(SectionPos.x(sectionNode), SectionPos.z(sectionNode));
     }
 
@@ -928,7 +788,7 @@ public final class ChunkManager {
         ChunkProxy.setLodCoverage(originX, originZ, size, words);
     }
 
-    private static boolean isSectionReady(long node) {
+    static boolean isSectionReady(long node) {
         synchronized (compiledSections) {
             return compiledSections.contains(node);
         }
@@ -940,9 +800,9 @@ public final class ChunkManager {
      * acceleration structure be built from buffers that were never filled, so they are applied on the render thread
      * before the frame is recorded.
      */
-    private static final ConcurrentLinkedQueue<SectionUpload> IMPORTANT_UPLOADS = new ConcurrentLinkedQueue<>();
+    static final ConcurrentLinkedQueue<SectionUpload> IMPORTANT_UPLOADS = new ConcurrentLinkedQueue<>();
 
-    private record SectionUpload(int generation, long sectionNode, int sequence, int slot, BlockPos origin, int[] geometryTypes, String[] names,
+    record SectionUpload(int generation, long sectionNode, int sequence, int slot, BlockPos origin, int[] geometryTypes, String[] names,
         int atlasId, int[] vertexCounts, long[] vertices) {
 
         void apply() {
@@ -980,7 +840,7 @@ public final class ChunkManager {
         }
     }
 
-    private static void upload(int slot, long sectionNode, int sequence, BlockPos origin,
+    static void upload(int slot, long sectionNode, int sequence, BlockPos origin,
         SectionCompileScratch scratch, int atlasId, boolean important) {
         List<ChunkSectionLayer> layers = new ArrayList<>();
         List<PBRVertexWriter> layerWriters = new ArrayList<>();
@@ -1037,7 +897,7 @@ public final class ChunkManager {
         }
     }
 
-    private static final class SectionCompileScratch {
+    static final class SectionCompileScratch {
 
         private final EnumMap<ChunkSectionLayer, PBRVertexWriter> writers = new EnumMap<>(ChunkSectionLayer.class);
         /**
@@ -1073,11 +933,11 @@ public final class ChunkManager {
         float blockCastScale = 1.0f;
         private boolean blockIsPlant;
         /** How the block being written sways in the wind; see setWind and PBRVertexWriter.wind. */
-        private int windKind = PBRVertexWriter.WIND_NONE;
-        private float windBaseY;
-        private float windRise;
-        private float windScale;
-        private int windColumn;
+        int windKind = PBRVertexWriter.WIND_NONE;
+        float windBaseY;
+        float windRise;
+        float windScale;
+        int windColumn;
         /** The block being written is leaves; see PBRVertexWriter.leaves. */
         private boolean blockIsLeaves;
         /** The block being written is ice or snow; see PBRVertexWriter.frost. */

@@ -94,8 +94,9 @@ enum Tunable {
     // lights fade into the fog instead of keeping their whole glow under a pale veil.
     FOG_VEIL_DIMMING(null, "render_pipeline.module.ray_tracing.attribute.fog_veil_dimming", 0.01, 0, 100, 25,
         Format.PERCENT),
-    // The air's own haze over the distance: far terrain (Distant Horizons' too) fading into the sky behind it.
-    AERIAL_PERSPECTIVE(null, "render_pipeline.module.ray_tracing.attribute.aerial_perspective", 0.01, 0, 400, 100,
+    // The air's own haze over the distance: far terrain (Distant Horizons' too) fading into the sky behind it. Off
+    // by default: it is a second haze on top of the fog's, for those who want the distance to fade.
+    AERIAL_PERSPECTIVE(null, "render_pipeline.module.ray_tracing.attribute.aerial_perspective", 0.01, 0, 400, 0,
         Format.PERCENT),
     // How far from the camera the haze begins: nothing nearer, faded in over the next half of that distance.
     AERIAL_PERSPECTIVE_START(null, "render_pipeline.module.ray_tracing.attribute.aerial_perspective_start", 1.0, 0,

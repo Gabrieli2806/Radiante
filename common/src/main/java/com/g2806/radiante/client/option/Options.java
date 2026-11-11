@@ -26,6 +26,7 @@ public class Options {
     // of them expecting them to belong together.
 
     public static final String OPTION_PROPERTIES = "options.properties";
+    public static final int DEFAULT_FOG_STRENGTH = 60;
 
     public static volatile int chunkBuildingBatchSize = 12;
     public static volatile int chunkBuildingTotalBatches = 12;
@@ -121,8 +122,11 @@ public class Options {
     public static volatile int emissionBrightness = 12;
     /** Brightness of what the player holds - its glow and the light it casts - in percent. */
     public static volatile int heldLightBrightness = 12;
-    /** How thick the volumetric fog (the air that shows light shafts) is, in percent of the tuned values. */
-    public static volatile int volumetricFogStrength = 100;
+    /**
+     * How thick the volumetric fog (the air that shows light shafts) is, in percent of the tuned values. Under them by
+     * default: at 100 the morning air stood between the camera and everything as a pale yellow veil.
+     */
+    public static volatile int volumetricFogStrength = DEFAULT_FOG_STRENGTH;
     /**
      * How much clearer the stars get with height, in percent: at 100 they are twice as bright from a mountain top
      * as from sea level. 0 leaves them the same everywhere.

@@ -7,6 +7,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#undef com_g2806_radiante_client_option_Options_DEFAULT_FOG_STRENGTH
+#define com_g2806_radiante_client_option_Options_DEFAULT_FOG_STRENGTH 60L
 #undef com_g2806_radiante_client_option_Options_SUN_PATH_TILTED_DEGREES
 #define com_g2806_radiante_client_option_Options_SUN_PATH_TILTED_DEGREES 10L
 #undef com_g2806_radiante_client_option_Options_MAX_PATH_TILT

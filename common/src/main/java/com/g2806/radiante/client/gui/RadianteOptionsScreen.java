@@ -451,6 +451,9 @@ public class RadianteOptionsScreen extends SettingsRows {
             // Only the incident light meter has a limit of its own by day.
             case "tunable.day_low_light_limit" -> METERING_INCIDENT.equals(advancedValue(
                 Pipeline.TONE_MAPPING_MODULE_NAME, METERING_MODE)) ? null : needsValue(METERING_MODE, METERING_INCIDENT);
+            case "tunable.aerial_perspective_start" -> this.pendingTunables != null
+                && Integer.valueOf(0).equals(this.pendingTunables.get(Tunable.AERIAL_PERSPECTIVE))
+                    ? needs(T + "aerial_perspective") : null;
             // Only the Realistic water surface has waves of its own: Bedrock's is its water texture, vanilla's flat.
             case "tunable.water_waves" -> WATER_REALISTIC.equals(advancedValue(Pipeline.RAY_TRACING_MODULE_NAME,
                 WATER_SURFACE)) ? null : needsValue(WATER_SURFACE, WATER_REALISTIC);

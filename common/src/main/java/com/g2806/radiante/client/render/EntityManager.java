@@ -599,7 +599,7 @@ public final class EntityManager {
     /** Glass blocks and panes, as items: drawn as glass when held (see EntityCollector.heldGlass). */
     static boolean isGlassItem(net.minecraft.world.item.ItemStack stack) {
         return stack.getItem() instanceof net.minecraft.world.item.BlockItem item
-            && ChunkManager.isGlass(item.getBlock().defaultBlockState());
+            && BlockKinds.isGlass(item.getBlock().defaultBlockState());
     }
 
     /**
