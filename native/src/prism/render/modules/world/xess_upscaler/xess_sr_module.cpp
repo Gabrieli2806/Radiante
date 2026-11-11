@@ -113,16 +113,8 @@ bool takeImages(std::vector<std::shared_ptr<gpu::DeviceLocalImage>> &images,
                 VkImageUsageFlags usage,
                 Framework &framework,
                 std::array<std::shared_ptr<gpu::DeviceLocalImage>, N> &slots) {
-    for (size_t i = 0; i < N; i++) {
-        if (images[i] == nullptr) {
-            images[i] = gpu::DeviceLocalImage::create(framework.device(), framework.vma(), false, width, height, 1,
-                                                      formats[i], usage);
-        } else if (images[i]->width() != width || images[i]->height() != height) {
-            return false;
-        }
-        slots[i] = images[i];
-    }
-    return true;
+    return upscaler::adoptOrCreateImages(framework, images, formats, width, height, usage,
+                                         std::span<std::shared_ptr<gpu::DeviceLocalImage>>(slots));
 }
 
 // One helper pass over width x height texels, in 16 x 16 groups.
@@ -527,14 +519,7 @@ void XessSrModule::upscaleGuides(Frame &frame, gpu::CommandBuffer &commandBuffer
 // XeSS drops its history on its first frame and whenever the camera jumped since the last frame it ran: moved more
 // than a block, or turned by more than 30 degrees.
 bool XessSrModule::cameraJumped(const glm::vec3 &position, const glm::vec3 &direction) {
-    bool jumped = true;
-    if (camera_.seen) {
-        const float moved = glm::length(position - camera_.position);
-        const float alignment = glm::dot(glm::normalize(direction), glm::normalize(camera_.direction));
-        jumped = moved > 1.0f || alignment < 0.866f;
-    }
-    camera_ = {position, direction, true};
-    return jumped;
+    return camera_.update(position, direction);
 }
 
 XessSrModuleContext::XessSrModuleContext(std::shared_ptr<FrameworkContext> frameworkContext,

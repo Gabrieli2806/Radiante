@@ -139,9 +139,9 @@ final class ModuleAttributes {
                 }
             }
 
-            String language = getCurrentLanguageCode();
+            String language = Pipeline.host.language();
 
-            String metadata = getAttributes(
+            String metadata = Pipeline.host.attributes(
                     module.name,
                     attributeList.toArray(String[]::new),
                     language);
