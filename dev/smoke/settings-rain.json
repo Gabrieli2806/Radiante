@@ -1,0 +1,29 @@
+{
+  "also": ["settings.json"],
+  "world": "RadianteRainTerrain",
+  "setup": ["hud=false", "cmd=/gamerule advance_time false", "cmd=/time set 3000", "shaderpack=builtin", "pipe=fog:false"],
+  "setup_ticks": 700,
+  "settle_ticks": 90,
+  "structural_settle_ticks": 130,
+  "views": [
+    {
+      "name": "rain",
+      "what": "Terrain in the rain. The world is made on the first run (its name asks for real terrain, and its seed gives a place where it rains); the streaks move, so the drift here is high and only a clear change counts.",
+      "actions": ["cmd=/weather rain", "cmd=/tp @s ~ ~ ~ ~ 10"],
+      "after": ["cmd=/weather clear"],
+      "settle_ticks": 700,
+      "tests": [
+        {"name": "rain_debug_view", "set": ["pipe=view:rain"], "undo": ["pipe=view:off"], "structural": true, "why": "not a setting: shows that rain is drawn here"},
+        {"opt": "rainWetness", "to": "false", "settle": 160},
+        {"attr": "rain_wetness_strength", "to": "0.0"},
+        {"attr": "rain_wet_walls", "to": "0.0"},
+        {"attr": "rain_puddles", "to": "0.0"},
+        {"attr": "rain_opacity", "to": "1.0"},
+        {"attr": "rain_streak_brightness", "to": "0.0"},
+        {"attr": "rain_wet_up_time", "expect": "none", "why": "the ground is already soaked"},
+        {"attr": "rain_drying_time", "expect": "none", "why": "it is still raining"},
+        {"attr": "lightning_flash", "expect": "none", "why": "no lightning"}
+      ]
+    }
+  ]
+}

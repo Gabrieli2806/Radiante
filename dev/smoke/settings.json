@@ -1,4 +1,5 @@
 {
+  "also": ["settings-rain.json"],
   "world": "RadianteSmokeSuite",
   "setup": ["hud=false", "cmd=/gamerule advance_time false", "cmd=/time set 1000", "cmd=/weather clear", "cmd=/tp @s ~ ~ ~ -90 -10", "cmd=/radiante showcase"],
   "setup_ticks": 320,
@@ -405,25 +406,6 @@
       "tests": [
         {"attr": "post_motion_blur_strength", "expect": "none", "why": "the camera stands still"},
         {"attr": "post_motion_blur_samples", "expect": "none", "why": "the camera stands still"}
-      ]
-    },
-    {
-      "name": "rain",
-      "what": "The walkway in the rain, looking along it and down: wet ground, puddles, streaks. Needs a test world where it rains: in a desert the picture shows none of it.",
-      "actions": ["cmd=/time set 6000", "cmd=/weather rain", "cmd=/radiante showcase 7", "cmd=/tp @s ^ ^1.5 ^-3", "cmd=/tp @s ~ ~ ~ ~90 25"],
-      "after": ["cmd=/weather clear"],
-      "settle_ticks": 700,
-      "tests": [
-        {"name": "debug_screen", "set": ["f3"], "undo": ["f3"], "structural": false, "why": "not a setting: the picture shows the biome, to know whether it rains here"},
-        {"opt": "rainWetness", "to": "false", "settle": 160},
-        {"attr": "rain_wetness_strength", "to": "0.0"},
-        {"attr": "rain_wet_walls", "to": "0.0"},
-        {"attr": "rain_puddles", "to": "0.0"},
-        {"attr": "rain_opacity", "to": "1.0"},
-        {"attr": "rain_streak_brightness", "to": "0.0"},
-        {"attr": "rain_wet_up_time", "expect": "none", "why": "the ground is already soaked"},
-        {"attr": "rain_drying_time", "expect": "none", "why": "it is still raining"},
-        {"attr": "lightning_flash", "expect": "none", "why": "no lightning"}
       ]
     },
     {
