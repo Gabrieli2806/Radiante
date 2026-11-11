@@ -21,7 +21,9 @@ A setting is named in the sweep file by what it is:
     {"module": "tone_mapping"}                  every attribute of that module
     {"name": "...", "set": [...], "undo": [...]}  DevAutomation actions as they are
 
-and may carry "expect": "none" with a "why", for a setting that is known to need something the view lacks. The value
+and may carry "expect": "none" with a "why", for a setting that is known to need something the view lacks. A sweep
+file is for one world; settings-rain.json is the rain's, in a world made for it where it rains (the smoke suite's
+world is a desert), and each file names the other in "also" so that what it covers is not reported as missed. The value
 a setting is put back to is the one stored in the development settings, which the run backs up and restores as
 smoke.py does.
 
@@ -237,6 +239,10 @@ def main():
         plan.append((view, pictures))
     steps.append((tick + 20, "quit"))
 
+    # What the sweep files named in "also" cover counts too: the rain has a file and a world of its own.
+    for other in config.get("also", []):
+        for view in json.loads((Path(args.sweep).parent / other).read_text(encoding="utf-8"))["views"]:
+            covered.update(test["attr"] for entry in view["tests"] for test in settings.expand(entry) if "attr" in test)
     count = sum(len(pictures) for _, pictures in plan)
     uncovered = sorted(name[len(RT):] for name in settings.pack if name[len(RT):] not in covered)
     if args.list:

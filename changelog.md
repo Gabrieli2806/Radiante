@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- More Advanced settings say when they have no effect instead of doing nothing: Indirect Light Strength while Bedrock Pack Materials is on, and the exposure and curve settings that belong to another light meter or tone mapping curve than the one chosen (the histogram's range and percentiles, the centre's size, the least and the manual exposure, middle grey, the white point, clamping).
+
 - Shader Execution Reordering is removed. It broke water (a flat pale sheet, nothing seen through or mirrored) and, kept away from water, stopped the game on the card it was tried on; it was experimental and off by default.
 
 - Water Waves is grey unless the Water Surface (Advanced) is Realistic, the only one with waves of its own: with Bedrock's surface, the default, the slider did nothing.

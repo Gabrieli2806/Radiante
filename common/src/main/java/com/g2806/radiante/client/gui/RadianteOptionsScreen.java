@@ -310,6 +310,7 @@ public class RadianteOptionsScreen extends SettingsRows {
         java.util.Map.entry(O + "quality", List.of(O + "dlss_mode", O + "upscaler_mode", O + "block_light_sampling",
             O + "volumetric_fog", O + "cloud_mode", O + "ray_bounces", O + "parallax", O + "volumetric_fog_samples")));
 
+    private static final String TONE = "render_pipeline.module.tone_mapping.attribute.";
     private static final String METERING_MODE = "render_pipeline.module.tone_mapping.attribute.exposure_metering_mode";
     private static final String METERING_BEDROCK = METERING_MODE + ".bedrock_original";
     private static final String METERING_INCIDENT = METERING_MODE + ".incident";
@@ -320,6 +321,38 @@ public class RadianteOptionsScreen extends SettingsRows {
     private String advancedValue(String module, String attribute) {
         String staged = this.pendingAdvanced.get(AdvancedOptions.key(module, attribute));
         return staged != null ? staged : PipelineSettings.getModuleValue(module, attribute);
+    }
+
+    /**
+     * Why an Advanced tone mapping setting does nothing as the light meter and the curve stand, or null when it does.
+     * Bedrock RTX's meter (the default) has limits and a speed of its own and reads no histogram; its curve has no
+     * white point and clamps by itself.
+     */
+    private Component toneMappingBlocked(String name) {
+        String meter = advancedValue(Pipeline.TONE_MAPPING_MODULE_NAME, METERING_MODE);
+        boolean bedrockMeter = METERING_BEDROCK.equals(meter);
+        boolean histogram = (METERING_MODE + ".global").equals(meter) || (METERING_MODE + ".center").equals(meter);
+        boolean autoExposure = !"render_pipeline.false".equals(advancedValue(Pipeline.TONE_MAPPING_MODULE_NAME,
+            TONE + "enable_auto_exposure"));
+        String method = this.pendingToneMethod != null ? this.pendingToneMethod.value
+            : PipelineSettings.getModuleValue(Pipeline.TONE_MAPPING_MODULE_NAME, TONE + "method");
+        boolean bedrockCurve = (TONE + "method.bedrock_provisional").equals(method);
+        boolean whitePoint = method != null && (method.endsWith(".reinhard_white_point")
+            || method.endsWith(".aces_white_point") || method.endsWith(".uncharted2"));
+        return switch (name) {
+            case "min_exposure" -> autoExposure && bedrockMeter ? overriddenBy(METERING_MODE) : null;
+            case "manual_exposure" -> autoExposure && bedrockMeter ? overriddenBy(METERING_MODE) : null;
+            case "low_percent", "high_percent", "log2_luminance_min", "log2_luminance_max" ->
+                !autoExposure ? needs(TONE + "enable_auto_exposure")
+                    : histogram ? null : needsValue(METERING_MODE, METERING_MODE + ".global");
+            case "center_metering_percent" -> !autoExposure ? needs(TONE + "enable_auto_exposure")
+                : (METERING_MODE + ".center").equals(meter) ? null : needsValue(METERING_MODE, METERING_MODE + ".center");
+            case "middle_grey" -> bedrockMeter && bedrockCurve ? overriddenBy(METERING_MODE) : null;
+            case "white_point" -> whitePoint ? null : overriddenBy(O + "tone_method");
+            case "clamp_output" -> bedrockCurve ? overriddenBy(O + "tone_method") : null;
+            case "exposure_metering_mode" -> autoExposure ? null : needs(TONE + "enable_auto_exposure");
+            default -> null;
+        };
     }
 
     private static Component needs(String otherKey) {
@@ -370,6 +403,13 @@ public class RadianteOptionsScreen extends SettingsRows {
         if (key.equals("render_pipeline.module.ray_tracing.attribute.bedrock_caustics")) {
             return bedrockFilesPresent("caustics.png") ? null
                 : Component.translatable("options.radiante.blocked.bedrock_files");
+        }
+        if (key.startsWith(TONE)) {
+            return toneMappingBlocked(key.substring(TONE.length()));
+        }
+        // The light a lamp casts is on Bedrock's own scale while its pack's materials are read, whatever this says.
+        if (key.equals("render_pipeline.module.ray_tracing.attribute.indirect_light_strength")) {
+            return packToggleOn(RtAttributes.BEDROCK_MATERIALS_ATTRIBUTE) ? overriddenBy(O + "bedrock_materials") : null;
         }
         if (!key.startsWith(O)) {
             return null;
