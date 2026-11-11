@@ -70,6 +70,25 @@ that can ray trace, and Python with Pillow and numpy. It backs up the developmen
 - Scenes are data, in `dev/smoke/scenes.json`: the commands that set a view up and a line saying what to check.
   Add a scene for a regression once it is fixed.
 
+## What a setting costs
+
+```sh
+python dev/smoke/bench.py
+```
+
+walks a client through the views of `dev/smoke/bench.json` and, at each, through its variants (a setting moved
+off its default, then put back), reading the renderer's own GPU time per pass (the F3 numbers, averaged over 60
+frames). It prints a table per view and writes it with a picture of every variant to `build/bench/<time>/bench.md`,
+so what a cheaper setting saves can be seen next to what it does to the picture.
+
+- GPU times do not move with the frame limiter (Minecraft drops to 30 fps after a minute without input), which
+  is why they are measured rather than the frame rate.
+- **Nothing else may be using the GPU.** An animated wallpaper, a browser playing video or a second game moves
+  the numbers by more than most settings do. The bench file's last variant is the default again: when it does
+  not come out as the first one did, the run measured the other program, not Radiante. Check with
+  `nvidia-smi` that the GPU is idle before starting.
+- Compare variants within one run only.
+
 ## Shaders under every setting
 
 The path tracer is compiled in game, with the player's settings as defines, so a shader that only breaks with one
