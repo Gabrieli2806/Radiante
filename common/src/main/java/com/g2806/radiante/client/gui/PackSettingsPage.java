@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineShaderPack;
 import com.g2806.radiante.client.pipeline.PipelineSettings;
 import com.g2806.radiante.client.pipeline.ShaderPackLibrary;
 import com.g2806.radiante.client.pipeline.ShaderPackSettings;
@@ -45,11 +46,11 @@ final class PackSettingsPage {
      * (once the mouse is let go) after a change that shows or hides rows or picks a preset.
      */
     static Page build(Map<String, String> staged, Runnable relayout) {
-        String path = Pipeline.shaderPackPath();
-        if (path == null || ShaderPackLibrary.samePack(path, Pipeline.builtInShaderPackPath())) {
+        String path = PipelineShaderPack.shaderPackPath();
+        if (path == null || ShaderPackLibrary.samePack(path, PipelineShaderPack.builtInShaderPackPath())) {
             return null;
         }
-        ShaderPackSettings settings = Pipeline.shaderPackSettings();
+        ShaderPackSettings settings = PipelineShaderPack.shaderPackSettings();
         Map<String, String> values = PipelineSettings.moduleValues(MODULE);
         // Rows only for what the renderer actually loaded: a pack that failed to load leaves Radiante PT's values.
         List<ShaderPackSettings.Attribute> loaded = new ArrayList<>();

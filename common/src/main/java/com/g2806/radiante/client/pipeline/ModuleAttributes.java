@@ -85,41 +85,7 @@ final class ModuleAttributes {
         if (Objects.equals(module.name, RAY_TRACING_MODULE_NAME)) {
             List<AttributeConfig> sourceAttributes =
                     module.attributeConfigs != null ? module.attributeConfigs : module.staticAttributeConfigs;
-            String configuredPath = "";
-            if (sourceAttributes != null) {
-                for (AttributeConfig attributeConfig : sourceAttributes) {
-                    if (attributeConfig == null || !Objects.equals(attributeConfig.name, RAY_TRACING_SHADER_PACK_PATH_ATTRIBUTE)) {
-                        continue;
-                    }
-                    configuredPath = attributeConfig.value == null ? "" : attributeConfig.value.trim();
-                    break;
-                }
-            }
-
-            try {
-                Path shaderPackPath = null;
-                if (configuredPath.isEmpty()) {
-                    if (RadianteClient.radianceDir != null) {
-                        shaderPackPath = RadianteClient.radianceDir
-                                .resolve(BUILT_IN_SHADER_PACK_PATH)
-                                .toAbsolutePath()
-                                .normalize();
-                    }
-                } else {
-                    shaderPackPath = Path.of(configuredPath);
-                    if (!shaderPackPath.isAbsolute() && RadianteClient.radianceDir != null) {
-                        shaderPackPath = RadianteClient.radianceDir.resolve(shaderPackPath);
-                    }
-                    shaderPackPath = shaderPackPath.toAbsolutePath().normalize();
-                }
-
-                if (shaderPackPath != null && shaderPackPath.getFileName() != null) {
-                    shaderPackAttributeStoragePath =
-                            shaderPackPath.resolveSibling(shaderPackPath.getFileName().toString() + ".txt");
-                }
-            } catch (Exception e) {
-                RadianteClient.LOGGER.error("Error while resolving shader pack path: {}", configuredPath, e);
-            }
+            shaderPackAttributeStoragePath = PipelineShaderPack.settingsFileOf(sourceAttributes);
 
             String normalizedStoragePath = shaderPackAttributeStoragePath == null
                     ? null

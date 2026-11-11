@@ -3,6 +3,7 @@ package com.g2806.radiante.client.render;
 import com.g2806.radiante.client.RadianteClient;
 import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineBuild;
 import com.g2806.radiante.client.proxy.vulkan.BufferProxy;
 import com.g2806.radiante.client.proxy.vulkan.RendererProxy;
 import com.g2806.radiante.client.proxy.vulkan.TextureProxy;
@@ -254,7 +255,7 @@ public final class RadianteRenderer {
                 LOGGER.error("Radiante: the default pipeline could not be assembled either", second);
             }
         }
-        Pipeline.build();
+        PipelineBuild.build();
         LOGGER.info("Radiante renderer initialised on {} with the {} pipeline", gpuName,
             Pipeline.INSTANCE.getActivePresetName());
     }

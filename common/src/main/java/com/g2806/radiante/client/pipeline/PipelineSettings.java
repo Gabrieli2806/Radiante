@@ -25,6 +25,8 @@ import java.util.zip.ZipFile;
 import org.yaml.snakeyaml.Yaml;
 
 import static com.g2806.radiante.client.pipeline.Pipeline.*;
+import static com.g2806.radiante.client.pipeline.PipelineBuild.*;
+import static com.g2806.radiante.client.pipeline.PipelineShaderPack.*;
 
 /**
  * What the settings read and set in the pipeline: the DLSS mode, the clouds, the volumetric fog, and any attribute of

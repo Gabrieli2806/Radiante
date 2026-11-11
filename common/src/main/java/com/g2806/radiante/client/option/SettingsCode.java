@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.option;
 
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineBuild;
 import com.g2806.radiante.client.pipeline.PipelineSettings;
 import com.g2806.radiante.client.render.BlockEmissionControls;
 import com.google.gson.JsonElement;
@@ -311,7 +312,7 @@ public final class SettingsCode {
         if (!changed) {
             return false;
         }
-        boolean rebuild = Pipeline.takeStructuralChange() || !Pipeline.pushRuntimeChanges();
+        boolean rebuild = PipelineBuild.takeStructuralChange() || !PipelineBuild.pushRuntimeChanges();
         Pipeline.savePipeline();
         return rebuild;
     }

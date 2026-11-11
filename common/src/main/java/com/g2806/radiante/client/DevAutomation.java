@@ -378,8 +378,8 @@ public final class DevAutomation {
         if (action.startsWith("shaderpack=")) {
             // shaderpack=shaderpacks/<pack>.zip (or "builtin"): switches pack at once, for comparing packs in one view.
             String path = action.substring(11);
-            boolean changed = com.g2806.radiante.client.pipeline.Pipeline.selectShaderPack(path.equals("builtin")
-                ? com.g2806.radiante.client.pipeline.Pipeline.builtInShaderPackPath() : path);
+            boolean changed = com.g2806.radiante.client.pipeline.PipelineShaderPack.selectShaderPack(path.equals("builtin")
+                ? com.g2806.radiante.client.pipeline.PipelineShaderPack.builtInShaderPackPath() : path);
             RadianteClient.LOGGER.info("[dev] shader pack {} rebuilt {}", path, changed && applyPipelineChange(true));
             return;
         }
@@ -695,9 +695,9 @@ public final class DevAutomation {
      * path too. Saved either way, as a build saves. True when it was built.
      */
     private static boolean applyPipelineChange(boolean structural) {
-        if (structural || com.g2806.radiante.client.pipeline.Pipeline.takeStructuralChange()
-            || !com.g2806.radiante.client.pipeline.Pipeline.pushRuntimeChanges()) {
-            com.g2806.radiante.client.pipeline.Pipeline.build();
+        if (structural || com.g2806.radiante.client.pipeline.PipelineBuild.takeStructuralChange()
+            || !com.g2806.radiante.client.pipeline.PipelineBuild.pushRuntimeChanges()) {
+            com.g2806.radiante.client.pipeline.PipelineBuild.build();
             return true;
         }
         com.g2806.radiante.client.pipeline.Pipeline.savePipeline();

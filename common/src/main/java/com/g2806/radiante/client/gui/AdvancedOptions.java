@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineShaderPack;
 import com.g2806.radiante.client.pipeline.PipelineSettings;
 import com.g2806.radiante.client.pipeline.RtAttributes;
 import com.mojang.serialization.Codec;
@@ -91,7 +92,7 @@ final class AdvancedOptions {
      */
     static List<SettingsLayout.Group> groups(RadianteOptionsScreen.Category category, Map<String, String> staged) {
         Map<String, List<OptionInstance<?>>> byGroup = new LinkedHashMap<>();
-        com.g2806.radiante.client.pipeline.ShaderPackSettings packOwn = Pipeline.shaderPackSettings();
+        com.g2806.radiante.client.pipeline.ShaderPackSettings packOwn = PipelineShaderPack.shaderPackSettings();
         for (String module : MODULES) {
             String prefix = module.substring(0, module.length() - "name".length()) + "attribute.";
             for (Map.Entry<String, String> attribute : PipelineSettings.moduleValues(module).entrySet()) {
@@ -293,7 +294,7 @@ final class AdvancedOptions {
         if (exists(key)) {
             return Component.translatable(key);
         }
-        String pack = Pipeline.shaderPackTranslation(key);
+        String pack = PipelineShaderPack.shaderPackTranslation(key);
         return pack != null ? Component.literal(pack) : null;
     }
 

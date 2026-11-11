@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineBuild;
 import com.g2806.radiante.client.pipeline.PipelineSettings;
 import com.g2806.radiante.client.pipeline.RtAttributes;
 import java.util.List;
@@ -170,7 +171,7 @@ enum Tunable {
         }
     }
 
-    /** Writes the value; true when it changed (see Pipeline.takeStructuralChange for whether that needs a rebuild). */
+    /** Writes the value; true when it changed (see PipelineBuild.takeStructuralChange for whether that needs a rebuild). */
     boolean write(int steps) {
         String value = this.format == Format.NUMBER ? String.valueOf(Math.round(clamp(steps) * this.unit))
             : String.format(Locale.ROOT, "%.5f", clamp(steps) * this.unit).replaceAll("0+$", "")

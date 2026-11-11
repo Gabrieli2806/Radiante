@@ -2,6 +2,7 @@ package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.RadianteClient;
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineShaderPack;
 import com.g2806.radiante.client.pipeline.ShaderPackLibrary;
 import com.g2806.radiante.client.pipeline.ShaderPackLibrary.Entry;
 import com.g2806.radiante.compat.VersionCompat;
@@ -113,7 +114,7 @@ public final class ShaderPacksScreen extends VersionCompat.DrawnScreen {
         if (!this.pickedFirst) {
             this.pickedFirst = true;
             ShaderPackTrial.Failure failure = ShaderPackTrial.lastFailure();
-            this.selected = failure != null ? failure.packPath() : Pipeline.shaderPackPath();
+            this.selected = failure != null ? failure.packPath() : PipelineShaderPack.shaderPackPath();
         }
         filter();
 
@@ -218,7 +219,7 @@ public final class ShaderPacksScreen extends VersionCompat.DrawnScreen {
     }
 
     private static boolean active(Entry entry) {
-        return ShaderPackLibrary.samePack(entry.path(), Pipeline.shaderPackPath());
+        return ShaderPackLibrary.samePack(entry.path(), PipelineShaderPack.shaderPackPath());
     }
 
     private static boolean failedLastTime(Entry entry) {
@@ -252,11 +253,11 @@ public final class ShaderPacksScreen extends VersionCompat.DrawnScreen {
         if (active(entry)) {
             return;
         }
-        if (Pipeline.shaderPackUnavailable(entry.path())) {
+        if (PipelineShaderPack.shaderPackUnavailable(entry.path())) {
             this.notice = Component.translatable("screen.radiante.shader_packs.needs_emission");
             return;
         }
-        if (!Pipeline.selectShaderPack(entry.path())) {
+        if (!PipelineShaderPack.selectShaderPack(entry.path())) {
             return;
         }
         RadianteClient.LOGGER.info("Shader pack: {}", entry.path());

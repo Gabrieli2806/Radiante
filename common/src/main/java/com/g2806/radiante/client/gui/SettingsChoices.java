@@ -7,6 +7,7 @@ import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.render.FrameGeneration;
 import com.g2806.radiante.client.render.OutputResolution;
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineBuild;
 import com.g2806.radiante.client.pipeline.PipelineSettings;
 import com.g2806.radiante.client.pipeline.RtAttributes;
 import com.g2806.radiante.client.pipeline.Presets;
@@ -671,7 +672,7 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
         }
         // Only what is compiled into the pipeline waits for a build; the rest reaches the renderer now, or is built
         // after all when the renderer turns it down. Saved after the push, as a build would have saved it.
-        boolean rebuild = structural || Pipeline.takeStructuralChange() || !Pipeline.pushRuntimeChanges();
+        boolean rebuild = structural || PipelineBuild.takeStructuralChange() || !PipelineBuild.pushRuntimeChanges();
         if (!rebuild) {
             Pipeline.savePipeline();
         }
