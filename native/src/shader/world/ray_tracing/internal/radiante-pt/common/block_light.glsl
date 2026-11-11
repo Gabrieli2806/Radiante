@@ -477,7 +477,11 @@ vec3 sampleBlockLightRestir(vec3 worldPos, vec3 geometricNormal, vec3 shadingNor
     combined.target = r.target;
     combined.wSum = r.target * r.W * r.M;
     combined.M = r.M;
-    if (previousClip.w > 1e-4) {
+    // In front of last frame's camera: its clip w has the sign this frame's has for the same point. Not w > 0: the
+    // projection the game hands over gives everything in view a negative w, and that test turned every pixel away, so
+    // no reservoir was ever reused.
+    float currentW = (worldUBO.cameraProjMat * worldUBO.cameraEffectedViewMat * vec4(worldPos, 1.0)).w;
+    if (previousClip.w * currentW > 0.0 && abs(previousClip.w) > 1e-4) {
         vec2 previousPixel = (previousClip.xy / previousClip.w * 0.5 + 0.5) * vec2(size);
         float cap = VPT_RESTIR_MAX_M;
         for (int s = 0; s <= VPT_RESTIR_SPATIAL_SAMPLES; s++) {
