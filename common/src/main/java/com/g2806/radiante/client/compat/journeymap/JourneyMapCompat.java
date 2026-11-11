@@ -1,5 +1,6 @@
 package com.g2806.radiante.client.compat.journeymap;
 
+import com.g2806.radiante.client.compat.OtherMods;
 import com.g2806.radiante.api.RadianteGeometry;
 import com.g2806.radiante.client.RadianteClient;
 import java.lang.reflect.Method;
@@ -25,9 +26,7 @@ public final class JourneyMapCompat implements RadianteGeometry.Submitter {
 
     /** Registers the bridge when JourneyMap is installed. */
     public static void init() {
-        try {
-            Class.forName(HANDLER, false, JourneyMapCompat.class.getClassLoader());
-        } catch (ClassNotFoundException | LinkageError notInstalled) {
+        if (!OtherMods.has(HANDLER)) {
             return;
         }
         // Beams are light, not objects: they cast no shadow.

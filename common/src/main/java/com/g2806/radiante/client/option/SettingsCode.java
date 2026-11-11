@@ -1,6 +1,8 @@
 package com.g2806.radiante.client.option;
 
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineBuild;
+import com.g2806.radiante.client.pipeline.PipelineSettings;
 import com.g2806.radiante.client.render.BlockEmissionControls;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -97,12 +99,12 @@ public final class SettingsCode {
         for (Map.Entry<String, String> module : MODULES.entrySet()) {
             String prefix = attributePrefix(module.getValue());
             JsonObject values = new JsonObject();
-            for (Map.Entry<String, String> attribute : Pipeline.moduleValues(module.getValue()).entrySet()) {
+            for (Map.Entry<String, String> attribute : PipelineSettings.moduleValues(module.getValue()).entrySet()) {
                 String name = attribute.getKey();
                 String value = attribute.getValue();
                 // Only what an import would take back: file paths and other free text stay out of a code, and the
                 // renderer's debug views are nobody's look.
-                String type = Pipeline.getModuleAttributeType(module.getValue(), name);
+                String type = PipelineSettings.getModuleAttributeType(module.getValue(), name);
                 if (value == null || !name.startsWith(prefix) || type == null || !allowed(type, value)
                     || name.contains("debug")) {
                     continue;
@@ -214,7 +216,7 @@ public final class SettingsCode {
         for (Map.Entry<String, JsonElement> entry : root.getAsJsonObject(shortName).entrySet()) {
             String name = prefix + entry.getKey();
             String value = text(entry.getValue());
-            String type = Pipeline.getModuleAttributeType(moduleName, name);
+            String type = PipelineSettings.getModuleAttributeType(moduleName, name);
             if (value != null && value.startsWith("~")) {
                 value = name + "." + value.substring(1);
             }
@@ -304,13 +306,13 @@ public final class SettingsCode {
         boolean changed = false;
         for (Map.Entry<String, Map<String, String>> module : parsed.modules.entrySet()) {
             for (Map.Entry<String, String> attribute : module.getValue().entrySet()) {
-                changed |= Pipeline.setModuleValue(module.getKey(), attribute.getKey(), attribute.getValue());
+                changed |= PipelineSettings.setModuleValue(module.getKey(), attribute.getKey(), attribute.getValue());
             }
         }
         if (!changed) {
             return false;
         }
-        boolean rebuild = Pipeline.takeStructuralChange() || !Pipeline.pushRuntimeChanges();
+        boolean rebuild = PipelineBuild.takeStructuralChange() || !PipelineBuild.pushRuntimeChanges();
         Pipeline.savePipeline();
         return rebuild;
     }

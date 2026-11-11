@@ -2,6 +2,7 @@ package com.g2806.radiante.client.option;
 
 import com.g2806.radiante.client.RadianteClient;
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineShaderPack;
 import com.g2806.radiante.client.proxy.vulkan.TextureProxy;
 import com.g2806.radiante.client.proxy.world.ChunkProxy;
 import java.io.IOException;
@@ -494,7 +495,7 @@ public class Options {
                 TextureProxy.flushEmissionTiles();
                 ChunkProxy.rebuildAll();
             } else if (write) {
-                Pipeline.ensureSelectedShaderPackAvailable();
+                PipelineShaderPack.ensureSelectedShaderPackAvailable();
             }
         }
 

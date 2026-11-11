@@ -3,6 +3,8 @@ package com.g2806.radiante.client.gui;
 import com.g2806.radiante.client.RadianteClient;
 import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineShaderPack;
+import com.g2806.radiante.client.pipeline.PipelineBuild;
 import com.g2806.radiante.client.pipeline.ShaderPackLibrary;
 import com.g2806.radiante.client.render.RadianteRenderer;
 import net.minecraft.client.Minecraft;
@@ -56,7 +58,7 @@ public final class ShaderPackTrial {
     /** Starts watching a pack that was just chosen. The built-in pack is not watched: there is nothing to go back to. */
     static void begin(String path, String name) {
         lastFailure = null;
-        if (path == null || ShaderPackLibrary.samePack(path, Pipeline.builtInShaderPackPath())) {
+        if (path == null || ShaderPackLibrary.samePack(path, PipelineShaderPack.builtInShaderPackPath())) {
             trialPath = null;
             ShaderPackLibrary.markTrial(null);
             return;
@@ -142,8 +144,8 @@ public final class ShaderPackTrial {
         if (!RadianteRenderer.isActive()) {
             return;
         }
-        String stored = Pipeline.shaderPackPath();
-        if (stored == null || ShaderPackLibrary.samePack(stored, Pipeline.builtInShaderPackPath())
+        String stored = PipelineShaderPack.shaderPackPath();
+        if (stored == null || ShaderPackLibrary.samePack(stored, PipelineShaderPack.builtInShaderPackPath())
             || ShaderPackLibrary.samePack(stored, verifiedPath)
             || lastFailure != null && ShaderPackLibrary.samePack(stored, lastFailure.packPath())) {
             return;
@@ -166,14 +168,14 @@ public final class ShaderPackTrial {
         RadianteClient.LOGGER.warn("Shader pack {} failed; going back to the built-in pack", trialPath);
         trialPath = null;
         ShaderPackLibrary.markTrial(null);
-        Pipeline.selectShaderPack(Pipeline.builtInShaderPackPath());
+        PipelineShaderPack.selectShaderPack(PipelineShaderPack.builtInShaderPackPath());
         Screen current = minecraft.gui.screen();
         Screen next = current instanceof ShaderPacksScreen packs ? packs.reopened() : current;
         // The settings screen is not replaced, so it keeps its unapplied choices: the built-in pack is built here
         // without a wait screen, and the next frame compiles it (from the caches, as it ran before).
         if (current instanceof RadianteOptionsScreen) {
             if (!BackgroundRebuild.start()) {
-                Pipeline.build();
+                PipelineBuild.build();
             }
         } else {
             BackgroundRebuild.open(minecraft, next, true);

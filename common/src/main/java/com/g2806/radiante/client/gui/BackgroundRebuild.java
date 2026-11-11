@@ -3,6 +3,7 @@ package com.g2806.radiante.client.gui;
 import com.g2806.radiante.client.RadianteClient;
 import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineBuild;
 import com.g2806.radiante.client.render.RadianteRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -40,7 +41,7 @@ public final class BackgroundRebuild {
      * restarts it with the newest values.
      */
     static boolean start() {
-        if (!RadianteRenderer.isActive() || !Pipeline.prewarm()) {
+        if (!RadianteRenderer.isActive() || !PipelineBuild.prewarm()) {
             return false;
         }
         active = true;
@@ -88,14 +89,14 @@ public final class BackgroundRebuild {
     private static void buildNow(Minecraft minecraft) {
         active = false;
         fallbackPending = false;
-        Pipeline.build();
+        PipelineBuild.build();
         finish(minecraft);
     }
 
     /** The popup's last state for a build that just ran: applied, or why it was not. */
     static void finish(Minecraft minecraft) {
-        if (Pipeline.takeStructuralChange()) {
-            RebuildToast.failed(minecraft, Pipeline.lastBuildError());
+        if (PipelineBuild.takeStructuralChange()) {
+            RebuildToast.failed(minecraft, PipelineBuild.lastBuildError());
         } else {
             RebuildToast.done(minecraft);
         }
@@ -111,7 +112,7 @@ public final class BackgroundRebuild {
             return;
         }
         if (!RadianteRenderer.isActive()) {
-            // The change stays pending (Pipeline.takeStructuralChange): the build that starts the renderer again
+            // The change stays pending (PipelineBuild.takeStructuralChange): the build that starts the renderer again
             // carries it.
             active = false;
             return;
@@ -126,17 +127,17 @@ public final class BackgroundRebuild {
             case Pipeline.PREWARM_DONE -> {
                 active = false;
                 // A build since (another screen's, a dev command's) already carried the change.
-                if (Pipeline.takeStructuralChange()) {
-                    Pipeline.build();
+                if (PipelineBuild.takeStructuralChange()) {
+                    PipelineBuild.build();
                     finish(minecraft);
                 } else {
                     RebuildToast.done(minecraft);
                 }
             }
             case Pipeline.PREWARM_CANCELLED -> {
-                if (!Pipeline.takeStructuralChange()) {
+                if (!PipelineBuild.takeStructuralChange()) {
                     active = false;
-                } else if (restarts >= MAX_RESTARTS || !Pipeline.prewarm()) {
+                } else if (restarts >= MAX_RESTARTS || !PipelineBuild.prewarm()) {
                     fallBack();
                 } else {
                     restarts++;
@@ -149,7 +150,7 @@ public final class BackgroundRebuild {
 
     private static void fallBack() {
         active = false;
-        fallbackPending = Pipeline.takeStructuralChange();
+        fallbackPending = PipelineBuild.takeStructuralChange();
         if (fallbackPending && Minecraft.getInstance().level == null) {
             // No world to keep playing in, so no wait screen: build now.
             buildNow(Minecraft.getInstance());
@@ -167,7 +168,7 @@ public final class BackgroundRebuild {
             return;
         }
         fallbackPending = false;
-        if (Pipeline.takeStructuralChange() && !active) {
+        if (PipelineBuild.takeStructuralChange() && !active) {
             minecraft.gui.setScreen(new ApplyingSettingsScreen(current));
         }
     }
