@@ -34,10 +34,9 @@ World pass, in milliseconds, against the default.
 | Change | 1080p traced, dock | 720p traced, dock | 720p traced, flowers |
 |---|---|---|---|
 | Default | 52.5 | 23.2 | 17.2 |
-| Light bounces 4 to 2 | 23.0 (-56 %) | 11.2 (-52 %) | 9.7 (-44 %) |
-| Light bounces 4 to 1 | 10.2 (-81 %) | | |
+| Light bounces 4 to 2 (one bounce traced) | 23.0 (-56 %) | 11.2 (-52 %) | 9.7 (-44 %) |
+| Light bounces 4 to 1 (no bounce, direct light only) | 10.2 (-81 %) | | |
 | Block Light Sampling off | 26.5 (-50 %) | 12.2 (-47 %) | 9.4 (-45 %) |
-| Shader Execution Reordering on | 30.4 (-42 %) | 13.3 (-42 %) | 13.0 (-24 %) |
 | One Bounce + Cache | 32.8 (-38 %) | 18.0 (-22 %) | 11.2 (-35 %) |
 | Checkerboard for water and glass | 45.1 (-14 %) | 20.4 (-12 %) | 16.6 (-3 %) |
 | First Person Shadow off | 47.0 (-10 %) | 23.2 (0 %) | 16.9 (-1 %) |
@@ -49,18 +48,20 @@ World pass, in milliseconds, against the default.
 
 ## Findings, by what they could save
 
-1. **The radiance cache does not shorten paths outdoors.** Cache Deep Bounces is on, and its point is that a path
-   ends at the second hit when the cache has an answer. Here turning it off, or the whole cache off, changes the time
-   by a few percent, while tracing two bounces instead of four halves it. So in open terrain nearly every path runs
-   all four bounces: the cache is paid for (its update paths, its resolve) and gives almost nothing back. Indoors
-   (the showcase rooms) it did answer, which is why four bounces cost no more than two there. To look at:
-   `sharcAllowQuery` in `pt_bounce.glsl` (the least distance and roughness it asks for), how far from the camera the
-   cache holds entries, and how many queries miss (the `sharc` debug view shows them). Worth up to 45 % of the frame.
+1. **The radiance cache rarely gets to answer outdoors, and that is how it is built.** With Cache Deep Bounces a
+   path may take the cached light from its third surface on (the second bounce's hit), never at the second, so the
+   default always traces two bounces and can only save the third and fourth. Its heat map (`sharc_debug_mode`
+   `heatmap`) shows it answering for about 4 % of the pixels in the flowers view and 20 % in the dock view: outdoors
+   most first bounces leave for the sky and end there, and the paths that go on are the ones among leaves and
+   flowers, the dearest to trace. Turning it off changes the time by a few percent either way. Asking it one surface
+   earlier is exactly what One Bounce + Cache does (finding 2): the saving is there, behind that setting.
 
-2. **One Bounce + Cache costs more than two bounces without it.** It is the mode that traces what Bedrock RTX traces,
-   and should be the cheapest of all; it saves 22 to 38 % where plain two bounces save 44 to 56 %. Either its budget
-   does not hold for every kind of path (the dock view is half water, whose reflection and refraction both go on), or
-   the cache misses of finding 1 fall back to full paths. Same place to look.
+2. **One Bounce + Cache is as it should be.** Light Bounces counts the surfaces of a path, so "2" traces one
+   bounce: that is what One Bounce + Cache has to be held against, not "more than two bounces". It costs 16 % more
+   than that one plain bounce in the flowers view (the cache lookups) and gives the light of every later bounce for
+   it, at 35 % under the default. In the dock view it costs 60 % more than one plain bounce, on purpose: what is seen
+   through water (the bed of the pond) gets a bounce of its own as a first hit does, without which pools came out
+   lit by the sun and nothing else. It is the cheapest setting that still fills rooms and shade with bounced light.
 
 3. **Block Light Sampling is half the frame, by day, outdoors.** One lantern and a few candles in view, and sampling
    them costs 45 to 50 % of the world pass. The sampler takes one shadow ray a surface (it picks one light among its
@@ -70,13 +71,14 @@ World pass, in milliseconds, against the default.
    cut-out leaves run the any-hit shader (`shadow.rahit`) on the way. Each changes the picture a little and needs a
    look at a lamp-lit room at night, where an earlier attempt to skip deeper bounces left walls a fifth darker.
 
-4. **Shader Execution Reordering saves a quarter, and is off because it breaks water.** In the flowers view (no
-   water) it takes 24 % off with the same picture. In the dock view the water comes out a flat pale blue with nothing
-   seen through it or mirrored in it (`build/bench/audit-b/dock__ser=true.png`), and part of the 42 % saved there is
-   that missing work. The setting's own description says so ("water can look white"). The primary rays are not the
-   reordered ones, and the water they hit is wrong all the same, so the fault is in what the reordering variant of the
-   ray generation shader compiles to, not in the reordered trace itself. Fixing it gives every RTX 40 and 50 card a
-   quarter of the frame, and it could then be on by default there.
+4. **Shader Execution Reordering is gone.** It took a quarter off where there was no water (flowers view) and
+   broke every pixel whose first surface was water: a flat pale sheet, nothing seen through or mirrored. Without the
+   one call that regroups the threads the water was right and nothing was saved, so the fault is what the driver does
+   with this ray generation shader's state across that call. Keeping pixels that start on water or glass out of it
+   hung the GPU when the setting was turned on (no answer for five seconds, and the game stopped), twice in two
+   tries. A setting that saves a quarter on some cards and stops the game is not worth having: the code, the setting
+   and the device extension are removed. Worth another look when the EXT version of the extension is what drivers
+   ship.
 
 5. **The player's own body costs 10 % at 1080p traced.** First Person Shadow draws the player so they cast a shadow;
    every ray leaving the camera starts inside that model's bounds. At 720p the cost is gone, so it is worth a look
@@ -92,9 +94,9 @@ World pass, in milliseconds, against the default.
 
 ## What it adds up to
 
-If findings 1 to 4 were all fixed, a frame traced at 720p would go from 23 to 30 ms to somewhere near 8 to 10 ms on
-this card: 4K through DLSS Performance (traced at 1080p) at about 40 to 50 frames a second, through Ultra Performance
-(720p) near 90. That is the reachable version of the 90 frames a second target, and it is an estimate: the savings
+With One Bounce + Cache on and block light sampling cut to what a daylit scene needs (findings 2 and 3), a frame
+traced at 720p would go from 23 to 30 ms to somewhere near 10 to 13 ms on this card: 4K through DLSS Performance
+(traced at 1080p) at about 30 to 40 frames a second, through Ultra Performance (720p) at 70 to 90. That is the reachable version of the 90 frames a second target, and it is an estimate: the savings
 overlap (fewer bounces leave fewer block light rays to save), and each has to be measured again once the one before
 it is in.
 

@@ -326,13 +326,6 @@ Shadow and visibility rays use `ShadowRay` at location 1.
 Shared code (atmosphere, water, block light, clouds, LOD coverage) is in `radiante-pt/common/`, and generic helpers
 (BRDF, LabPBR, sampling, ray cones) in `native/src/shader/util/`.
 
-### Shader Execution Reordering
-
-On devices with `GL_NV_shader_invocation_reorder` (`VPT_SER_SUPPORTED`) and with the player's toggle on, scattered
-bounce rays are traced into a hit object and regrouped with `reorderThreadNV` before their closest hit shader runs
-(`VPT_TRACE_PATH_REORDERED` in `world.rgen`), so threads that run the same hit shader run together. Reordering moves
-the work, not the pixel: `gl_LaunchIDEXT` and every image coordinate stay the same.
-
 ### SHaRC radiance cache
 
 SHaRC is a world-space hash grid of cached radiance (`use_sharc`, on by default). It has three parts:

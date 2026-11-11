@@ -101,7 +101,7 @@ In `configs.json`, under `"radiante"`:
 | `icon` | yes | Image in the pack, shown in the list |
 | `api_version` | checked | The `radiante/vN` interface the pack is written for; 0 = built on Radiante PT's internals (every pack today). Radiante offers 0 until phase 2 |
 | `extends` | yes | The pack this one builds on: `"radiante-pt"` or `"radiante-pt@1"` (section 5) |
-| `requires` | `radiante` checked | `{"radiante": ">=1.4", "features": ["omm?", "ser?"]}`. `radiante`: `>=`, `>`, `=`, `<=`, `<` or a bare version (meaning `>=`) against the mod version. `features` (`?` = optional, the shader gets a define) is planned |
+| `requires` | `radiante` checked | `{"radiante": ">=1.4", "features": ["omm?"]}`. `radiante`: `>=`, `>`, `=`, `<=`, `<` or a bare version (meaning `>=`) against the mod version. `features` (`?` = optional, the shader gets a define) is planned |
 | `id` | planned | Stable id (lowercase), for settings files and future pack lists |
 | `homepage` | planned | Link shown in the list |
 
@@ -409,7 +409,7 @@ The Shader Packs screen shows a failed pack's errors with file and line under th
 
 **Checking a pack** (`shader_pack_check.cpp`, `Pipeline.validateShaderPackNative`, `ShaderPackValidation`): the pack
 is loaded and every shader a build of it would compile is compiled, for both stages, with the ray tracing module's
-current attributes and this device's features (micromaps, SER, SHaRC), on a Java thread of its own while frames are
+current attributes and this device's features (micromaps, SHaRC), on a Java thread of its own while frames are
 drawn. It never touches the running pipeline: no fallback to Radiante PT, zips extracted and packs staged under
 `temp/shaders/world/ray_tracing/check/` (a build's folders are never rewritten under it), no shader modules, and
 compile errors are not written to the error log (`gpu::Shader::QuietErrors`), where `ShaderPackTrial` would take them

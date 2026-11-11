@@ -294,18 +294,6 @@ abstract class SettingsRows extends SettingsChoices {
             });
     }
 
-    /** Shader Execution Reordering, where the shader pack has it. */
-    private OptionInstance<Boolean> serOption() {
-        if (!PipelineSettings.supportsShaderPackToggle(RtAttributes.SER_ATTRIBUTE)) {
-            return null;
-        }
-        if (this.pendingSer == null) {
-            this.pendingSer = PipelineSettings.isShaderPackToggleOn(RtAttributes.SER_ATTRIBUTE);
-        }
-        return OptionInstance.createBoolean("options.radiante.ser", tooltip("options.radiante.ser"),
-            this.pendingSer, value -> this.pendingSer = value);
-    }
-
     /** ReSTIR for block lights, where the shader pack has it. */
     private OptionInstance<Boolean> restirOption() {
         if (!PipelineSettings.supportsShaderPackToggle(RtAttributes.RESTIR_ATTRIBUTE)) {
@@ -741,7 +729,7 @@ abstract class SettingsRows extends SettingsChoices {
                     stage("blockLightSampling", value);
                     refreshQualityLater();
                 }),
-            restirOption(), restirGiOption(), serOption(),
+            restirOption(), restirGiOption(),
             OptionInstance.createBoolean("options.radiante.glowing_pixel_light",
                 tooltip("options.radiante.glowing_pixel_light"),
                 staged("glowingPixelLight", Options.glowingPixelLight), value -> stage("glowingPixelLight", value)),

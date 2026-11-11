@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Shader Execution Reordering is removed. It broke water (a flat pale sheet, nothing seen through or mirrored) and, kept away from water, stopped the game on the card it was tried on; it was experimental and off by default.
+
 - Water Waves is grey unless the Water Surface (Advanced) is Realistic, the only one with waves of its own: with Bedrock's surface, the default, the slider did nothing.
 
 - The eye adapts over the same time at any frame rate. With Bedrock RTX's light meter (the default) the exposure moved a share of the way each frame, so at 30 frames a second a room took four times longer to come up than at 120.

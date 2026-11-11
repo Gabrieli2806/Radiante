@@ -7,7 +7,6 @@ render_pipeline.module.ray_tracing.attribute.cloud_mode=云模式
 render_pipeline.module.ray_tracing.attribute.cloud_mode.off=关闭
 render_pipeline.module.ray_tracing.attribute.cloud_mode.vanilla=原版
 render_pipeline.module.ray_tracing.attribute.cloud_mode.volumetric=体积云
-render_pipeline.module.ray_tracing.attribute.ser=着色器执行重排序
 render_pipeline.module.ray_tracing.attribute.restir=ReSTIR 方块光源
 render_pipeline.module.ray_tracing.attribute.restir_gi=ReSTIR 反弹光
 render_pipeline.module.ray_tracing.attribute.seamless_glass=无缝玻璃

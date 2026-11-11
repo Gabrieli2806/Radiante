@@ -158,14 +158,7 @@ void traceSecondary(inout MainRay rayState,
             missId = VPT_WORLD_MISS_INDEX;
         }
         RADIANTE_DEBUG_COUNT_BOUNCE();
-        // The first bounce (reflections and refraction seen straight from the camera, water among them) is traced as
-        // usual; the later, scattered ones are reordered.
-        // Known issue: with reordering, water can come out white. Experimental, off by default.
-        if (b > startBounce && !rayInWater(rayState) && !rayIgnoreWaterSelf(rayState)) {
-            VPT_TRACE_PATH_REORDERED(VPT_RAY_FLAGS, mask, 1, 1, missId, mainRay.origin, 0.001, mainRay.direction, len);
-        } else {
-            VPT_TRACE_PATH(VPT_RAY_FLAGS, mask, 1, 1, missId, mainRay.origin, 0.001, mainRay.direction, len);
-        }
+        VPT_TRACE_PATH(VPT_RAY_FLAGS, mask, 1, 1, missId, mainRay.origin, 0.001, mainRay.direction, len);
         rayState = mainRay;
         raySetIgnoreWaterSelf(rayState, false);
 

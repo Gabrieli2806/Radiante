@@ -39,7 +39,6 @@ Radiante es un mod de path tracing para Minecraft Java. Estas páginas describen
 - Los pipelines de FSR, XeSS y nativo tienen más ruido que DLSS con Reconstrucción de Rayos.
 - AMD e Intel funcionan, pero están menos probados que NVIDIA.
 - La generación de fotogramas no está disponible con HDR. XeSS es solo de Windows.
-- Shader Execution Reordering es experimental (el agua puede verse blanca).
 - El soporte de Distant Horizons es experimental.
 
 Los errores e ideas están en [GitHub Issues](https://github.com/Gabrieli2806/Radiante/issues); hacia dónde va el

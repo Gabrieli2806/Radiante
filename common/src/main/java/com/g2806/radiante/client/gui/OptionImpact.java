@@ -62,7 +62,6 @@ enum OptionImpact {
         Map.entry("options.radiante.held_item_light", LOW),
         Map.entry("options.radiante.glowing_pixel_light", LOW),
         Map.entry("options.radiante.first_person_shadow", LOW),
-        Map.entry("options.radiante.ser", VARIES),
         Map.entry("options.radiante.cache_deep_bounces", HIGH),
         Map.entry("options.radiante.bedrock_one_bounce", HIGH),
         Map.entry("options.radiante.transparent_checkerboard", MEDIUM),
