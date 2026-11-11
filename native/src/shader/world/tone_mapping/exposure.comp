@@ -75,10 +75,20 @@ const uint METER_GRID = 16u;
 const float SKY_METER_GAIN = 3.0;
 // Mode 3: how far the eye opens at night, however high the day's limit (matched by eye to Bedrock RTX's nights).
 const float NIGHT_MAX_EXPOSURE = 0.6;
-// Mode 4: Bedrock RTX's exposure limits (2^-1 .. 2^6) and the share of the way it moves each frame, as calibrated to Bedrock RTX.
+// Mode 4: Bedrock RTX's exposure limits (2^-1 .. 2^6) and the share of the way it moves each frame, as calibrated to
+// Bedrock RTX at the 60 frames a second it was measured at.
 const float BEDROCK_MIN_EV = -1.0;
 const float BEDROCK_MAX_EV = 6.0;
 const float BEDROCK_EV_ALPHA = 0.02;
+const float BEDROCK_EV_FRAME_RATE = 60.0;
+
+// The share of the way the exposure moves this frame. Bedrock's is a share per frame; taken as it is, the eye
+// adapted four times slower at 30 frames a second than at 120 (a room took seconds longer to come up, and a picture
+// taken after the same wait came out darker). Over the same time it moves the same way at any frame rate.
+float bedrockAlpha() {
+    float frames = clamp(pc.dt, 0.0, 0.25) * BEDROCK_EV_FRAME_RATE;
+    return 1.0 - pow(1.0 - BEDROCK_EV_ALPHA, frames);
+}
 
 // Mode 2's reading: per channel the cube of the mean cube root over the grid (a power mean that a few very bright
 // samples barely move), and the brightest channel of that.
@@ -129,7 +139,7 @@ void meterBedrock(float previous, bool fresh) {
     float previousEV = log2(previous);
     float darkness = clamp(lightMeter.daylight.y, 0.05, 1.0);
     float targetEV = clamp(log2(max(target, 1e-12)), BEDROCK_MIN_EV, BEDROCK_MAX_EV) + log2(darkness);
-    expData.exposure = exp2(fresh ? targetEV : mix(previousEV, targetEV, BEDROCK_EV_ALPHA));
+    expData.exposure = exp2(fresh ? targetEV : mix(previousEV, targetEV, bedrockAlpha()));
 
     // The two other values the game keeps from the same reading, for world.rgen.
     float meterEV = log2(max(target, 1e-12));
@@ -141,7 +151,7 @@ void meterBedrock(float previous, bool fresh) {
         for (uint i = 0u; i < 256u; i++) { lightMeter.sampleHistory[i] = vec4(0.0); }
     }
     lightMeter.bedrockMeter = meterFresh ? vec4(meterEV, workingEV, 0.0, 1.0) :
-                                           vec4(mix(meter.xy, vec2(meterEV, workingEV), BEDROCK_EV_ALPHA), 0.0, 1.0);
+                                           vec4(mix(meter.xy, vec2(meterEV, workingEV), bedrockAlpha()), 0.0, 1.0);
 }
 
 // Modes 2 and 3.
