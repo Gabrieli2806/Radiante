@@ -69,8 +69,8 @@ public class RadianteOptionsScreen extends Screen {
     private Boolean pendingRestir;
     private Boolean pendingRestirGi;
     /**
-     * radiante-pt's default for restir_gi (configs.json), what Reset puts back. Off: behind DLSS Ray Reconstruction it
-     * took only a little noise off and read a few percent darker.
+     * radiante-pt's default for restir_gi (configs.json), what Reset puts back. Off: behind DLSS Ray Reconstruction its
+     * reuse leaves dark lines along corners and blotches while the camera moves.
      */
     private static final Boolean RESTIR_GI_DEFAULT = Boolean.FALSE;
     private Boolean pendingSer;
@@ -969,7 +969,9 @@ public class RadianteOptionsScreen extends Screen {
         this.pendingVolumetricFog = Pipeline.supportsVolumetricFog() ? Boolean.TRUE : null;
         this.pendingMotionBlur = Boolean.FALSE;
         this.pendingCloudShadows = Boolean.FALSE;
-        this.pendingRestir = Boolean.TRUE;
+        // radiante-pt's default (configs.json). Off: the plain sampler's four lights a pixel are quicker and keep the
+        // shadows of a room with several lights sharp, which the reuse softens.
+        this.pendingRestir = Boolean.FALSE;
         this.pendingRestirGi = Pipeline.supportsShaderPackToggle(Pipeline.RESTIR_GI_ATTRIBUTE) ? RESTIR_GI_DEFAULT : null;
         this.pendingSer = Boolean.FALSE;
         this.pendingFroxelFog = Pipeline.supportsShaderPackToggle(Pipeline.FROXEL_FOG_ATTRIBUTE) ? Boolean.TRUE : null;

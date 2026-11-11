@@ -432,7 +432,7 @@
   "options.radiante.frame_generation_backend.dlss": "DLSS",
   "options.radiante.frame_generation_backend.fsr": "FSR",
   "options.radiante.restir": "ReSTIR 方块光源",
-  "options.radiante.restir.tooltip": "随时间并在相邻像素间复用每个像素选中的方块光源。多灯房间噪点大幅减少。需要方块光源采样。",
+  "options.radiante.restir.tooltip": "随时间并在相邻像素间复用每个像素选中的方块光源。多灯房间降噪前的噪点大幅减少，但多个光源交汇处的阴影会变柔和，且稍慢。需要方块光源采样。",
   "options.radiante.restir_gi": "ReSTIR 反弹光",
   "options.radiante.restir_gi.tooltip": "在帧间及相邻像素间复用每个像素找到的反弹光。由反弹光照亮的房间和洞穴噪点更少。反弹光在光照变化后可能稍有延迟。",
   "options.radiante.ser": "着色器执行重排序 (SER)",

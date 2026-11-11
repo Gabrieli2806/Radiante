@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- ReSTIR Block Lights and ReSTIR Bounced Light now reuse light across frames and neighbouring pixels: neither ever found last frame's samples, so each ran on its new samples alone. With the reuse, block lights are far less noisy before denoising but their shadows are softer where several lights meet.
+
+- ReSTIR Block Lights is off by default: the plain sampler is quicker (about an eighth off the ray tracing pass in a lit room), gives sharp shadows, and was less noisy than ReSTIR had been without its reuse. A setting saved as on stays on.
+
 - Turning ReSTIR Block Lights off no longer leaves the world undrawn: its shaders did not compile, as the wind's motion vectors read last frame's uniforms, which were only declared with ReSTIR on.
 
 - Cache Deep Bounces, One Bounce + Cache and Glass/Water Checkerboard apply at once, without rebuilding the shaders.
