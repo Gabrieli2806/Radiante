@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.15)
 
 project(prismrt LANGUAGES C CXX)
 
+# For the offline checks in src/tools (ctest); it builds nothing by itself.
+enable_testing()
+
 if(NOT DEFINED JAVA_PROJECT_ROOT_DIR OR "${JAVA_PROJECT_ROOT_DIR}" STREQUAL "")
     get_filename_component(JAVA_PROJECT_ROOT_DIR "${PROJECT_SOURCE_DIR}/.." ABSOLUTE)
 endif()
@@ -52,9 +55,6 @@ set(VMA_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/extern/vma/include)
 
 # GLM
 set(GLM_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/extern/glm)
-
-# VK.XML
-set(VK_XML_PATH ${PROJECT_SOURCE_DIR}/extern/vulkan_headers/registry/vk.xml)
 
 # STB
 set(STB_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/extern/stb)
