@@ -1,12 +1,10 @@
 package com.g2806.radiante.client.render;
 
+import com.g2806.radiante.compat.VersionCompat;
 import com.g2806.radiante.mixin.render.RenderTypeAccessors.RenderSetupAccessor;
 import com.g2806.radiante.mixin.render.RenderTypeAccessors.RenderTypeAccessor;
 import com.g2806.radiante.mixin.render.RenderTypeAccessors.TextureBindingAccessor;
 import java.util.Map;
-import com.mojang.renderpearl.api.GpuFormat;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.rendertype.RenderSetup;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.resources.Identifier;
@@ -97,10 +95,7 @@ public final class RenderTypeInfo {
         if (!scrolling) {
             CACHE.put(renderType, info);
             if (com.g2806.radiante.client.option.Options.debugLogging) {
-                AbstractTexture found = texture == null ? null
-                    : Minecraft.getInstance().getTextureManager().getTexture(texture);
-                com.mojang.renderpearl.api.textures.GpuTexture gpu = found == null ? null
-                    : TextureTracker.gpuTextureOrNull(found);
+                var gpu = texture == null ? null : VersionCompat.gpuTextureOrNull(texture);
                 TextureTracker.reportUse("layer " + name + " blending=" + renderType.hasBlending() + " alphaMode="
                     + info.alphaMode() + " group=" + info.groupName() + " texture=" + texture
                     + (gpu == null ? "" : " (" + TextureTracker.describe(gpu) + ")"));
@@ -170,12 +165,7 @@ public final class RenderTypeInfo {
     }
 
     private boolean isSingleChannel() {
-        if (this.texture == null) {
-            return false;
-        }
-        AbstractTexture texture = Minecraft.getInstance().getTextureManager().getTexture(this.texture);
-        return texture != null && texture.getTexture() != null
-            && texture.getTexture().getFormat() == GpuFormat.R8_UNORM;
+        return this.texture != null && VersionCompat.isSingleChannelTexture(this.texture);
     }
 
     /** True when this layer samples the block atlas: a block drawn as an item, not a skin or a model texture. */
@@ -190,11 +180,10 @@ public final class RenderTypeInfo {
         }
         int id = TextureTracker.idOf(this.texture);
         if (id == 0) {
-            net.minecraft.client.renderer.texture.AbstractTexture found =
-                net.minecraft.client.Minecraft.getInstance().getTextureManager().getTexture(this.texture);
+            Object found = net.minecraft.client.Minecraft.getInstance().getTextureManager().getTexture(this.texture);
             TextureTracker.reportMissing("layer " + this.name + " texture " + this.texture
                 + (found == null ? " (not registered)" : " (" + found.getClass().getSimpleName() + ")"),
-                found == null ? null : TextureTracker.gpuTextureOrNull(found));
+                VersionCompat.gpuTextureOrNull(this.texture));
         }
         EntityPbr.note(this.texture, id);
         return id;

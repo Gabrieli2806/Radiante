@@ -3,6 +3,7 @@ package com.g2806.radiante.client.gui;
 import com.g2806.radiante.client.download.UpscalerDownloads;
 import com.g2806.radiante.client.download.UpscalerDownloads.Component;
 import com.g2806.radiante.client.download.UpscalerDownloads.Progress;
+import com.g2806.radiante.compat.VersionCompat;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.MultiLineTextWidget;
@@ -14,7 +15,7 @@ import net.minecraft.client.gui.screens.Screen;
  * confirms deleting one. On the title screen it offers the upscaler that suits the GPU; from the settings it is
  * reached by choosing one that is not downloaded yet.
  */
-public class UpscalerDownloadScreen extends Screen {
+public class UpscalerDownloadScreen extends VersionCompat.DrawnScreen {
 
     public enum Mode {
         /** Offered on startup: download, not now, or never ask again. */
@@ -169,8 +170,7 @@ public class UpscalerDownloadScreen extends Screen {
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+    protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         // Above the widgets, which are centred on the screen as a block.
         ApplyingSettingsScreen.drawIcon(graphics, this.width / 2, Math.max(4, this.iconY));
         Progress current = this.progress;

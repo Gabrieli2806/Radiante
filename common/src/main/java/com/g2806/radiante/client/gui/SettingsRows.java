@@ -18,6 +18,7 @@ import java.util.Objects;
 import net.minecraft.client.OptionInstance;
 import net.minecraft.network.chat.Component;
 import com.g2806.radiante.client.gui.RadianteOptionsScreen.Category;
+import com.g2806.radiante.compat.VersionCompat;
 
 /**
  * The rows of the settings screen: a builder per option, the add*Options methods that put them into their section,
@@ -1066,12 +1067,12 @@ abstract class SettingsRows extends SettingsChoices {
                 DebugReport.captureSoon(this.minecraft);
                 onClose();
             }),
-            actionRow("options.radiante.open_logs", () -> com.mojang.blaze3d.Blaze3D.openPath(
+            actionRow("options.radiante.open_logs", () -> VersionCompat.openFolder(
                 this.minecraft.gameDirectory.toPath().resolve("logs"))),
             actionRow("options.radiante.open_shader_packs", () -> {
                 java.nio.file.Path folder = com.g2806.radiante.client.pipeline.ShaderPackLibrary.folder();
                 if (folder != null) {
-                    com.mojang.blaze3d.Blaze3D.openPath(folder);
+                    VersionCompat.openFolder(folder);
                 }
             }));
     }

@@ -7,6 +7,7 @@ import com.g2806.radiante.client.proxy.vulkan.BufferProxy;
 import com.g2806.radiante.client.proxy.vulkan.RendererProxy;
 import com.g2806.radiante.client.proxy.vulkan.TextureProxy;
 import com.g2806.radiante.client.proxy.world.PlayerProxy;
+import com.g2806.radiante.compat.VersionCompat;
 import com.g2806.radiante.mixin.backend.VulkanCommandEncoderAccessor;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -104,6 +105,17 @@ public final class RadianteRenderer {
     public static Failure failure() {
         Failure nativeFailure = RadianteClient.nativeFailure();
         return nativeFailure != null ? nativeFailure : failure;
+    }
+
+    /**
+     * A Vulkan device was turned away for having no hardware ray tracing (VulkanBackendMixin). Called on the
+     * Minecraft versions that fall back to no other device then: without this the game would end up on OpenGL told
+     * it was never on Vulkan.
+     */
+    public static void noteDeviceWithoutRayTracing() {
+        if (!active) {
+            failure = Failure.NO_RAY_TRACING;
+        }
     }
 
     private static boolean tracingLevel;
@@ -240,7 +252,7 @@ public final class RadianteRenderer {
      */
     private static void reserveFallbackTexture() {
         int id = TextureProxy.generateTextureId();
-        TextureProxy.prepareImage(id, 1, 1, 1, VulkanConst.toVk(com.mojang.renderpearl.api.GpuFormat.RGBA8_UNORM));
+        TextureProxy.prepareImage(id, 1, 1, 1, VersionCompat.vkFormatRgba8());
         ByteBuffer white = MemoryUtil.memAlloc(4);
         white.put(0, (byte) 0xFF).put(1, (byte) 0xFF).put(2, (byte) 0xFF).put(3, (byte) 0xFF);
         TextureProxy.queueUpload(MemoryUtil.memAddress(white), 4, 1, id, 0, 0, 0, 0, 1, 1, 0);
@@ -520,10 +532,10 @@ public final class RadianteRenderer {
         WaterBody.update(minecraft, cameraState.pos);
 
         TextureAtlas celestials = minecraft.getAtlasManager().getAtlasOrThrow(AtlasIds.CELESTIALS);
-        int celestialsId = TextureTracker.idOf(celestials.getTexture());
+        int celestialsId = TextureTracker.idOf(VersionCompat.gpuTexture(celestials));
 
         BufferProxy.updateSkyUniform(new BufferProxy.SkyUniform(skyColor, horizonColor, sunDirection, skyType,
-            Mth.sin(sky.sunAngle) >= 0.0f && horizonColor.w() > 0.0f, sky.shouldRenderDarkDisc,
+            Mth.sin(sky.sunAngle) >= 0.0f && horizonColor.w() > 0.0f, VersionCompat.drawsDarkDisc(sky),
             mobEffect.x() > 0.0f, submersionTypeOf(cameraState.fogType),
             sky.moonPhase.ordinal(), 1.0f - sky.rainBrightness, celestialsId, celestialsId,
             spriteRect(celestials, SUN_SPRITE),
@@ -562,7 +574,7 @@ public final class RadianteRenderer {
         if (blind != null) {
             blindness = blind.isInfiniteDuration() ? 1.0f : Math.min(1.0f, blind.getDuration() / 20.0f);
         }
-        return new Vector4f(Math.max(darkness, blindness), Mth.clamp(darknessEffectScale / 0.45f, 0.0f, 1.0f),
+        return new Vector4f(Math.max(darkness, blindness), Math.clamp(darknessEffectScale / 0.45f, 0.0f, 1.0f),
             com.g2806.radiante.client.option.Options.volumetricFogStrength / 100.0f,
             BiomeAmbiance.starClarity((float) player.getEyeY()));
     }

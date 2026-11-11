@@ -2,6 +2,7 @@ package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.RadianteClient;
 import com.g2806.radiante.client.addon.AddonImpl;
+import com.g2806.radiante.compat.VersionCompat;
 import com.g2806.radiante.platform.RadiantePlatform;
 import com.mojang.blaze3d.platform.NativeImage;
 import java.io.IOException;
@@ -10,7 +11,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 
@@ -83,11 +83,10 @@ final class AddonIcons {
             Identifier id = Identifier.fromNamespaceAndPath("radiante", "addon_icon/" + addon.id());
             int width = image.getWidth();
             int height = image.getHeight();
-            NativeImage pixels = image;
-            // The texture owns the image from here on, and closes it with itself.
-            DynamicTexture texture = new DynamicTexture(() -> "Radiante addon icon " + addon.id(), pixels);
-            image = null;
-            Minecraft.getInstance().getTextureManager().register(id, texture);
+            // Where the texture owns the image from here on it closes it with itself; elsewhere the finally does.
+            if (VersionCompat.registerImageTexture(id, () -> "Radiante addon icon " + addon.id(), image)) {
+                image = null;
+            }
             return new Icon(id, width, height);
         } catch (IOException | RuntimeException e) {
             RadianteClient.LOGGER.warn("Addon '{}': its icon is not a PNG that can be read; shown without one",

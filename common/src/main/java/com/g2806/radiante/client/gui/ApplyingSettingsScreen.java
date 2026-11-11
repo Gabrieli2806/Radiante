@@ -2,6 +2,7 @@ package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.pipeline.Pipeline;
 import com.g2806.radiante.client.proxy.vulkan.RendererProxy;
+import com.g2806.radiante.compat.VersionCompat;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -11,7 +12,7 @@ import net.minecraft.network.chat.Component;
  * holds it for a few seconds (running it on another thread still left the window unresponsive: the native build and
  * the frame share the device and its queue); this puts a message on screen first so the game does not look hung.
  */
-final class ApplyingSettingsScreen extends Screen {
+final class ApplyingSettingsScreen extends VersionCompat.DrawnScreen {
 
     /** Frames drawn before rebuilding, so the message is on screen when the render thread stops. */
     private static final int FRAMES_BEFORE_BUILD = 2;
@@ -26,13 +27,13 @@ final class ApplyingSettingsScreen extends Screen {
     }
 
     @Override
-    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+    protected boolean extractOwnBackground(GuiGraphicsExtractor graphics) {
         graphics.fill(0, 0, this.width, this.height, 0xFF0E1010);
+        return true;
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+    protected void extractContents(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         int centerX = this.width / 2;
         int centerY = this.height / 2;
         drawIcon(graphics, centerX, centerY - 62);
@@ -51,8 +52,8 @@ final class ApplyingSettingsScreen extends Screen {
 
     /** The mod's icon (the one beside its name in the settings), centred on {@code centerX} with its top at y. */
     static void drawIcon(GuiGraphicsExtractor graphics, int centerX, int y) {
-        graphics.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, ICON, centerX - ICON_SIZE / 2, y, 0.0f,
-            0.0f, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE);
+        VersionCompat.blit(graphics, ICON, centerX - ICON_SIZE / 2, y, 0.0f, 0.0f, ICON_SIZE, ICON_SIZE, ICON_SIZE,
+            ICON_SIZE);
     }
 
     private static final net.minecraft.resources.Identifier ICON =
@@ -89,7 +90,7 @@ final class ApplyingSettingsScreen extends Screen {
         int shown = -1;
         try {
             while (worker.isAlive()) {
-                org.lwjgl.sdl.SDLEvents.SDL_PumpEvents();
+                VersionCompat.pumpWindowEvents();
                 int percent = RendererProxy.rebuildProgress();
                 if (percent != shown) {
                     shown = percent;

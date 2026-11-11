@@ -1,5 +1,6 @@
 package com.g2806.radiante.client.gui;
 
+import com.g2806.radiante.compat.VersionCompat;
 import com.g2806.radiante.mixin.gui.OptionInstanceAccessor;
 import com.mojang.blaze3d.platform.InputConstants;
 import java.util.ArrayList;
@@ -16,7 +17,6 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.navigation.ScreenDirection;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.input.KeyEvent;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.Identifier;
@@ -594,7 +594,7 @@ final class SettingsLayout {
         Identifier icon = texture("icon");
         int nameX = this.sidebarX + PAD;
         if (icon != null) {
-            g.blit(RenderPipelines.GUI_TEXTURED, icon, nameX, headerY, 0.0f, 0.0f, 24, 24, 24, 24);
+            VersionCompat.blit(g, icon, nameX, headerY, 0.0f, 0.0f, 24, 24, 24, 24);
             nameX += 30;
         }
         g.text(this.font, Component.literal("Radiante").withStyle(ChatFormatting.BOLD), nameX, headerY + 3, TEXT);
@@ -617,7 +617,7 @@ final class SettingsLayout {
                 drawIcon(g, section.icon(), textX, entryY + 1);
                 textX += 20;
             } else if (sectionIcon != null) {
-                g.blit(RenderPipelines.GUI_TEXTURED, sectionIcon, textX, entryY + 1, 0.0f, 0.0f, 16, 16, 16, 16);
+                VersionCompat.blit(g, sectionIcon, textX, entryY + 1, 0.0f, 0.0f, 16, 16, 16, 16);
                 textX += 20;
             }
             // A pack's name can be longer than the sidebar is wide.
@@ -772,7 +772,7 @@ final class SettingsLayout {
         int ih = icon.height();
         int w = iw >= ih ? ICON : Math.max(1, ICON * iw / ih);
         int h = ih >= iw ? ICON : Math.max(1, ICON * ih / iw);
-        g.blit(RenderPipelines.GUI_TEXTURED, icon.texture(), x + (ICON - w) / 2, y + (ICON - h) / 2, 0.0f, 0.0f, w, h,
+        VersionCompat.blit(g, icon.texture(), x + (ICON - w) / 2, y + (ICON - h) / 2, 0.0f, 0.0f, w, h,
             iw, ih, iw, ih);
     }
 

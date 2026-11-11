@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.render;
 
 import com.g2806.radiante.client.proxy.vulkan.TextureProxy;
+import com.g2806.radiante.compat.VersionCompat;
 import com.g2806.radiante.mixin.backend.VulkanGpuBufferAccessor;
 import com.mojang.renderpearl.api.buffers.GpuBuffer;
 import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
@@ -12,8 +13,7 @@ import it.unimi.dsi.fastutil.ints.IntArrayFIFOQueue;
 import java.nio.ByteBuffer;
 import java.util.IdentityHashMap;
 import java.util.Map;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.AbstractTexture;
+import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.resources.Identifier;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
@@ -222,20 +222,15 @@ public final class TextureTracker {
     }
 
     public static int idOf(Identifier location) {
-        AbstractTexture texture = Minecraft.getInstance().getTextureManager().getTexture(location);
-        GpuTexture gpuTexture = texture == null ? null : gpuTextureOrNull(texture);
+        GpuTexture gpuTexture = VersionCompat.gpuTextureOrNull(location);
         return gpuTexture == null ? 0 : idOf(gpuTexture);
     }
 
     /**
-     * The texture's GPU image, or null before it has one. {@code getTexture} throws in that case rather than
+     * The atlas's GPU image, or null before it has one. Asking Minecraft for it throws in that case rather than
      * returning null, and on NeoForge atlases are ticked while resources are still loading, before that point.
      */
-    public static GpuTexture gpuTextureOrNull(AbstractTexture texture) {
-        try {
-            return texture.getTexture();
-        } catch (IllegalStateException notCreatedYet) {
-            return null;
-        }
+    public static GpuTexture gpuTextureOrNull(TextureAtlas atlas) {
+        return VersionCompat.gpuTextureOrNull(atlas);
     }
 }

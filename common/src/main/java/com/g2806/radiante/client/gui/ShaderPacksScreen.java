@@ -4,18 +4,15 @@ import com.g2806.radiante.client.RadianteClient;
 import com.g2806.radiante.client.pipeline.Pipeline;
 import com.g2806.radiante.client.pipeline.ShaderPackLibrary;
 import com.g2806.radiante.client.pipeline.ShaderPackLibrary.Entry;
-import com.mojang.blaze3d.Blaze3D;
+import com.g2806.radiante.compat.VersionCompat;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
@@ -42,7 +39,7 @@ import java.util.function.Supplier;
  * the mod and the folder on the left, the packs as flat rows in the middle - picked with a click, switched to with a
  * second one, Use or Enter - what the picked pack is on the right, and flat buttons along the bottom.
  */
-public final class ShaderPacksScreen extends Screen {
+public final class ShaderPacksScreen extends VersionCompat.DrawnScreen {
 
     // The settings screen's own (SettingsLayout), so the screens read as one place.
     private static final int ACCENT = 0xFF8FE3C8;
@@ -150,7 +147,7 @@ public final class ShaderPacksScreen extends Screen {
             "screen.radiante.shader_packs.open_folder.tooltip", y, () -> {
                 Path folder = ShaderPackLibrary.folder();
                 if (folder != null) {
-                    Blaze3D.openPath(folder);
+                    VersionCompat.openFolder(folder);
                 }
             }));
         y += ENTRY;
@@ -370,8 +367,7 @@ public final class ShaderPacksScreen extends Screen {
     // ---- drawing ----
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
-        super.extractRenderState(g, mouseX, mouseY, partialTick);
+    protected void extractContents(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         drawSidebar(g, mouseX, mouseY);
         drawList(g, mouseX, mouseY);
         drawDetails(g);
@@ -390,7 +386,7 @@ public final class ShaderPacksScreen extends Screen {
     private void drawSidebar(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         g.fill(this.sidebarX, this.top, this.sidebarX + this.sidebarW, this.bottom, PANEL);
         int headerY = this.top + 6;
-        g.blit(RenderPipelines.GUI_TEXTURED, RADIANTE_ICON, this.sidebarX + PAD, headerY, 0.0f, 0.0f, 24, 24, 24, 24);
+        VersionCompat.blit(g, RADIANTE_ICON, this.sidebarX + PAD, headerY, 0.0f, 0.0f, 24, 24, 24, 24);
         int nameX = this.sidebarX + PAD + 30;
         g.text(this.font, Component.literal("Radiante").withStyle(ChatFormatting.BOLD), nameX, headerY + 3, TEXT);
         g.text(this.font, this.title, nameX, headerY + 14, TEXT_DIM);
@@ -641,10 +637,11 @@ public final class ShaderPacksScreen extends Screen {
             String name = entry.path().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9/._-]", "_");
             Identifier id = Identifier.fromNamespaceAndPath("radiante",
                 "shader_pack_icon/" + name + "_" + Integer.toHexString(Arrays.hashCode(entry.icon())));
-            NativeImage pixels = image;
-            image = null;
-            Minecraft.getInstance().getTextureManager().register(id,
-                new DynamicTexture(() -> "Radiante shader pack icon " + entry.path(), pixels));
+            // Where the texture owns the image from here on it closes it with itself; elsewhere the finally does.
+            if (VersionCompat.registerImageTexture(id, () -> "Radiante shader pack icon " + entry.path(),
+                image)) {
+                image = null;
+            }
             return id;
         } catch (IOException | RuntimeException e) {
             RadianteClient.LOGGER.warn("Shader pack {}: its icon is not a PNG that can be read", entry.path(), e);
