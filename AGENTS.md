@@ -28,6 +28,9 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 | `common/src/main/resources/assets/radiante/lang/` | Texts: `en_us`, `es_es`, `zh_cn` |
 | `native/src/prism/` | Renderer: `gpu/`, `render/` (modules, framework, pipeline), `middleware/` (JNI, one file per Java class) |
 | `native/src/shader/world/ray_tracing/internal/radiante-pt/` | The path tracer: `configs.json` (attributes, textures, passes), `world/` (the ray generation shader's `main()` is one file a stage in `world/main/`), `pt/`, `common/`, and `hooks/`, the hook points shader packs replace |
+| `native/src/prism/render/chunks*.cpp`, `chunk_*.cpp` | The sections: `chunks.cpp` (the grid and its slots), `chunk_geometry.cpp` (packing a section for the GPU), `chunk_build_scheduler.cpp` (building structures in batches), `chunks_wind.cpp` (the wind pass); what they share is in `chunks_internal.hpp` |
+| `native/src/prism/render/modules/world/ray_tracing/` | The ray tracing module: `ray_tracing_module.cpp` (set-up and build steps), `ray_tracing_passes.cpp`, `ray_tracing_frames.cpp`; what they share is in `ray_tracing_internal.hpp` |
+| `native/src/prism/render/modules/world/upscaler_common.hpp` | What the upscaler modules do the same way (when to drop history, taking or making their images) |
 | `native/include/` | The JNI headers `javac` generates from the Java classes with `native` methods; each middleware file includes its own, so a signature that differs between Java and C++ does not compile |
 | `native/extern/` | Third-party libraries, only what the build reads; `native/extern/README.md` lists versions, what was left out and what was changed here |
 | `native/src/tools/` | Offline checks: `check_shaders.py`, `check_example_packs.py`, `check_v1_layout.py`, `compile_pack.py`, `shader_pack_stage` and the small C++ tests (`native_tests` target, `ctest`) |
@@ -72,6 +75,7 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 - `./gradlew :common:test` runs the Java tests, which need no game. Besides the pure logic they keep hand-kept lists
   in step: `MixinTargetsTest` (every method, field and class a mixin names exists in this Minecraft),
   `ModuleLayoutTest` (a module's YAML image lists against its C++ `inputImageNum`/`outputImageNum`),
+  `PresetAssemblyTest` (every preset assembled from the modules' YAML holds together),
   `TunableDefaultsTest` (a slider's default and range against its attribute), `StagedOptionsTest` (option names
   the settings screen stages as text), `LangFilesTest`, `OptionsMigrationTest`. When one fails after your change,
   the change is incomplete: fix the other side, do not loosen the test.
@@ -125,6 +129,8 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 - Radiante's screens take their shared colours and measures from `gui/Theme`; a screen keeps only its own.
 - A shader helper with no bindings that more than one file needs goes in `native/src/shader/util/` once
   (`util/numeric.glsl` has `finiteFloat`, `finiteVec3` and `luminance709`), not in each file.
+- What assembling a pipeline asks of the renderer goes through `Pipeline.host` (`Pipeline.Host`), not a `native`
+  method called directly: a test puts its own answers there, which is how the presets are checked without a game.
 - Settings files are written with `SettingsFile.write`, never with `Files.writeString`: a crash in the middle of a
   save must leave the old file. Code that gives up on a file it cannot read calls `SettingsFile.keepDamaged` first.
 - A command or tool that changes the world or moves the player (`/radiante showcase`, `/radiante biome`) checks that

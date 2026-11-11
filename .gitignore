@@ -79,3 +79,6 @@ forge/*.launch
 # --- Python ----------------------------------------------------------------
 __pycache__/
 *.pyc
+
+# The log the tests write when they load the mod's classes.
+common/logs/

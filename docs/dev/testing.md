@@ -85,6 +85,7 @@ Settings tests write to the development `radiante/` files (`options.properties`,
   |---|---|
   | `MixinTargetsTest` | Every method, field and class a mixin names, against the Minecraft the build compiles with |
   | `ModuleLayoutTest` | A module's YAML image lists, against `inputImageNum`/`outputImageNum` in its C++ class |
+  | `PresetAssemblyTest` | Every preset, assembled from the modules' YAML: its connections name images that exist, of the same format, one source each |
   | `TunableDefaultsTest` | A slider's default and range, against its attribute in `configs.json` or the module's YAML |
   | `StagedOptionsTest` | The option names the settings screen stages as text, against the fields of `Options` |
   | `OptionsMigrationTest` | `BedrockRtxValues`, against radiante-pt's defaults |
