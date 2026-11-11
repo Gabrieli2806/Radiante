@@ -310,6 +310,16 @@ public class RadianteOptionsScreen extends SettingsRows {
         java.util.Map.entry(O + "quality", List.of(O + "dlss_mode", O + "upscaler_mode", O + "block_light_sampling",
             O + "volumetric_fog", O + "cloud_mode", O + "ray_bounces", O + "parallax", O + "volumetric_fog_samples")));
 
+    private static final String METERING_MODE = "render_pipeline.module.tone_mapping.attribute.exposure_metering_mode";
+    private static final String METERING_BEDROCK = METERING_MODE + ".bedrock_original";
+    private static final String METERING_INCIDENT = METERING_MODE + ".incident";
+
+    /** A pipeline attribute as the screen stands: changed in the Advanced settings and not applied yet, or applied. */
+    private String advancedValue(String module, String attribute) {
+        String staged = this.pendingAdvanced.get(AdvancedOptions.key(module, attribute));
+        return staged != null ? staged : PipelineSettings.getModuleValue(module, attribute);
+    }
+
     private static Component needs(String otherKey) {
         return Component.translatable("options.radiante.blocked.needs", Component.translatable(otherKey));
     }
@@ -344,6 +354,13 @@ public class RadianteOptionsScreen extends SettingsRows {
         boolean depthOfField = Boolean.TRUE.equals(this.pendingDepthOfField);
         boolean blockLights = staged("blockLightSampling", Options.blockLightSampling);
         boolean volumetricClouds = this.pendingCloudMode != null && this.pendingCloudMode.endsWith(".volumetric");
+        // Bedrock RTX's light meter (the default) has its own limits and speed; the exposure controls belong to the
+        // other meters, which the Advanced exposure settings offer.
+        boolean bedrockMeter = METERING_BEDROCK.equals(advancedValue(Pipeline.TONE_MAPPING_MODULE_NAME, METERING_MODE));
+        boolean exactTextures = "render_pipeline.true".equals(advancedValue(Pipeline.RAY_TRACING_MODULE_NAME,
+            "render_pipeline.module.ray_tracing.attribute.albedo_srgb_exact"));
+        boolean radianceCache = !"render_pipeline.false".equals(advancedValue(Pipeline.RAY_TRACING_MODULE_NAME,
+            "render_pipeline.module.ray_tracing.attribute.use_sharc"));
         String volumetricCloudMode = PipelineSettings.CLOUD_MODES.get(PipelineSettings.CLOUD_MODES.size() - 1);
         if (key.equals(SEAMLESS_SCOPE)) {
             return Boolean.TRUE.equals(this.pendingSeamlessGlass) ? null : needs(O + "seamless_glass");
@@ -387,6 +404,15 @@ public class RadianteOptionsScreen extends SettingsRows {
                 packToggleOn(RtAttributes.BEDROCK_ONE_BOUNCE_ATTRIBUTE) ? overriddenBy(O + "bedrock_one_bounce") : null;
             case "tunable.fsr_sharpness" -> this.pendingPreset == Presets.RT_NRD_FSR ? null
                 : needsValue(O + "preset", Presets.RT_NRD_FSR.key);
+            case "tunable.exposure_adaptation", "tunable.exposure_speed", "tunable.low_light_boost" ->
+                bedrockMeter ? overriddenBy(METERING_MODE) : null;
+            // Only the incident light meter has a limit of its own by day.
+            case "tunable.day_low_light_limit" -> METERING_INCIDENT.equals(advancedValue(
+                Pipeline.TONE_MAPPING_MODULE_NAME, METERING_MODE)) ? null : needsValue(METERING_MODE, METERING_INCIDENT);
+            case "tunable.texture_contrast" -> exactTextures
+                ? overriddenBy("render_pipeline.module.ray_tracing.attribute.albedo_srgb_exact") : null;
+            case "cache_deep_bounces", "bedrock_one_bounce" -> radianceCache ? null
+                : needs("render_pipeline.module.ray_tracing.attribute.use_sharc");
             default -> null;
         };
     }

@@ -29,7 +29,7 @@ qué una fila en gris no hace nada ahora mismo, y qué otros ajustes reemplaza.
 |---|---|
 | [Calidad](opciones/calidad-y-escalado.md) | Trazado de rayos sí/no, nivel de calidad, pipeline y escalador, resolución, generación de fotogramas, Reflex |
 | [Imagen](opciones/imagen.md) | Estilo de imagen, mapeo de tonos, exposición, nitidez, HDR, desenfoque de movimiento, profundidad de campo |
-| [Iluminación](opciones/iluminacion.md) | Brillos, luz rebotada y del cielo, muestreo de luces de bloque, ReSTIR, luz en la mano |
+| [Iluminación](opciones/iluminacion.md) | Brillos, translucidez, muestreo de luces de bloque, ReSTIR, luz en la mano, alcance de luz de entidades |
 | [Cielo y Agua](opciones/cielo-niebla-agua.md) | Atmósfera, nubes, estrellas, sol, lluvia, vidrio, ambiente de bioma, niebla, agua |
 | [Rendimiento](opciones/rendimiento.md) | Rebotes de luz, reflejos, caché, parallax, construcción de chunks |
 | [Otros y Depuración](opciones/otros-y-depuracion.md) | Contorno de bloque, overlays de otros mods; vistas de depuración y logs (Avanzado) |

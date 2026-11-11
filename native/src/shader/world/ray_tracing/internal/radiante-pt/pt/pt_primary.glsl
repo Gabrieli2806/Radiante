@@ -223,9 +223,7 @@ void tracePrimary(vec3 eyePos,
             g_glassReflectionOrigin = tracedOrigin + tracedDirection * rayState.hitT;
             g_glassReflectionDirection = normalize(rayState.normal);
             g_glassReflectionWeight = rayState.directLightRadiance;
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
             g_glassReflectionMedium = uint(round(rayLoadAux(rayState).y));
-#endif
         }
         cameraPath = cameraPath && rayIsPassThrough(rayState);
         raySetCameraPath(rayState, false);

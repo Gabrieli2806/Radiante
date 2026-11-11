@@ -14,8 +14,8 @@ across releases, is in the [shader packs design](../dev/shader-packs.md).
 
 A pack builds on Radiante PT and holds only what it changes. Two examples are in the source repository,
 [`examples/shaderpacks/`](../../examples/shaderpacks/): `radiante-example` (a colour grade, light through leaves,
-water and sky tints) and `inkwell` (a comic-book look: banded light, poster colours, ink outlines). `realistic`
-only gives Radiante PT's settings other defaults and grades the picture, the smallest way to make a look of your own.
+water and sky tints) and `inkwell` (a comic-book look: banded light, poster colours, ink outlines). A pack can also do no more
+than give Radiante PT's settings other defaults and grade the picture, the smallest way to make a look of your own.
 `pixelated-lighting`, which comes with Radiante as a built-in pack, moves where shadow and reflection rays start (below).
 
 1. Clone the repository and copy one of them to a new folder next to it.
@@ -174,7 +174,7 @@ settings, so the one in use is never ambiguous:
 **Radiante PT's settings** start at Radiante PT's defaults, the Bedrock RTX look, in a pack built on it. To start one
 somewhere else, list it in your `configs.json` with the same name and a new default; the rest of its entry comes from
 Radiante PT (`{"name": "render_pipeline.module.ray_tracing.attribute.sun_glow", "default_value": "0.5"}`). The player
-can still change it. The `realistic` example pack is made of such entries. Tone mapping (exposure, contrast,
+can still change it. The `mellow-port` example turns Wind on this way. Tone mapping (exposure, contrast,
 saturation, bloom) is not a pack's: change the picture in `hooks/post_grade.glsl` instead.
 
 The names of groups, descriptions and presets go in the same `lang/*.lang` files as the settings' names, in every

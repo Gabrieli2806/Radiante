@@ -1,7 +1,7 @@
 #ifndef VPT_PT_MEDIA_GLSL
 #define VPT_PT_MEDIA_GLSL
 
-// The water medium at a hit: the stretch of water the ray crossed to reach it, and (outside the Bedrock profile)
+// The water medium at a hit: the stretch of water the ray crossed to reach it, and
 // the view passing through a vertical side of water. Moved out of the default closest-hit shader unchanged; the
 // hit is read through g_hit.
 
@@ -23,13 +23,9 @@ void ptWaterMediumAtHit(uint bounce) {
             // straight down from the air: counted by bounces it passed for light filling the water, and a tank
             // behind glass glowed with the open sky along every long sight line through it.
             uint mediumBounce = g_viewBounce || rayCameraPath(mainRay) ? min(bounce, 1u) : bounce;
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
             float waterDistance = VPT_MEDIUM_DISTANCE_CLAMP != 0 ? min(g_hit.hitT, 50.0) : g_hit.hitT;
             waterMediumSegmentBedrock(waterDistance, waterMediumBounceDensity(mediumBounce), g_hit.rayOrigin,
                                       g_hit.rayDir, waterTransmittance, waterScatter);
-#else
-            waterMediumSegment(g_hit.hitT, waterMediumBounceDensity(mediumBounce), waterTransmittance, waterScatter);
-#endif
             float waterAmbient = max(waterMediumBounceAmbient(mediumBounce), 0.0);
             if (waterAmbient > 0.0) {
                 // Some light still reaches under an overhang sideways through the water around it. Asked at a random
@@ -58,50 +54,5 @@ void ptWaterMediumAtHit(uint bounce) {
     }
 }
 
-#if !defined(VPT_BEDROCK_ORIGINAL) || VPT_BEDROCK_ORIGINAL == 0
-// A side of the water (where a sheet of water stands against glass or an opening, as in a wall of aquarium
-// windows) is seen straight through, as in Bedrock RTX: the view carries on into the water, clear and sharp,
-// with what is behind it as the surface the denoiser sees. Refracting and shading it as a surface turned it
-// a milky smear. The medium still colours the stretch beyond.
-// Also for what the camera sees through a surface: through the top of the water down into a waterfall,
-// or reflected in it. Shaded as a surface there, a thin column of falling water trapped the view between its
-// sides (total internal reflection at a glancing angle, as in a light pipe) and showed flat sky blue instead
-// of what lies behind; the same water seen from above as the sea is shows what lies under it.
-// True when the view went through the side; the hit is then finished.
-bool ptWaterSidePassThrough(bool isWaterMaterial, vec3 planeGeoNormal, vec3 baseGeoNormal, uint bounce) {
-    bool viewThroughSide = bounce == 0u || rayCameraPath(mainRay) || g_viewBounce;
-    if (isWaterMaterial && abs(planeGeoNormal.y) <= 0.75 && viewThroughSide) {
-        mainRay.hitT = g_hit.hitT;
-        mainRay.coneWidth += mainRay.hitT * mainRay.coneSpread;
-        mainRay.origin = g_hit.rayOrigin + g_hit.rayDir * (g_hit.hitT + PASS_THROUGH_STEP);
-        ptClearReflectionRequest();
-        mainRay.hasPrevScenePos = 0u;
-        // Where the view goes into the water from the air, the side is the same water surface the top is, and
-        // looks the way the top does from above: clear, with the world reflected in it by Fresnel (rising at a
-        // glancing view). The reflection is traced by the ray generation shader once the view behind is done,
-        // as glass's is (ptRequestReflection).
-        // Only on entering: a curtain of falling water is one body of water to look through, not a stack of
-        // sheets. Shading every face it crossed, and drawing the pack's flowing texture on each, made it read
-        // as layered, streaked glass with lines that flickered as the view moved.
-        // The reflection is traced for the camera's own ray only; a view already reflected or refracted once
-        // goes on through.
-        if (!rayInWater(mainRay) && (bounce == 0u || rayCameraPath(mainRay))) {
-            vec3 sideIncident = normalize(g_hit.rayDir);
-            float sideCos = clamp(abs(dot(sideIncident, baseGeoNormal)), 0.0, 1.0);
-            float sideFresnel = clamp(vptInterfaceFresnel(sideCos, 1.0 / 1.333), 0.0, 1.0);
-            ptRequestReflection(reflect(sideIncident, baseGeoNormal), mainRay.throughput * sideFresnel, 0u);
-            mainRay.throughput *= 1.0 - sideFresnel;
-        }
-        ptStoreMaterial(vec4(1.0), vec3(0.02), 1.0, 0.0, 1.0, 1.0, 0.0);
-        raySetInWater(mainRay, !rayInWater(mainRay));
-        raySetNoisy(mainRay, false);
-        raySetContinue(mainRay, true);
-        raySetPassThrough(mainRay, true);
-        raySetStop(mainRay, false);
-        return true;
-    }
-    return false;
-}
-#endif
 
 #endif // VPT_PT_MEDIA_GLSL

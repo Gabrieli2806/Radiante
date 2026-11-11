@@ -27,13 +27,9 @@
 // Bedrock compatibility: the colour of the light a block casts is a little desaturated (it has an emissive
 // desaturation setting; the amount is INFERRED by eye). Kept light: at a half, lava and fire looked white and a
 // redstone torch cast almost no red. The glowing surface itself keeps its texture's colour.
-// The experimental profile takes Bedrock RTX's own amount, 0.1 (calibrated to Bedrock RTX), for the glow as much
+// Radiante PT takes Bedrock RTX's own amount, 0.1 (calibrated to Bedrock RTX), for the glow as much
 // as for the light it casts, as Bedrock does.
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
 const float VPT_EMISSIVE_DESATURATION = 0.1;
-#else
-const float VPT_EMISSIVE_DESATURATION = 0.15;
-#endif
 
 vec3 vptEmissiveColour(vec3 colour) {
     float luminance = dot(colour, vec3(0.2126, 0.7152, 0.0722));
@@ -43,7 +39,7 @@ vec3 vptEmissiveColour(vec3 colour) {
 // Small lights (torches, lanterns, candles, fire) are a few small faces, so they cast far less than a glowing block
 // whose faces are whole: they lit their surroundings weakly next to glowstone. Lights under half a block face
 // (a triangle of a full face) are strengthened, up to 5x, toward the light a full block would cast.
-// An exact light (a Bedrock pack's glow, under the experimental profile) casts the light it shows, as in Bedrock
+// An exact light (a Bedrock pack's glow) casts the light it shows, as in Bedrock
 // RTX, where a glowing surface lights the world only through the rays that find it.
 #ifdef RADIANTE_HOOK_BLOCK_LIGHT_DEFAULT
 vec3 vptCastLight(vec4 radiance, float area) {
@@ -71,18 +67,14 @@ vec3 vptCastLight(vec4 radiance, float area) {
 /**
  * How a surface returns the light of one of Bedrock's point lights (vptIsPointLight) towards viewDir, cosine
  * included: as Bedrock RTX shades them, its diffuse (Burley) and specular (GGX) of the direct sun with the roughness
- * widened to r + (1 - r) sqrt(1.5 r) / 2. The other lights return mat's diffuse alone (Bedrock finds them through its
- * diffuse rays), and so do point lights outside the experimental profile, where there are none.
+ * widened to r + (1 - r) sqrt(1.5 r) / 2. The other lights return the diffuse of mat alone (Bedrock finds them through its
+ * diffuse rays).
  */
 vec3 vptPointLightBrdf(LabPBRMat mat, float diffuseWeight, vec3 viewDir, vec3 normal, vec3 dir) {
-#if VPT_BEDROCK_SPECULAR
     LabPBRMat wide = mat;
     float r = clamp(mat.roughness, 0.0, 1.0);
     wide.roughness = max(r + (1.0 - r) * 0.5 * sqrt(1.5 * r), 0.01);
     return bedrockSolarBrdf(wide, viewDir, normal, dir);
-#else
-    return mat.albedo * (diffuseWeight / PI) * max(dot(dir, normal), 0.0);
-#endif
 }
 
 /**
@@ -98,9 +90,7 @@ bool vptBlockLightAlreadyCounted(vec3 originPos, vec3 hitPos) {
 /** The diffuse share of a surface's reflection; the only part lit by the sampled lights. */
 float vptBlockLightDiffuseWeight(LabPBRMat mat) {
     float weight = (1.0 - mat.metallic) * (1.0 - mat.transmission);
-#if VPT_BEDROCK_SPECULAR
     weight *= max(1.0 - mat.emission, 0.0); // As Bedrock RTX weights it (observed).
-#endif
     return weight;
 }
 
@@ -133,11 +123,9 @@ vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, v
     int slotCount = lean ? vptGatherNearLightSlots(worldPos, slots) : vptGatherLightSlots(worldPos, slots);
     if (slotCount == 0) { return vec3(0.0); }
     int candidates = lean ? VPT_BLOCK_LIGHT_LEAN_CANDIDATES : VPT_BLOCK_LIGHT_CANDIDATES;
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     // Reflected/refracted views have no primary ReSTIR history. More unshadowed RIS
     // candidates reduce emitter-selection variance; normalization below preserves energy.
     if (!lean && g_viewBounce) { candidates = max(candidates, 16); }
-#endif
 
     vec3 diffuse = mat.albedo * (diffuseWeight / PI);
     vec3 cameraPos = vec3(worldUBO.cameraPos.xyz);

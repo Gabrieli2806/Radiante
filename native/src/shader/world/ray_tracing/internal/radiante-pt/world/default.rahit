@@ -91,8 +91,7 @@ void main() {
                 return;
             }
         }
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
-        // The experimental Bedrock profile (see default.rchit): what the camera sees goes into glass, ice, slime or
+        // Radiante PT (see default.rchit): what the camera sees goes into glass, ice, slime or
         // honey only by a face turned towards it and out only by one turned away; the faces in between (the inner
         // cube of a slime or honey block, the far shell once out) are left out of its way, as Bedrock leaves them
         // out of its view's traversal. Met one by one by the hit shader, they used up the camera's steps: through a
@@ -105,7 +104,6 @@ void main() {
                 return;
             }
         }
-#endif
 
         float coneRadiusWorld = mainRay.coneWidth + gl_HitTEXT * mainRay.coneSpread;
         vec3 dposdu, dposdv;

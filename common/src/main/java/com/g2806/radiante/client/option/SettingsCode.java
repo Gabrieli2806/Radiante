@@ -43,7 +43,7 @@ public final class SettingsCode {
 
     static {
         for (String key : new String[] {"biomeAmbiance", "firstPersonShadow", "heldItemLight", "rainWetness",
-            "vanillaSunPath", "moonFollowsSun", "vanillaCelestialOrientation", "blockLightSampling", "glowingPixelLight", "unlitBlockLight"}) {
+            Options.OLD_SUN_PATH_KEY, "moonFollowsSun", "vanillaCelestialOrientation", "blockLightSampling", "glowingPixelLight", "unlitBlockLight"}) {
             OPTIONS.put(key, null);
         }
         for (String key : new String[] {"sunPathTilt", "moonPathTilt"}) {
@@ -291,14 +291,16 @@ public final class SettingsCode {
      */
     public static boolean apply(Parsed parsed) {
         // The old sun path switch goes first: the path settings, in a code that has them, say more exactly.
-        String oldSunPath = parsed.options.get("vanillaSunPath");
+        String oldSunPath = parsed.options.get(Options.OLD_SUN_PATH_KEY);
         if (oldSunPath != null) {
-            Options.importValue("vanillaSunPath", oldSunPath);
+            Options.importValue("sunPathTilt", Boolean.parseBoolean(oldSunPath) ? "0"
+                : String.valueOf(Options.SUN_PATH_TILTED_DEGREES));
+            Options.importValue("sunPathAzimuth", "0");
         }
         String emission = parsed.options.get("blockEmissionOverrides");
         if (emission != null) BlockEmissionControls.apply(EmissionOverrides.parse(emission));
         parsed.options.forEach((key, value) -> {
-            if (!key.equals("vanillaSunPath")) {
+            if (!key.equals(Options.OLD_SUN_PATH_KEY)) {
                 Options.importValue(key, value);
             }
         });

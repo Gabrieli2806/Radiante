@@ -217,11 +217,10 @@ public final class PipelineSettings {
 
     /**
      * Whether block lights cast what their Bedrock MER maps show (EmissionTiles.uploadFromMer): by default they show
-     * that glow and light the world with it; with either switch off the light levels' scale is kept.
+     * that glow and light the world with it; with Bedrock Pack Materials off the light levels' scale is kept.
      */
     public static boolean castsBedrockGlow() {
-        return isShaderPackToggleOn(RtAttributes.BEDROCK_MATERIALS_ATTRIBUTE)
-            && isShaderPackToggleOn(RtAttributes.BEDROCK_ORIGINAL_ATTRIBUTE);
+        return isShaderPackToggleOn(RtAttributes.BEDROCK_MATERIALS_ATTRIBUTE);
     }
 
     /** The wind's strength for this frame (WorldUBO.windStrength): the slider, or 0 with wind off or not offered. */

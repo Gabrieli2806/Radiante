@@ -50,6 +50,11 @@ RADIANTE_DEV_PRESCRIPT="100:testworld=RadianteSmoke" RADIANTE_DEV_SCRIPT="400:qu
   development folder, and the next start finds it.
 - Use `testworld=`, not `join=`: `join=` hangs on the experimental-features prompt, `testworld=` answers it.
 - Scripts stop by themselves in a world whose name does not start with `Radiante`.
+- `RADIANTE_DEV_SCRIPT="@<file>"` reads the script from that file, for one too long for an environment variable.
+  Its steps may be on lines of their own.
+- `opt=<field>=<value>` sets a Radiante option for the run. It goes through the option's own setter when it has one
+  (`set<Field>(value, write)`), so options the renderer is told about (`collectChunkEmission`,
+  `entityLightReach`) take effect.
 - The other actions (`hud=`, `fov=`, `slot=`, `debug=`, `rejoin=`...) are listed in `DevAutomation.run`.
 
 ## Smoke test
@@ -94,6 +99,26 @@ so what a cheaper setting saves can be seen next to what it does to the picture.
   `nvidia-smi` that the GPU is idle before starting.
 - Compare variants within one run only.
 
+## Settings sweep
+
+```sh
+python dev/smoke/settings.py
+```
+
+checks that every setting does something. It starts a development client and, for each setting listed per view in
+`dev/smoke/settings.json`, takes a picture of the unchanged view, changes the setting, waits, takes a picture, puts
+the setting back, waits and takes the unchanged picture again. A setting whose picture differs from both unchanged
+ones by no more than they differ from each other does nothing in that view. It writes `report.md` and
+`summary.json` to `build/settings-sweep/<time>/`. It reports rather than fails: what it finds is for a person to
+read. A full run is about an hour. Like the smoke test, it backs up the development settings and puts them back.
+
+- `--only <view>[,<view>...]` runs only those views; `--list` prints the tests and stops.
+- `--report <folder>` writes the report of a run already made again, from its output folder.
+- `--out <folder>` chooses the output folder, `--loader neoforge` (or `forge`) another loader's client, and
+  `--sweep <file.json>` another sweep file.
+- A view must show the thing its settings change. The test world `RadianteSmokeSuite` is in a biome where it never
+  rains, so the rain view shows nothing there.
+
 ## Shaders under every setting
 
 The path tracer is compiled in game, with the player's settings as defines, so a shader that only breaks with one
@@ -125,7 +150,8 @@ Settings tests write to the development `radiante/` files (`options.properties`,
 ## Unit tests
 
 - `./gradlew build` (or `./gradlew :common:test` alone) runs the Java tests in `common/src/test`: code that needs
-  no running game, such as the Bedrock pack reader, shader pack settings and how settings files are written.
+  no running game, such as the Bedrock pack reader, shader pack settings, shared settings codes (`SettingsCodeTest`)
+  and how settings files are written.
 - Some of them keep two hand-kept lists in step, and fail when a change was made to one side only:
 
   | Test | What it compares |
@@ -135,7 +161,7 @@ Settings tests write to the development `radiante/` files (`options.properties`,
   | `PresetAssemblyTest` | Every preset, assembled from the modules' YAML: its connections name images that exist, of the same format, one source each |
   | `TunableDefaultsTest` | A slider's default and range, against its attribute in `configs.json` or the module's YAML |
   | `StagedOptionsTest` | The option names the settings screen stages as text, against the fields of `Options` |
-  | `OptionsMigrationTest` | `BedrockRtxValues`, against radiante-pt's defaults |
+  | `BedrockRtxValuesTest` | The `BedrockRtxValues` table, against radiante-pt's defaults in `configs.json` and `tone_mapping.yaml` |
   | `LangFilesTest` | The keys and `%s` placeholders of the three lang files |
 
 - The native tests in `native/src/tools/` need no game and no GPU. Build them with the `native_tests` target and

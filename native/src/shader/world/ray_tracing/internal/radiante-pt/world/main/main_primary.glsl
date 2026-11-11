@@ -141,11 +141,9 @@
         reflection.direction = g_glassReflectionDirection;
         reflection.radiance = vec3(0.0);
         reflection.throughput = g_glassReflectionWeight;
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
         raySetInWater(reflection, (g_glassReflectionMedium & 1u) != 0u);
         raySetInGlass(reflection, (g_glassReflectionMedium & 2u) != 0u);
         raySetGlassParentWater(reflection, (g_glassReflectionMedium & 4u) != 0u);
-#endif
         reflection.seed = xxhash32(uvec3(saved.seed, 0x51ED27u, worldUBO.seed));
         raySetLobeType(reflection, 1u);
         raySetCameraPath(reflection, false);

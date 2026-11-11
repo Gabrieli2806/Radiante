@@ -50,9 +50,6 @@ enum Tunable {
     // How far the textures' stored colours are converted to linear light: 100% is the full conversion (2.2).
     TEXTURE_CONTRAST(null, "render_pipeline.module.ray_tracing.attribute.albedo_gamma", 0.022, 46, 109, 100,
         Format.PERCENT),
-    // How much of the sky a window shows on top of what is behind it.
-    GLASS_REFLECTIONS(null, "render_pipeline.module.ray_tracing.attribute.glass_reflection", 0.01, 0, 100, 100,
-        Format.PERCENT),
     // How much of the pack's water texture shows over the surface: Bedrock RTX's faint pattern, or clear water at 0.
     WATER_TEXTURE(null, "render_pipeline.module.ray_tracing.attribute.water_texture_layer", 0.01, 0, 100, 10,
         Format.PERCENT),
@@ -88,9 +85,6 @@ enum Tunable {
     WIND_STRENGTH(null, RtAttributes.WIND_STRENGTH_ATTRIBUTE, 0.01, 0, 200, 100, Format.PERCENT),
     STARS(Pipeline.POST_RENDER_MODULE_NAME, "render_pipeline.module.post_render.attribute.star_count", 100.0, 1, 200,
         30, Format.NUMBER),
-    BOUNCE_LIGHT(null, "render_pipeline.module.ray_tracing.attribute.bounce_light_boost", 0.01, 50, 200, 150,
-        Format.PERCENT),
-    SKY_LIGHT(null, "render_pipeline.module.ray_tracing.attribute.sky_light_boost", 0.01, 50, 400, 180, Format.PERCENT),
     // How much sun leaves and plants let through from behind, and how far round ice and snow it wraps.
     TRANSLUCENCY(null, "render_pipeline.module.ray_tracing.attribute.translucency", 0.01, 0, 200, 100, Format.PERCENT),
     SUN_GLOW(null, "render_pipeline.module.ray_tracing.attribute.sun_glow", 0.0008, 0, 300, 100, Format.PERCENT),
@@ -111,11 +105,6 @@ enum Tunable {
     WATER_DENSITY(null, "render_pipeline.module.ray_tracing.attribute.water_density", 0.01, 0, 400, 100,
         Format.PERCENT),
     WATER_GOD_RAYS(null, "render_pipeline.module.ray_tracing.attribute.water_god_rays", 0.0012, 0, 400, 100,
-        Format.PERCENT),
-    // How bright the picture is kept by day and at night, against what the light meter would make it.
-    EXPOSURE_DAY(null, "render_pipeline.module.ray_tracing.attribute.exposure_day_scale", 0.01, 10, 150, 48,
-        Format.PERCENT),
-    EXPOSURE_NIGHT(null, "render_pipeline.module.ray_tracing.attribute.exposure_night_scale", 0.01, 10, 150, 65,
         Format.PERCENT),
     // How far the eye may open by day at most: low keeps sealed rooms dark, high brightens rooms lit by a window.
     DAY_LOW_LIGHT_LIMIT(null, "render_pipeline.module.ray_tracing.attribute.exposure_day_max", 0.01, 50, 3200, 250,

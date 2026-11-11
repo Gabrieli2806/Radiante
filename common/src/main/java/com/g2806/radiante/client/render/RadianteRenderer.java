@@ -246,7 +246,6 @@ public final class RadianteRenderer {
         try {
             Pipeline.migrateStoredDefaults();
             Pipeline.loadPipeline();
-            com.g2806.radiante.client.option.OptionsMigration.applyAfterPipelineLoad();
         } catch (RuntimeException e) {
             LOGGER.error("Radiante: the stored pipeline settings could not be applied; using the default pipeline", e);
             try {

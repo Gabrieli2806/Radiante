@@ -4,8 +4,8 @@
 
 With a Bedrock pack enabled, Radiante gets its fog, water and light block glow from the pack. Without any Bedrock pack
 it used Radiante's own values, which look different. It now falls back to built-in values when no Bedrock pack is
-enabled. (This was first done for the Bedrock RTX (Enhanced) renderer profile; profiles are gone and radiante-pt's
-defaults are that look, so the fallback is always used.) This page lists what differs, what
+enabled. (There are no renderer profiles and no switch for this: the Bedrock RTX (Enhanced) look is simply
+radiante-pt's defaults, so the fallback is always used.) This page lists what differs, what
 was changed and what still needs a pack.
 
 ## Method
@@ -33,7 +33,7 @@ converted zip (they are short: read the PNGs with Pillow and apply the formula a
   (`readPackFog`, then `styled` for the air and the pack-water path for water, `asPacked` under Bedrock's own mode). The
   result matches having a converted pack with this fog enabled.
 - Light blocks (`PbrAtlases.build`, `EmissionTiles.defaultMer`): when Bedrock glow is cast
-  (`Pipeline.castsBedrockGlow`), there is no `radiante:bedrock_mer/` map in any enabled pack, and a light block's sprite
+  (`PipelineSettings.castsBedrockGlow`, which is Bedrock Pack Materials), there is no `radiante:bedrock_mer/` map in any enabled pack, and a light block's sprite
   is still vanilla's (colour from `vanilla`, specular map absent or Radiante's built-in one), a MER map is written for
   the sprite. Its green² adds up to the pack's `glow` over the sprite. Radiante's existing derived emission decides
   which texels glow and how much more than each other. That map then goes through `softenMer` and `uploadFromMer` like a
@@ -191,8 +191,8 @@ an estimate from the code, not a measurement.
   stems): Radiante finds no glowing texels in them, so they stay dark. The amounts involved are tiny (G² below 0.002).
 - **Dark sprites** (a light block the pack gives no glow): they cast nothing, as with the pack, but still show
   Radiante's surface glow instead of the authored zero.
-- **Bedrock glow off:** with Bedrock Pack Materials or Bedrock RTX's mode turned off, the light block glow table is not
-  used; the fog and water table still is.
+- **Bedrock glow off:** with Bedrock Pack Materials turned off, the light block glow table is not used; the fog and
+  water table still is.
 
 ## Not checked in game
 

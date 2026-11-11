@@ -41,7 +41,7 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 | `examples/shaderpacks/` | Example packs built on radiante-pt (`./gradlew shaderPackExamples`); the design is `docs/dev/shader-packs.md`, the author guide `docs/en/shader-packs.md`, the roadmap issue #55 |
 | `docs/en`, `docs/es` | Player documentation (same pages in both languages), one page per settings section in `settings/` (`opciones/`) |
 | `docs/dev` | Developer documentation, English only: building, testing, architecture, shader pack design |
-| `dev/smoke/` | The visual smoke test (`smoke.py`, `scenes.json`) and the measurement of what settings cost on the GPU (`bench.py`, `bench.json`) |
+| `dev/smoke/` | The visual smoke test (`smoke.py`, `scenes.json`), the measurement of what settings cost on the GPU (`bench.py`, `bench.json`) and the settings sweep, which finds settings that change nothing in the picture (`settings.py`, `settings.json`) |
 | `changelog.md` | What changed per version (open work is in GitHub Issues) |
 
 ## Building
@@ -81,8 +81,10 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
   `ModuleLayoutTest` (a module's YAML image lists against its C++ `inputImageNum`/`outputImageNum`),
   `PresetAssemblyTest` (every preset assembled from the modules' YAML holds together),
   `TunableDefaultsTest` (a slider's default and range against its attribute), `StagedOptionsTest` (option names
-  the settings screen stages as text), `LangFilesTest`, `OptionsMigrationTest`. When one fails after your change,
-  the change is incomplete: fix the other side, do not loosen the test.
+  the settings screen stages as text), `LangFilesTest`, `BedrockRtxValuesTest` (the `BedrockRtxValues` table
+  against radiante-pt's defaults in `configs.json` and `tone_mapping.yaml`). `SettingsCodeTest` covers the shared
+  settings codes. When one fails after your change, the change is incomplete: fix the other side, do not loosen
+  the test.
 - The native tests: `cmake --build <build dir> --config Release --target native_tests`, then
   `ctest --test-dir <build dir> -C Release --output-on-failure`.
 - `python dev/smoke/smoke.py` is the visual smoke test: a client walked through the showcase gallery, with
@@ -91,6 +93,10 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 - Measure a performance change with `python dev/smoke/bench.py`, with nothing else using the GPU (check
   `nvidia-smi`): its last variant repeats the default, and a run where that differs from the first is not a
   measurement. Say the numbers, and what the change does to the picture.
+- `python dev/smoke/settings.py` is the settings sweep: for each setting listed per view in
+  `dev/smoke/settings.json` it compares the picture with the setting changed against the unchanged view before and
+  after, and reports the settings that do nothing there (`build/settings-sweep/<time>/report.md`; about an hour,
+  `--only <view>` for less). Run it after removing or rewiring settings; it reports, it does not fail.
 - A scripted run switches pipelines with `pipe=preset:<key>`, the key being the translation key
   (`render_pipeline.preset.rt_nrd_fsr`, `rt_nrd_xess`, `rt_nrd`, `rt_dlss`, `rt_nrd_dlss`), not the enum's
   name: an unknown key falls back to the best pipeline without saying so. The GPU times of `fps=` name the

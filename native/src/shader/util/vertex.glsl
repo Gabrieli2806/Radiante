@@ -32,7 +32,7 @@ const uint PLANT_SURFACE_BIT = 1u << 21u;
 const uint PANE_SURFACE_BIT = 1u << 22u;
 const uint PANE_CAP_UP_BIT = 1u << 23u;
 const uint PANE_CAP_DOWN_BIT = 1u << 24u;
-// Ice, slime and honey blocks: seen through as glass is by the experimental Bedrock profile, as Bedrock RTX draws
+// Ice, slime and honey blocks: seen through as glass is by Radiante PT, as Bedrock RTX draws
 // every block of its blended layer.
 const uint BLEND_SURFACE_BIT = 1u << 25u;
 // A light block in a state that gives no light while drawing the sprites its lit states glow with (unlit redstone

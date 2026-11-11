@@ -8,17 +8,15 @@ Los valores por defecto son los de radiante-pt, el aspecto Bedrock RTX ([bedrock
 
 | Control | Rango / Valores | Por defecto | Qué hace |
 |---|---|---|---|
-| **Estilo de Imagen** | Natural · Bedrock · Vívido · Personalizado | Bedrock | Ajusta Saturación, Luz Rebotada, Luz del Cielo y la curva de tonos a la vez. Bedrock es el aspecto por defecto. Ver [Estilos de imagen](#estilos-de-imagen) abajo. |
+| **Estilo de Imagen** | Natural · Bedrock · Vívido · Personalizado | Bedrock | Ajusta la curva de tonos y la Saturación a la vez. Bedrock es el aspecto por defecto. Ver [Estilos de imagen](#estilos-de-imagen) abajo. |
 | **Mapeo de Tonos** | Bedrock RTX · PBR Neutral · ACES · Reinhard | Bedrock RTX | Cómo se ajusta la luz intensa a lo que la pantalla puede mostrar. Bedrock RTX es la curva propia de Bedrock, construida con el histograma de la imagen; PBR Neutral mantiene los colores fieles; ACES es más cinematográfico y con más contraste; Reinhard es suave y plano. |
 | **Saturación** | 50% – 200% | 100% | Qué tan colorida es la imagen. |
-| **Contraste de Texturas** | 46% – 109% | 100% | Qué tan profundos y contrastados se ven los colores de bloques y entidades bajo la luz. 100% coincide con Bedrock RTX; menos da el aspecto más pálido y plano de versiones anteriores. |
-| **Adaptación del Ojo** | 0% – 100% | 100% | Cuánto se adapta la exposición a lo que miras. Menos mantiene los cuartos oscuros y el día brillante; 100% siempre iguala la imagen. |
-| **Velocidad de Adaptación del Ojo** | 5% – 250% | 100% | Qué tan rápido sigue la exposición al pasar de la oscuridad a la luz o al revés. Menos deja ver cómo se ajustan los ojos por un momento; 100% es casi instantáneo. |
+| **Contraste de Texturas** | 46% – 109% | 100% | Qué tan profundos y contrastados se ven los colores de bloques y entidades bajo la luz. 100% coincide con Bedrock RTX; menos da el aspecto más pálido y plano de versiones anteriores. En gris mientras Texturas sRGB Exactas (Avanzado) está activado, el valor por defecto. |
+| **Adaptación del Ojo** | 0% – 100% | 100% | Cuánto se adapta la exposición a lo que miras. Menos mantiene los cuartos oscuros y el día brillante; 100% siempre iguala la imagen. En gris con la medición de Bedrock RTX (ver [abajo](#filas-de-exposición-en-gris)). |
+| **Velocidad de Adaptación del Ojo** | 5% – 250% | 100% | Qué tan rápido sigue la exposición al pasar de la oscuridad a la luz o al revés. Menos deja ver cómo se ajustan los ojos por un momento; 100% es casi instantáneo. En gris con la medición de Bedrock RTX. |
 | **Exposición** | -3.0 EV – +3.0 EV | +0.0 EV | Brillo general de la imagen, en pasos fotográficos. |
-| **Refuerzo en Poca Luz** | 1% – 200% | 100% | Cuánto puede aclarar la exposición una escena oscura. Más deja ver mejor en cuevas y de noche; menos mantiene oscuro lo oscuro. 100% es el límite de Bedrock RTX. |
-| **Exposición de Día** | 10% – 150% | 48% | Qué tan brillante se mantiene la imagen de día, frente a lo que daría solo el medidor de luz. Menos es más oscuro. |
-| **Exposición de Noche** | 10% – 150% | 65% | Lo mismo de noche. |
-| **Límite en Oscuridad de Día** | 50% – 3200% | 250% | Cuánto puede abrirse la exposición de día en un lugar oscuro. Bajo mantiene oscuros los cuartos cerrados; alto aclara cuartos iluminados solo por una ventana. |
+| **Refuerzo en Poca Luz** | 1% – 200% | 100% | Cuánto puede aclarar la exposición una escena oscura. Más deja ver mejor en cuevas y de noche; menos mantiene oscuro lo oscuro. 100% es el límite de Bedrock RTX. En gris con la medición de Bedrock RTX. |
+| **Límite en Oscuridad de Día** | 50% – 3200% | 250% | Cuánto puede abrirse la exposición de día en un lugar oscuro. Bajo mantiene oscuros los cuartos cerrados; alto aclara cuartos iluminados solo por una ventana. En gris salvo que el modo de medición sea Luz incidente (Bedrock). |
 | **Nitidez de FSR** | 0% – 100% | 70% | Cuánto afila FSR la imagen escalada. Más es más nítido pero puede mostrar halos en los bordes. Solo con RT-FSR. |
 | **Salida HDR** | Activado / Desactivado | Desactivado | HDR en una pantalla HDR; los controles de brillo aparecen debajo al activarlo. Ver [HDR](../hdr.md). |
 | **Desenfoque de Movimiento** | Activado / Desactivado | Desactivado | Difumina lo que se mueve en pantalla a lo largo de su movimiento, como una cámara. Cambiarlo recompila los shaders (un breve tirón al aplicar). |
@@ -34,16 +32,27 @@ histograma de la imagen) y la exposición se mide sobre la luz que llega a las s
 vista, así que los sliders de exposición se comportan algo distinto que con las curvas PBR Neutral,
 ACES o Reinhard.
 
+## Filas de exposición en gris
+
+Algunas filas salen en gris con los valores por defecto, y el panel de la derecha dice por qué:
+
+- **Adaptación del Ojo**, **Velocidad de Adaptación del Ojo** y **Refuerzo en Poca Luz** salen en gris mientras el
+  **Modo de Medición de Exposición** (Avanzado) es **Luz incidente, Bedrock RTX**, el valor por defecto: la medición
+  de Bedrock RTX tiene sus propios límites y su propia velocidad.
+- **Límite en Oscuridad de Día** sale en gris salvo que el modo de medición sea **Luz incidente (Bedrock)**.
+- **Contraste de Texturas** sale en gris mientras **Texturas sRGB Exactas** (Avanzado) está activado, el valor por
+  defecto.
+
 ## Estilos de imagen
 
-**Estilo de Imagen** ajusta a la vez Mapeo de Tonos, Saturación, Luz Rebotada y Luz del Cielo. Cambiar uno de ellos a
-mano muestra **Personalizado**.
+**Estilo de Imagen** ajusta a la vez Mapeo de Tonos y Saturación, y nada más. Cambiar uno de ellos a mano muestra
+**Personalizado**.
 
-| Estilo | Mapeo de Tonos | Saturación | Luz Rebotada | Luz del Cielo | Aspecto |
-|---|---|---|---|---|---|
-| **Natural** | PBR Neutral | 100% | 100% | 100% | Físicamente correcto, sin nada ajustado encima |
-| **Bedrock** (por defecto) | Bedrock RTX | 100% | 150% | 180% | Bedrock RTX: sombras y luz rebotada más claras |
-| **Vívido** | ACES | 130% | 150% | 150% | Más contraste y color |
+| Estilo | Mapeo de Tonos | Saturación | Aspecto |
+|---|---|---|---|
+| **Natural** | PBR Neutral | 100% | Colores fieles |
+| **Bedrock** (por defecto) | Bedrock RTX | 100% | La curva propia de Bedrock RTX |
+| **Vívido** | ACES | 130% | Más contraste y color |
 
 | Natural | Bedrock | Vívido |
 |---|---|---|

@@ -53,22 +53,9 @@
             float waterDistance = selectedFirstHit.cameraWaterDistance;
             vec3 waterTransmittance;
             vec3 waterScatter;
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
             waterMediumSegmentBedrock(waterDistance >= INF_DISTANCE || VPT_MEDIUM_DISTANCE_CLAMP == 0 ?
                                           waterDistance : min(waterDistance, 50.0),
                                       VPT_WATER_DENSITY, vec3(0.0), orgDirection, waterTransmittance, waterScatter);
-#else
-            // A pool is clearer than the sea its biome's coefficients describe (waterBodyShallowness).
-            float cameraWaterDensity = VPT_WATER_DENSITY * mix(1.0, UNDERWATER_SMALL_BODY_DENSITY, waterBodyShallowness());
-            if (waterDistance >= INF_DISTANCE) {
-                waterMediumSegmentUnclamped(waterDistance, cameraWaterDensity, waterTransmittance, waterScatter);
-            } else {
-                waterMediumSegment(waterDistance, cameraWaterDensity, waterTransmittance, waterScatter);
-            }
-            // By day what lies behind the water was lit by daylight that came down through the water above the camera
-            // first (underwaterDaylightColumn); the water's own glow already is (waterMediumIncomingLight).
-            waterTransmittance *= underwaterDaylightColumn();
-#endif
             // Lit by the sky above: the camera's water under a roof or in a cave does not glow with it.
             waterScatter *= mix(0.35, 1.0, volumetricSkyVisibility(eyePos, false));
             waterScatter += waterGodRays(eyePos, orgDirection, waterDistance);
@@ -82,17 +69,11 @@
                 mainRay.radiance = mainRay.radiance * waterTransmittance + waterScatter;
                 composeFogTransmittance = waterComposeTransmittance;
                 composeFogAdditive = waterScatter;
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
                 composeFogTransmissionRGB = waterTransmittance;
                 composeFogIsRgb = true;
-#endif
             }
         }
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
         if (skyUBO.cameraSubmersionType == 1 && !waterMediumActive()) {
-#else
-        if (skyUBO.cameraSubmersionType == 1) {
-#endif
             // How far one sees under water: past a few dozen blocks everything fades into the water's own colour
             // (a sea blue), lit as the water around the camera is. Without it a clear ocean
             // showed its floor and the shore far away, as if through air.

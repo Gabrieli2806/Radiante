@@ -10,20 +10,14 @@
 | **Brillo de la Noche** | 0% – 400% | 35% | Luz de la luna y del cielo de noche. |
 | **Brillo de Fuentes de Luz** | 0% – 400% | 12% | Bloques que emiten luz: antorchas, lava, piedra luminosa… |
 | **Brillo de Luz en la Mano** | 0% – 400% | 12% | Lo que llevas en la mano, su resplandor y la luz que proyecta. Requiere Luz del Objeto en Mano. |
-| **Luz Rebotada** | 50% – 200% | 150% | Cuánta luz sigue tras rebotar. 100% es físicamente correcto; más alto llena los cuartos como Bedrock RTX. |
-| **Luz del Cielo** | 50% – 400% | 180% | Cuánto ilumina el cielo abierto. |
 | **Translucidez** | 0% – 200% | 100% | Luz del sol y la luna que atraviesa hojas y plantas desde atrás (brillan a contraluz con el sol bajo), y que rodea un poco el borde en sombra del hielo y la nieve, con un tono azul. 0% ilumina solo su lado soleado. No lanza rayos extra. Los paquetes de shaders pueden fijarla por superficie (`surface.mat.subSurface` en `hookSurface`). |
 | **Muestreo de Luz de Bloques** | Activado / Desactivado | Activado | Cada superficie lanza un rayo de sombra directo a una luz cercana. Mucho menos ruido de noche y en cuevas. Requiere Emisión de Bloques (en [Rendimiento](rendimiento.md)). |
 | **ReSTIR para Luces de Bloque** | Activado / Desactivado | Desactivado | Reutiliza la luz elegida por cada píxel entre fotogramas y vecinos. Mucho menos ruido en cuartos con muchas luces antes del filtro, pero sombras más suaves donde coinciden varias luces, y algo más lento. Requiere Muestreo de Luz de Bloques. |
 | **ReSTIR para Luz Rebotada** | Activado / Desactivado | Desactivado | ReSTIR GI: reutiliza el primer rebote de luz que encontró cada píxel entre fotogramas y píxeles vecinos. Menos ruido en cuartos y cuevas iluminados solo por luz rebotada; la luz que cambia (una antorcha rota, una puerta abierta) puede tardar un momento en seguirse. Experimental: puede dejar líneas oscuras en las esquinas y manchas al mover la cámara. |
 | **Reordenamiento de Ejecución (SER)** | Activado / Desactivado | Desactivado | Shader Execution Reordering: la GPU agrupa rayos parecidos. Pensado para RTX 40 o superior. Experimental: el agua puede verse blanca. |
 | **Luz del Objeto en Mano** | Activado / Desactivado | Activado | Una antorcha o farol en cualquier mano ilumina alrededor. |
+| **Alcance de Luz de Entidades** | 8 – 256 bloques | 64 | Hasta qué distancia de ti los objetos brillantes en el suelo, los marcos y los cristales del End siguen iluminando lo que los rodea. Más bajo es algo más rápido donde hay muchos. |
 | **Sombra en Primera Persona** | Activado / Desactivado | Activado | Dibuja al jugador para sombras y reflejos en primera persona. |
-
-## Luz Rebotada y Luz del Cielo también son parte del Estilo de Imagen
-
-Cambian con el Estilo de Imagen (ver [Imagen](imagen.md#estilos-de-imagen)). Tocarlas a mano deja el estilo en Personalizado.
-
 
 ## Cambiar la luz en la mano
 

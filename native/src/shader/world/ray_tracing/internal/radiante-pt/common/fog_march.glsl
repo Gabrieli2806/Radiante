@@ -234,7 +234,7 @@ void froxelFog(vec3 origin, vec3 rayDir, ivec2 pixel, float endDistance, float b
                          float(worldUBO.frameCounter & 1023u) * 0.6180339887);
 
     vec3 inscatter = vec3(0.0);
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0 && VPT_BEDROCK_FOG != 0
+#if VPT_BEDROCK_FOG != 0
     vec3 rgbTransmittance = vec3(1.0);
 #else
     float t = 1.0;
@@ -251,7 +251,7 @@ void froxelFog(vec3 origin, vec3 rayDir, ivec2 pixel, float endDistance, float b
         fogGridLight(grids, position, sunSky, block);
         vec3 source = fogMediumSource(medium, position, distance, sunSky, block);
         float worldY = position.y + float(worldUBO.cameraPos.y);
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0 && VPT_BEDROCK_FOG != 0
+#if VPT_BEDROCK_FOG != 0
         float veil = fogVeilExtinction() * (1.0 - smoothstep(LIGHT_SHAFT_REACH * 0.6, LIGHT_SHAFT_REACH, distance));
         inscatter += rgbTransmittance * source * stepLength;
         rgbTransmittance *= exp(-(froxelBedrockExtinctionRGB(worldY) + veil) * stepLength);
@@ -267,7 +267,7 @@ void froxelFog(vec3 origin, vec3 rayDir, ivec2 pixel, float endDistance, float b
         if (t < FOG_VOLUME_MIN_TRANSMITTANCE) { break; }
 #endif
     }
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0 && VPT_BEDROCK_FOG != 0
+#if VPT_BEDROCK_FOG != 0
     // Past the volume the biome's fog carries on to the surface (or its reach towards the sky), lit as the volume's
     // edge: stopped at 50 blocks, everything beyond stood equally clear, and distant lava and lights kept their full
     // glow behind a fogged foreground until the aerial perspective took over far out.

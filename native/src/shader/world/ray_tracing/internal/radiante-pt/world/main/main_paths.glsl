@@ -7,12 +7,8 @@
 // else, with ReSTIR GI on the first diffuse bounce when it is on.
 
     bool hitSky = selectedFirstHit.hitSky;
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     // Stars are drawn only where the view ends in the sky: they have no medium of their own to fade them.
     float postStarCloudTransmittance = hitSky ? clamp(mainRay.directLightRadiance.x, 0.0, 1.0) : 0.0;
-#else
-    float postStarCloudTransmittance = hitSky ? clamp(mainRay.directLightRadiance.x, 0.0, 1.0) : 1.0;
-#endif
     float viewDepth = selectedFirstHit.viewDepth;
     int startBounce = selectedFirstHit.startBounce;
     firstHitIncomingDirection = selectedFirstHit.incomingDirection;
@@ -71,7 +67,6 @@
         imageStore(diffuseAlbedoImage, pixel,
                    vec4(firstHitMat.albedoValue.rgb * firstHitMat.albedoValue.a, firstHitMat.metallic));
         vec3 specularGuide = firstHitMat.f0;
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
         // The denoiser's specular guide as the reflectance in the view's direction, not at normal incidence.
         float guideNoV = abs(dot(-firstHitIncomingDirection, firstHitNormal));
         if (firstHitWaterSurface) {
@@ -84,7 +79,6 @@
             // follows their directional reflectance.
             specularGuide = reflectionAlbedoGuide(firstHitMat.f0, firstHitMat.roughness, guideNoV);
         }
-#endif
         imageStore(specularAlbedoImage, pixel, vec4(specularGuide, 0.0));
 
         imageStore(normalRoughnessImage, pixel, vec4(mainRay.normal, firstHitMat.roughness));
@@ -134,11 +128,6 @@
         }
 
         // (Bedrock RTX adds no light of its own: its constant ambient is zero, calibrated to Bedrock RTX.)
-#if !defined(VPT_BEDROCK_ORIGINAL) || VPT_BEDROCK_ORIGINAL == 0
-        if (startBounce == 1) {
-            mainRay.radiance += VPT_BASIC_RADIANCE * firstHitMat.albedoValue.rgb * firstHitMat.albedoValue.a * mainRay.throughput;
-        }
-#endif
 
         psrHitPosition = firstHitWorldPos;
 
@@ -150,16 +139,11 @@
         firstHitIndirectRadiance = vec3(0.0);
         if (isFirstHitNoisy) {
             // Same strength as the hit shaders give a glowing surface; see default.rchit.
-#if VPT_BEDROCK_SPECULAR
             // Its colour a tenth of the way to grey, as Bedrock RTX shows a glow (block_light.glsl).
             vec3 glowColour = mix(firstHitMat.albedoValue.rgb,
                                   vec3(dot(firstHitMat.albedoValue.rgb, vec3(0.2126, 0.7152, 0.0722))), 0.1);
             firstHitEmission = glowColour * firstHitMat.emission * worldUBO.emissionBrightness *
                                VPT_BEDROCK_SEEN_EMISSION;
-#else
-            firstHitEmission = firstHitMat.albedoValue.rgb * firstHitMat.emission *
-                               worldUBO.emissionBrightness * 16.0 * VPT_DIRECT_LIGHT_STRENGTH;
-#endif
 #ifndef RADIANTE_HOOK_BLOCK_LIGHT_DEFAULT
             // The same glow the closest hit added, through a pack's hooks/block_light.glsl.
             if (firstHitMat.emission > 0.0) { hookBlockLight(firstHitEmission, RADIANTE_BLOCK_LIGHT_GLOW); }
@@ -250,13 +234,11 @@
                     }
 
                     mainRay.radiance = transparentReflectionRadiance + transparentRefractionRadiance;
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
                     // The water texture's own layer over the surface, lit where it was met (pt_shade_default.glsl).
                     if (firstHitWaterSurface) {
                         transparentRefractionRadiance += firstHitRay.directLightRadiance;
                         mainRay.radiance += firstHitRay.directLightRadiance;
                     }
-#endif
                     mainRay.directLightRadiance = vec3(0.0);
                 } else {
                     traceSecondary(mainRay, startBounce, isHand,

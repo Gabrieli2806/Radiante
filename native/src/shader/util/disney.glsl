@@ -115,14 +115,7 @@ vec3 SampleVMF(inout uint seed, vec3 mu, float kappa) {
     return SampleVMFXi(vec2(xiCos, xiAngle), mu, kappa);
 }
 
-// Bedrock RTX's specular response, used by the experimental Bedrock profile.
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
-#    define VPT_BEDROCK_SPECULAR 1
-#else
-#    define VPT_BEDROCK_SPECULAR 0
-#endif
-
-// How bright a glowing texel of a Bedrock pack appears in that profile, on top of the Emission Brightness setting.
+// How bright a glowing texel of a Bedrock pack appears, on top of the Emission Brightness setting.
 // Bedrock RTX shows it at 5 x (MER green)^2 x its emissive multiplier x the texel's colour, with the multiplier
 // at 1, as Bedrock RTX has it. The setting defaults to 12, which reaches the shaders as 0.12; 100 / 12 cancels
 // that out.
@@ -133,21 +126,13 @@ const float VPT_BEDROCK_SEEN_EMISSION = 5.0 * VPT_BEDROCK_EMISSIVE_MULTIPLIER * 
 // path in that shader). The see-through lobes (glass, translucent blocks) use the same width, since a pack's zero
 // roughness otherwise gave them no width at all.
 float vptReflectionAlpha(float roughness) {
-#if VPT_BEDROCK_SPECULAR
     return max(0.001, roughness * roughness);
-#else
-    return roughness * roughness;
-#endif
 }
 
 // Combines the view and light masking terms: a plain product normally, the height-correlated-style combination
-// Bedrock RTX was observed to use in its profile.
+// Bedrock RTX was observed to use itself.
 float vptReflectionMasking(float viewMask, float lightMask) {
-#if VPT_BEDROCK_SPECULAR
     return viewMask * lightMask / max(viewMask + lightMask - viewMask * lightMask, 1e-8);
-#else
-    return viewMask * lightMask;
-#endif
 }
 
 // Relative luminance with Rec. 709 weights.
@@ -186,17 +171,7 @@ float DielectricFresnel(float cosThetaI, float eta) {
 #include "util/bedrock_transport.glsl"
 
 float vptInterfaceFresnel(float cosThetaI, float eta) {
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     return bedrockInterfaceFresnel(cosThetaI, eta);
-#elif VPT_FRESNEL_MODEL != 0
-    float f0 = (1.0 - eta) / (1.0 + eta);
-    f0 *= f0;
-    float cosCritical = eta > 1.0 ? sqrt(max(1.0 - 1.0 / (eta * eta), 0.0)) : 0.0;
-    float t = clamp(1.0 + (cosThetaI - 1.0) / max(1.0 - cosCritical, 1e-4), 0.0, 1.0);
-    return clamp(f0 + (1.0 - f0) * pow(1.0 - t, 5.0), 0.0, 1.0);
-#else
-    return DielectricFresnel(cosThetaI, eta);
-#endif
 }
 
 // Cosine-weighted direction on the +Z hemisphere: a uniform disc point lifted straight up.
@@ -243,9 +218,7 @@ vec3 DisneyEval(LabPBRMat mat, vec3 V, vec3 N, vec3 L, out float pdf) {
     float viewFresnel = SchlickWeight(abs(wo.z));
 
     float diffuseShare = dielectricShare;
-#if VPT_BEDROCK_SPECULAR
     diffuseShare *= max(1.0 - mat.emission, 0.0);
-#endif
     float pDiffuse = diffuseShare * Luminance(mat.albedo);
     float pDielectric = dielectricShare * Luminance(mix(mat.f0, vec3(1.0), viewFresnel));
     float pMetal = metalShare * Luminance(mix(mat.albedo, vec3(1.0), viewFresnel));
@@ -365,9 +338,7 @@ vec3 DisneySampleXi(LabPBRMat mat, vec3 V, vec3 N, out vec3 L, out float pdf, ve
     float viewFresnel = SchlickWeight(abs(wo.z));
 
     float diffuseShare = dielectricShare;
-#if VPT_BEDROCK_SPECULAR
     diffuseShare *= max(1.0 - mat.emission, 0.0);
-#endif
     float pDiffuse = diffuseShare * Luminance(mat.albedo);
     float pDielectric = dielectricShare * Luminance(mix(mat.f0, vec3(1.0), viewFresnel));
     float pMetal = metalShare * Luminance(mix(mat.albedo, vec3(1.0), viewFresnel));

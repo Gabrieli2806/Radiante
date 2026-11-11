@@ -11,8 +11,8 @@
 //   radiance the light's colour times its strength, linear (scale it to dim or brighten, tint it to recolour)
 //   kind     what it is, one of (common/block_light_hook.glsl):
 //              RADIANTE_BLOCK_LIGHT_LEVEL  a block's light, from the glowing texels of its texture
-//              RADIANTE_BLOCK_LIGHT_EXACT  the glow a Bedrock pack's own material gives (Bedrock RTX profile)
-//              RADIANTE_BLOCK_LIGHT_POINT  one of Bedrock RTX's point lights at a small light block (same profile)
+//              RADIANTE_BLOCK_LIGHT_EXACT  the glow a Bedrock pack's own material gives (a Bedrock RTX pack)
+//              RADIANTE_BLOCK_LIGHT_POINT  one of Bedrock RTX's point lights at a small light block (as Bedrock RTX has them)
 //              RADIANTE_BLOCK_LIGHT_HELD   what the player holds in either hand
 //              RADIANTE_BLOCK_LIGHT_GLOW   a glowing surface as a ray sees it (the flame, the lamp's face)
 // There is no block id: the lights are cut out of glowing textures. The colour tells them apart (a torch's light is
