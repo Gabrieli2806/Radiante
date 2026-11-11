@@ -206,7 +206,7 @@ def collect(root, config):
                     hit_files.add(path)
             for path in sorted(hit_files):
                 requests.append((path, base, False))
-            rgen = dict(base, VPT_SER_SUPPORTED="0")
+            rgen = dict(base)
             query = dict(rgen)
             if pass_.get("query_sharc"):
                 query.update(USE_SHARC="1", SHARC_QUERY="1")

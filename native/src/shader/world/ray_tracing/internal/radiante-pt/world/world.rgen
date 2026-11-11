@@ -16,24 +16,7 @@
 #    define USE_SHARC 0
 #endif
 
-// Shader Execution Reordering (NVIDIA RTX 40 and newer): each path ray is traced into a hit object, the GPU regroups
-// the threads by what they hit, and only then runs the hit shaders, so neighbours in a warp shade the same material.
-// VPT_SER is the player's toggle; VPT_SER_SUPPORTED is set by the renderer when the device has the feature.
-#ifndef VPT_SER
-#    define VPT_SER 0
-#endif
-#ifndef VPT_SER_SUPPORTED
-#    define VPT_SER_SUPPORTED 0
-#endif
-#if VPT_SER != 0 && VPT_SER_SUPPORTED != 0
-#    extension GL_NV_shader_invocation_reorder : require
-#    define VPT_TRACE_PATH(flags, mask, sbtOffset, sbtStride, missIndex, origin, tMin, dir, tMax) traceRayEXT(topLevelAS, flags, mask, sbtOffset, sbtStride, missIndex, origin, tMin, dir, tMax, 0)
-// Bounce rays, where the paths have scattered in every direction, are regrouped by what they hit before shading.
-#    define VPT_TRACE_PATH_REORDERED(flags, mask, sbtOffset, sbtStride, missIndex, origin, tMin, dir, tMax) { hitObjectNV vptHitObject; hitObjectTraceRayNV(vptHitObject, topLevelAS, flags, mask, sbtOffset, sbtStride, missIndex, origin, tMin, dir, tMax, 0); reorderThreadNV(vptHitObject); hitObjectExecuteShaderNV(vptHitObject, 0); }
-#else
-#    define VPT_TRACE_PATH_REORDERED(flags, mask, sbtOffset, sbtStride, missIndex, origin, tMin, dir, tMax) traceRayEXT(topLevelAS, flags, mask, sbtOffset, sbtStride, missIndex, origin, tMin, dir, tMax, 0)
-#    define VPT_TRACE_PATH(flags, mask, sbtOffset, sbtStride, missIndex, origin, tMin, dir, tMax) traceRayEXT(topLevelAS, flags, mask, sbtOffset, sbtStride, missIndex, origin, tMin, dir, tMax, 0)
-#endif
+#define VPT_TRACE_PATH(flags, mask, sbtOffset, sbtStride, missIndex, origin, tMin, dir, tMax) traceRayEXT(topLevelAS, flags, mask, sbtOffset, sbtStride, missIndex, origin, tMin, dir, tMax, 0)
 
 #if USE_SHARC
 #    extension GL_EXT_shader_atomic_int64 : require

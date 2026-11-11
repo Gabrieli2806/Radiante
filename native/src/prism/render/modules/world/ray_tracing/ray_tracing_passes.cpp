@@ -199,12 +199,9 @@ void RayTracingModule::collectShaders(Pass &,
     if (!pass.hitGroupNameToIndex.contains("shadow")) pass.shadowHitGroupIndex = pass.fallbackHitGroupIndex;
 
     // The ray generation shader, once querying SHaRC where the pass does; the update pass compiles it a second
-    // time to update SHaRC, with the compute shader that resolves the cache after the update. Shader Execution
-    // Reordering is only compiled in where the device was created with it.
+    // time to update SHaRC, with the compute shader that resolves the cache after the update.
     auto framework = framework_.lock();
     auto definitions = shaderDefinitions;
-    definitions["VPT_SER_SUPPORTED"] =
-        framework != nullptr && framework->device()->isShaderExecutionReorderingEnabled() ? "1" : "0";
     auto queryDefinitions = definitions;
     if (pass.querySharcEnabled) {
         queryDefinitions["USE_SHARC"] = "1";

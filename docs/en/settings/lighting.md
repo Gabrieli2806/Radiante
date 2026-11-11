@@ -14,7 +14,6 @@
 | **Block Light Sampling** | On / Off | On | Each surface casts a shadow ray straight at a nearby light. Much less noise at night and in caves. Needs Block Emission (in [Performance](performance.md)). |
 | **ReSTIR Block Lights** | On / Off | Off | Reuses the light each pixel picked across frames and neighbours. Much less noise in rooms with many lights before denoising, but softer shadows where several lights meet, and a little slower. Needs Block Light Sampling. |
 | **ReSTIR Bounced Light** | On / Off | Off | ReSTIR GI: reuses the first bounce of light each pixel found across frames and neighbouring pixels. Less noise in rooms and caves lit only by bounced light; light that changes (a torch broken, a door opened) may take a moment to follow. Experimental: it can leave dark lines along corners and blotches while the camera moves. |
-| **Shader Execution Reordering** | On / Off | Off | SER: the GPU groups similar rays. Meant for RTX 40 or newer. Experimental: water may look white. |
 | **Held Item Light** | On / Off | On | A torch or lantern in either hand lights its surroundings. |
 | **Entity Light Reach** | 8 – 256 blocks | 64 | How far from you glowing dropped items, item frames and end crystals still light their surroundings. Lower is a little faster where there are many. |
 | **First Person Shadow** | On / Off | On | Draws the player for shadows and reflections in first person. |
