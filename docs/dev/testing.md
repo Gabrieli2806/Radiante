@@ -116,8 +116,14 @@ read. A full run is about an hour. Like the smoke test, it backs up the developm
 - `--report <folder>` writes the report of a run already made again, from its output folder.
 - `--out <folder>` chooses the output folder, `--loader neoforge` (or `forge`) another loader's client, and
   `--sweep <file.json>` another sweep file.
-- A view must show the thing its settings change. The test world `RadianteSmokeSuite` is in a biome where it never
-  rains, so the rain view shows nothing there.
+- A view must show the thing its settings change, and a sweep file is for one world. `RadianteSmokeSuite` is in
+  a biome where it never rains, so the rain settings have a file of their own, in a world made for them on its first
+  run: `python dev/smoke/settings.py --sweep dev/smoke/settings-rain.json` (about four minutes). The falling
+  streaks never stand still, so only a clear change counts there.
+- A setting that only acts while another one stands a certain way should say so on the settings screen
+  (`blockedReason` and `toneMappingBlocked` in `RadianteOptionsScreen`), not be left to do nothing: when the sweep
+  finds a setting that changes nothing, find what it hangs on before taking it for dead. Indirect Light Strength
+  changed nothing in two runs and turned out to act with Bedrock Pack Materials off.
 
 ## Shaders under every setting
 
