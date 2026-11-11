@@ -1,5 +1,6 @@
 #pragma once
 
+#include "prism/render/modules/world/upscaler_common.hpp"
 #include "prism/render/modules/world/world_module.hpp"
 
 #include <array>
@@ -109,9 +110,7 @@ class FSRUpscalerModule : public WorldModule, public SharedObject<FSRUpscalerMod
     std::shared_ptr<gpu::ComputePipeline> motionUpscalePipeline_;
     std::shared_ptr<gpu::ComputePipeline> normalRoughnessUpscalePipeline_;
 
-    glm::vec3 lastCameraPos_ = glm::vec3(0.0f);
-    glm::vec3 lastCameraDir_ = glm::vec3(0.0f, 0.0f, -1.0f);
-    bool firstFrame_ = true;
+    upscaler::CameraCut camera_;
 };
 
 class FSRUpscalerModuleContext : public WorldModuleContext {

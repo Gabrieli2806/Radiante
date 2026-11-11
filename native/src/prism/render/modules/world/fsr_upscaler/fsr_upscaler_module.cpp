@@ -86,26 +86,6 @@ bool isHdrFormat(VkFormat format) {
            format == VK_FORMAT_B10G11R11_UFLOAT_PACK32;
 }
 
-// Keeps the images other modules made (they must already have the size) and makes the missing ones.
-bool adoptOrCreate(Framework &framework,
-                   std::vector<std::shared_ptr<gpu::DeviceLocalImage>> &images,
-                   const std::vector<VkFormat> &formats,
-                   uint32_t width,
-                   uint32_t height,
-                   VkImageUsageFlags usage,
-                   std::span<std::shared_ptr<gpu::DeviceLocalImage>> kept) {
-    for (size_t i = 0; i < images.size(); i++) {
-        if (images[i] == nullptr) {
-            images[i] = gpu::DeviceLocalImage::create(framework.device(), framework.vma(), false, width, height, 1,
-                                                      formats[i], usage);
-        } else if (images[i]->width() != width || images[i]->height() != height) {
-            return false;
-        }
-        kept[i] = images[i];
-    }
-    return true;
-}
-
 const std::shared_ptr<gpu::DeviceLocalImage> *firstMade(
     const std::vector<std::shared_ptr<gpu::DeviceLocalImage>> &images) {
     auto made = std::ranges::find_if(images, [](const auto &image) { return image != nullptr; });
@@ -175,9 +155,10 @@ bool FSRUpscalerModule::setOrCreateInputImages(std::vector<std::shared_ptr<gpu::
         if (renderWidth_ == 0 || renderHeight_ == 0) resolveRenderResolution();
     }
 
-    return adoptOrCreate(*framework, images, formats, renderWidth_, renderHeight_,
-                         VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                         frames_.at(frameIndex).inputs);
+    return upscaler::adoptOrCreateImages(
+        *framework, images, formats, renderWidth_, renderHeight_,
+        VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        frames_.at(frameIndex).inputs);
 }
 
 bool FSRUpscalerModule::setOrCreateOutputImages(std::vector<std::shared_ptr<gpu::DeviceLocalImage>> &images,
@@ -200,7 +181,7 @@ bool FSRUpscalerModule::setOrCreateOutputImages(std::vector<std::shared_ptr<gpu:
         }
     }
 
-    return adoptOrCreate(*framework, images, formats, displayWidth_, displayHeight_,
+    return upscaler::adoptOrCreateImages(*framework, images, formats, displayWidth_, displayHeight_,
                          VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
                              VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                          frames_.at(frameIndex).outputs);
@@ -352,12 +333,7 @@ void FSRUpscalerModule::resolveRenderResolution() {
 }
 
 bool FSRUpscalerModule::cameraCut(const glm::vec3 &position, const glm::vec3 &direction) {
-    // More than a block of movement or 30 degrees of turning (cos 30 = 0.866) between two frames.
-    const bool cut = std::exchange(firstFrame_, false) || glm::length(position - lastCameraPos_) > 1.0f ||
-                     glm::dot(glm::normalize(direction), glm::normalize(lastCameraDir_)) < 0.866f;
-    lastCameraPos_ = position;
-    lastCameraDir_ = direction;
-    return cut;
+    return camera_.update(position, direction);
 }
 
 std::vector<std::shared_ptr<WorldModuleContext>> &FSRUpscalerModule::contexts() {
