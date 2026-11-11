@@ -231,6 +231,17 @@ vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, v
 // made for (distance and normal), to refuse reuse across edges. Two halves ping-pong by frame parity.
 // ---------------------------------------------------------------------------------------------------------------------
 
+// Last frame's world uniform, for ReSTIR's reprojection and the wind's motion vectors (pt/pt_direct.glsl), so with
+// ReSTIR on or off. The world raygen declares it itself (pt/pt_bindings.glsl), and one module cannot declare a
+// binding twice, so it is only declared here for a shader that has not (the closest-hit shaders).
+#ifdef PT_DECLARES_LAST_WORLD_UBO
+#    define vptLastWorldUBO lastWorldUBO
+#else
+layout(set = 2, binding = 1) uniform VptLastWorldUniform {
+    WorldUBO vptLastWorldUBO;
+};
+#endif
+
 #ifndef VPT_RESTIR
 #    define VPT_RESTIR 0
 #endif
@@ -246,17 +257,10 @@ vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, v
 #define VPT_RESTIR_CANDIDATES 2
 #define VPT_RESTIR_MAX_M (20.0 * float(VPT_RESTIR_CANDIDATES))
 
-// The world raygen declares both of these itself (pt/pt_bindings.glsl), and one module cannot declare a binding
-// twice, so they are only declared here for a shader that has not (the closest-hit shaders).
+// The world raygen declares this itself (pt/pt_bindings.glsl), and one module cannot declare a binding twice, so it
+// is only declared here for a shader that has not (the closest-hit shaders).
 #ifndef PT_DECLARES_RESTIR_IMAGE
 layout(set = 5, binding = VPT_RESTIR_BINDING, rgba32f) uniform image2DArray vptRestirImage;
-#endif
-#ifdef PT_DECLARES_LAST_WORLD_UBO
-#    define vptLastWorldUBO lastWorldUBO
-#else
-layout(set = 2, binding = 1) uniform VptLastWorldUniform {
-    WorldUBO vptLastWorldUBO;
-};
 #endif
 
 struct VptReservoir {
