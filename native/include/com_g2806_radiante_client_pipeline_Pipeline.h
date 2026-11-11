@@ -61,6 +61,14 @@ JNIEXPORT jstring JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_getAt
 
 /*
  * Class:     com_g2806_radiante_client_pipeline_Pipeline
+ * Method:    validateShaderPackNative
+ * Signature: (Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_validateShaderPackNative
+  (JNIEnv *, jclass, jstring, jobjectArray, jstring);
+
+/*
+ * Class:     com_g2806_radiante_client_pipeline_Pipeline
  * Method:    setRuntimeAttribute
  * Signature: (Ljava/lang/String;Ljava/lang/String;)Z
  */
