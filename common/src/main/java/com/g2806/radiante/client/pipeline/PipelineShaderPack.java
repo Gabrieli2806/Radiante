@@ -1,25 +1,15 @@
 package com.g2806.radiante.client.pipeline;
 
-import net.minecraft.client.resources.language.I18n;
 import com.g2806.radiante.client.RadianteClient;
-import com.g2806.radiante.client.proxy.vulkan.RendererProxy;
-import com.g2806.radiante.client.constant.VulkanConstants;
 import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.pipeline.config.AttributeConfig;
-import com.g2806.radiante.client.pipeline.config.ImageConfig;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import org.yaml.snakeyaml.Yaml;

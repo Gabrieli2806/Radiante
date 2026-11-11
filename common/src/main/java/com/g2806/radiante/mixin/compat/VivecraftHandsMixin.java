@@ -1,6 +1,7 @@
 package com.g2806.radiante.mixin.compat;
 
 import com.g2806.radiante.client.render.EntityCollector;
+import com.g2806.radiante.client.render.EntityHands;
 import com.g2806.radiante.client.render.EntityManager;
 import com.g2806.radiante.client.render.RadianteRenderer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -15,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /**
  * Vivecraft draws the VR hands and what they hold itself, into Minecraft's level render, over the traced world: a
  * held item looked flat and showed in no reflection. While a frame is traced, the arms and held items go to
- * Radiante instead (EntityManager.beginVrHands) and are traced like the rest of the world. Only those: the menu
+ * Radiante instead (EntityHands.beginVrHands) and are traced like the rest of the world. Only those: the menu
  * pointer and other VR overlays use Vivecraft's own collector features and stay Vivecraft's.
  *
  * <p>Optional: applied only when Vivecraft is installed, and skipped without error if a Vivecraft version renames
@@ -30,7 +31,7 @@ public class VivecraftHandsMixin {
 
     @Inject(method = "renderVRHands", at = @At("HEAD"), require = 0, remap = false)
     private static void radiante$beginHands(CallbackInfoReturnable<Integer> cir) {
-        radiante$hands = EntityManager.beginVrHands();
+        radiante$hands = EntityHands.beginVrHands();
     }
 
     @ModifyArg(method = {"renderVRHand_Main", "renderVRHand_Offhand"}, at = @At(value = "INVOKE",
@@ -45,7 +46,7 @@ public class VivecraftHandsMixin {
         if (radiante$hands != null) {
             radiante$hands = null;
             var camera = RadianteRenderer.lastCameraPos();
-            EntityManager.endVrHands(camera.x, camera.y, camera.z);
+            EntityHands.endVrHands(camera.x, camera.y, camera.z);
         }
     }
 }

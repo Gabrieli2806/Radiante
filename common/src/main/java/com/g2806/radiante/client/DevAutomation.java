@@ -449,7 +449,7 @@ public final class DevAutomation {
                 com.g2806.radiante.client.render.FrameGeneration.presentedFrameRate(),
                 com.g2806.radiante.client.pipeline.Pipeline.gpuStats());
         } else if (action.startsWith("rainmv=")) {
-            com.g2806.radiante.client.render.EntityManager.rainMotion = Boolean.parseBoolean(action.substring(7));
+            com.g2806.radiante.client.render.EntityWeather.rainMotion = Boolean.parseBoolean(action.substring(7));
         } else if (action.startsWith("hold=") || action.startsWith("release=")) {
             // hold=forward / release=forward (also sprint, jump): walk in a test world to see bobbing and motion.
             boolean down = action.startsWith("hold=");

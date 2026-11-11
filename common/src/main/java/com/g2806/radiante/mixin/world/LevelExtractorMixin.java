@@ -1,5 +1,6 @@
 package com.g2806.radiante.mixin.world;
 
+import com.g2806.radiante.client.render.EntityBlockEntities;
 import com.g2806.radiante.client.render.ChunkManager;
 import com.g2806.radiante.client.render.EntityManager;
 import com.g2806.radiante.client.render.LevelExtractorAccess;
@@ -44,7 +45,7 @@ public class LevelExtractorMixin implements LevelExtractorAccess {
     private void radiante$keepLightOutOfView(Entity entity, Frustum frustum, double cameraX, double cameraY,
         double cameraZ, float partialTick, long frame, CallbackInfoReturnable<Boolean> cir) {
         if (!cir.getReturnValueZ() && RadianteRenderer.isRayTracingEnabled()
-            && EntityManager.keepsLightOutOfView(entity, cameraX, cameraY, cameraZ, partialTick)) {
+            && EntityBlockEntities.keepsLightOutOfView(entity, cameraX, cameraY, cameraZ, partialTick)) {
             cir.setReturnValue(true);
         }
     }
