@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.bedrock;
 
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.RtAttributes;
 
 import java.util.List;
 
@@ -30,21 +31,25 @@ public final class BedrockRtxValues {
         new CompatParameter("hands", null, RT + "hand_samples", "3", ParameterStatus.APPROXIMATE,
             "Radiante's existing hand-lighting sample count; not a measured Bedrock RTX value"),
         // ---- mode
-        new CompatParameter("mode", null, Pipeline.BEDROCK_ORIGINAL_ATTRIBUTE, TRUE, ParameterStatus.MATCHES_BEDROCK,
+        new CompatParameter("mode", null, RtAttributes.BEDROCK_ORIGINAL_ATTRIBUTE, TRUE,
+            ParameterStatus.MATCHES_BEDROCK,
             "Bedrock RTX's own sky, sunlight, exposure and materials"),
-        new CompatParameter("mode", null, Pipeline.BEDROCK_ENHANCED_ATTRIBUTE, TRUE, ParameterStatus.INFERRED,
+        new CompatParameter("mode", null, RtAttributes.BEDROCK_ENHANCED_ATTRIBUTE, TRUE, ParameterStatus.INFERRED,
             "the few things that go beyond Bedrock on purpose: light blocks lit by their own light, the end portal's "
                 + "glow"),
-        new CompatParameter("mode", null, Pipeline.BEDROCK_MATERIALS_ATTRIBUTE, TRUE, ParameterStatus.MATCHES_BEDROCK,
+        new CompatParameter("mode", null, RtAttributes.BEDROCK_MATERIALS_ATTRIBUTE, TRUE,
+            ParameterStatus.MATCHES_BEDROCK,
             "the pack's own metalness and roughness, which its specular response is made for"),
-        new CompatParameter("mode", null, Pipeline.BEDROCK_ATMOSPHERE_ATTRIBUTE, TRUE, ParameterStatus.MATCHES_BEDROCK,
+        new CompatParameter("mode", null, RtAttributes.BEDROCK_ATMOSPHERE_ATTRIBUTE, TRUE,
+            ParameterStatus.MATCHES_BEDROCK,
             "Bedrock's sky and sunlight"),
-        new CompatParameter("mode", null, Pipeline.TRANSPARENT_CHECKERBOARD_ATTRIBUTE, FALSE, ParameterStatus.INFERRED,
+        new CompatParameter("mode", null, RtAttributes.TRANSPARENT_CHECKERBOARD_ATTRIBUTE, FALSE,
+            ParameterStatus.INFERRED,
             "both branches of water and glass traced: full-resolution DLSS guides do not describe alternating "
                 + "missing lobes"),
-        new CompatParameter("mode", null, Pipeline.SEAMLESS_GLASS_ATTRIBUTE, FALSE, ParameterStatus.MATCHES_BEDROCK,
+        new CompatParameter("mode", null, RtAttributes.SEAMLESS_GLASS_ATTRIBUTE, FALSE, ParameterStatus.MATCHES_BEDROCK,
             "glass as the pack draws it, each block in its frame"),
-        new CompatParameter("mode", null, Pipeline.FACE_SHADING_ATTRIBUTE, FALSE, ParameterStatus.MATCHES_BEDROCK,
+        new CompatParameter("mode", null, RtAttributes.FACE_SHADING_ATTRIBUTE, FALSE, ParameterStatus.MATCHES_BEDROCK,
             "Bedrock RTX has no fixed face shading"),
 
         // ---- exposure

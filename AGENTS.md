@@ -16,7 +16,8 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 
 | Where | What |
 |---|---|
-| `common/src/main/java/com/g2806/radiante/client/pipeline/Pipeline.java` | Settings stored in `pipeline.yaml`, presets, building the pipeline |
+| `common/src/main/java/com/g2806/radiante/client/pipeline/Pipeline.java` | The pipeline: its modules and their values, what the settings read and set, which preset to use, building it, and the `native` methods |
+| `common/.../client/pipeline/` beside it | `PresetAssembly` (each preset's modules and connections), `PipelineStore` (`pipeline.yaml`, each pack's settings file, their migrations), `ModuleAttributes` (a module's attributes as the shader pack declares them), `NativePipelineParams` (the layout the renderer reads), `RtAttributes` (the ray tracing attributes' names) |
 | `common/.../client/bedrock/` | Bedrock packs (converter, fog, lighting) and `BedrockRtxValues`, the Bedrock RTX values that are radiante-pt's and tone mapping's defaults (a test checks they agree) |
 | `common/.../client/pipeline/ShaderPack*.java` | Shader packs in `radiante/shaderpacks/`: manifest, library, settings page keys, validation |
 | `common/.../client/gui/` | Settings screen (`RadianteOptionsScreen`, `SettingsLayout`, `AdvancedOptions`, `Tunable`), Shader Packs screen and a pack's settings page (`ShaderPacksScreen`, `PackSettingsPage`), toasts, background rebuild, start-up warm-up |

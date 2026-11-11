@@ -752,7 +752,7 @@ public final class BiomeAmbiance {
         Vector3f albedo = new Vector3f();
         Vector4f fog = new Vector4f(0.0f);
         boolean bedrock = com.g2806.radiante.client.pipeline.Pipeline.isShaderPackToggleOn(
-            com.g2806.radiante.client.pipeline.Pipeline.BEDROCK_ORIGINAL_ATTRIBUTE);
+            com.g2806.radiante.client.pipeline.RtAttributes.BEDROCK_ORIGINAL_ATTRIBUTE);
         for (int i = 0; i < SAMPLES; i++) {
             Water water = waterOf(sampled[i], styled, bedrock);
             float weight = SAMPLE_WEIGHT[i];

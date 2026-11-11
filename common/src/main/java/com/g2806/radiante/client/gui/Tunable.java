@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.RtAttributes;
 import java.util.List;
 import java.util.Locale;
 
@@ -82,7 +83,7 @@ enum Tunable {
     LIGHTNING_FLASH(null, "render_pipeline.module.ray_tracing.attribute.lightning_flash", 0.01, 0, 200, 100,
         Format.PERCENT),
     // How far the wind moves leaves and plants, while Wind is on.
-    WIND_STRENGTH(null, Pipeline.WIND_STRENGTH_ATTRIBUTE, 0.01, 0, 200, 100, Format.PERCENT),
+    WIND_STRENGTH(null, RtAttributes.WIND_STRENGTH_ATTRIBUTE, 0.01, 0, 200, 100, Format.PERCENT),
     STARS(Pipeline.POST_RENDER_MODULE_NAME, "render_pipeline.module.post_render.attribute.star_count", 100.0, 1, 200,
         30, Format.NUMBER),
     BOUNCE_LIGHT(null, "render_pipeline.module.ray_tracing.attribute.bounce_light_boost", 0.01, 50, 200, 150,

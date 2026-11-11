@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.RtAttributes;
 import com.mojang.serialization.Codec;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -45,8 +46,9 @@ final class AdvancedOptions {
     private static Set<String> covered;
 
     /**
-     * Attributes the settings already have a row for: the ones {@link Tunable} and {@link Pipeline} name, found by
-     * looking rather than listed, so a new row elsewhere takes its attribute out of Advanced by itself.
+     * Attributes the settings already have a row for: the ones {@link Tunable}, {@link Pipeline} and
+     * {@link RtAttributes} name, found by looking rather than listed, so a new row elsewhere takes its attribute out
+     * of Advanced by itself.
      */
     private static Set<String> covered() {
         if (covered == null) {
@@ -57,15 +59,17 @@ final class AdvancedOptions {
                     names.add(tunable.twin);
                 }
             }
-            for (Field field : Pipeline.class.getDeclaredFields()) {
-                if (Modifier.isStatic(field.getModifiers()) && field.getType() == String.class) {
-                    try {
-                        field.setAccessible(true);
-                        if (field.get(null) instanceof String value && value.contains(".attribute.")) {
-                            names.add(value);
+            for (Class<?> owner : List.of(Pipeline.class, RtAttributes.class)) {
+                for (Field field : owner.getDeclaredFields()) {
+                    if (Modifier.isStatic(field.getModifiers()) && field.getType() == String.class) {
+                        try {
+                            field.setAccessible(true);
+                            if (field.get(null) instanceof String value && value.contains(".attribute.")) {
+                                names.add(value);
+                            }
+                        } catch (ReflectiveOperationException | RuntimeException ignored) {
+                            // Not reachable: the attribute simply stays in Advanced.
                         }
-                    } catch (ReflectiveOperationException | RuntimeException ignored) {
-                        // Not reachable: the attribute simply stays in Advanced.
                     }
                 }
             }
