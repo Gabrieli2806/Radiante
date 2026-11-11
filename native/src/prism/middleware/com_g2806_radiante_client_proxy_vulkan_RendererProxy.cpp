@@ -4,6 +4,9 @@
 #include "prism/gpu/physical_device.hpp"
 #include "prism/gpu/queue_lock.hpp"
 #include "prism/middleware/jni_support.hpp"
+// The header javac writes for the Java class: a native method whose signature here differs from the Java one
+// then fails to compile instead of failing in the game.
+#include "com_g2806_radiante_client_proxy_vulkan_RendererProxy.h"
 #include "prism/render/framegen/frame_generation.hpp"
 #include "prism/render/framegen/native_frame_generation.hpp"
 #include "prism/render/framegen/reflex.hpp"

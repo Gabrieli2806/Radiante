@@ -124,7 +124,7 @@ public final class EmissionTiles {
     private static boolean registeredDefaults;
     private static boolean registeredLevelless;
     /** Light level of each emissive sprite of the last registration, for {@link #uploadFromMer}. */
-    private static Map<TextureAtlasSprite, Integer> lightLevels = Map.of();
+    private static volatile Map<TextureAtlasSprite, Integer> lightLevels = Map.of();
     /**
      * The states of a light block that give no light although they draw the very sprites its lit states glow with:
      * redstone ore is one texture lit or not. Their quads are marked (PBRVertexWriter.unlit) and neither glow nor

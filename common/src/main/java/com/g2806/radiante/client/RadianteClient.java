@@ -47,9 +47,10 @@ public final class RadianteClient {
     private static final String NATIVE_RESOURCE_ROOT = "/radiante-native";
 
     public static Path radianceDir;
-    private static boolean nativeLoaded = false;
+    // Both are set under the lock of ensureNativeLoaded and read without it from the render thread and the mixins.
+    private static volatile boolean nativeLoaded = false;
     /** Set once loading was tried, so a failed load is not tried (and logged) again on every call. */
-    private static boolean nativeAttempted = false;
+    private static volatile boolean nativeAttempted = false;
     /** Why the native renderer is not loaded: UNSUPPORTED_PLATFORM or NATIVE_LOAD_FAILED; null while it is fine. */
     private static RadianteRenderer.Failure nativeFailure;
     /** The operating system and CPU as detected, for the warning screen. */

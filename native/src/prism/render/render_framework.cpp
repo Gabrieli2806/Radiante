@@ -458,7 +458,10 @@ void Framework::submitPartialFrame() {
     VkSubmitInfo submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};
     submit.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
     submit.pCommandBuffers = commandBuffers.data();
-    vkQueueSubmit(device_->mainVkQueue(), 1, &submit, VK_NULL_HANDLE);
+    // A frame that could not be queued is lost; a lost device, the usual cause, is reported once with its
+    // checkpoints instead of passing unseen.
+    gpu::diagnostics::onResult(vkQueueSubmit(device_->mainVkQueue(), 1, &submit, VK_NULL_HANDLE),
+                               device_->mainVkQueue(), device_->secondaryQueue());
     currentContext_ = nullptr;
 }
 
@@ -515,7 +518,8 @@ void Framework::waitDeviceIdle() {
 }
 
 void Framework::waitRenderQueueIdle() {
-    vkQueueWaitIdle(device_->mainVkQueue());
+    gpu::diagnostics::onResult(vkQueueWaitIdle(device_->mainVkQueue()), device_->mainVkQueue(),
+                               device_->secondaryQueue());
 }
 
 void Framework::close() {

@@ -94,7 +94,7 @@ final class HdrCalibrationScreen extends VersionCompat.DrawnScreen {
         int y = 26;
         for (FormattedCharSequence line : font.split(Component.translatable(KEY + "hint." + page),
             Math.min(width - 32, 420))) {
-            g.centeredText(font, line, width / 2, y, 0xFFB0B8B4);
+            g.centeredText(font, line, width / 2, y, Theme.TEXT_DIM);
             y += font.lineHeight + 1;
         }
         int bottom = height - (page == PAGE_CHECK ? 48 : 64);

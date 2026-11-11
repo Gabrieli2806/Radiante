@@ -744,8 +744,10 @@ vec3 volumetricCloudGroundToCloudTransfertIsoScatter(vec3 up, float transmittanc
     return bounce * powderEffect * clamp(lowLight, 0.0, 1.0) * mix(vec3(1.0), vec3(1.35), cloudSaturate(1.0 - transmittance));
 }
 
+#include "util/numeric.glsl"
+
 float volumetricCloudLuminance(vec3 color) {
-    return dot(color, vec3(0.2126, 0.7152, 0.0722));
+    return luminance709(color);
 }
 
 // Sky-cube colour near the horizon, with the direction held at the minimum view cosine (as sky_cube.frag does),

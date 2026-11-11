@@ -4,6 +4,7 @@
 #include "prism/all_extern.hpp"
 #include "prism/gpu/gpu.hpp"
 
+#include <atomic>
 #include <filesystem>
 #include <memory>
 
@@ -13,17 +14,19 @@ struct SharedDeviceHandles;
 class Buffers;
 class World;
 
-// Settings the game pushes down through the Options JNI calls.
+// Settings the game pushes down through the Options JNI calls. Java sets them from whichever thread the player
+// changed the setting on, while the render thread and the section builders read them: each is atomic, a value
+// of its own that nothing reads together with another.
 struct Options {
     // Set when a setting needs the world pipeline rebuilt; the next frame (or recreatePending) rebuilds it.
-    bool needRecreate = false;
+    std::atomic<bool> needRecreate{false};
 
-    uint32_t chunkBuildingBatchSize = 2;
-    uint32_t chunkBuildingTotalBatches = 4;
-    bool collectChunkEmission = false;
+    std::atomic<uint32_t> chunkBuildingBatchSize{2};
+    std::atomic<uint32_t> chunkBuildingTotalBatches{4};
+    std::atomic<bool> collectChunkEmission{false};
     // How far from the camera glowing entities (dropped items, item frames) still light their surroundings, in
     // blocks.
-    double entityLightReach = 64.0;
+    std::atomic<double> entityLightReach{64.0};
 };
 
 // The renderer as the game sees it: the frame framework and the textures, buffers and world it draws. One per

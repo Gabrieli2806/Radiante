@@ -6,7 +6,7 @@ import com.g2806.radiante.client.proxy.vulkan.TextureProxy;
 import com.g2806.radiante.client.proxy.world.ChunkProxy;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -19,60 +19,65 @@ import java.util.function.Supplier;
 
 public class Options {
 
+    // The options are written by the settings screen (and when the file is read) and read by the render thread,
+    // the section builders and the far terrain threads, with no lock between them: volatile, so a thread
+    // never keeps working with a value from before the change. Each is a value of its own; nothing reads two
+    // of them expecting them to belong together.
+
     public static final String OPTION_PROPERTIES = "options.properties";
 
-    public static int chunkBuildingBatchSize = 12;
-    public static int chunkBuildingTotalBatches = 12;
-    public static int chunkBuildingThreads = getDefaultChunkBuildingThreads();
-    public static boolean collectChunkEmission = true;
+    public static volatile int chunkBuildingBatchSize = 12;
+    public static volatile int chunkBuildingTotalBatches = 12;
+    public static volatile int chunkBuildingThreads = getDefaultChunkBuildingThreads();
+    public static volatile boolean collectChunkEmission = true;
     /**
      * Light From Glowing Pixels: a light block casts its light from the parts of its texture that glow, in finer
      * cells shrunk to those texels (EmissionTiles), instead of from 4 x 4 cells of the whole block. Off by default:
      * more, smaller lights.
      */
-    public static boolean glowingPixelLight = false;
-    public static boolean unlitBlockLight = true;
+    public static volatile boolean glowingPixelLight = false;
+    public static volatile boolean unlitBlockLight = true;
     /** How far from the camera glowing dropped items and item frames still cast light, in blocks. */
-    public static int entityLightReach = 64;
+    public static volatile int entityLightReach = 64;
     /**
      * Radiante's diagnostics in the log, the renderer's included. On by default so a player's latest.log already says
      * what went wrong when they report a problem; the option turns it off.
      */
-    public static boolean debugLogging = true;
+    public static volatile boolean debugLogging = true;
     /**
      * Each biome's own air and water (BiomeAmbiance): a faint haze in the biome's tone and water that is clear by a
      * beach and dark in the deep ocean. On its own switch, apart from the volumetric fog, and off by default. (Stored
      * under a new name than the "biomeFog" of before 1.0, which was off by default and far heavier.)
      */
-    public static boolean biomeAmbiance = false;
+    public static volatile boolean biomeAmbiance = false;
     /** Whether the settings screen shows the Advanced options; their values apply either way. */
-    public static boolean advancedSettings = false;
+    public static volatile boolean advancedSettings = false;
     /**
      * Whether the player casts a shadow (and shows up in reflections) while the camera is in first person.
      * Minecraft does not draw the player at all then, so nothing of them would reach the world without this.
      */
-    public static boolean firstPersonShadow = true;
+    public static volatile boolean firstPersonShadow = true;
     /**
      * How far the sun's path leans, in degrees: 0 is vanilla's, straight overhead from east to west; positive leans
      * it south, so noon shadows are not all straight down. The Sun Path setting's Tilted choice is
      * SUN_PATH_TILTED_DEGREES.
      */
-    public static int sunPathTilt = 0;
+    public static volatile int sunPathTilt = 0;
     /**
      * How far the sun's path is turned around the vertical, in degrees: positive turns it clockwise seen from above,
      * moving sunrise from the east towards the south.
      */
-    public static int sunPathAzimuth = 0;
+    public static volatile int sunPathAzimuth = 0;
     /** The sun's square turned around its own centre, in degrees. */
-    public static int sunSpriteRotation = 0;
+    public static volatile int sunSpriteRotation = 0;
     /** The moon crosses the sky on the sun's path, opposite it; off, on moonPathTilt and moonPathAzimuth. */
-    public static boolean moonFollowsSun = true;
+    public static volatile boolean moonFollowsSun = true;
     /** The moon's path lean, in degrees, as sunPathTilt: positive leans its highest point south. */
-    public static int moonPathTilt = 0;
+    public static volatile int moonPathTilt = 0;
     /** The moon's path turned around the vertical, in degrees, as sunPathAzimuth. */
-    public static int moonPathAzimuth = 0;
+    public static volatile int moonPathAzimuth = 0;
     /** The moon's square turned around its own centre, in degrees. */
-    public static int moonSpriteRotation = 0;
+    public static volatile int moonSpriteRotation = 0;
 
     /** The lean of the Sun Path setting's Tilted choice, the one the old Vanilla Sun Path switch gave when off. */
     public static final int SUN_PATH_TILTED_DEGREES = 10;
@@ -85,99 +90,99 @@ public class Options {
         return sunPathTilt == 0 && sunPathAzimuth == 0;
     }
     /** Sun and moon sprites keep vanilla's fixed orientation instead of turning as they cross the sky. */
-    public static boolean vanillaCelestialOrientation = true;
+    public static volatile boolean vanillaCelestialOrientation = true;
     /**
      * Surfaces pick a nearby light block and trace one shadow ray to it, instead of waiting for a random bounce to
      * find it. Much less noise from torches, lava and lamps; needs Block Emission for the list of lights.
      */
-    public static boolean blockLightSampling = true;
+    public static volatile boolean blockLightSampling = true;
     /** A torch, lantern or other light held in either hand lights up the surroundings. */
-    public static boolean heldItemLight = true;
+    public static volatile boolean heldItemLight = true;
     /** Ground under open sky turns darker and glossy while it rains, and dries slowly after. */
-    public static boolean rainWetness = true;
+    public static volatile boolean rainWetness = true;
     /** The outline around the block under the crosshair. */
-    public static boolean blockOutline = false;
+    public static volatile boolean blockOutline = false;
     /**
      * Lets Minecraft's level render run over the traced world, with nothing of its own to draw, so that what other
      * mods draw into the world shows: schematics, selection boxes, waypoint beams, guides.
      */
-    public static boolean modOverlays = true;
+    public static volatile boolean modOverlays = true;
     /** The translucent plate behind text displays (leaderboards, holograms), as Minecraft draws it. */
-    public static boolean textBackgrounds = true;
+    public static volatile boolean textBackgrounds = true;
     /** Carved (parallax) resource pack faces are see-through at the outer edges of their block. */
-    public static boolean parallaxTransparentEdges = false;
+    public static volatile boolean parallaxTransparentEdges = false;
     /** The Pipeline.SETTINGS_DEFAULTS_VERSION the stored pipeline settings were written under; 0 for none. */
-    public static int settingsDefaultsVersion = 0;
+    public static volatile int settingsDefaultsVersion = 0;
     /** Brightness of sunlight and the daytime sky, in percent of the shader pack's own. */
-    public static int dayBrightness = 25;
+    public static volatile int dayBrightness = 25;
     /** Brightness of moonlight and the night sky, in percent of the shader pack's own. */
-    public static int nightBrightness = 35;
+    public static volatile int nightBrightness = 35;
     /** Brightness of light emitting blocks and held lights, in percent. */
-    public static int emissionBrightness = 12;
+    public static volatile int emissionBrightness = 12;
     /** Brightness of what the player holds - its glow and the light it casts - in percent. */
-    public static int heldLightBrightness = 12;
+    public static volatile int heldLightBrightness = 12;
     /** How thick the volumetric fog (the air that shows light shafts) is, in percent of the tuned values. */
-    public static int volumetricFogStrength = 100;
+    public static volatile int volumetricFogStrength = 100;
     /**
      * How much clearer the stars get with height, in percent: at 100 they are twice as bright from a mountain top
      * as from sea level. 0 leaves them the same everywhere.
      */
-    public static int starAltitude = 100;
+    public static volatile int starAltitude = 100;
     /** Blocks added to the height vanilla's clouds float at (the Vanilla clouds; the volumetric ones have their own). */
-    public static int cloudHeightOffset = 0;
+    public static volatile int cloudHeightOffset = 0;
     public static final int MIN_CLOUD_HEIGHT_OFFSET = -96;
     public static final int MAX_CLOUD_HEIGHT_OFFSET = 320;
     /** How thick the biome haze is, in percent of the tuned values. */
-    public static int biomeAmbianceStrength = 100;
+    public static volatile int biomeAmbianceStrength = 100;
     /**
      * HDR display output: the window becomes a 16-bit float scRGB swapchain and the traced world keeps its
      * highlights above SDR white. Needs HDR on in the operating system; the window format is picked at startup,
      * so a change takes effect after a restart.
      */
-    public static boolean hdrOutput = false;
+    public static volatile boolean hdrOutput = false;
     /** HDR: the brightness of the display's brightest white, in nits. */
-    public static int hdrPeakNits = 1000;
+    public static volatile int hdrPeakNits = 1000;
     /** HDR: the brightness SDR white (menus, text, the world's midtones) is shown at, in nits. */
-    public static int hdrPaperWhiteNits = 200;
+    public static volatile int hdrPaperWhiteNits = 200;
     /** HDR: tints blue what is shown as SDR (menus, text), to check the world is in HDR. Not saved. */
-    public static boolean hdrDebugView = false;
+    public static volatile boolean hdrDebugView = false;
     /** Frame generation (FrameGeneration), off until the player turns it on; generatedFrames says how many. */
-    public static boolean frameGeneration = false;
+    public static volatile boolean frameGeneration = false;
     /** Frames DLSS generates per rendered frame: 0 is off, 1 is 2x, up to 5 for 6x. */
-    public static int generatedFrames = 1;
+    public static volatile int generatedFrames = 1;
     /** Which frame generation to use: 0 automatic (DLSS where it runs, else FSR), 1 DLSS, 2 FSR. */
-    public static int frameGenerationBackend = 0;
+    public static volatile int frameGenerationBackend = 0;
     /** NVIDIA Reflex low latency mode. Loads Streamline at startup, so turning it on takes a restart. */
-    public static boolean reflex = false;
+    public static volatile boolean reflex = false;
     /**
      * The size the world is rendered and upscaled to before a final FSR 1 upscale to the window, by
      * com.g2806.radiante.client.render.OutputResolution name. NATIVE renders at the window's size; CUSTOM at
      * outputResolutionPercent of it.
      */
-    public static String outputResolution = "NATIVE";
+    public static volatile String outputResolution = "NATIVE";
     /** The share of the window, in percent, the Custom output resolution renders at. */
-    public static int outputResolutionPercent = com.g2806.radiante.client.render.OutputResolution.DEFAULT_PERCENT;
+    public static volatile int outputResolutionPercent = com.g2806.radiante.client.render.OutputResolution.DEFAULT_PERCENT;
 
     /**
      * The cloud setting Distant Horizons switched off, kept until its override toggle is off again and the setting
      * is put back; empty when there is nothing to put back. See DistantHorizonsCompat.
      */
-    public static String cloudsBeforeDistantHorizons = "";
+    public static volatile String cloudsBeforeDistantHorizons = "";
 
     /** Ray tracing can be switched off with a key, which hands the world back to Minecraft's own renderer. */
-    public static boolean rayTracingEnabled = true;
+    public static volatile boolean rayTracingEnabled = true;
 
     /**
      * Which addons' blocks in the settings screen are open (1) or folded (0), as {@code id=1,id=0}; addons not
      * listed were never opened or folded and follow the default (see SettingsLayout).
      */
-    public static String addonsOpen = "";
+    public static volatile String addonsOpen = "";
     /** Per-texture emission percentages; omitted entries retain the active material's brightness. */
-    public static String blockEmissionOverrides = "{}";
+    public static volatile String blockEmissionOverrides = "{}";
     /** Set when the player chooses to run on OpenGL, where this renderer cannot work at all. */
-    public static boolean useOpenGl = false;
+    public static volatile boolean useOpenGl = false;
     /** OpenGL for this session only, after Minecraft detected a failed start; never saved. */
-    public static boolean openGlAfterFailedStart = false;
+    public static volatile boolean openGlAfterFailedStart = false;
 
     /**
      * Half the logical cores. Section building shares the machine with the render thread and, in singleplayer,
@@ -216,7 +221,7 @@ public class Options {
     }
 
     /** On: the three chunk building settings follow autoChunkBuilding(); off: the player's own values. */
-    public static boolean chunkBuildingAuto = true;
+    public static volatile boolean chunkBuildingAuto = true;
 
     /** Puts the automatic values in place (and in the renderer) while chunkBuildingAuto is on. */
     public static void applyChunkBuildingAuto() {
@@ -370,8 +375,12 @@ public class Options {
         Properties props = new Properties();
         try (InputStream in = Files.newInputStream(path)) {
             props.load(in);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        } catch (IOException | IllegalArgumentException e) {
+            // A file that cannot be read (a damaged escape, a disk error) must not stop the game from starting: it
+            // is kept beside itself, and what did load is used over the defaults.
+            Path kept = SettingsFile.keepDamaged(path);
+            RadianteClient.LOGGER.error("Could not read {}; using the defaults for what is missing. The file was "
+                + "kept as {}.", path, kept, e);
         }
         for (Entry entry : ENTRIES) {
             String text = props.getProperty(entry.key());
@@ -411,13 +420,9 @@ public class Options {
         }
 
         try {
-            Files.createDirectories(path.getParent());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        try (OutputStream out = Files.newOutputStream(path)) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
             props.store(out, "Options");
+            SettingsFile.write(path, out.toByteArray());
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

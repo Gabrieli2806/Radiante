@@ -7,7 +7,9 @@
 
 #include "prism/render/modules/world/dlss/dlss_module.hpp"
 #include "prism/render/modules/world/fsr_upscaler/fsr_upscaler_module.hpp"
+#ifdef PRISM_ENABLE_NRD
 #include "prism/render/modules/world/nrd/nrd_module.hpp"
+#endif
 #include "prism/render/modules/world/post_render/post_render_module.hpp"
 #include "prism/render/modules/world/ray_tracing/ray_tracing_module.hpp"
 #include "prism/render/modules/world/shader_pack/shader_pack.hpp"
@@ -399,7 +401,9 @@ void Pipeline::collectWorldModules() {
     auto device = framework != nullptr ? framework->device() : nullptr;
 
     registerWorldModule<RayTracingModule>();
+#ifdef PRISM_ENABLE_NRD
     registerWorldModule<NrdModule>();
+#endif
     registerWorldModule<TemporalAccumulationModule>();
     registerWorldModule<FSRUpscalerModule>();
 

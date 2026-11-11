@@ -1,5 +1,6 @@
 #include "prism/render/modules/world/ray_tracing/ray_tracing_module.hpp"
 
+#include "prism/gpu/diagnostics.hpp"
 #include "prism/render/buffers.hpp"
 #include "prism/render/chunks.hpp"
 #include "prism/render/gpu_profiler.hpp"
@@ -292,7 +293,8 @@ void submitAndWait(Framework &framework, Record &&record) {
     record(commandBuffer);
     commandBuffer->end();
     commandBuffer->submitMainQueueIndividual(device);
-    vkQueueWaitIdle(device->mainVkQueue());
+    gpu::diagnostics::onResult(vkQueueWaitIdle(device->mainVkQueue()), device->mainVkQueue(),
+                               device->secondaryQueue());
 }
 
 #ifdef DEBUG

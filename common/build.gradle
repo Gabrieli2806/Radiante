@@ -18,10 +18,14 @@ dependencies {
 	testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
 	testImplementation "com.google.code.gson:gson:2.13.2"
 	testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.10.2"
+	// Reads the mixins' class files for the test that looks up what every mixin names (MixinTargetsTest).
+	testImplementation "org.ow2.asm:asm-tree:9.8"
 }
 
 test {
 	useJUnitPlatform()
+	// Minecraft itself, which the tests otherwise run without: MixinTargetsTest looks the mixins' targets up in it.
+	classpath += sourceSets.main.compileClasspath
 }
 
 // JNI headers for the native renderer.

@@ -122,6 +122,15 @@ jobs:
       - name: Shaders under every setting
         # The path tracer is compiled in game with the player's settings: this compiles it under each of them.
         run: python3 native/src/tools/check_shaders.py
+      - name: Offline checks of the renderer
+        # The checks in native/src/tools that need no game and no GPU (pack merge rules, hand bounds, emission).
+        run: |
+          cmake --build native/build/linux-release --target native_tests
+          ctest --test-dir native/build/linux-release --output-on-failure
+      - name: Example shader packs
+        # Each pack in examples/shaderpacks staged on Radiante PT as the loader does, then compiled: a hook whose
+        # signature changed breaks them without breaking Radiante PT, and one of them ships in the mod.
+        run: python3 native/src/tools/check_example_packs.py --stage native/build/linux-release/src/tools/shader_pack_stage
       - name: Check glibc requirement
         run: |
           lib=common/src/main/resources/radiante-native/linux-x64/libprismrt.so

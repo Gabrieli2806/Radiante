@@ -33,6 +33,8 @@ import java.util.concurrent.CompletableFuture;
  *       edit to its files does by itself ({@link ShaderPackHotReload}).</li>
  *   <li>{@code /radiante debug view [view|off]}: shows a guide image (albedo, normals...) or one of the pack's debug
  *       views as the picture; without a view, lists them.</li>
+ *   <li>{@code /radiante showcase ...} and {@code /radiante biome ...}: handed to {@code Showcase}, which builds the
+ *       test gallery and tours the biomes.</li>
  * </ul>
  */
 public final class RadianteCommands {
@@ -62,7 +64,20 @@ public final class RadianteCommands {
                     .executes(RadianteCommands::listViews)
                     .then(RequiredArgumentBuilder.<S, String>argument("view", StringArgumentType.word())
                         .suggests(views)
-                        .executes(context -> setView(StringArgumentType.getString(context, "view"))))));
+                        .executes(context -> setView(StringArgumentType.getString(context, "view"))))))
+            // The gallery and the biome tour (Showcase) read their own arguments. They are named here because a
+            // loader that knows the literal "radiante" answers "incorrect argument" for a word it has no branch for,
+            // and the command then never leaves for the server, where ShowcaseCommandMixin would have caught it.
+            .then(passedOn("showcase"))
+            .then(passedOn("biome"));
+    }
+
+    private static <S> LiteralArgumentBuilder<S> passedOn(String word) {
+        return LiteralArgumentBuilder.<S>literal(word)
+            .executes(context -> com.g2806.radiante.client.Showcase.handle("radiante " + word) ? 1 : 0)
+            .then(RequiredArgumentBuilder.<S, String>argument("arguments", StringArgumentType.greedyString())
+                .executes(context -> com.g2806.radiante.client.Showcase.handle("radiante " + word + " "
+                    + StringArgumentType.getString(context, "arguments")) ? 1 : 0));
     }
 
     private static int validate(String name) {

@@ -23,10 +23,14 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 | `common/.../client/gui/` | Settings screen (`RadianteOptionsScreen`, on top of `SettingsChoices`, what is chosen until Apply and applying it, and `SettingsRows`, each section's rows; `SettingsLayout`, `AdvancedOptions`, `Tunable`), Shader Packs screen and a pack's settings page (`ShaderPacksScreen`, `PackSettingsPage`), toasts, background rebuild, start-up warm-up |
 | `common/.../client/render/` | Chunk and entity collection, point lights (`BedrockPointLights`), emission (`EmissionTiles`), held light, biome ambiance |
 | `common/.../client/option/Options.java` | Plain options saved in `radiante/options.properties` |
+| `common/.../client/option/SettingsFile.java` | How every settings file is written (whole, then moved over the old one) and how one that cannot be read is kept as `<name>.bak` |
 | `common/.../compat/VersionCompat.java` | Where Minecraft's API differs between the versions Radiante is built for: one small static method per differing call, with the same signatures on every version branch and each branch's own bodies. Not `client/compat/`, which is for other mods |
 | `common/src/main/resources/assets/radiante/lang/` | Texts: `en_us`, `es_es`, `zh_cn` |
 | `native/src/prism/` | Renderer: `gpu/`, `render/` (modules, framework, pipeline), `middleware/` (JNI, one file per Java class) |
 | `native/src/shader/world/ray_tracing/internal/radiante-pt/` | The path tracer: `configs.json` (attributes, textures, passes), `world/` (the ray generation shader's `main()` is one file a stage in `world/main/`), `pt/`, `common/`, and `hooks/`, the hook points shader packs replace |
+| `native/include/` | The JNI headers `javac` generates from the Java classes with `native` methods; each middleware file includes its own, so a signature that differs between Java and C++ does not compile |
+| `native/extern/` | Third-party libraries, only what the build reads; `native/extern/README.md` lists versions, what was left out and what was changed here |
+| `native/src/tools/` | Offline checks: `check_shaders.py`, `check_example_packs.py`, `check_v1_layout.py`, `compile_pack.py`, `shader_pack_stage` and the small C++ tests (`native_tests` target, `ctest`) |
 | `native/src/shader/include/radiante/v1/` | The public headers shader packs include (`#include <radiante/v1/surface.glsl>`; `uniforms.glsl`, the per-frame uniforms under names of their own), the same for every pack on this Radiante. Written from scratch, nothing copied, so packs on them can keep their own licence (`LICENSE-EXCEPTION.md`); within v1 functions are only added, never renamed, removed or changed |
 | `examples/shaderpacks/` | Example packs built on radiante-pt (`./gradlew shaderPackExamples`); the design is `docs/dev/shader-packs.md`, the author guide `docs/en/shader-packs.md`, the roadmap issue #55 |
 | `docs/en`, `docs/es` | Player documentation (same pages in both languages), one page per settings section in `settings/` (`opciones/`) |
@@ -48,14 +52,31 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
   if the clock jumped back, MSBuild skips the edits and a clean build is needed.
 - From a git worktree the path gets too long for the FidelityFX shader compiler: map the worktree to a short path
   (`subst W: <worktree>`, or a junction under `C:\rtb\`) and set `RADIANTE_BUILD_DIR` to a separate build folder.
-- `./gradlew build` regenerates headers in `native/include/`; revert them before committing unless they are part of
-  the change.
+- `./gradlew build` regenerates the headers in `native/include/`, which the middleware includes. A change to a
+  `native` method changes its header: commit the header with it and change the C++ function to match, or the native
+  build stops. Revert a header that changed without such a change.
+- `-DPRISM_ENABLE_NRD=OFF` builds the renderer without the NRD module (its pipelines are then not offered). DLSS is
+  not optional: NGX is part of the device set-up and of frame generation. Its libraries are not in the repository;
+  the setup scripts and the CI fetch the pinned version, and CMake fetches them itself when `native/extern/DLSS/lib`
+  is missing.
 
 ## Testing
 
 - After any change under `native/src/shader`, run `python native/src/tools/check_shaders.py`: it compiles Radiante PT
   under every compiled-in setting and debug view without the game (under a minute; the CI runs it too). A shader that
   compiles at the defaults can still fail with one setting off.
+- After a change to a hook, to a file in radiante-pt's `common/` or to an example pack, run
+  `python native/src/tools/check_example_packs.py --stage <build dir>/src/tools/Release/shader_pack_stage.exe`
+  (the `shader_pack_stage` target of the native build; no `Release/` on Linux): it stages every pack in
+  `examples/shaderpacks` on radiante-pt as the loader does and compiles it. The CI runs it.
+- `./gradlew :common:test` runs the Java tests, which need no game. Besides the pure logic they keep hand-kept lists
+  in step: `MixinTargetsTest` (every method, field and class a mixin names exists in this Minecraft),
+  `ModuleLayoutTest` (a module's YAML image lists against its C++ `inputImageNum`/`outputImageNum`),
+  `TunableDefaultsTest` (a slider's default and range against its attribute), `StagedOptionsTest` (option names
+  the settings screen stages as text), `LangFilesTest`, `OptionsMigrationTest`. When one fails after your change,
+  the change is incomplete: fix the other side, do not loosen the test.
+- The native tests: `cmake --build <build dir> --config Release --target native_tests`, then
+  `ctest --test-dir <build dir> -C Release --output-on-failure`.
 - Never touch the user's worlds. Test only in worlds whose name starts with `Radiante` (for example
   `RadianteParityA`, `RadianteRealisticTerrain`); copies get a distinct level name; never delete a copy while a client
   is running.
@@ -84,9 +105,32 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
   way stays inline.
 - Every player-facing text goes in all three lang files with the same keys, the same `%s` placeholders and the same
   `\n` line breaks. Tooltips stay short: what it does, and what raising or lowering it does.
-- A new setting usually needs: the attribute in `configs.json` (`"runtime": true` when it can change without a
-  rebuild), a `Tunable` or a row in `SettingsRows`, `OptionImpact`, the three lang files, the settings page in
-  `docs/en` and `docs/es`, and a `changelog.md` line.
+- A new setting of the shader pack needs: the attribute in `configs.json` (`"runtime": true` when it can change
+  without a rebuild); for a slider a `Tunable` (default and range in steps, checked against the attribute by
+  `TunableDefaultsTest`) and its row in `SettingsRows`; for a switch its name in `RtAttributes`, then in
+  `SettingsChoices` the `pending*` field, its line in `carryOver`, its default in `resetToDefaults` and its write
+  in the apply method, and the row in `SettingsRows`. Either kind: `OptionImpact`, the dependency map and the
+  blocked-reason `switch` in `RadianteOptionsScreen` when another setting turns it off, the three lang files
+  (label and `.tooltip`), the settings page in `docs/en` and `docs/es`, and a `changelog.md` line.
+- A new plain option needs: the field in `Options` and its row in `Options.ENTRIES`, its default in
+  `SettingsChoices.resetToDefaults`, the row in `SettingsRows` (staged under the field's exact name, which
+  `StagedOptionsTest` looks up), `SettingsCode.OPTIONS` when a shared settings code should carry it, and the same
+  texts and docs.
+- A new render module needs: the C++ class (`NAME`, `inputImageNum`, `outputImageNum`), its `registerWorldModule`
+  line in `pipeline.cpp`, its YAML in `common/src/main/resources/modules/` with the same name and as many images
+  (`ModuleLayoutTest`), its name constant in `Pipeline.java` and its place in `PresetAssembly`.
+- The fields of `Options` are `volatile`, and the native `Options` (`renderer.hpp`) is made of atomics: the
+  settings screen writes them while the render thread and the builders read them. A new option field is declared
+  the same way. Two values that must change together do not belong in two such fields.
+- Radiante's screens take their shared colours and measures from `gui/Theme`; a screen keeps only its own.
+- A shader helper with no bindings that more than one file needs goes in `native/src/shader/util/` once
+  (`util/numeric.glsl` has `finiteFloat`, `finiteVec3` and `luminance709`), not in each file.
+- Settings files are written with `SettingsFile.write`, never with `Files.writeString`: a crash in the middle of a
+  save must leave the old file. Code that gives up on a file it cannot read calls `SettingsFile.keepDamaged` first.
+- A command or tool that changes the world or moves the player (`/radiante showcase`, `/radiante biome`) checks that
+  the world allows commands.
+- `PBRVertex` (`common/shared.hpp`) is written by Java at fixed offsets (`PBRVertexWriter.OFF_*`): move a member in
+  both, and in the `static_assert`s under the struct.
 - radiante-pt's defaults are the Bedrock RTX look: a change to one of them goes in `configs.json` (or
   `tone_mapping.yaml`) and in `BedrockRtxValues`. Other looks are shader packs, not settings.
 - The hook files and `common/pack_*.glsl` in radiante-pt are the shader pack interface (`radiante-pt@1`): keep their
@@ -109,7 +153,9 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 - Every Minecraft version has its own branch, named after it: `mc/26.2`, `mc/26.3` (the default branch for now) and
   `mc/26.4`. When 26.4 is stable, `mc/26.4` becomes the default branch. Work on `mc/26.3` first, then port: merge it into
   the other version branches,
-  adapt the API differences (in that branch's `VersionCompat`, the one file expected to conflict), check the mixins
-  against that version's jar (wrong mixin targets do not fail the compile), rebuild native, build.
+  adapt the API differences (in that branch's `VersionCompat`, the one file expected to conflict), run
+  `./gradlew :common:test` (`MixinTargetsTest` looks the mixins' targets up in that version's jar, which the
+  compile does not; it checks names, not descriptors, so a client start is still the last word), rebuild native,
+  build.
 - **Changing `mod_version` in `gradle.properties` and pushing publishes a release** to GitHub, Modrinth and
   CurseForge through CI (tag `v<mod_version>+<minecraft_version>`). Only do that when asked.

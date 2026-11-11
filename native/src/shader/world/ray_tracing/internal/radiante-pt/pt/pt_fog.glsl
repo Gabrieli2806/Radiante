@@ -179,13 +179,7 @@ vec3 underwaterDaylightColumn() {
     return mix(vec3(1.0), left, underwaterDaylight());
 }
 
-bool finiteFloat(float value) {
-    return !isnan(value) && !isinf(value);
-}
-
-bool finiteVec3(vec3 value) {
-    return !any(isnan(value)) && !any(isinf(value));
-}
+#include "util/numeric.glsl"
 
 // Radiance as it may be written to the half float images the denoiser and the tone mapper read: nothing that is not a
 // number, and nothing past what a half float holds. A sun glint off smooth ice or the core of a beacon went over

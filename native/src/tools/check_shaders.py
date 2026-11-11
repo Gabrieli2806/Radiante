@@ -42,6 +42,11 @@ def stage(folder):
     shutil.copytree(SOURCE / "shader" / "util", folder / "util")
     shutil.copytree(SOURCE / "common", folder / "common", dirs_exist_ok=True)
     shutil.copytree(SOURCE.parent / "extern" / "sharc" / "include", folder / "extern" / "sharc" / "include")
+    quote_public_includes(folder)
+
+
+def quote_public_includes(folder):
+    """Names the public headers in quotes in every shader under a staged pack."""
     # The public headers are included in angle brackets, which the renderer's own includer resolves but
     # glslangValidator only does in its newer versions (the Vulkan SDK the CI builds with does not). In the staged copy
     # they are named in quotes instead, which every version looks up in the same include folder.

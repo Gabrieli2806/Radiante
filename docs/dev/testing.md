@@ -77,14 +77,46 @@ Settings tests write to the development `radiante/` files (`options.properties`,
 
 ## Unit tests
 
-- `./gradlew build` runs the Java tests in `common/src/test`: code that needs no running game, such as the Bedrock
-  pack reader, shader pack settings, the check that `BedrockRtxValues` agrees with radiante-pt's defaults, and the
-  check that the three lang files hold the same keys and `%s` placeholders.
-- Small native tests and the offline shader pack checker are in `native/src/tools/`
-  ([shader packs, §5](shader-packs.md#checking-a-pack-offline)).
+- `./gradlew build` (or `./gradlew :common:test` alone) runs the Java tests in `common/src/test`: code that needs
+  no running game, such as the Bedrock pack reader, shader pack settings and how settings files are written.
+- Some of them keep two hand-kept lists in step, and fail when a change was made to one side only:
+
+  | Test | What it compares |
+  |---|---|
+  | `MixinTargetsTest` | Every method, field and class a mixin names, against the Minecraft the build compiles with |
+  | `ModuleLayoutTest` | A module's YAML image lists, against `inputImageNum`/`outputImageNum` in its C++ class |
+  | `TunableDefaultsTest` | A slider's default and range, against its attribute in `configs.json` or the module's YAML |
+  | `StagedOptionsTest` | The option names the settings screen stages as text, against the fields of `Options` |
+  | `OptionsMigrationTest` | `BedrockRtxValues`, against radiante-pt's defaults |
+  | `LangFilesTest` | The keys and `%s` placeholders of the three lang files |
+
+- The native tests in `native/src/tools/` need no game and no GPU. Build them with the `native_tests` target and
+  run them with ctest; the CI does both:
+
+  ```sh
+  cmake --build <build dir> --config Release --target native_tests
+  ctest --test-dir <build dir> -C Release --output-on-failure
+  ```
+
+- The offline shader pack checker is there too ([shader packs, §5](shader-packs.md#checking-a-pack-offline)).
+
+## Example shader packs
+
+The packs in `examples/shaderpacks` hold only the hook files they change, so a hook whose signature changes in
+radiante-pt breaks them without breaking radiante-pt, and one of them ships inside the mod. After a change to a
+hook, to a file in radiante-pt's `common/` or to an example, run:
+
+```sh
+python native/src/tools/check_example_packs.py --stage <build dir>/src/tools/Release/shader_pack_stage.exe
+```
+
+(`<build dir>/src/tools/shader_pack_stage` on Linux.) It stages each pack on radiante-pt as the loader does and
+compiles it at the pack's default settings. The CI runs it on every push.
 
 ## Mixins
 
-A mixin with a wrong target compiles fine and only fails when its class loads in game. After touching a mixin, or
-when porting to another Minecraft version, launch the game and open a world: the crash report names the mixin and
-the descriptor it expected.
+A mixin with a wrong target compiles fine and only fails when its class loads in game. `MixinTargetsTest`
+(`./gradlew :common:test`) catches the usual case without the game: it looks every method, field and class the
+mixins name up in the Minecraft the build compiles against, and lists the ones that are not there. It checks names,
+not descriptors, and not the mixins for other mods, so after touching a mixin, or when porting to another Minecraft
+version, still launch the game and open a world: the crash report names the mixin and the descriptor it expected.

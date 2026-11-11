@@ -1,6 +1,7 @@
 #include "prism/render/modules/world/post_render/post_render_module.hpp"
 
 #include "prism/render/modules/world/tone_mapping/tone_mapping_module.hpp"
+#include "prism/gpu/diagnostics.hpp"
 #include "prism/render/buffers.hpp"
 #include "prism/render/pipeline.hpp"
 #include "prism/render/render_framework.hpp"
@@ -497,7 +498,11 @@ void PostRenderModule::createBlackImage() {
     commandBuffer->end();
     auto fence = gpu::Fence::create(device);
     commandBuffer->submitMainQueueIndividual(device, fence);
-    vkWaitForFences(device->vkDevice(), 1, &fence->vkFence(), VK_TRUE, UINT64_MAX);
+    const VkResult waited = vkWaitForFences(device->vkDevice(), 1, &fence->vkFence(), VK_TRUE, UINT64_MAX);
+    if (waited != VK_SUCCESS) {
+        gpu::diagnostics::onResult(waited, device->mainVkQueue(), device->secondaryQueue());
+        throw std::runtime_error("the post render pass could not prepare its black image on the GPU");
+    }
 }
 
 // The depth pass turns the first-hit distances into the depth buffer the render passes test against.
@@ -635,7 +640,11 @@ void PostRenderModule::createStarField() {
     commandBuffer->end();
     auto fence = gpu::Fence::create(device);
     commandBuffer->submitMainQueueIndividual(device, fence);
-    vkWaitForFences(device->vkDevice(), 1, &fence->vkFence(), VK_TRUE, UINT64_MAX);
+    const VkResult waited = vkWaitForFences(device->vkDevice(), 1, &fence->vkFence(), VK_TRUE, UINT64_MAX);
+    if (waited != VK_SUCCESS) {
+        gpu::diagnostics::onResult(waited, device->mainVkQueue(), device->secondaryQueue());
+        throw std::runtime_error("the post render pass could not upload its star field to the GPU");
+    }
 }
 
 // ---- the shader pack's passes
