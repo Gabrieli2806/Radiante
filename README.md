@@ -20,7 +20,7 @@ NeoForge and Forge), 26.2 (Fabric, NeoForge and Forge) and 26.4 snapshots (Fabri
 
 ## Features
 
-- **Path tracing** of the whole world: sunlight, shadows, bounced light, reflections and block lights (ReSTIR), on
+- **Path tracing** of the whole world: sunlight, shadows, bounced light, reflections and block lights, on
   Windows and Linux.
 - **The Bedrock RTX look** by default, and Bedrock RTX `.mcpack` resource packs read directly. LabPBR packs too.
 - **Sky and weather:** physical sky, volumetric fog and clouds, rain with wet ground and puddles, a look of its own
