@@ -18,8 +18,6 @@ public final class RtAttributes {
         "render_pipeline.module.ray_tracing.attribute.post_dof_auto_focus";
     public static final String DEPTH_OF_FIELD_ATTRIBUTE =
         "render_pipeline.module.ray_tracing.attribute.post_enable_dof";
-    /** Shader Execution Reordering for the path rays (NVIDIA RTX 40 and newer; ignored elsewhere). */
-    public static final String SER_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.ser";
     /** ReSTIR reuse of block light samples across frames and pixels (needs block light sampling). */
     public static final String RESTIR_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.restir";
     /** ReSTIR GI: the first diffuse bounce resampled across frames and neighbouring pixels. */

@@ -44,7 +44,6 @@
         {"attr": "num_ray_bounces", "to": "1"},
         "cache_deep_bounces",
         "bedrock_one_bounce",
-        "ser",
         "restir_gi",
         "transparent_split_mode",
         "transparent_checkerboard",

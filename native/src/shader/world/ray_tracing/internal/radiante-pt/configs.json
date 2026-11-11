@@ -153,12 +153,6 @@
             }
         },
         {
-            "name": "render_pipeline.module.ray_tracing.attribute.ser",
-            "type": "bool",
-            "default_value": "render_pipeline.false",
-            "define": "VPT_SER"
-        },
-        {
             "name": "render_pipeline.module.ray_tracing.attribute.restir",
             "type": "bool",
             "default_value": "render_pipeline.false",

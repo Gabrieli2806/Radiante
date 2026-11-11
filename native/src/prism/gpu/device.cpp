@@ -39,7 +39,6 @@ struct CreatedDevice {
     bool dlss = false;
     bool dlssFrameGeneration = false;
     bool fsrFrameGeneration = false;
-    bool shaderExecutionReordering = false;
     bool opacityMicromap = false;
     uint32_t opacityMicromapMaxLevel = 0;
     bool xess = false;
@@ -159,8 +158,6 @@ class DeviceExtensions {
 // createMerged fills another with what the device enables. The chain points into the object, so it stays where it is.
 struct FeatureChain {
     VkPhysicalDeviceFeatures2 features2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
-    VkPhysicalDeviceRayTracingInvocationReorderFeaturesNV invocationReorder{
-        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_INVOCATION_REORDER_FEATURES_NV};
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipeline{
         VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR};
     VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructure{
@@ -180,10 +177,8 @@ struct FeatureChain {
     // The end of the chain, where structures copied from Minecraft's request are added.
     VkBaseOutStructure *tail = nullptr;
 
-    // The invocation reorder structure is only chained where the GPU has the extension.
-    explicit FeatureChain(bool withInvocationReorder) {
-        features2.pNext = withInvocationReorder ? static_cast<void *>(&invocationReorder) : &rayTracingPipeline;
-        invocationReorder.pNext = &rayTracingPipeline;
+    FeatureChain() {
+        features2.pNext = &rayTracingPipeline;
         rayTracingPipeline.pNext = &accelerationStructure;
         accelerationStructure.pNext = &vulkan12;
         vulkan12.pNext = &vulkan11;
@@ -500,9 +495,6 @@ VkResult Device::createMerged(VkPhysicalDevice physicalDeviceHandle,
     if (extensions.offered(VK_AMD_DEVICE_COHERENT_MEMORY_EXTENSION_NAME)) {
         extensions.request(VK_AMD_DEVICE_COHERENT_MEMORY_EXTENSION_NAME);
     }
-    // Shader execution reordering: the GPU regroups rays by what they hit before shading them (RTX 40 and newer).
-    const bool reorderOffered = extensions.offered(VK_NV_RAY_TRACING_INVOCATION_REORDER_EXTENSION_NAME);
-    if (reorderOffered) extensions.request(VK_NV_RAY_TRACING_INVOCATION_REORDER_EXTENSION_NAME);
     // Opacity micromaps: cut-out terrain (leaves, grass, flowers) is baked into per-texel opacity, so most rays that
     // meet it are answered by the traversal hardware without running the any-hit shader. Optional: without them the
     // any-hit shader decides every such hit, as before. RADIANTE_NO_OMM leaves them off, to compare the two.
@@ -521,13 +513,10 @@ VkResult Device::createMerged(VkPhysicalDevice physicalDeviceHandle,
         std::ranges::all_of(kFsrFrameGenerationExtensions, [&](const char *name) { return extensions.enabled(name); });
     bool xessCompatible = instance->isXessInstanceExtensionsCompatible() && extensions.serves(xess);
 
-    FeatureChain supported(reorderOffered);
+    FeatureChain supported;
     vkGetPhysicalDeviceFeatures2(physicalDeviceHandle, &supported.features2);
 
-    const bool reorderEnabled = extensions.enabled(VK_NV_RAY_TRACING_INVOCATION_REORDER_EXTENSION_NAME) &&
-                                supported.invocationReorder.rayTracingInvocationReorder == VK_TRUE;
-    FeatureChain enabled(reorderEnabled);
-    enabled.invocationReorder.rayTracingInvocationReorder = reorderEnabled ? VK_TRUE : VK_FALSE;
+    FeatureChain enabled;
     enableRendererFeatures(enabled, supported, extensions);
 
     MinecraftFeatures minecraft;
@@ -606,14 +595,13 @@ VkResult Device::createMerged(VkPhysicalDevice physicalDeviceHandle,
         .dlss = dlssCompatible,
         .dlssFrameGeneration = dlssFrameGenerationCompatible,
         .fsrFrameGeneration = fsrFrameGenerationCompatible,
-        .shaderExecutionReordering = reorderEnabled,
         .opacityMicromap = micromapEnabled,
         .opacityMicromapMaxLevel = micromapMaxLevel,
         .xess = xessCompatible,
     };
     deviceLog() << "created shared device with " << enabledExtensions.size() << " extensions (dlss=" << dlssCompatible
                 << ", dlss frame generation=" << dlssFrameGenerationCompatible
-                << ", fsr frame generation=" << fsrFrameGenerationCompatible << ", ser=" << reorderEnabled
+                << ", fsr frame generation=" << fsrFrameGenerationCompatible
                 << ", opacity micromaps=" << micromapEnabled
                 << (micromapOffered ? (micromapWanted ? "" : " (turned off by RADIANTE_NO_OMM)") : " (not offered)")
                 << ", xess=" << xessCompatible << ")" << std::endl;
@@ -671,10 +659,6 @@ bool Device::isDlssFrameGenerationDeviceExtensionsCompatible() const {
 
 bool Device::isFsrFrameGenerationDeviceExtensionsCompatible() const {
     return g_created.handle == device_ && g_created.fsrFrameGeneration;
-}
-
-bool Device::isShaderExecutionReorderingEnabled() const {
-    return g_created.handle == device_ && g_created.shaderExecutionReordering;
 }
 
 bool Device::isOpacityMicromapEnabled() const {

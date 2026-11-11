@@ -72,7 +72,6 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
      * reuse leaves dark lines along corners and blotches while the camera moves.
      */
     private static final Boolean RESTIR_GI_DEFAULT = Boolean.FALSE;
-    Boolean pendingSer;
     Boolean pendingFroxelFog;
     Boolean pendingSeamlessGlass;
     // Plain on/off shader pack settings (light grid, cached deep bounces), by attribute; absent until read.
@@ -171,7 +170,6 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
         this.pendingSeamlessScope = previous.pendingSeamlessScope;
         this.pendingRestir = previous.pendingRestir;
         this.pendingRestirGi = previous.pendingRestirGi;
-        this.pendingSer = previous.pendingSer;
         this.pendingFroxelFog = previous.pendingFroxelFog;
         this.pendingSeamlessGlass = previous.pendingSeamlessGlass;
         this.pendingPackToggles = new java.util.HashMap<>(previous.pendingPackToggles);
@@ -436,7 +434,6 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
         this.pendingRestir = Boolean.FALSE;
         this.pendingRestirGi = PipelineSettings.supportsShaderPackToggle(RtAttributes.RESTIR_GI_ATTRIBUTE)
             ? RESTIR_GI_DEFAULT : null;
-        this.pendingSer = Boolean.FALSE;
         this.pendingFroxelFog = PipelineSettings.supportsShaderPackToggle(RtAttributes.FROXEL_FOG_ATTRIBUTE)
             ? Boolean.TRUE : null;
         this.pendingSeamlessGlass =
@@ -628,9 +625,6 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
         }
         if (this.pendingMotionBlur != null) {
             changed |= PipelineSettings.setShaderPackToggle(RtAttributes.MOTION_BLUR_ATTRIBUTE, this.pendingMotionBlur);
-        }
-        if (this.pendingSer != null) {
-            changed |= PipelineSettings.setShaderPackToggle(RtAttributes.SER_ATTRIBUTE, this.pendingSer);
         }
         if (this.pendingFroxelFog != null) {
             changed |= PipelineSettings.setShaderPackToggle(RtAttributes.FROXEL_FOG_ATTRIBUTE, this.pendingFroxelFog);

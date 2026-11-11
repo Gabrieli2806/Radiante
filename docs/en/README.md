@@ -39,7 +39,6 @@ work the same.
 - The FSR, XeSS and native pipelines are noisier than DLSS Ray Reconstruction.
 - AMD and Intel work, but are tested less than NVIDIA.
 - Frame generation is not available with HDR. XeSS is Windows only.
-- Shader Execution Reordering is experimental (water may look white).
 - Distant Horizons support is experimental.
 
 Bugs and ideas are in [GitHub Issues](https://github.com/Gabrieli2806/Radiante/issues); where the project is going,

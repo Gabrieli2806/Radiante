@@ -29,7 +29,6 @@ class Device : public SharedObject<Device> {
     bool isXessDeviceExtensionsCompatible() const;
     bool isDlssFrameGenerationDeviceExtensionsCompatible() const;
     bool isFsrFrameGenerationDeviceExtensionsCompatible() const;
-    bool isShaderExecutionReorderingEnabled() const;
     // VK_EXT_opacity_micromap with its micromap feature, and the deepest subdivision level it takes in both formats.
     bool isOpacityMicromapEnabled() const;
     uint32_t opacityMicromapMaxSubdivisionLevel() const;

@@ -54,7 +54,6 @@ void collectRayTracing(const ShaderPack &pack,
     const uint32_t executionSet = pack.executionSet(kRayTracingRuntimeResourceSet);
     constexpr auto stage = ShaderPackLoader::Stage::RayTracing;
     const bool micromaps = framework != nullptr && framework->device()->isOpacityMicromapEnabled();
-    const bool reordering = framework != nullptr && framework->device()->isShaderExecutionReorderingEnabled();
 
     for (const auto &pass : config.passes) {
         if (pass.stage != stage) continue;
@@ -106,7 +105,6 @@ void collectRayTracing(const ShaderPack &pack,
                     }
                 }
                 auto rayGen = definitions;
-                rayGen["VPT_SER_SUPPORTED"] = reordering ? "1" : "0";
                 auto query = rayGen;
                 if (pack.hasSharcRuntime() && rayTracing.querySharc) {
                     query["USE_SHARC"] = "1";
