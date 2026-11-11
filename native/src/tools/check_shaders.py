@@ -24,6 +24,7 @@ import argparse
 import concurrent.futures
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -41,6 +42,21 @@ def stage(folder):
     shutil.copytree(SOURCE / "shader" / "util", folder / "util")
     shutil.copytree(SOURCE / "common", folder / "common", dirs_exist_ok=True)
     shutil.copytree(SOURCE.parent / "extern" / "sharc" / "include", folder / "extern" / "sharc" / "include")
+    # The public headers are included in angle brackets, which the renderer's own includer resolves but
+    # glslangValidator only does in its newer versions (the Vulkan SDK the CI builds with does not). In the staged copy
+    # they are named in quotes instead, which every version looks up in the same include folder.
+    public = SOURCE / "shader" / "include"
+
+    def quoted(match):
+        return f'#include "{match.group(1)}"' if (public / match.group(1)).is_file() else match.group(0)
+
+    for path in folder.rglob("*"):
+        if path.is_file() and path.suffix in (".glsl", ".rgen", ".rchit", ".rahit", ".rmiss", ".rint", ".comp", ".frag",
+                                              ".vert", ".hpp"):
+            text = path.read_text(encoding="utf-8")
+            changed = re.sub(r"#include\s*<([^>]+)>", quoted, text)
+            if changed != text:
+                path.write_text(changed, encoding="utf-8")
 
 
 def builds(config):
