@@ -16,11 +16,13 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 
 | Where | What |
 |---|---|
-| `common/src/main/java/com/g2806/radiante/client/pipeline/Pipeline.java` | Settings stored in `pipeline.yaml`, presets, building the pipeline |
+| `common/src/main/java/com/g2806/radiante/client/pipeline/Pipeline.java` | The pipeline: its modules and their values, what the settings read and set, which preset to use, building it, and the `native` methods |
+| `common/.../client/pipeline/` beside it | `PresetAssembly` (each preset's modules and connections), `PipelineStore` (`pipeline.yaml`, each pack's settings file, their migrations), `ModuleAttributes` (a module's attributes as the shader pack declares them), `NativePipelineParams` (the layout the renderer reads), `RtAttributes` (the ray tracing attributes' names) |
 | `common/.../client/bedrock/` | Bedrock packs (converter, fog, lighting) and `BedrockRtxValues`, the Bedrock RTX values that are radiante-pt's and tone mapping's defaults (a test checks they agree) |
 | `common/.../client/pipeline/ShaderPack*.java` | Shader packs in `radiante/shaderpacks/`: manifest, library, settings page keys, validation |
-| `common/.../client/gui/` | Settings screen (`RadianteOptionsScreen`, `SettingsLayout`, `AdvancedOptions`, `Tunable`), Shader Packs screen and a pack's settings page (`ShaderPacksScreen`, `PackSettingsPage`), toasts, background rebuild, start-up warm-up |
+| `common/.../client/gui/` | Settings screen (`RadianteOptionsScreen`, on top of `SettingsChoices`, what is chosen until Apply and applying it, and `SettingsRows`, each section's rows; `SettingsLayout`, `AdvancedOptions`, `Tunable`), Shader Packs screen and a pack's settings page (`ShaderPacksScreen`, `PackSettingsPage`), toasts, background rebuild, start-up warm-up |
 | `common/.../client/render/` | Chunk and entity collection, point lights (`BedrockPointLights`), emission (`EmissionTiles`), held light, biome ambiance |
+| `common/.../client/benchmark/` | `/radiante benchmark`: the scene it builds (`BenchmarkScene`), the camera's shots (`BenchmarkPath`), the run and its report (`Benchmark`) |
 | `common/.../client/option/Options.java` | Plain options saved in `radiante/options.properties` |
 | `common/src/main/resources/assets/radiante/lang/` | Texts: `en_us`, `es_es`, `zh_cn` |
 | `native/src/prism/` | Renderer: `gpu/`, `render/` (modules, framework, pipeline), `middleware/` (JNI, one file per Java class) |
@@ -72,7 +74,7 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 - Every player-facing text goes in all three lang files with the same keys, the same `%s` placeholders and the same
   `\n` line breaks. Tooltips stay short: what it does, and what raising or lowering it does.
 - A new setting usually needs: the attribute in `configs.json` (`"runtime": true` when it can change without a
-  rebuild), a `Tunable` or a row in `RadianteOptionsScreen`, `OptionImpact`, the three lang files, the settings page in
+  rebuild), a `Tunable` or a row in `SettingsRows`, `OptionImpact`, the three lang files, the settings page in
   `docs/en` and `docs/es`, and a `changelog.md` line.
 - radiante-pt's defaults are the Bedrock RTX look: a change to one of them goes in `configs.json` (or
   `tone_mapping.yaml`) and in `BedrockRtxValues`. Other looks are shader packs, not settings.

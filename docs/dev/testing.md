@@ -47,6 +47,32 @@ RADIANTE_DEV_PRESCRIPT="100:testworld=RadianteSmoke" RADIANTE_DEV_SCRIPT="400:qu
 - Scripts stop by themselves in a world whose name does not start with `Radiante`.
 - The other actions (`hud=`, `fov=`, `slot=`, `debug=`, `rejoin=`...) are listed in `DevAutomation.run`.
 
+## Benchmark
+
+`/radiante benchmark` measures the renderer on a scene that is the same everywhere. It builds a valley over the
+world's origin (a lake with a dock, a waterfall, a cave with every ore and a lava pool, a house, a terrace of metal and
+coloured glass, a path with lamp posts, a ruined portal, trees and animals), then flies the camera through seven shots
+in 94 seconds: dawn over the lake, the house and field in the morning, a noon flight to the waterfall, the cave,
+under water, the terrace at sunset, and the lit house at night.
+
+- It only runs in a singleplayer world whose name starts with `Radiante`; `/radiante benchmark stop` ends it early.
+- It measures the settings in use. Only the field of view (70), the render distance (12) and the frame limit are
+  fixed for the run and put back after it.
+- The result is shown in chat and written to `radiante/benchmarks/benchmark-<date>.json`: frames a second for the run
+  and for each shot, the slowest 1% of frames, the GPU time of each stage, and the settings.
+- `screenshots/benchmark-<shot>.png` keeps one picture of each shot, to compare two runs by eye.
+- The sequence runs by the clock, so it lasts the same on every machine; compare runs at the same window size.
+
+From a script, the `benchmark=quit` step runs it and closes the game:
+
+```sh
+RADIANTE_DEV_PRESCRIPT="100:testworld=RadianteBenchmark" RADIANTE_DEV_SCRIPT="20:window=1920x1080;60:benchmark=quit" ./gradlew :fabric:runClient
+```
+
+The scene is `BenchmarkScene`, the shots `BenchmarkPath`, both in `common/.../client/benchmark/`. Raise
+`BenchmarkScene.VERSION` when the scene changes, so worlds holding the old one build it again; results of different
+scene versions do not compare.
+
 ## Settings files
 
 Settings tests write to the development `radiante/` files (`options.properties`, `pipeline.yaml`,

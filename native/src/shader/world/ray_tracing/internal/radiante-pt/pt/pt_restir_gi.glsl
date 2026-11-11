@@ -215,7 +215,11 @@ vec3 restirGiResolve(ivec2 pixel,
 
     // 2. Temporal reuse: last frame's reservoir of this surface.
     vec4 previousClip = prevViewProj * vec4(x1 + cameraDelta, 1.0);
-    bool havePrevious = previousClip.w > 1e-4;
+    // In front of last frame's camera: its clip w has the sign this frame's has for the same point, which the camera
+    // sees. Not w > 0: the projection the game hands over gives everything in view a negative w, and that test turned
+    // every pixel away, so nothing was ever reused.
+    float currentW = (worldUBO.cameraProjMat * worldUBO.cameraEffectedViewMat * vec4(x1, 1.0)).w;
+    bool havePrevious = previousClip.w * currentW > 0.0 && abs(previousClip.w) > 1e-4;
     vec2 previousPixel = havePrevious ? (previousClip.xy / previousClip.w * 0.5 + 0.5) * vec2(size) : vec2(-1.0);
     float x1Distance = length(x1);
     if (havePrevious) {

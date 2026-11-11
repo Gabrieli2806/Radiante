@@ -7,16 +7,12 @@ import com.g2806.radiante.client.constant.VulkanConstants;
 import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.pipeline.config.AttributeConfig;
 import com.g2806.radiante.client.pipeline.config.ImageConfig;
-import net.minecraft.client.Minecraft;
 
-import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -28,32 +24,36 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import org.lwjgl.system.MemoryUtil;
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.constructor.Constructor;
-import org.yaml.snakeyaml.inspector.TagInspector;
 
+/**
+ * The render pipeline: the modules in use, how their images connect and the values of their attributes, with the
+ * settings' way to read and change those values and the build that hands it all to the renderer. Its parts live
+ * beside it: which modules a preset is made of in {@link PresetAssembly}, the files it is stored in in
+ * {@link PipelineStore}, a module's attributes as the shader pack declares them in {@link ModuleAttributes}, the
+ * layout the renderer reads in {@link NativePipelineParams}, and the attribute names in {@link RtAttributes}. The
+ * native methods and the classes {@code pipeline.yaml} is made of stay here, where the renderer and the file look
+ * for them by name.
+ */
 public class Pipeline {
 
     public static Pipeline INSTANCE = new Pipeline();
     public static final String RAY_TRACING_MODULE_NAME = "render_pipeline.module.ray_tracing.name";
-    private static final String RAY_TRACING_SHADER_PACK_PATH_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.shader_pack_path";
-    private static final String BUILT_IN_SHADER_PACK_PATH = "shaders/world/ray_tracing/radiante-pt.zip";
+    static final String RAY_TRACING_SHADER_PACK_PATH_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.shader_pack_path";
+    static final String BUILT_IN_SHADER_PACK_PATH = "shaders/world/ray_tracing/radiante-pt.zip";
     private static final String SHADER_PACK_CONFIG_FILE = "configs.json";
     public static final String DLSS_MODULE_NAME = "render_pipeline.module.dlss.name";
-    private static final String NRD_MODULE_NAME = "render_pipeline.module.nrd.name";
-    private static final String TEMPORAL_ACCUMULATION_MODULE_NAME = "render_pipeline.module.temporal_accumulation.name";
+    static final String NRD_MODULE_NAME = "render_pipeline.module.nrd.name";
+    static final String TEMPORAL_ACCUMULATION_MODULE_NAME = "render_pipeline.module.temporal_accumulation.name";
     public static final String TONE_MAPPING_MODULE_NAME = "render_pipeline.module.tone_mapping.name";
     public static final String POST_RENDER_MODULE_NAME = "render_pipeline.module.post_render.name";
-    private static Path PIPELINE_CONFIG_PATH = null;
-    private final List<Module> modules = new ArrayList<>();
-    private final Map<ImageConfig, List<ImageConfig>> moduleConnections = new HashMap<>();
+    static Path PIPELINE_CONFIG_PATH = null;
+    final List<Module> modules = new ArrayList<>();
+    final Map<ImageConfig, List<ImageConfig>> moduleConnections = new HashMap<>();
     private Map<String, ModuleEntry> moduleEntries;
 
-    private PipelineMode mode = PipelineMode.PRESET;
-    private String activePresetName = null;
+    PipelineMode mode = PipelineMode.PRESET;
+    String activePresetName = null;
     /**
      * Runtime attributes changed since the last build, by name, for pushRuntimeChanges to hand to the renderer.
      * Names rather than the attributes themselves: every build replaces the attribute lists.
@@ -67,63 +67,9 @@ public class Pipeline {
 
     public static void initFolderPath(Path folderPath) {
         PIPELINE_CONFIG_PATH = folderPath.resolve("pipeline.yaml");
-        migrateRenamedPack(folderPath);
-        migrateBuiltInPixelLight();
+        PipelineStore.migrateRenamedPack(folderPath);
+        PipelineStore.migrateBuiltInPixelLight();
         ShaderPackLibrary.recoverFromCrashedTrial(folderPath, PIPELINE_CONFIG_PATH);
-    }
-
-    /**
-     * The built-in shader pack was called vanilla-pt before it was renamed radiante-pt. What a player stored under
-     * the old name moves over: the pack's settings file (next to the zip), and the pipeline's pointer to the zip.
-     * The old zip is left to go, or the shader pack list would offer a second copy.
-     */
-    private static void migrateRenamedPack(Path folderPath) {
-        try {
-            Path packs = folderPath.resolve("shaders/world/ray_tracing");
-            Path oldSettings = packs.resolve("vanilla-pt.zip.txt");
-            Path newSettings = packs.resolve("radiante-pt.zip.txt");
-            if (Files.isRegularFile(oldSettings)) {
-                if (!Files.exists(newSettings)) {
-                    Files.move(oldSettings, newSettings);
-                } else {
-                    Files.delete(oldSettings);
-                }
-            }
-            Files.deleteIfExists(packs.resolve("vanilla-pt.zip"));
-            if (PIPELINE_CONFIG_PATH != null && Files.isRegularFile(PIPELINE_CONFIG_PATH)) {
-                String stored = Files.readString(PIPELINE_CONFIG_PATH);
-                String moved = stored.replace("ray_tracing/vanilla-pt.zip", "ray_tracing/radiante-pt.zip");
-                if (!moved.equals(stored)) {
-                    Files.writeString(PIPELINE_CONFIG_PATH, moved);
-                }
-            }
-        } catch (IOException | RuntimeException e) {
-            RadianteClient.LOGGER.warn("Could not move the stored settings of the renamed shader pack", e);
-        }
-    }
-
-    /**
-     * The Pixel Light example pack became the built-in Pixelated Lighting. A pipeline that pointed at the example's
-     * zip or folder in shaderpacks/ points at the built-in one instead. Its settings file is not carried over: the
-     * example's defaults had the retro palette on, and the file holds every value, so the palette would have stayed.
-     * The player's own copy is left where it is, listed as before.
-     */
-    private static void migrateBuiltInPixelLight() {
-        try {
-            if (PIPELINE_CONFIG_PATH == null || !Files.isRegularFile(PIPELINE_CONFIG_PATH)) {
-                return;
-            }
-            String stored = Files.readString(PIPELINE_CONFIG_PATH);
-            // The value line of the pack path, quoted or not, the zip or the folder.
-            String moved = stored.replaceAll("(?m)^([ \\t]*value: )['\"]?" + ShaderPackLibrary.FOLDER
-                + "/pixel-light(\\.zip)?['\"]?[ \\t]*$", "$1" + ShaderPackLibrary.BUILT_IN_EXTRAS.get(0));
-            if (!moved.equals(stored)) {
-                Files.writeString(PIPELINE_CONFIG_PATH, moved);
-                RadianteClient.LOGGER.info("The Pixel Light pack is built in now, as Pixelated Lighting; using it");
-            }
-        } catch (IOException | RuntimeException e) {
-            RadianteClient.LOGGER.warn("Could not point the pipeline at the built-in Pixelated Lighting pack", e);
-        }
     }
 
     public static void reloadAllModuleEntries() {
@@ -153,7 +99,7 @@ public class Pipeline {
         if (module == null) {
             throw new RuntimeException("Module with name " + name + " not found.");
         }
-        getModuleAttributes(module);
+        ModuleAttributes.getModuleAttributes(module);
         INSTANCE.modules.add(module);
 
         return module;
@@ -282,7 +228,7 @@ public class Pipeline {
         if (reason != null && !reason.isEmpty()) {
             RadianteClient.LOGGER.warn(reason + " Fallback preset: " + fallbackPresetName);
         }
-        assemblePresetByKeyInternal(fallbackPresetName);
+        PresetAssembly.assemblePresetByKeyInternal(fallbackPresetName);
     }
 
     public static void connect(ImageConfig src, ImageConfig dst) {
@@ -370,7 +316,7 @@ public class Pipeline {
         return null;
     }
 
-    private static void setRayReconstructionOn(Module dlssModule, boolean enabled) {
+    static void setRayReconstructionOn(Module dlssModule, boolean enabled) {
         AttributeConfig attribute = findAttribute(dlssModule, RAY_RECONSTRUCTION_ATTRIBUTE);
         if (attribute != null) {
             assign(attribute, enabled ? "render_pipeline.true" : "render_pipeline.false");
@@ -494,80 +440,21 @@ public class Pipeline {
         return findAttribute(getRayTracingModule(), VOLUMETRIC_LIGHT_ATTRIBUTE) != null;
     }
 
-    public static final String MOTION_BLUR_ATTRIBUTE =
-        "render_pipeline.module.ray_tracing.attribute.post_enable_motion_blur";
-    public static final String DOF_AUTO_FOCUS_ATTRIBUTE =
-        "render_pipeline.module.ray_tracing.attribute.post_dof_auto_focus";
-    public static final String DEPTH_OF_FIELD_ATTRIBUTE =
-        "render_pipeline.module.ray_tracing.attribute.post_enable_dof";
-    /** Shader Execution Reordering for the path rays (NVIDIA RTX 40 and newer; ignored elsewhere). */
-    public static final String SER_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.ser";
-    /** ReSTIR reuse of block light samples across frames and pixels (needs block light sampling). */
-    public static final String RESTIR_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.restir";
-    /** ReSTIR GI: the first diffuse bounce resampled across frames and neighbouring pixels. */
-    public static final String RESTIR_GI_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.restir_gi";
-    /** Bedrock packs' MER maps read as authored instead of through their LabPBR conversion. */
-    public static final String BEDROCK_MATERIALS_ATTRIBUTE =
-        "render_pipeline.module.ray_tracing.attribute.bedrock_materials";
-    /**
-     * Vanilla's fixed face shading kept in the colour of block faces (tops full, sides 0.8 and 0.6, bottoms half).
-     * Vanilla darkens faces that way for want of real light; traced light shades them already, and with it kept a
-     * ceiling showed a fifth of its colour (the half is applied before the colour is decoded), as a different
-     * material from the same block's top. Bedrock RTX has no such shading.
-     */
-    public static final String FACE_SHADING_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.face_shading";
-    /** Bedrock RTX's own mode (sky, sun, exposure, materials); on by default. */
-    public static final String BEDROCK_ORIGINAL_ATTRIBUTE =
-        "render_pipeline.module.ray_tracing.attribute.bedrock_original";
-    /** On top of that one, what goes beyond Bedrock on purpose (glowing light blocks and end portal); on by default. */
-    public static final String BEDROCK_ENHANCED_ATTRIBUTE =
-        "render_pipeline.module.ray_tracing.attribute.bedrock_enhanced";
-
     /**
      * Whether block lights cast what their Bedrock MER maps show (EmissionTiles.uploadFromMer): by default they show
      * that glow and light the world with it; with either switch off the light levels' scale is kept.
      */
     public static boolean castsBedrockGlow() {
-        return isShaderPackToggleOn(BEDROCK_MATERIALS_ATTRIBUTE) && isShaderPackToggleOn(BEDROCK_ORIGINAL_ATTRIBUTE);
+        return isShaderPackToggleOn(RtAttributes.BEDROCK_MATERIALS_ATTRIBUTE)
+            && isShaderPackToggleOn(RtAttributes.BEDROCK_ORIGINAL_ATTRIBUTE);
     }
-
-    /** Past the first bounce, diffuse light taken from the radiance cache instead of traced further. */
-    public static final String CACHE_DEEP_BOUNCES_ATTRIBUTE =
-        "render_pipeline.module.ray_tracing.attribute.cache_deep_bounces";
-    /** One bounce traced everywhere, the rest of the light from the radiance cache, as Bedrock RTX does. */
-    public static final String BEDROCK_ONE_BOUNCE_ATTRIBUTE =
-        "render_pipeline.module.ray_tracing.attribute.bedrock_one_bounce";
-    /** Water and glass trace their reflection or their refraction per pixel on a checkerboard, not both. */
-    public static final String TRANSPARENT_CHECKERBOARD_ATTRIBUTE =
-        "render_pipeline.module.ray_tracing.attribute.transparent_checkerboard";
-    /**
-     * The path tracer writes the light of what the camera sees apart for NRD (its glow and the sun's light left out of
-     * what NRD blurs, the bounce's length as its hit distance). Not a setting: every build sets it to whether the
-     * pipeline denoises with NRD (syncDenoiserSignals).
-     */
-    public static final String NRD_SIGNALS_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.nrd_signals";
-    /** Glass blocks without the frame vanilla draws around each one, so neighbours join into one sheet. */
-    public static final String SEAMLESS_GLASS_ATTRIBUTE =
-        "render_pipeline.module.ray_tracing.attribute.seamless_glass";
-    /** Volumetric fog made with a lit 3D grid instead of a march per pixel. */
-    public static final String FROXEL_FOG_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.froxel_fog";
-    /** Volumetric clouds shade the ground under them (only with Volumetric clouds). */
-    public static final String CLOUD_SHADOWS_ATTRIBUTE =
-        "render_pipeline.module.ray_tracing.attribute.volumetric_cloud_cast_shadow";
-    /**
-     * Leaves, grass, flowers, vines and water plants sway in the wind (util/wind.glsl). Switching it remeshes the
-     * world: sections carry their wind codes only while it is on, so with it off nothing is moved and nothing is refit.
-     */
-    public static final String WIND_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.wind";
-    /** How far the wind moves foliage, 1 as designed; live, without remeshing. */
-    public static final String WIND_STRENGTH_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.wind_strength";
 
     /** The wind's strength for this frame (WorldUBO.windStrength): the slider, or 0 with wind off or not offered. */
     public static float windStrength() {
-        if (!isShaderPackToggleOn(WIND_ATTRIBUTE)) {
+        if (!isShaderPackToggleOn(RtAttributes.WIND_ATTRIBUTE)) {
             return 0.0f;
         }
-        String value = getShaderPackValue(WIND_STRENGTH_ATTRIBUTE);
+        String value = getShaderPackValue(RtAttributes.WIND_STRENGTH_ATTRIBUTE);
         try {
             return value == null ? 1.0f : Math.max(0.0f, Float.parseFloat(value.trim()));
         } catch (NumberFormatException notANumber) {
@@ -595,16 +482,6 @@ public class Pipeline {
         AttributeConfig attribute = findAttribute(getRayTracingModule(), attributeName);
         return attribute != null && Objects.equals(attribute.value, "render_pipeline.true");
     }
-
-    /** Light bounces per path. Each one after the first is another ray per pixel. */
-    public static final String RAY_BOUNCES_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.num_ray_bounces";
-    /** Carved (parallax) surfaces of resource packs with height maps. */
-    public static final String PARALLAX_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.enable_parallax";
-    public static final String BEDROCK_ATMOSPHERE_ATTRIBUTE =
-        "render_pipeline.module.ray_tracing.attribute.bedrock_atmosphere";
-    /** Steps the volumetric fog is marched in along each ray. */
-    public static final String VOLUMETRIC_SAMPLES_ATTRIBUTE =
-        "render_pipeline.module.ray_tracing.attribute.volumetric_light_samples";
 
     /** A shader pack attribute's value as text, or null when the pack does not have it. */
     public static String getShaderPackValue(String attributeName) {
@@ -1004,7 +881,7 @@ public class Pipeline {
         for (Module module : INSTANCE.modules) {
             nrd |= module != null && Objects.equals(module.name, NRD_MODULE_NAME);
         }
-        setShaderPackValue(NRD_SIGNALS_ATTRIBUTE, nrd ? "render_pipeline.true" : "render_pipeline.false");
+        setShaderPackValue(RtAttributes.NRD_SIGNALS_ATTRIBUTE, nrd ? "render_pipeline.true" : "render_pipeline.false");
     }
 
     private static void buildInternal() {
@@ -1113,9 +990,10 @@ public class Pipeline {
         }
 
         if (prewarmOnly) {
-            return buildNative(sortedModules, imageFormatList, configToImageIdMap, moduleAttributes, true);
+            return NativePipelineParams.buildNative(sortedModules, imageFormatList, configToImageIdMap,
+                moduleAttributes, true);
         }
-        buildNative(sortedModules, imageFormatList, configToImageIdMap, moduleAttributes, false);
+        NativePipelineParams.buildNative(sortedModules, imageFormatList, configToImageIdMap, moduleAttributes, false);
         publishFrameGenerationImages(sortedModules, configToImageIdMap);
         return true;
     }
@@ -1170,7 +1048,7 @@ public class Pipeline {
     }
 
     private static boolean tryRebuildCompatiblePipeline(Exception cause) {
-        PipelineConfigStorage storage = loadConfigStorage();
+        PipelineConfigStorage storage = PipelineStore.loadConfigStorage();
         String requestedPreset = INSTANCE.activePresetName;
         if (storage != null && storage.presetName != null && !storage.presetName.isBlank()) {
             requestedPreset = storage.presetName;
@@ -1196,7 +1074,7 @@ public class Pipeline {
             if (storage != null
                     && PipelineMode.fromString(storage.mode) == PipelineMode.PRESET
                     && Objects.equals(processPresetName(storage.presetName), INSTANCE.activePresetName)) {
-                applyPresetModuleOverrides(storage.presetModules);
+                PipelineStore.applyPresetModuleOverrides(storage.presetModules);
                 normaliseRayReconstruction();
             }
 
@@ -1234,191 +1112,13 @@ public class Pipeline {
         result.add(current);
     }
 
-    /** Lays the pipeline out as the native side reads it, for a build or (prewarmOnly) a prewarm of one. */
-    private static boolean buildNative(List<Module> modules, List<Integer> formats,
-                                       Map<ImageConfig, Integer> imgMap, List<List<AttributeConfig>> moduleAttributes,
-                                       boolean prewarmOnly) {
-        List<ByteBuffer> allocatedBuffers = new ArrayList<>();
-
-        try {
-            int moduleCount = modules.size();
-
-            ByteBuffer formatBuffer = allocAndTrack(allocatedBuffers, formats.size() * 4);
-            for (Integer fmt : formats) {
-                formatBuffer.putInt(fmt);
-            }
-            formatBuffer.flip();
-
-            ByteBuffer namesPtrBuffer = allocAndTrack(allocatedBuffers, moduleCount * 8);
-            ByteBuffer inputsPtrBuffer = allocAndTrack(allocatedBuffers, moduleCount * 8);
-            ByteBuffer outputsPtrBuffer = allocAndTrack(allocatedBuffers, moduleCount * 8);
-            ByteBuffer attributeCountsBuffer = allocAndTrack(allocatedBuffers, moduleCount * 4);
-            ByteBuffer attributesPtrBuffer = allocAndTrack(allocatedBuffers, moduleCount * 8);
-
-            for (int i = 0; i < moduleCount; i++) {
-                Module module = modules.get(i);
-
-                byte[] nameBytes = module.name.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                ByteBuffer nameBuffer = allocAndTrack(allocatedBuffers, nameBytes.length + 1);
-                nameBuffer.put(nameBytes);
-                nameBuffer.put((byte) 0);
-                nameBuffer.flip();
-                namesPtrBuffer.putLong(MemoryUtil.memAddress(nameBuffer));
-
-                List<ImageConfig> inputs = module.inputImageConfigs;
-                ByteBuffer inputIndices = allocAndTrack(allocatedBuffers, inputs.size() * 4);
-                for (ImageConfig inConfig : inputs) {
-                    inputIndices.putInt(imgMap.get(inConfig));
-                }
-                inputIndices.flip();
-                inputsPtrBuffer.putLong(MemoryUtil.memAddress(inputIndices));
-
-                List<ImageConfig> outputs = module.outputImageConfigs;
-                ByteBuffer outputIndices = allocAndTrack(allocatedBuffers, outputs.size() * 4);
-                for (ImageConfig outConfig : outputs) {
-                    outputIndices.putInt(imgMap.getOrDefault(outConfig, -1));
-                }
-                outputIndices.flip();
-                outputsPtrBuffer.putLong(MemoryUtil.memAddress(outputIndices));
-
-                List<AttributeConfig> attrs = moduleAttributes.get(i);
-                attributeCountsBuffer.putInt(attrs.size());
-
-                if (!attrs.isEmpty()) {
-                    ByteBuffer attrKVPointers = allocAndTrack(allocatedBuffers,
-                            attrs.size() * 2 * 8);
-                    for (AttributeConfig attr : attrs) {
-                        byte[] kBytes = attr.name.getBytes(StandardCharsets.UTF_8);
-                        byte[] vBytes = (attr.value != null ? attr.value : "").getBytes(
-                                StandardCharsets.UTF_8);
-
-                        ByteBuffer kBuf = allocAndTrack(allocatedBuffers, kBytes.length + 1);
-                        kBuf.put(kBytes).put((byte) 0).flip();
-
-                        ByteBuffer vBuf = allocAndTrack(allocatedBuffers, vBytes.length + 1);
-                        vBuf.put(vBytes).put((byte) 0).flip();
-
-                        attrKVPointers.putLong(MemoryUtil.memAddress(kBuf));
-                        attrKVPointers.putLong(MemoryUtil.memAddress(vBuf));
-                    }
-                    attrKVPointers.flip();
-                    attributesPtrBuffer.putLong(MemoryUtil.memAddress(attrKVPointers));
-                } else {
-                    attributesPtrBuffer.putLong(0);
-                }
-            }
-
-            namesPtrBuffer.flip();
-            inputsPtrBuffer.flip();
-            outputsPtrBuffer.flip();
-            attributeCountsBuffer.flip();
-            attributesPtrBuffer.flip();
-
-            ByteBuffer params = allocAndTrack(allocatedBuffers, 56);
-
-            params.putInt(moduleCount);
-            params.putInt(0); // Padding
-
-            params.putLong(MemoryUtil.memAddress(namesPtrBuffer));
-            params.putLong(MemoryUtil.memAddress(formatBuffer));
-            params.putLong(MemoryUtil.memAddress(inputsPtrBuffer));
-            params.putLong(MemoryUtil.memAddress(outputsPtrBuffer));
-            params.putLong(MemoryUtil.memAddress(attributeCountsBuffer));
-            params.putLong(MemoryUtil.memAddress(attributesPtrBuffer));
-
-            params.flip();
-
-            if (prewarmOnly) {
-                return prewarmNative(MemoryUtil.memAddress(params));
-            }
-            buildNative(MemoryUtil.memAddress(params));
-            return true;
-        } finally {
-            for (ByteBuffer buffer : allocatedBuffers) {
-                MemoryUtil.memFree(buffer);
-            }
-        }
-    }
-
-    private static ByteBuffer allocAndTrack(List<ByteBuffer> allocatedBuffers, int size) {
-        ByteBuffer buffer = MemoryUtil.memAlloc(size);
-        allocatedBuffers.add(buffer);
-        return buffer;
-    }
-
     public static void assembleDefault() {
         String defaultPresetName = processPresetName(Presets.RT_DLSSRR.key);
         if (defaultPresetName == null) {
             assembleBestAvailablePreset("Default preset is unavailable.");
             return;
         }
-        assemblePresetByKeyInternal(defaultPresetName);
-    }
-    private static void assembleDLSSRRInternal() {
-        clear();
-
-        Module rayTracingModule = addModule(RAY_TRACING_MODULE_NAME);
-
-        Module dlssModule = addModule(DLSS_MODULE_NAME);
-
-        Module toneMappingModule = addModule(TONE_MAPPING_MODULE_NAME);
-
-        Module postRenderModule = addModule(POST_RENDER_MODULE_NAME);
-
-        rayTracingModule.x = 100;
-        rayTracingModule.y = 220;
-        dlssModule.x = 380;
-        dlssModule.y = 220;
-        toneMappingModule.x = 660;
-        toneMappingModule.y = 140;
-        postRenderModule.x = 660;
-        postRenderModule.y = 300;
-
-        INSTANCE.activePresetName = Presets.RT_DLSSRR.key;
-        // DLSS is the denoiser in this preset, so ray reconstruction is what the module has to create. Its super
-        // resolution path is RT_NRD_DLSS, where NRD has already denoised the picture.
-        setRayReconstructionOn(dlssModule, true);
-
-        connect(rayTracingModule.getOutputImageConfig("radiance"),
-                dlssModule.getInputImageConfig("radiance"));
-
-        connect(rayTracingModule.getOutputImageConfig("diffuse_albedo_metallic"),
-                dlssModule.getInputImageConfig("diffuse_albedo_metallic"));
-
-        connect(rayTracingModule.getOutputImageConfig("specular_albedo"),
-                dlssModule.getInputImageConfig("specular_albedo"));
-
-        connect(rayTracingModule.getOutputImageConfig("normal_roughness"),
-                dlssModule.getInputImageConfig("normal_roughness"));
-
-        connect(rayTracingModule.getOutputImageConfig("motion_vector"),
-                dlssModule.getInputImageConfig("motion_vector"));
-
-        connect(rayTracingModule.getOutputImageConfig("linear_depth"),
-                dlssModule.getInputImageConfig("linear_depth"));
-
-        connect(rayTracingModule.getOutputImageConfig("specular_hit_depth"),
-                dlssModule.getInputImageConfig("specular_hit_depth"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_depth"),
-                dlssModule.getInputImageConfig("first_hit_depth"));
-
-        connect(dlssModule.getOutputImageConfig("processed"),
-                toneMappingModule.getInputImageConfig("denoised_radiance"));
-        connect(dlssModule.getOutputImageConfig("processed"),
-                postRenderModule.getInputImageConfig("hdr_input"));
-
-        connect(dlssModule.getOutputImageConfig("upscaled_first_hit_depth"),
-                postRenderModule.getInputImageConfig("first_hit_depth"));
-        connect(dlssModule.getOutputImageConfig("upscaled_motion_vector"),
-                postRenderModule.getInputImageConfig("motion_vector"));
-        connect(dlssModule.getOutputImageConfig("upscaled_normal_roughness"),
-                postRenderModule.getInputImageConfig("normal_roughness"));
-
-        connect(toneMappingModule.getOutputImageConfig("mapped_output"),
-                postRenderModule.getInputImageConfig("ldr_input"));
-
-        connectOutput(postRenderModule.getOutputImageConfig("post_rendered"));
+        PresetAssembly.assemblePresetByKeyInternal(defaultPresetName);
     }
 
     public static void assembleNRDFSR() {
@@ -1426,446 +1126,7 @@ public class Pipeline {
             assembleBestAvailablePreset("NRD+FSR preset is unavailable.");
             return;
         }
-        assembleNRDFSRInternal();
-    }
-    private static void assembleNRDFSRInternal() {
-        clear();
-
-        Module rayTracingModule = addModule(RAY_TRACING_MODULE_NAME);
-
-        Module denoiserModule = addModule(NRD_MODULE_NAME);
-
-        Module upscalerModule = addModule(FSR_MODULE_NAME);
-
-        Module toneMappingModule = addModule(TONE_MAPPING_MODULE_NAME);
-
-        Module postRenderModule = addModule(POST_RENDER_MODULE_NAME);
-
-        rayTracingModule.x = 100;
-        rayTracingModule.y = 220;
-        denoiserModule.x = 380;
-        denoiserModule.y = 120;
-        upscalerModule.x = 660;
-        upscalerModule.y = 220;
-        toneMappingModule.x = 940;
-        toneMappingModule.y = 120;
-        postRenderModule.x = 940;
-        postRenderModule.y = 300;
-
-        INSTANCE.activePresetName = Presets.RT_NRD_FSR.key;
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_diffuse_indirect_light"),
-                denoiserModule.getInputImageConfig("diffuse_radiance"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_specular"),
-                denoiserModule.getInputImageConfig("specular_radiance"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_diffuse_direct_light"),
-                denoiserModule.getInputImageConfig("direct_radiance"));
-
-        connect(rayTracingModule.getOutputImageConfig("diffuse_albedo_metallic"),
-                denoiserModule.getInputImageConfig("diffuse_albedo"));
-
-        connect(rayTracingModule.getOutputImageConfig("specular_albedo"),
-                denoiserModule.getInputImageConfig("specular_albedo"));
-
-        connect(rayTracingModule.getOutputImageConfig("normal_roughness"),
-                denoiserModule.getInputImageConfig("normal_roughness"));
-
-        connect(rayTracingModule.getOutputImageConfig("motion_vector"),
-                denoiserModule.getInputImageConfig("motion_vector"));
-
-        connect(rayTracingModule.getOutputImageConfig("linear_depth"),
-                denoiserModule.getInputImageConfig("linear_depth"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_depth"),
-                denoiserModule.getInputImageConfig("diffuseHitDepthImage"));
-
-        connect(rayTracingModule.getOutputImageConfig("specular_hit_depth"),
-                denoiserModule.getInputImageConfig("specularHitDepthImage"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_clear"),
-                denoiserModule.getInputImageConfig("first_hit_clear"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_base_emission"),
-                denoiserModule.getInputImageConfig("first_hit_base_emission"));
-
-        connect(rayTracingModule.getOutputImageConfig("fog_image"),
-                denoiserModule.getInputImageConfig("fog_image"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_refraction"),
-                denoiserModule.getInputImageConfig("first_hit_refraction"));
-
-        connect(denoiserModule.getOutputImageConfig("denoised_radiance"),
-                upscalerModule.getInputImageConfig("color"));
-
-        connect(rayTracingModule.getOutputImageConfig("linear_depth"),
-                upscalerModule.getInputImageConfig("depth"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_depth"),
-                upscalerModule.getInputImageConfig("first_hit_depth"));
-
-        connect(rayTracingModule.getOutputImageConfig("motion_vector"),
-                upscalerModule.getInputImageConfig("motion_vector"));
-        connect(rayTracingModule.getOutputImageConfig("normal_roughness"),
-                upscalerModule.getInputImageConfig("normal_roughness"));
-
-        connect(upscalerModule.getOutputImageConfig("upscaled_radiance"),
-                toneMappingModule.getInputImageConfig("denoised_radiance"));
-        connect(upscalerModule.getOutputImageConfig("upscaled_radiance"),
-                postRenderModule.getInputImageConfig("hdr_input"));
-        connect(upscalerModule.getOutputImageConfig("upscaled_first_hit_depth"),
-                postRenderModule.getInputImageConfig("first_hit_depth"));
-        connect(upscalerModule.getOutputImageConfig("upscaled_motion_vector"),
-                postRenderModule.getInputImageConfig("motion_vector"));
-        connect(upscalerModule.getOutputImageConfig("upscaled_normal_roughness"),
-                postRenderModule.getInputImageConfig("normal_roughness"));
-
-        connect(toneMappingModule.getOutputImageConfig("mapped_output"),
-                postRenderModule.getInputImageConfig("ldr_input"));
-
-        connectOutput(postRenderModule.getOutputImageConfig("post_rendered"));
-    }
-
-    /**
-     * DLSS without Ray Reconstruction: NRD denoises as in the FSR and XeSS presets and DLSS only upscales its
-     * result. For GPUs where Ray Reconstruction costs too much, or where it smears or ghosts.
-     */
-    private static void assembleNRDDLSSInternal() {
-        clear();
-
-        Module rayTracingModule = addModule(RAY_TRACING_MODULE_NAME);
-
-        Module denoiserModule = addModule(NRD_MODULE_NAME);
-
-        Module dlssModule = addModule(DLSS_MODULE_NAME);
-
-        Module toneMappingModule = addModule(TONE_MAPPING_MODULE_NAME);
-
-        Module postRenderModule = addModule(POST_RENDER_MODULE_NAME);
-
-        rayTracingModule.x = 100;
-        rayTracingModule.y = 220;
-        denoiserModule.x = 380;
-        denoiserModule.y = 120;
-        dlssModule.x = 660;
-        dlssModule.y = 220;
-        toneMappingModule.x = 940;
-        toneMappingModule.y = 120;
-        postRenderModule.x = 940;
-        postRenderModule.y = 300;
-
-        INSTANCE.activePresetName = Presets.RT_NRD_DLSS.key;
-        // The picture reaching DLSS is already denoised, so it must create super resolution: ray reconstruction
-        // would denoise it a second time.
-        setRayReconstructionOn(dlssModule, false);
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_diffuse_indirect_light"),
-                denoiserModule.getInputImageConfig("diffuse_radiance"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_specular"),
-                denoiserModule.getInputImageConfig("specular_radiance"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_diffuse_direct_light"),
-                denoiserModule.getInputImageConfig("direct_radiance"));
-
-        connect(rayTracingModule.getOutputImageConfig("diffuse_albedo_metallic"),
-                denoiserModule.getInputImageConfig("diffuse_albedo"));
-
-        connect(rayTracingModule.getOutputImageConfig("specular_albedo"),
-                denoiserModule.getInputImageConfig("specular_albedo"));
-
-        connect(rayTracingModule.getOutputImageConfig("normal_roughness"),
-                denoiserModule.getInputImageConfig("normal_roughness"));
-
-        connect(rayTracingModule.getOutputImageConfig("motion_vector"),
-                denoiserModule.getInputImageConfig("motion_vector"));
-
-        connect(rayTracingModule.getOutputImageConfig("linear_depth"),
-                denoiserModule.getInputImageConfig("linear_depth"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_depth"),
-                denoiserModule.getInputImageConfig("diffuseHitDepthImage"));
-
-        connect(rayTracingModule.getOutputImageConfig("specular_hit_depth"),
-                denoiserModule.getInputImageConfig("specularHitDepthImage"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_clear"),
-                denoiserModule.getInputImageConfig("first_hit_clear"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_base_emission"),
-                denoiserModule.getInputImageConfig("first_hit_base_emission"));
-
-        connect(rayTracingModule.getOutputImageConfig("fog_image"),
-                denoiserModule.getInputImageConfig("fog_image"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_refraction"),
-                denoiserModule.getInputImageConfig("first_hit_refraction"));
-
-        connect(denoiserModule.getOutputImageConfig("denoised_radiance"),
-                dlssModule.getInputImageConfig("radiance"));
-
-        // Super resolution reads only the colour, motion and depth, plus what it upscales for post render; the
-        // G-buffer inputs ray reconstruction guides itself with are connected all the same, so none is unbound.
-        connect(rayTracingModule.getOutputImageConfig("diffuse_albedo_metallic"),
-                dlssModule.getInputImageConfig("diffuse_albedo_metallic"));
-
-        connect(rayTracingModule.getOutputImageConfig("specular_albedo"),
-                dlssModule.getInputImageConfig("specular_albedo"));
-
-        connect(rayTracingModule.getOutputImageConfig("normal_roughness"),
-                dlssModule.getInputImageConfig("normal_roughness"));
-
-        connect(rayTracingModule.getOutputImageConfig("motion_vector"),
-                dlssModule.getInputImageConfig("motion_vector"));
-
-        connect(rayTracingModule.getOutputImageConfig("linear_depth"),
-                dlssModule.getInputImageConfig("linear_depth"));
-
-        connect(rayTracingModule.getOutputImageConfig("specular_hit_depth"),
-                dlssModule.getInputImageConfig("specular_hit_depth"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_depth"),
-                dlssModule.getInputImageConfig("first_hit_depth"));
-
-        connect(dlssModule.getOutputImageConfig("processed"),
-                toneMappingModule.getInputImageConfig("denoised_radiance"));
-        connect(dlssModule.getOutputImageConfig("processed"),
-                postRenderModule.getInputImageConfig("hdr_input"));
-
-        connect(dlssModule.getOutputImageConfig("upscaled_first_hit_depth"),
-                postRenderModule.getInputImageConfig("first_hit_depth"));
-        connect(dlssModule.getOutputImageConfig("upscaled_motion_vector"),
-                postRenderModule.getInputImageConfig("motion_vector"));
-        connect(dlssModule.getOutputImageConfig("upscaled_normal_roughness"),
-                postRenderModule.getInputImageConfig("normal_roughness"));
-
-        connect(toneMappingModule.getOutputImageConfig("mapped_output"),
-                postRenderModule.getInputImageConfig("ldr_input"));
-
-        connectOutput(postRenderModule.getOutputImageConfig("post_rendered"));
-    }
-
-    private static void assembleNRDXESSInternal() {
-        clear();
-
-        Module rayTracingModule = addModule(RAY_TRACING_MODULE_NAME);
-
-        Module denoiserModule = addModule(NRD_MODULE_NAME);
-
-        Module upscalerModule = addModule(XESS_MODULE_NAME);
-
-        Module toneMappingModule = addModule(TONE_MAPPING_MODULE_NAME);
-
-        Module postRenderModule = addModule(POST_RENDER_MODULE_NAME);
-
-        rayTracingModule.x = 100;
-        rayTracingModule.y = 220;
-        denoiserModule.x = 380;
-        denoiserModule.y = 120;
-        upscalerModule.x = 660;
-        upscalerModule.y = 220;
-        toneMappingModule.x = 940;
-        toneMappingModule.y = 120;
-        postRenderModule.x = 940;
-        postRenderModule.y = 300;
-
-        INSTANCE.activePresetName = Presets.RT_NRD_XESS.key;
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_diffuse_indirect_light"),
-                denoiserModule.getInputImageConfig("diffuse_radiance"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_specular"),
-                denoiserModule.getInputImageConfig("specular_radiance"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_diffuse_direct_light"),
-                denoiserModule.getInputImageConfig("direct_radiance"));
-
-        connect(rayTracingModule.getOutputImageConfig("diffuse_albedo_metallic"),
-                denoiserModule.getInputImageConfig("diffuse_albedo"));
-
-        connect(rayTracingModule.getOutputImageConfig("specular_albedo"),
-                denoiserModule.getInputImageConfig("specular_albedo"));
-
-        connect(rayTracingModule.getOutputImageConfig("normal_roughness"),
-                denoiserModule.getInputImageConfig("normal_roughness"));
-
-        connect(rayTracingModule.getOutputImageConfig("motion_vector"),
-                denoiserModule.getInputImageConfig("motion_vector"));
-
-        connect(rayTracingModule.getOutputImageConfig("linear_depth"),
-                denoiserModule.getInputImageConfig("linear_depth"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_depth"),
-                denoiserModule.getInputImageConfig("diffuseHitDepthImage"));
-
-        connect(rayTracingModule.getOutputImageConfig("specular_hit_depth"),
-                denoiserModule.getInputImageConfig("specularHitDepthImage"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_clear"),
-                denoiserModule.getInputImageConfig("first_hit_clear"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_base_emission"),
-                denoiserModule.getInputImageConfig("first_hit_base_emission"));
-
-        connect(rayTracingModule.getOutputImageConfig("fog_image"),
-                denoiserModule.getInputImageConfig("fog_image"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_refraction"),
-                denoiserModule.getInputImageConfig("first_hit_refraction"));
-
-        connect(denoiserModule.getOutputImageConfig("denoised_radiance"),
-                upscalerModule.getInputImageConfig("color"));
-
-        connect(rayTracingModule.getOutputImageConfig("linear_depth"),
-                upscalerModule.getInputImageConfig("depth"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_depth"),
-                upscalerModule.getInputImageConfig("first_hit_depth"));
-
-        connect(rayTracingModule.getOutputImageConfig("motion_vector"),
-                upscalerModule.getInputImageConfig("motion_vector"));
-        connect(rayTracingModule.getOutputImageConfig("normal_roughness"),
-                upscalerModule.getInputImageConfig("normal_roughness"));
-
-        connect(upscalerModule.getOutputImageConfig("upscaled_radiance"),
-                toneMappingModule.getInputImageConfig("denoised_radiance"));
-        connect(upscalerModule.getOutputImageConfig("upscaled_radiance"),
-                postRenderModule.getInputImageConfig("hdr_input"));
-        connect(upscalerModule.getOutputImageConfig("upscaled_first_hit_depth"),
-                postRenderModule.getInputImageConfig("first_hit_depth"));
-        connect(upscalerModule.getOutputImageConfig("upscaled_motion_vector"),
-                postRenderModule.getInputImageConfig("motion_vector"));
-        connect(upscalerModule.getOutputImageConfig("upscaled_normal_roughness"),
-                postRenderModule.getInputImageConfig("normal_roughness"));
-
-        connect(toneMappingModule.getOutputImageConfig("mapped_output"),
-                postRenderModule.getInputImageConfig("ldr_input"));
-
-        connectOutput(postRenderModule.getOutputImageConfig("post_rendered"));
-    }
-    private static void assembleNRDInternal() {
-        clear();
-
-        Module rayTracingModule = addModule(RAY_TRACING_MODULE_NAME);
-
-        Module denoiserModule = addModule(NRD_MODULE_NAME);
-
-        Module temporalAccumulationModule = addModule(TEMPORAL_ACCUMULATION_MODULE_NAME);
-
-        Module toneMappingModule = addModule(TONE_MAPPING_MODULE_NAME);
-
-        Module postRenderModule = addModule(POST_RENDER_MODULE_NAME);
-
-        rayTracingModule.x = 100;
-        rayTracingModule.y = 220;
-        denoiserModule.x = 380;
-        denoiserModule.y = 120;
-        temporalAccumulationModule.x = 660;
-        temporalAccumulationModule.y = 120;
-        toneMappingModule.x = 940;
-        toneMappingModule.y = 120;
-        postRenderModule.x = 940;
-        postRenderModule.y = 300;
-
-        INSTANCE.activePresetName = Presets.RT_NRD.key;
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_diffuse_indirect_light"),
-                denoiserModule.getInputImageConfig("diffuse_radiance"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_specular"),
-                denoiserModule.getInputImageConfig("specular_radiance"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_diffuse_direct_light"),
-                denoiserModule.getInputImageConfig("direct_radiance"));
-
-        connect(rayTracingModule.getOutputImageConfig("diffuse_albedo_metallic"),
-                denoiserModule.getInputImageConfig("diffuse_albedo"));
-
-        connect(rayTracingModule.getOutputImageConfig("specular_albedo"),
-                denoiserModule.getInputImageConfig("specular_albedo"));
-
-        connect(rayTracingModule.getOutputImageConfig("normal_roughness"),
-                denoiserModule.getInputImageConfig("normal_roughness"));
-
-        connect(rayTracingModule.getOutputImageConfig("motion_vector"),
-                denoiserModule.getInputImageConfig("motion_vector"));
-
-        connect(rayTracingModule.getOutputImageConfig("linear_depth"),
-                denoiserModule.getInputImageConfig("linear_depth"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_depth"),
-                denoiserModule.getInputImageConfig("diffuseHitDepthImage"));
-
-        connect(rayTracingModule.getOutputImageConfig("specular_hit_depth"),
-                denoiserModule.getInputImageConfig("specularHitDepthImage"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_clear"),
-                denoiserModule.getInputImageConfig("first_hit_clear"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_base_emission"),
-                denoiserModule.getInputImageConfig("first_hit_base_emission"));
-
-        connect(rayTracingModule.getOutputImageConfig("fog_image"),
-                denoiserModule.getInputImageConfig("fog_image"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_refraction"),
-                denoiserModule.getInputImageConfig("first_hit_refraction"));
-
-        connect(denoiserModule.getOutputImageConfig("denoised_radiance"),
-                temporalAccumulationModule.getInputImageConfig("color"));
-
-        connect(rayTracingModule.getOutputImageConfig("motion_vector"),
-                temporalAccumulationModule.getInputImageConfig("motion"));
-
-        connect(rayTracingModule.getOutputImageConfig("normal_roughness"),
-                temporalAccumulationModule.getInputImageConfig("normal_roughness"));
-
-        connect(temporalAccumulationModule.getOutputImageConfig("accumulated_radiance"),
-                toneMappingModule.getInputImageConfig("denoised_radiance"));
-        connect(temporalAccumulationModule.getOutputImageConfig("accumulated_radiance"),
-                postRenderModule.getInputImageConfig("hdr_input"));
-
-        connect(rayTracingModule.getOutputImageConfig("first_hit_depth"),
-                postRenderModule.getInputImageConfig("first_hit_depth"));
-        connect(rayTracingModule.getOutputImageConfig("motion_vector"),
-                postRenderModule.getInputImageConfig("motion_vector"));
-        connect(rayTracingModule.getOutputImageConfig("normal_roughness"),
-                postRenderModule.getInputImageConfig("normal_roughness"));
-
-        connect(toneMappingModule.getOutputImageConfig("mapped_output"),
-                postRenderModule.getInputImageConfig("ldr_input"));
-
-        connectOutput(postRenderModule.getOutputImageConfig("post_rendered"));
-    }
-
-    private static void assemblePresetByKeyInternal(String presetName) {
-        if (Objects.equals(presetName, Presets.RT_DLSSRR.key)) {
-            assembleDLSSRRInternal();
-            return;
-        }
-
-        if (Objects.equals(presetName, Presets.RT_NRD.key)) {
-            assembleNRDInternal();
-            return;
-        }
-
-        if (Objects.equals(presetName, Presets.RT_NRD_FSR.key)) {
-            assembleNRDFSRInternal();
-            return;
-        }
-
-        if (Objects.equals(presetName, Presets.RT_NRD_XESS.key)) {
-            assembleNRDXESSInternal();
-            return;
-        }
-
-        if (Objects.equals(presetName, Presets.RT_NRD_DLSS.key)) {
-            assembleNRDDLSSInternal();
-            return;
-        }
-
-        throw new RuntimeException("Unsupported preset: " + presetName);
+        PresetAssembly.assembleNRDFSRInternal();
     }
 
     public static native void buildNative(long params);
@@ -1916,7 +1177,7 @@ public class Pipeline {
 
     /** The language code the renderer reads pack names in, for {@link #validateShaderPackNative}. */
     public static String languageCode() {
-        return getCurrentLanguageCode();
+        return ModuleAttributes.getCurrentLanguageCode();
     }
 
     /**
@@ -1937,7 +1198,7 @@ public class Pipeline {
     public static final String DEBUG_VIEW_OFF = "off";
     private static String debugView = DEBUG_VIEW_OFF;
     /** The active pack's debug views, as the renderer read them from it at the last build. */
-    private static volatile List<String> shaderPackDebugViews = List.of();
+    static volatile List<String> shaderPackDebugViews = List.of();
 
     public static String debugView() {
         return debugView;
@@ -1992,283 +1253,31 @@ public class Pipeline {
     public static final int PREWARM_CANCELLED = 4;
 
 
-    private static String getCurrentLanguageCode() {
-        Minecraft client = Minecraft.getInstance();
-        if (client != null) {
-            var languageManager = client.getLanguageManager();
-            if (languageManager != null) {
-                String language = languageManager.getSelected();
-                if (language != null && !language.isBlank()) {
-                    return language.toLowerCase(Locale.ROOT);
-                }
-            }
-            if (client.options != null && client.options.languageCode != null && !client.options.languageCode.isBlank()) {
-                return client.options.languageCode.toLowerCase(Locale.ROOT);
-            }
-        }
-
-        String fallback = Locale.getDefault().toString();
-        return fallback == null || fallback.isBlank()
-                ? "en_us"
-                : fallback.toLowerCase(Locale.ROOT);
-    }
-
     public static void getModuleAttributes() {
         for (Module module : INSTANCE.modules) {
-            getModuleAttributes(module);
+            ModuleAttributes.getModuleAttributes(module);
         }
     }
 
-    public static void getModuleAttributes(Module module) {
-        if (module == null) {
-            return;
-        }
-
-        if (module.staticAttributeConfigs == null) {
-            module.staticAttributeConfigs = Module.copyAttributeConfigs(module.attributeConfigs);
-        }
-
-        Map<String, String> currentValues = new HashMap<>();
-        if (module.attributeConfigs != null) {
-            for (AttributeConfig attributeConfig : module.attributeConfigs) {
-                if (attributeConfig == null || attributeConfig.name == null) {
-                    continue;
-                }
-                currentValues.put(attributeConfig.name, attributeConfig.value);
-            }
-        }
-
-        List<AttributeConfig> mergedAttributeConfigs = Module.copyAttributeConfigs(module.staticAttributeConfigs);
-        Map<String, String> translations = new HashMap<>();
-        // The shader pack's own attributes and their defaults, to check the values they end up with.
-        Map<String, String> packDefaults = new HashMap<>();
-        Path shaderPackAttributeStoragePath = null;
-        boolean preserveCurrentDynamicValues = true;
-
-        if (Objects.equals(module.name, RAY_TRACING_MODULE_NAME)) {
-            List<AttributeConfig> sourceAttributes =
-                    module.attributeConfigs != null ? module.attributeConfigs : module.staticAttributeConfigs;
-            String configuredPath = "";
-            if (sourceAttributes != null) {
-                for (AttributeConfig attributeConfig : sourceAttributes) {
-                    if (attributeConfig == null || !Objects.equals(attributeConfig.name, RAY_TRACING_SHADER_PACK_PATH_ATTRIBUTE)) {
-                        continue;
-                    }
-                    configuredPath = attributeConfig.value == null ? "" : attributeConfig.value.trim();
-                    break;
-                }
-            }
-
-            try {
-                Path shaderPackPath = null;
-                if (configuredPath.isEmpty()) {
-                    if (RadianteClient.radianceDir != null) {
-                        shaderPackPath = RadianteClient.radianceDir
-                                .resolve(BUILT_IN_SHADER_PACK_PATH)
-                                .toAbsolutePath()
-                                .normalize();
-                    }
-                } else {
-                    shaderPackPath = Path.of(configuredPath);
-                    if (!shaderPackPath.isAbsolute() && RadianteClient.radianceDir != null) {
-                        shaderPackPath = RadianteClient.radianceDir.resolve(shaderPackPath);
-                    }
-                    shaderPackPath = shaderPackPath.toAbsolutePath().normalize();
-                }
-
-                if (shaderPackPath != null && shaderPackPath.getFileName() != null) {
-                    shaderPackAttributeStoragePath =
-                            shaderPackPath.resolveSibling(shaderPackPath.getFileName().toString() + ".txt");
-                }
-            } catch (Exception e) {
-                RadianteClient.LOGGER.error("Error while resolving shader pack path: {}", configuredPath, e);
-            }
-
-            String normalizedStoragePath = shaderPackAttributeStoragePath == null
-                    ? null
-                    : shaderPackAttributeStoragePath.toAbsolutePath().normalize().toString();
-            preserveCurrentDynamicValues = Objects.equals(
-                    module.dynamicAttributeStoragePath,
-                    normalizedStoragePath);
-
-            List<String> attributeList = new ArrayList<>();
-            if (sourceAttributes != null) {
-                for (AttributeConfig attributeConfig : sourceAttributes) {
-                    if (attributeConfig == null || attributeConfig.name == null) {
-                        continue;
-                    }
-                    attributeList.add(attributeConfig.name);
-                    attributeList.add(attributeConfig.value != null ? attributeConfig.value : "");
-                }
-            }
-
-            String language = getCurrentLanguageCode();
-
-            String metadata = getAttributes(
-                    module.name,
-                    attributeList.toArray(String[]::new),
-                    language);
-            if (metadata != null && !metadata.isBlank()) {
-                Object loaded = new Yaml().load(metadata);
-                if (loaded instanceof Map<?, ?> root) {
-                    Object attributesNode = root.get("attributes");
-                    if (attributesNode instanceof List<?> attributeNodes) {
-                        for (Object attributeNode : attributeNodes) {
-                            if (!(attributeNode instanceof Map<?, ?> attributeMap)) {
-                                continue;
-                            }
-
-                            Object name = attributeMap.get("name");
-                            Object type = attributeMap.get("type");
-                            if (name == null || type == null) {
-                                continue;
-                            }
-
-                            AttributeConfig attributeConfig = new AttributeConfig();
-                            attributeConfig.name = Objects.toString(name);
-                            attributeConfig.type = Objects.toString(type);
-                            Object defaultValue = attributeMap.containsKey("default_value")
-                                    ? attributeMap.get("default_value")
-                                    : attributeMap.get("value");
-                            attributeConfig.value = Objects.toString(defaultValue, "");
-                            attributeConfig.runtime =
-                                    Boolean.parseBoolean(Objects.toString(attributeMap.get("runtime"), "false"));
-                            packDefaults.put(attributeConfig.name, attributeConfig.value);
-                            mergedAttributeConfigs.add(attributeConfig);
-                        }
-                    }
-
-                    List<String> debugViews = new ArrayList<>();
-                    if (root.get("debug_views") instanceof List<?> viewNodes) {
-                        for (Object viewNode : viewNodes) {
-                            if (viewNode != null) {
-                                debugViews.add(Objects.toString(viewNode));
-                            }
-                        }
-                    }
-                    shaderPackDebugViews = List.copyOf(debugViews);
-
-                    Object translationsNode = root.get("translations");
-                    if (translationsNode instanceof Map<?, ?> translationMap) {
-                        for (Map.Entry<?, ?> entry : translationMap.entrySet()) {
-                            if (entry.getKey() == null || entry.getValue() == null) {
-                                continue;
-                            }
-                            translations.put(
-                                    Objects.toString(entry.getKey()),
-                                    Objects.toString(entry.getValue()));
-                        }
-                    }
-                }
-            }
-
-            if (shaderPackAttributeStoragePath != null && Files.exists(shaderPackAttributeStoragePath)) {
-                Map<String, String> storedValues = new HashMap<>();
-                try {
-                    for (String line : Files.readAllLines(shaderPackAttributeStoragePath, StandardCharsets.UTF_8)) {
-                        if (line == null || line.isBlank()) {
-                            continue;
-                        }
-                        int separatorIndex = line.indexOf('=');
-                        if (separatorIndex <= 0) {
-                            continue;
-                        }
-                        String key = line.substring(0, separatorIndex).trim();
-                        if (key.isEmpty()) {
-                            continue;
-                        }
-                        storedValues.put(key, line.substring(separatorIndex + 1));
-                    }
-                } catch (IOException e) {
-                    RadianteClient.LOGGER.error(
-                            "Error while loading shader attribute storage: {}",
-                            shaderPackAttributeStoragePath,
-                            e);
-                }
-
-                if (!storedValues.isEmpty()) {
-                    for (AttributeConfig attributeConfig : mergedAttributeConfigs) {
-                        if (attributeConfig == null || attributeConfig.name == null) {
-                            continue;
-                        }
-                        if (!storedValues.containsKey(attributeConfig.name)) {
-                            continue;
-                        }
-                        attributeConfig.value = storedValues.get(attributeConfig.name);
-                    }
-                }
-            }
-        }
-
-        Set<String> staticAttributeNames = preserveCurrentDynamicValues
-                ? Set.of()
-                : collectStaticAttributeNames(module);
-        for (AttributeConfig attributeConfig : mergedAttributeConfigs) {
-            if (attributeConfig == null || attributeConfig.name == null) {
-                continue;
-            }
-            if (currentValues.containsKey(attributeConfig.name)) {
-                if (!preserveCurrentDynamicValues
-                        && !staticAttributeNames.contains(attributeConfig.name)) {
-                    continue;
-                }
-                attributeConfig.value = currentValues.get(attributeConfig.name);
-            }
-            // A value the pack does not offer goes back to the pack's default. Packs share attribute names, and a
-            // value only one of them has (radiante-pt's Bedrock water, kept from radiante-pt by the player) reached
-            // another pack's enum, where the renderer compiled the value's text into the shaders and the build failed.
-            String packDefault = packDefaults.get(attributeConfig.name);
-            String type = attributeConfig.type;
-            if (packDefault != null && attributeConfig.value != null && type != null
-                    && (type.equals("bool") || type.startsWith("enum:") || type.startsWith("int_range:")
-                        || type.startsWith("float_range:"))
-                    && !com.g2806.radiante.client.option.SettingsCode.allowed(type, attributeConfig.value)) {
-                RadianteClient.LOGGER.warn("Shader pack setting {}: \"{}\" is not one of its values; using {}",
-                        attributeConfig.name, attributeConfig.value, packDefault);
-                attributeConfig.value = packDefault;
-            }
-        }
-
-        module.attributeConfigs = mergedAttributeConfigs;
-        module.dynamicTranslations.clear();
-        module.dynamicTranslations.putAll(translations);
-        module.dynamicAttributeStoragePath = shaderPackAttributeStoragePath == null
-                ? null
-                : shaderPackAttributeStoragePath.toAbsolutePath().normalize().toString();
-    }
-
-    private static Set<String> collectStaticAttributeNames(Module module) {
-        Set<String> names = new HashSet<>();
-        if (module == null || module.staticAttributeConfigs == null) {
-            return names;
-        }
-        for (AttributeConfig attributeConfig : module.staticAttributeConfigs) {
-            if (attributeConfig == null || attributeConfig.name == null) {
-                continue;
-            }
-            names.add(attributeConfig.name);
-        }
-        return names;
-    }
     public String getActivePresetName() {
         return activePresetName;
     }
 
     /** Assembles a preset, keeping the module settings it shares with the current one; the caller builds it. */
     public static void switchToPresetMode(String presetName) {
-        List<PresetStoredModule> carryOverModules = capturePresetModules();
+        List<PresetStoredModule> carryOverModules = PipelineStore.capturePresetModules();
 
         INSTANCE.mode = PipelineMode.PRESET;
         assemblePreset(processPresetName(presetName));
 
-        PipelineConfigStorage storage = loadConfigStorage();
+        PipelineConfigStorage storage = PipelineStore.loadConfigStorage();
         if (storage != null && Objects.equals(storage.mode, PipelineMode.PRESET.name())
                 && Objects.equals(storage.presetName, INSTANCE.activePresetName)) {
-            applyPresetModuleOverrides(storage.presetModules);
+            PipelineStore.applyPresetModuleOverrides(storage.presetModules);
             normaliseRayReconstruction();
         }
 
-        applyPresetModuleOverrides(carryOverModules);
+        PipelineStore.applyPresetModuleOverrides(carryOverModules);
         normaliseRayReconstruction();
     }
 
@@ -2279,7 +1288,7 @@ public class Pipeline {
             return;
         }
 
-        assemblePresetByKeyInternal(processedPresetName);
+        PresetAssembly.assemblePresetByKeyInternal(processedPresetName);
     }
 
     public static String processPresetName(String presetName) {
@@ -2323,441 +1332,8 @@ public class Pipeline {
         }
     }
 
-    private static void applyPresetModuleOverrides(List<PresetStoredModule> storedModules) {
-        if (storedModules == null || storedModules.isEmpty()) {
-            return;
-        }
-
-        for (PresetStoredModule storedModule : storedModules) {
-            if (storedModule == null || storedModule.entryName == null) {
-                continue;
-            }
-
-            for (Module module : INSTANCE.modules) {
-                if (!Objects.equals(module.name, storedModule.entryName)) {
-                    continue;
-                }
-
-                applyStoredAttributes(module, storedModule.attributes);
-            }
-        }
-    }
-
-    private static void applyStoredAttributes(Module module, List<StoredAttribute> storedAttributes) {
-        if (module == null) {
-            return;
-        }
-
-        applyStoredAttributeValues(module, module.attributeConfigs, storedAttributes);
-        getModuleAttributes(module);
-        applyStoredAttributeValues(module, module.attributeConfigs, storedAttributes);
-    }
-
-    private static void applyStoredAttributeValues(Module module,
-                                                   List<AttributeConfig> attributeConfigs,
-                                                   List<StoredAttribute> storedAttributes) {
-        if (attributeConfigs == null || storedAttributes == null) {
-            return;
-        }
-        Set<String> staticAttributeNames = Objects.equals(module.name, RAY_TRACING_MODULE_NAME)
-                ? collectStaticAttributeNames(module)
-                : null;
-
-        for (StoredAttribute storedAttribute : storedAttributes) {
-            if (storedAttribute == null || storedAttribute.name == null) {
-                continue;
-            }
-            if (staticAttributeNames != null && !staticAttributeNames.contains(storedAttribute.name)) {
-                continue;
-            }
-
-            for (int i = 0; i < attributeConfigs.size(); i++) {
-                var attributeConfig = attributeConfigs.get(i);
-
-                if (!Objects.equals(attributeConfig.name, storedAttribute.name)) {
-                    continue;
-                }
-                if (storedAttribute.type != null && !Objects.equals(attributeConfig.type, storedAttribute.type)) {
-                    continue;
-                }
-
-                attributeConfig.value = storedAttribute.value;
-                break;
-            }
-        }
-    }
-
     public static void savePipeline() {
-        if (PIPELINE_CONFIG_PATH == null) {
-            return;
-        }
-
-        PipelineConfigStorage storage = new PipelineConfigStorage();
-        storage.mode = INSTANCE.mode.toString();
-        storage.presetName = INSTANCE.activePresetName;
-
-        if (INSTANCE.mode == PipelineMode.PIPELINE) {
-            storage.pipeline = capturePipelineStorage();
-        } else {
-            storage.presetModules = capturePresetModules();
-        }
-
-        for (Module module : INSTANCE.modules) {
-            if (module == null || !Objects.equals(module.name, RAY_TRACING_MODULE_NAME) || module.attributeConfigs == null) {
-                continue;
-            }
-
-            String configuredPath = "";
-            for (AttributeConfig attributeConfig : module.attributeConfigs) {
-                if (attributeConfig == null || !Objects.equals(attributeConfig.name, RAY_TRACING_SHADER_PACK_PATH_ATTRIBUTE)) {
-                    continue;
-                }
-                configuredPath = attributeConfig.value == null ? "" : attributeConfig.value.trim();
-                break;
-            }
-
-            Path storagePath = null;
-            try {
-                Path shaderPackPath = null;
-                if (configuredPath.isEmpty()) {
-                    if (RadianteClient.radianceDir != null) {
-                        shaderPackPath = RadianteClient.radianceDir
-                                .resolve(BUILT_IN_SHADER_PACK_PATH)
-                                .toAbsolutePath()
-                                .normalize();
-                    }
-                } else {
-                    shaderPackPath = Path.of(configuredPath);
-                    if (!shaderPackPath.isAbsolute() && RadianteClient.radianceDir != null) {
-                        shaderPackPath = RadianteClient.radianceDir.resolve(shaderPackPath);
-                    }
-                    shaderPackPath = shaderPackPath.toAbsolutePath().normalize();
-                }
-
-                if (shaderPackPath != null && shaderPackPath.getFileName() != null) {
-                    storagePath = shaderPackPath.resolveSibling(shaderPackPath.getFileName().toString() + ".txt");
-                }
-            } catch (Exception e) {
-                RadianteClient.LOGGER.error("Error while resolving shader pack path: {}", configuredPath, e);
-            }
-
-            if (storagePath == null) {
-                continue;
-            }
-
-            Set<String> staticAttributeNames = collectStaticAttributeNames(module);
-            List<StoredAttribute> storedAttributes = new ArrayList<>();
-            for (AttributeConfig attributeConfig : module.attributeConfigs) {
-                if (attributeConfig == null || attributeConfig.name == null) {
-                    continue;
-                }
-                if (staticAttributeNames.contains(attributeConfig.name)) {
-                    continue;
-                }
-
-                StoredAttribute storedAttribute = new StoredAttribute();
-                storedAttribute.name = attributeConfig.name;
-                storedAttribute.value = attributeConfig.value;
-                storedAttributes.add(storedAttribute);
-            }
-
-            storedAttributes.sort(Comparator.comparing(attribute -> attribute.name == null ? "" : attribute.name));
-
-            StringBuilder builder = new StringBuilder();
-            for (StoredAttribute storedAttribute : storedAttributes) {
-                builder.append(storedAttribute.name)
-                        .append('=')
-                        .append(storedAttribute.value == null ? "" : storedAttribute.value)
-                        .append('\n');
-            }
-
-            try {
-                if (storagePath.getParent() != null) {
-                    Files.createDirectories(storagePath.getParent());
-                }
-                Files.writeString(storagePath, builder.toString(), StandardCharsets.UTF_8);
-                module.dynamicAttributeStoragePath = storagePath.toAbsolutePath().normalize().toString();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        writeConfigStorage(storage);
-    }
-
-    private static PipelineStorage capturePipelineStorage() {
-        PipelineStorage pipelineStorage = new PipelineStorage();
-        pipelineStorage.modules = new ArrayList<>();
-        pipelineStorage.moduleConnections = new ArrayList<>();
-
-        Map<Module, String> moduleToId = new HashMap<>();
-        for (int index = 0; index < INSTANCE.modules.size(); index++) {
-            Module module = INSTANCE.modules.get(index);
-
-            String moduleId = "module_" + index;
-            moduleToId.put(module, moduleId);
-
-            StoredModule storedModule = new StoredModule();
-            storedModule.id = moduleId;
-            storedModule.entryName = module.name;
-            storedModule.x = module.x;
-            storedModule.y = module.y;
-            storedModule.attributes = captureAttributes(module);
-
-            pipelineStorage.modules.add(storedModule);
-        }
-
-        List<StoredConnection> storedConnections = new ArrayList<>();
-        for (Map.Entry<ImageConfig, List<ImageConfig>> entry : INSTANCE.moduleConnections.entrySet()) {
-            ImageConfig srcImageConfig = entry.getKey();
-            List<ImageConfig> dstImageConfigs = entry.getValue();
-
-            if (srcImageConfig == null || srcImageConfig.owner == null) {
-                continue;
-            }
-            if (dstImageConfigs == null) {
-                continue;
-            }
-
-            String srcModuleId = moduleToId.get(srcImageConfig.owner);
-            if (srcModuleId == null) {
-                continue;
-            }
-
-            for (ImageConfig dstImageConfig : dstImageConfigs) {
-                if (dstImageConfig == null || dstImageConfig.owner == null) {
-                    continue;
-                }
-
-                String dstModuleId = moduleToId.get(dstImageConfig.owner);
-                if (dstModuleId == null) {
-                    continue;
-                }
-
-                StoredConnection storedConnection = new StoredConnection();
-                storedConnection.srcModuleId = srcModuleId;
-                storedConnection.srcImageName = srcImageConfig.name;
-                storedConnection.dstModuleId = dstModuleId;
-                storedConnection.dstImageName = dstImageConfig.name;
-
-                storedConnections.add(storedConnection);
-            }
-        }
-
-        storedConnections.sort(
-                Comparator.comparing((StoredConnection connection) -> connection.srcModuleId)
-                        .thenComparing(connection -> connection.srcImageName)
-                        .thenComparing(connection -> connection.dstModuleId)
-                        .thenComparing(connection -> connection.dstImageName));
-
-        pipelineStorage.moduleConnections.addAll(storedConnections);
-
-        String finalOutputModuleId = null;
-        String finalOutputImageName = null;
-        for (int index = 0; index < INSTANCE.modules.size(); index++) {
-            Module module = INSTANCE.modules.get(index);
-            for (ImageConfig conf : module.outputImageConfigs) {
-                if (!conf.finalOutput) {
-                    continue;
-                }
-                if (finalOutputModuleId != null) {
-                    throw new RuntimeException("Multiple final outputs detected! Only one allows.");
-                }
-                finalOutputModuleId = "module_" + index;
-                finalOutputImageName = conf.name;
-            }
-        }
-
-        pipelineStorage.finalOutputModuleId = finalOutputModuleId;
-        pipelineStorage.finalOutputImageName = finalOutputImageName;
-
-        return pipelineStorage;
-    }
-
-    private static List<StoredAttribute> captureAttributes(Module module) {
-        List<StoredAttribute> out = new ArrayList<>();
-        if (module == null || module.attributeConfigs == null) {
-            return out;
-        }
-        Set<String> staticAttributeNames = Objects.equals(module.name, RAY_TRACING_MODULE_NAME)
-                ? collectStaticAttributeNames(module)
-                : null;
-
-        for (AttributeConfig attributeConfig : module.attributeConfigs) {
-            if (attributeConfig == null || attributeConfig.name == null) {
-                continue;
-            }
-            if (staticAttributeNames != null && !staticAttributeNames.contains(attributeConfig.name)) {
-                continue;
-            }
-            StoredAttribute storedAttribute = new StoredAttribute();
-            storedAttribute.type = attributeConfig.type;
-            storedAttribute.name = attributeConfig.name;
-            storedAttribute.value = attributeConfig.value;
-            out.add(storedAttribute);
-        }
-        return out;
-    }
-
-    private static List<PresetStoredModule> capturePresetModules() {
-        List<PresetStoredModule> list = new ArrayList<>();
-
-        for (Module module : INSTANCE.modules) {
-            PresetStoredModule storedModule = new PresetStoredModule();
-            storedModule.entryName = module.name;
-            storedModule.attributes = captureAttributes(module);
-            list.add(storedModule);
-        }
-
-        list.sort(Comparator.comparing(m -> m.entryName == null ? "" : m.entryName));
-        return list;
-    }
-
-    private static void writeConfigStorage(PipelineConfigStorage storage) {
-        DumperOptions dumperOptions = new DumperOptions();
-        dumperOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-        dumperOptions.setPrettyFlow(true);
-        dumperOptions.setIndent(2);
-
-        Yaml yaml = new Yaml(dumperOptions);
-        String yamlText = yaml.dump(storage);
-
-        try {
-            Files.createDirectories(PIPELINE_CONFIG_PATH.getParent());
-            Files.writeString(PIPELINE_CONFIG_PATH, yamlText, StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static PipelineConfigStorage loadConfigStorage() {
-        if (PIPELINE_CONFIG_PATH == null || !Files.exists(PIPELINE_CONFIG_PATH)) {
-            return null;
-        }
-
-        try {
-            String yamlText = Files.readString(PIPELINE_CONFIG_PATH, StandardCharsets.UTF_8);
-
-            LoaderOptions loaderOptions = new LoaderOptions();
-            TagInspector tagInspector = tag -> tag.getClassName().startsWith("com.g2806.radiante.client.pipeline");
-            loaderOptions.setTagInspector(tagInspector);
-
-            Constructor constructor = new Constructor(PipelineConfigStorage.class, loaderOptions);
-            Yaml yaml = new Yaml(constructor);
-
-            PipelineConfigStorage storage = yaml.load(yamlText);
-            if (storage != null) {
-                storage.migrateLegacyFields();
-            }
-            return storage;
-        } catch (Exception e) {
-            RadianteClient.LOGGER.error("Error while loading pipeline config.", e);
-            return null;
-        }
-    }
-
-    private static boolean hasUnavailableStoredModules(PipelineStorage pipelineStorage) {
-        if (pipelineStorage == null || pipelineStorage.modules == null) {
-            return true;
-        }
-
-        for (StoredModule storedModule : pipelineStorage.modules) {
-            if (storedModule == null || storedModule.entryName == null) {
-                continue;
-            }
-            if (!isModuleAvailable(storedModule.entryName)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static void applyPipelineStorage(PipelineStorage pipelineStorage) {
-        if (pipelineStorage == null) {
-            assembleDefault();
-            return;
-        }
-
-        if (hasUnavailableStoredModules(pipelineStorage)) {
-            RadianteClient.LOGGER.warn("Stored pipeline contains unavailable modules. Falling back to NRD+FSR.");
-            assembleNRDFSR();
-            return;
-        }
-
-        clear();
-
-        if (pipelineStorage.modules == null || pipelineStorage.modules.isEmpty()
-                || pipelineStorage.finalOutputModuleId == null || pipelineStorage.finalOutputImageName == null) {
-            assembleDefault();
-            return;
-        }
-
-        Map<String, Module> idToModule = new HashMap<>();
-
-        for (StoredModule storedModule : pipelineStorage.modules) {
-            if (storedModule == null || storedModule.id == null || storedModule.entryName == null) {
-                continue;
-            }
-
-            Module module = addModule(storedModule.entryName);
-            module.x = storedModule.x;
-            module.y = storedModule.y;
-
-            applyStoredAttributes(module, storedModule.attributes);
-
-            idToModule.put(storedModule.id, module);
-        }
-
-        for (Module module : INSTANCE.modules) {
-            for (ImageConfig conf : module.outputImageConfigs) {
-                conf.finalOutput = false;
-            }
-        }
-
-        Module finalModule = idToModule.get(pipelineStorage.finalOutputModuleId);
-        if (finalModule == null) {
-            assembleDefault();
-            return;
-        }
-
-        ImageConfig finalImageConfig = finalModule.getOutputImageConfig(pipelineStorage.finalOutputImageName);
-        if (finalImageConfig == null) {
-            assembleDefault();
-            return;
-        }
-
-        finalImageConfig.finalOutput = true;
-
-        if (pipelineStorage.moduleConnections != null) {
-            for (StoredConnection storedConnection : pipelineStorage.moduleConnections) {
-                if (storedConnection == null) {
-                    continue;
-                }
-                if (storedConnection.srcModuleId == null || storedConnection.dstModuleId == null) {
-                    continue;
-                }
-                if (storedConnection.srcImageName == null || storedConnection.dstImageName == null) {
-                    continue;
-                }
-
-                Module srcModule = idToModule.get(storedConnection.srcModuleId);
-                Module dstModule = idToModule.get(storedConnection.dstModuleId);
-
-                if (srcModule == null || dstModule == null) {
-                    continue;
-                }
-
-                ImageConfig srcImageConfig = srcModule.getOutputImageConfig(storedConnection.srcImageName);
-                ImageConfig dstImageConfig = dstModule.getInputImageConfig(storedConnection.dstImageName);
-
-                if (srcImageConfig == null || dstImageConfig == null) {
-                    continue;
-                }
-
-                connect(srcImageConfig, dstImageConfig);
-            }
-        }
+        PipelineStore.savePipeline();
     }
 
     /**
@@ -2772,43 +1348,19 @@ public class Pipeline {
         if (Options.settingsDefaultsVersion >= SETTINGS_DEFAULTS_VERSION) {
             return;
         }
-        forgetStoredSettings();
+        PipelineStore.forgetStoredSettings();
         Options.settingsDefaultsVersion = SETTINGS_DEFAULTS_VERSION;
         Options.overwriteConfig();
     }
 
-    /**
-     * Deletes the stored pipeline (pipeline.yaml) and every shader pack's stored settings (the .txt beside each
-     * pack): the next load starts from a fresh install's.
-     */
-    public static void forgetStoredSettings() {
-        try {
-            if (PIPELINE_CONFIG_PATH != null) {
-                Files.deleteIfExists(PIPELINE_CONFIG_PATH);
-            }
-            if (RadianteClient.radianceDir != null) {
-                Path shaders = RadianteClient.radianceDir.resolve("shaders");
-                if (Files.isDirectory(shaders)) {
-                    try (var files = Files.walk(shaders)) {
-                        for (Path file : files.filter(f -> f.getFileName().toString().endsWith(".zip.txt")).toList()) {
-                            Files.deleteIfExists(file);
-                        }
-                    }
-                }
-            }
-        } catch (IOException e) {
-            RadianteClient.LOGGER.error("Could not forget the stored pipeline settings", e);
-        }
-    }
-
     /** Every pipeline and shader pack setting back to a fresh install's, and the pipeline rebuilt with them. */
     public static void resetToDefaults() {
-        forgetStoredSettings();
+        PipelineStore.forgetStoredSettings();
         loadPipeline();
     }
 
     public static void loadPipeline() {
-        PipelineConfigStorage storage = loadConfigStorage();
+        PipelineConfigStorage storage = PipelineStore.loadConfigStorage();
 
         if (storage == null) {
             INSTANCE.mode = PipelineMode.PRESET;
@@ -2825,14 +1377,14 @@ public class Pipeline {
 
         if (loadedMode == PipelineMode.PRESET) {
             assemblePreset(INSTANCE.activePresetName);
-            applyPresetModuleOverrides(storage.presetModules);
+            PipelineStore.applyPresetModuleOverrides(storage.presetModules);
             normaliseRayReconstruction();
             build();
             return;
         }
 
         if (storage.pipeline != null) {
-            applyPipelineStorage(storage.pipeline);
+            PipelineStore.applyPipelineStorage(storage.pipeline);
             build();
             return;
         }

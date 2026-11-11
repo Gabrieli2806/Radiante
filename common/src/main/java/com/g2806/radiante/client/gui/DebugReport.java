@@ -14,12 +14,12 @@ import net.minecraft.client.Minecraft;
  * What a bug report needs in one block of text: versions, GPU, the running pipeline and every pipeline setting, read
  * from what is applied rather than what is staged on the settings screen.
  */
-final class DebugReport {
+public final class DebugReport {
 
     private DebugReport() {
     }
 
-    static String build(Minecraft minecraft) {
+    public static String build(Minecraft minecraft) {
         StringBuilder text = new StringBuilder("Radiante ").append(com.g2806.radiante.platform.RadiantePlatform.INSTANCE.modVersion())
             .append(" on Minecraft ").append(SharedConstants.getCurrentVersion().name()).append('\n');
         text.append("OS: ").append(System.getProperty("os.name")).append(' ').append(System.getProperty("os.version"))

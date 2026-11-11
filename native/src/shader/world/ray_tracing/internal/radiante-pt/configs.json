@@ -171,7 +171,7 @@
         {
             "name": "render_pipeline.module.ray_tracing.attribute.restir",
             "type": "bool",
-            "default_value": "render_pipeline.true",
+            "default_value": "render_pipeline.false",
             "define": "VPT_RESTIR"
         },
         {
@@ -343,12 +343,14 @@
             "name": "render_pipeline.module.ray_tracing.attribute.bedrock_one_bounce",
             "type": "bool",
             "default_value": "render_pipeline.false",
+            "runtime": true,
             "define": "VPT_BEDROCK_ONE_BOUNCE"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.transparent_checkerboard",
             "type": "bool",
             "default_value": "render_pipeline.false",
+            "runtime": true,
             "define": "VPT_TRANSPARENT_CHECKERBOARD"
         },
         {
@@ -361,6 +363,7 @@
             "name": "render_pipeline.module.ray_tracing.attribute.cache_deep_bounces",
             "type": "bool",
             "default_value": "render_pipeline.true",
+            "runtime": true,
             "define": "VPT_CACHE_DEEP_BOUNCES"
         },
         {
