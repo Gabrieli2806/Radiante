@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Water Waves is grey unless the Water Surface (Advanced) is Realistic, the only one with waves of its own: with Bedrock's surface, the default, the slider did nothing.
+
+- The eye adapts over the same time at any frame rate. With Bedrock RTX's light meter (the default) the exposure moved a share of the way each frame, so at 30 frames a second a room took four times longer to come up than at 120.
+
+- The pictures of the documentation and the README are retaken with the look as it is now: the settings screens, the comparisons and the scenes.
+
 - Radiante PT has one look: the Bedrock RTX (Enhanced) look is simply its default settings. The hidden switches behind it (`bedrock_original`, shown as "Bedrock RTX (Experimental)", and `bedrock_enhanced`) are gone, and so is the other branch of the shaders, the remains of the old Realistic profile. Settings of the old Realistic and Custom profiles are no longer reset on the first start.
 
 - Sky Light, Bounced Light, Daytime Exposure, Night-time Exposure and Glass Reflections are removed, with the advanced attributes `basic_radiance` and `water_density_from_above`: nothing read them in that one look.

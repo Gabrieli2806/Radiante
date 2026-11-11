@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Replace any file keeping its name (or edit this list). Paths are relative to docs/images/. UI screenshots are PNG, scenes and comparisons are WebP (quality 90). Everything was taken at 1920x1080 with DLSS Quality unless a label says otherwise.",
+  "note": "Replace any file keeping its name (or edit this list). Paths are relative to docs/images/. UI screenshots are PNG, scenes and comparisons are WebP (quality 90). Everything was taken at 1920x1080 with DLSS Quality unless a label says otherwise. The scenes and comparisons are from the RadianteBenchmark test world with Radiante PT at its defaults.",
   "ui": [
     {
       "id": "settings-quality",
@@ -88,24 +88,16 @@
       "id": "hero",
       "file": "scenes/hero.webp",
       "alt": {
-        "en": "Radiante with DLSS Quality: forest and river in sunlight",
-        "es": "Radiante con DLSS Quality: bosque y río con sol"
+        "en": "Radiante with DLSS Quality: a pond in a flower forest in the morning sun",
+        "es": "Radiante con DLSS Calidad: un estanque en un bosque de flores al sol de la mañana"
       }
     },
     {
-      "id": "coast-noon",
-      "file": "scenes/coast-noon.webp",
+      "id": "pond",
+      "file": "scenes/pond.webp",
       "alt": {
-        "en": "A coast at noon with ray traced water reflections",
-        "es": "Una costa al mediodía con reflejos de agua con ray tracing"
-      }
-    },
-    {
-      "id": "forest-noon",
-      "file": "scenes/forest-noon.webp",
-      "alt": {
-        "en": "Forest and river at noon",
-        "es": "Bosque y río al mediodía"
+        "en": "A pond with clear water and sugar cane",
+        "es": "Un estanque de agua clara con caña de azúcar"
       }
     },
     {
@@ -117,27 +109,27 @@
       }
     },
     {
-      "id": "neon-city-night",
-      "file": "scenes/neon-city-night.webp",
+      "id": "garden-gate",
+      "file": "scenes/garden-gate.webp",
       "alt": {
-        "en": "A neon city at night lit by block lights",
-        "es": "Una ciudad de neón de noche iluminada por luces de bloque"
+        "en": "A gate of stained glass and copper",
+        "es": "Una puerta de cristal tintado y cobre"
       }
     },
     {
-      "id": "campfire-smoke",
-      "file": "scenes/campfire-smoke.webp",
+      "id": "night-lantern",
+      "file": "scenes/night-lantern.webp",
       "alt": {
-        "en": "Campfire smoke particles",
-        "es": "Partículas de humo de fogata"
+        "en": "A lantern on a dock at night",
+        "es": "Un farol en un muelle de noche"
       }
     },
     {
-      "id": "jungle-canopy",
-      "file": "scenes/jungle-canopy.webp",
+      "id": "flower-forest",
+      "file": "scenes/flower-forest.webp",
       "alt": {
-        "en": "A jungle canopy from above",
-        "es": "Dosel de selva visto desde arriba"
+        "en": "A flower forest in sunlight",
+        "es": "Un bosque de flores al sol"
       }
     }
   ],

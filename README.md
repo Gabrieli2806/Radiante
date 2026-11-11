@@ -7,7 +7,7 @@ NeoForge and Forge), 26.2 (Fabric, NeoForge and Forge) and 26.4 snapshots (Fabri
 [Discord](https://discord.gg/DhBbAzugZ9) · [Documentation](docs/en/README.md) ·
 [Issues](https://github.com/Gabrieli2806/Radiante/issues) · Languages: **EN** · [ES](README.es.md)
 
-![Radiante with DLSS Quality: forest and river in sunlight](docs/images/scenes/hero.webp)
+![Radiante with DLSS Quality: a pond in a flower forest in the morning sun](docs/images/scenes/hero.webp)
 
 | Ray tracing off (vanilla) | Ray tracing on (DLSS Quality) |
 |---|---|
@@ -15,8 +15,8 @@ NeoForge and Forge), 26.2 (Fabric, NeoForge and Forge) and 26.4 snapshots (Fabri
 
 | | |
 |---|---|
-| ![A coast at noon with ray traced water reflections](docs/images/scenes/coast-noon.webp) | ![A jungle canopy from above](docs/images/scenes/jungle-canopy.webp) |
-| ![A neon city at night lit by block lights](docs/images/scenes/neon-city-night.webp) | ![Campfire smoke particles](docs/images/scenes/campfire-smoke.webp) |
+| ![A pond with clear water and sugar cane](docs/images/scenes/pond.webp) | ![A flower forest in sunlight](docs/images/scenes/flower-forest.webp) |
+| ![A gate of stained glass and copper](docs/images/scenes/garden-gate.webp) | ![A lantern on a dock at night](docs/images/scenes/night-lantern.webp) |
 
 ## Features
 
