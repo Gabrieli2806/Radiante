@@ -85,6 +85,11 @@ public class RadianteOptionsScreen extends SettingsRows {
      * settings reaches the renderer. Everything that opens the settings from outside (the video settings button, the
      * key binding, the mod list) goes through here.
      */
+    /** The Share Settings screen, as the settings' Share button opens it; back to the settings when left. */
+    public static Screen createShare(Screen parent, net.minecraft.client.Options options) {
+        return new ShareSettingsScreen(parent, () -> new RadianteOptionsScreen(parent, options));
+    }
+
     public static Screen create(Screen parent, net.minecraft.client.Options options) {
         if (!com.g2806.radiante.client.RadianteClient.isNativeLoaded()) {
             return new UnsupportedHardwareScreen(parent);

@@ -1,5 +1,6 @@
 package com.g2806.radiante.client.compat.distanthorizons;
 
+import com.g2806.radiante.client.compat.OtherMods;
 import com.g2806.radiante.client.render.RadianteRenderer;
 import com.g2806.radiante.client.option.Options;
 import net.minecraft.client.CloudStatus;
@@ -170,11 +171,6 @@ public final class DistantHorizonsCompat {
     }
 
     private static boolean isInstalled() {
-        try {
-            Class.forName(API_CLASS, false, DistantHorizonsCompat.class.getClassLoader());
-            return true;
-        } catch (ClassNotFoundException | LinkageError e) {
-            return false;
-        }
+        return OtherMods.has(API_CLASS);
     }
 }

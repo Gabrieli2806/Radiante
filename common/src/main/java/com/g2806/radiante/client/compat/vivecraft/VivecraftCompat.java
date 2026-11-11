@@ -1,5 +1,6 @@
 package com.g2806.radiante.client.compat.vivecraft;
 
+import com.g2806.radiante.client.compat.OtherMods;
 import com.g2806.radiante.client.RadianteClient;
 import java.lang.reflect.Method;
 import net.minecraft.world.InteractionHand;
@@ -31,9 +32,7 @@ public final class VivecraftCompat {
 
     /** Notes whether Vivecraft is installed; its API is looked up on first use, once it has started. */
     public static void init() {
-        try {
-            Class.forName("org.vivecraft.api.client.VRClientAPI", false, VivecraftCompat.class.getClassLoader());
-        } catch (ClassNotFoundException | LinkageError notInstalled) {
+        if (!OtherMods.has("org.vivecraft.api.client.VRClientAPI")) {
             return;
         }
         installed = true;

@@ -368,6 +368,11 @@ public final class DevAutomation {
             minecraft.gui.setScreen(com.g2806.radiante.client.gui.RadianteOptionsScreen.create(minecraft.gui.screen(), minecraft.options));
             return;
         }
+        if (action.equals("share")) {
+            minecraft.gui.setScreen(com.g2806.radiante.client.gui.RadianteOptionsScreen.createShare(
+                minecraft.gui.screen(), minecraft.options));
+            return;
+        }
         if (action.equals("shaderpacks")) {
             // The shader pack list, as the settings' Shader Packs button opens it; back to the settings when left.
             var options = minecraft.options;
