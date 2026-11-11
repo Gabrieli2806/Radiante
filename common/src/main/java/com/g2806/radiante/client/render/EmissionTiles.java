@@ -181,7 +181,7 @@ public final class EmissionTiles {
     public static void registerIfNeeded(Minecraft minecraft) {
         TextureAtlas atlas = minecraft.getAtlasManager().getAtlasOrThrow(AtlasIds.BLOCKS);
         Object key = TextureTracker.gpuTextureOrNull(atlas);
-        boolean withMer = com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow();
+        boolean withMer = com.g2806.radiante.client.pipeline.PipelineSettings.castsBedrockGlow();
         boolean fine = com.g2806.radiante.client.option.Options.glowingPixelLight;
         boolean defaults = BedrockDefaults.emissionActive();
         boolean levelless = com.g2806.radiante.client.option.Options.unlitBlockLight;
@@ -398,7 +398,7 @@ public final class EmissionTiles {
         // While Bedrock's glow is cast the eye glows like any other light of its level (no pack map) or as its pack
         // authors it (see keepSetGlow): Bedrock RTX shows an eye of ender in its frame barely glowing, and the full
         // glow lit a ring of frames brighter than any lamp around it.
-        boolean bedrockGlow = com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow();
+        boolean bedrockGlow = com.g2806.radiante.client.pipeline.PipelineSettings.castsBedrockGlow();
         boolean lava = isLava(sprite);
         // Each texel by its yellow (green channel): the dark orange glows least and the bright swirls most, so the
         // surface keeps vanilla's flowing pattern; all at full strength it was overexposed into a pale, flat peach.
@@ -544,7 +544,7 @@ public final class EmissionTiles {
 
     private static void uploadAuthoredEmission(int atlasId, TextureAtlasSprite sprite, ByteBuffer mer,
         int atlasWidth, int atlasHeight, boolean labPbr) {
-        if (!labPbr && !com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow()) {
+        if (!labPbr && !com.g2806.radiante.client.pipeline.PipelineSettings.castsBedrockGlow()) {
             return;
         }
         SpriteContents contents = sprite.contents();
@@ -873,7 +873,7 @@ public final class EmissionTiles {
         // Not while Bedrock's glow is cast: then the eye glows and casts what its pack's MER map says, as in Bedrock
         // RTX (Vanilla RTX: 5 of 255, next to nothing). Kept out of the MER, its worked out level-8 glow lit a
         // closed room brighter than three torches.
-        return END_PORTAL_EYE.equals(spriteId) && !com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow();
+        return END_PORTAL_EYE.equals(spriteId) && !com.g2806.radiante.client.pipeline.PipelineSettings.castsBedrockGlow();
     }
 
     /**

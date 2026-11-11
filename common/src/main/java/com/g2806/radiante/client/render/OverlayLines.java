@@ -14,7 +14,7 @@ import net.minecraft.client.renderer.state.level.LevelRenderState;
 import static com.g2806.radiante.client.render.EntityManager.COLLECTOR;
 import static com.g2806.radiante.client.render.EntityManager.PENDING;
 import static com.g2806.radiante.client.render.EntityManager.RAY_TRACING_PARTICLE;
-import static com.g2806.radiante.client.render.EntityManager.copyVertices;
+import static com.g2806.radiante.client.render.EntityUpload.copyVertices;
 
 import com.g2806.radiante.client.render.EntityManager.PendingEntity;
 import com.g2806.radiante.client.render.EntityManager.PendingLayer;

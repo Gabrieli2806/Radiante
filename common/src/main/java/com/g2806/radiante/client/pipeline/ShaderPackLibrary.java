@@ -109,7 +109,7 @@ public final class ShaderPackLibrary {
                 return;
             }
             String stored = Files.readString(pipelineFile, StandardCharsets.UTF_8);
-            String builtIn = Pipeline.builtInShaderPackPath();
+            String builtIn = PipelineShaderPack.builtInShaderPackPath();
             String moved = stored.replace("value: " + path, "value: " + builtIn)
                 .replace("value: '" + path + "'", "value: " + builtIn)
                 .replace("value: \"" + path + "\"", "value: " + builtIn);
@@ -182,7 +182,7 @@ public final class ShaderPackLibrary {
 
     /** The built-in pack, read from where the native library installed it. */
     public static Entry builtIn() {
-        String stored = Pipeline.builtInShaderPackPath();
+        String stored = PipelineShaderPack.builtInShaderPackPath();
         Path zip = RadianteClient.radianceDir == null ? null : RadianteClient.radianceDir.resolve(stored);
         if (zip != null && Files.isRegularFile(zip)) {
             Entry read = read(zip, stored, true);
@@ -202,7 +202,7 @@ public final class ShaderPackLibrary {
 
     /** Whether a stored path names a pack that comes with Radiante: Radiante PT or one of {@link #BUILT_IN_EXTRAS}. */
     public static boolean isBuiltIn(String stored) {
-        if (samePack(stored, Pipeline.builtInShaderPackPath())) {
+        if (samePack(stored, PipelineShaderPack.builtInShaderPackPath())) {
             return true;
         }
         for (String extra : BUILT_IN_EXTRAS) {
@@ -215,8 +215,8 @@ public final class ShaderPackLibrary {
 
     /** Whether two stored paths name the same pack (the built-in one may be stored as an empty path too). */
     public static boolean samePack(String a, String b) {
-        String left = a == null || a.isBlank() ? Pipeline.builtInShaderPackPath() : a.replace('\\', '/');
-        String right = b == null || b.isBlank() ? Pipeline.builtInShaderPackPath() : b.replace('\\', '/');
+        String left = a == null || a.isBlank() ? PipelineShaderPack.builtInShaderPackPath() : a.replace('\\', '/');
+        String right = b == null || b.isBlank() ? PipelineShaderPack.builtInShaderPackPath() : b.replace('\\', '/');
         return left.equals(right);
     }
 
@@ -233,7 +233,7 @@ public final class ShaderPackLibrary {
      * the settings screen asks several times a frame.
      */
     public static synchronized ShaderPackSettings settings(String stored) {
-        if (stored == null || RadianteClient.radianceDir == null || samePack(stored, Pipeline.builtInShaderPackPath())) {
+        if (stored == null || RadianteClient.radianceDir == null || samePack(stored, PipelineShaderPack.builtInShaderPackPath())) {
             return ShaderPackSettings.NONE;
         }
         // The settings screen asks several times a frame: the files are looked at again at most once a second.
@@ -243,7 +243,7 @@ public final class ShaderPackLibrary {
             return cached.settings();
         }
         Path pack = resolve(stored);
-        Path base = RadianteClient.radianceDir.resolve(Pipeline.builtInShaderPackPath());
+        Path base = RadianteClient.radianceDir.resolve(PipelineShaderPack.builtInShaderPackPath());
         long packTime = modified(Files.isDirectory(pack) ? pack.resolve(CONFIG) : pack);
         long baseTime = modified(base);
         if (cached != null && cached.path().equals(stored) && cached.packTime() == packTime
@@ -272,7 +272,7 @@ public final class ShaderPackLibrary {
         if (stored == null || RadianteClient.radianceDir == null) {
             return null;
         }
-        return samePack(stored, Pipeline.builtInShaderPackPath()) ? builtIn()
+        return samePack(stored, PipelineShaderPack.builtInShaderPackPath()) ? builtIn()
             : read(resolve(stored), stored, isBuiltIn(stored));
     }
 

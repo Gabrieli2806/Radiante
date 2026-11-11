@@ -7,6 +7,8 @@ import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.render.FrameGeneration;
 import com.g2806.radiante.client.render.OutputResolution;
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineBuild;
+import com.g2806.radiante.client.pipeline.PipelineSettings;
 import com.g2806.radiante.client.pipeline.RtAttributes;
 import com.g2806.radiante.client.pipeline.Presets;
 import com.g2806.radiante.compat.VersionCompat;
@@ -245,32 +247,32 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
     /** The FSR or XeSS modes when the chosen pipeline has one of those upscalers; null otherwise. */
     List<String> upscalerModes() {
         if (this.pendingPreset == Presets.RT_NRD_FSR) {
-            return Pipeline.FSR_MODES;
+            return PipelineSettings.FSR_MODES;
         }
         if (this.pendingPreset == Presets.RT_NRD_XESS) {
-            return Pipeline.XESS_MODES;
+            return PipelineSettings.XESS_MODES;
         }
         return null;
     }
 
     String upscalerModule() {
-        return this.pendingPreset == Presets.RT_NRD_FSR ? Pipeline.FSR_MODULE_NAME : Pipeline.XESS_MODULE_NAME;
+        return this.pendingPreset == Presets.RT_NRD_FSR ? PipelineSettings.FSR_MODULE_NAME : PipelineSettings.XESS_MODULE_NAME;
     }
 
     String upscalerAttribute() {
-        return this.pendingPreset == Presets.RT_NRD_FSR ? Pipeline.FSR_MODE_ATTRIBUTE : Pipeline.XESS_MODE_ATTRIBUTE;
+        return this.pendingPreset == Presets.RT_NRD_FSR ? PipelineSettings.FSR_MODE_ATTRIBUTE : PipelineSettings.XESS_MODE_ATTRIBUTE;
     }
 
     /** The module and attribute holding the custom render resolution of the chosen pipeline's upscaler. */
     String[] renderScaleTarget() {
         if (usingDlss()) {
-            return new String[] {Pipeline.DLSS_MODULE_NAME, Pipeline.DLSS_RENDER_SCALE_ATTRIBUTE};
+            return new String[] {Pipeline.DLSS_MODULE_NAME, PipelineSettings.DLSS_RENDER_SCALE_ATTRIBUTE};
         }
         if (this.pendingPreset == Presets.RT_NRD_FSR) {
-            return new String[] {Pipeline.FSR_MODULE_NAME, Pipeline.FSR_RENDER_SCALE_ATTRIBUTE};
+            return new String[] {PipelineSettings.FSR_MODULE_NAME, PipelineSettings.FSR_RENDER_SCALE_ATTRIBUTE};
         }
         if (this.pendingPreset == Presets.RT_NRD_XESS) {
-            return new String[] {Pipeline.XESS_MODULE_NAME, Pipeline.XESS_RENDER_SCALE_ATTRIBUTE};
+            return new String[] {PipelineSettings.XESS_MODULE_NAME, PipelineSettings.XESS_RENDER_SCALE_ATTRIBUTE};
         }
         return null;
     }
@@ -304,7 +306,7 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
             return;
         }
         int stored = 0;
-        String value = Pipeline.getModuleValue(target[0], target[1]);
+        String value = PipelineSettings.getModuleValue(target[0], target[1]);
         try {
             stored = value == null ? 0 : (int) Math.round(Double.parseDouble(value.trim()));
         } catch (NumberFormatException ignored) {
@@ -327,12 +329,12 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
                 continue;
             }
             boolean dlssMatches = !this.pendingCustomScale && (!usingDlss() || Objects.equals(this.pendingDlssMode,
-                Pipeline.DLSS_MODES.get(quality.dlssMode)));
+                PipelineSettings.DLSS_MODES.get(quality.dlssMode)));
             dlssMatches &= upscalerModes() == null || this.pendingUpscalerMode == null
                 || Objects.equals(this.pendingUpscalerMode, upscalerModeFor(quality));
             boolean fogMatches = this.pendingVolumetricFog == null || this.pendingVolumetricFog == quality.volumetricFog;
             boolean cloudsMatch = this.pendingCloudMode == null
-                || Objects.equals(this.pendingCloudMode, Pipeline.CLOUD_MODES.get(quality.cloudMode));
+                || Objects.equals(this.pendingCloudMode, PipelineSettings.CLOUD_MODES.get(quality.cloudMode));
             boolean shaderMatches = (this.pendingBounces == null || this.pendingBounces == quality.bounces)
                 && (this.pendingParallax == null || this.pendingParallax == quality.parallax)
                 && (this.pendingFogSamples == null || this.pendingFogSamples == quality.fogSamples);
@@ -350,18 +352,18 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
             return;
         }
         if (usingDlss()) {
-            this.pendingDlssMode = Pipeline.DLSS_MODES.get(quality.dlssMode);
+            this.pendingDlssMode = PipelineSettings.DLSS_MODES.get(quality.dlssMode);
         }
         if (upscalerModes() != null) {
             this.pendingUpscalerMode = upscalerModeFor(quality);
         }
         // A quality level picks the upscaler's mode; the Custom mode would hide that.
         this.pendingCustomScale = false;
-        if (Pipeline.supportsVolumetricFog()) {
+        if (PipelineSettings.supportsVolumetricFog()) {
             this.pendingVolumetricFog = quality.volumetricFog;
         }
-        if (Pipeline.supportsClouds()) {
-            this.pendingCloudMode = Pipeline.CLOUD_MODES.get(quality.cloudMode);
+        if (PipelineSettings.supportsClouds()) {
+            this.pendingCloudMode = PipelineSettings.CLOUD_MODES.get(quality.cloudMode);
         }
         stage("blockLightSampling", quality.blockLights);
         stage("renderDistance", quality.renderDistance);
@@ -408,7 +410,7 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
         this.pendingDlssMode = "render_pipeline.module.dlss.attribute.mode.ultra_performance";
         this.pendingRayReconstruction = Boolean.TRUE;
         this.pendingGeneratedFrames = 0;
-        this.pendingCloudMode = Pipeline.supportsClouds() ? Pipeline.CLOUD_MODES.get(1) : null;
+        this.pendingCloudMode = PipelineSettings.supportsClouds() ? PipelineSettings.CLOUD_MODES.get(1) : null;
         this.pendingChunkAuto = true;
         syncChunkAuto();
         this.pendingCollectEmission = true;
@@ -416,27 +418,27 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
         this.pendingBiomeAmbiance = false;
         this.pendingFirstPersonShadow = true;
         this.pendingBiomeAmbianceStrength = 100;
-        this.pendingVolumetricFog = Pipeline.supportsVolumetricFog() ? Boolean.TRUE : null;
+        this.pendingVolumetricFog = PipelineSettings.supportsVolumetricFog() ? Boolean.TRUE : null;
         this.pendingMotionBlur = Boolean.FALSE;
         this.pendingCloudShadows = Boolean.FALSE;
         // radiante-pt's default (configs.json). Off: the plain sampler's four lights a pixel are quicker and keep the
         // shadows of a room with several lights sharp, which the reuse softens.
         this.pendingRestir = Boolean.FALSE;
-        this.pendingRestirGi = Pipeline.supportsShaderPackToggle(RtAttributes.RESTIR_GI_ATTRIBUTE)
+        this.pendingRestirGi = PipelineSettings.supportsShaderPackToggle(RtAttributes.RESTIR_GI_ATTRIBUTE)
             ? RESTIR_GI_DEFAULT : null;
         this.pendingSer = Boolean.FALSE;
-        this.pendingFroxelFog = Pipeline.supportsShaderPackToggle(RtAttributes.FROXEL_FOG_ATTRIBUTE)
+        this.pendingFroxelFog = PipelineSettings.supportsShaderPackToggle(RtAttributes.FROXEL_FOG_ATTRIBUTE)
             ? Boolean.TRUE : null;
         this.pendingSeamlessGlass =
-            Pipeline.supportsShaderPackToggle(RtAttributes.SEAMLESS_GLASS_ATTRIBUTE) ? Boolean.FALSE : null;
+            PipelineSettings.supportsShaderPackToggle(RtAttributes.SEAMLESS_GLASS_ATTRIBUTE) ? Boolean.FALSE : null;
         this.pendingPackToggles.clear();
         for (String attribute : List.of(RtAttributes.CACHE_DEEP_BOUNCES_ATTRIBUTE,
             RtAttributes.BEDROCK_MATERIALS_ATTRIBUTE)) {
-            if (Pipeline.supportsShaderPackToggle(attribute)) {
+            if (PipelineSettings.supportsShaderPackToggle(attribute)) {
                 this.pendingPackToggles.put(attribute, Boolean.TRUE);
             }
         }
-        if (Pipeline.supportsShaderPackToggle(RtAttributes.WIND_ATTRIBUTE)) {
+        if (PipelineSettings.supportsShaderPackToggle(RtAttributes.WIND_ATTRIBUTE)) {
             this.pendingPackToggles.put(RtAttributes.WIND_ATTRIBUTE, Boolean.FALSE);
         }
         this.pendingDepthOfField = Boolean.FALSE;
@@ -475,7 +477,7 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
                 this.pendingTunables.put(tunable, value);
             }
         }
-        this.pendingToneMethod = PictureStyle.ToneMethod.of(Pipeline.getModuleValue(Pipeline.TONE_MAPPING_MODULE_NAME,
+        this.pendingToneMethod = PictureStyle.ToneMethod.of(PipelineSettings.getModuleValue(Pipeline.TONE_MAPPING_MODULE_NAME,
             "render_pipeline.module.tone_mapping.attribute.method"));
     }
 
@@ -496,7 +498,7 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
     boolean packToggleOn(String attribute) {
         Boolean pending = this.pendingPackToggles.get(attribute);
         return pending != null ? pending
-            : Pipeline.supportsShaderPackToggle(attribute) && Pipeline.isShaderPackToggleOn(attribute);
+            : PipelineSettings.supportsShaderPackToggle(attribute) && PipelineSettings.isShaderPackToggleOn(attribute);
     }
 
     /**
@@ -583,21 +585,21 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
             structural = true;
         }
         if (this.pendingVolumetricFog != null) {
-            changed |= Pipeline.setVolumetricFog(this.pendingVolumetricFog);
+            changed |= PipelineSettings.setVolumetricFog(this.pendingVolumetricFog);
         }
         if (this.pendingBounces != null) {
-            changed |= Pipeline.setShaderPackValue(RtAttributes.RAY_BOUNCES_ATTRIBUTE,
+            changed |= PipelineSettings.setShaderPackValue(RtAttributes.RAY_BOUNCES_ATTRIBUTE,
                 String.valueOf(this.pendingBounces));
         }
         if (this.pendingBedrockAtmosphere != null) {
-            changed |= Pipeline.setShaderPackToggle(RtAttributes.BEDROCK_ATMOSPHERE_ATTRIBUTE,
+            changed |= PipelineSettings.setShaderPackToggle(RtAttributes.BEDROCK_ATMOSPHERE_ATTRIBUTE,
                 this.pendingBedrockAtmosphere);
         }
         if (this.pendingParallax != null) {
-            changed |= Pipeline.setShaderPackToggle(RtAttributes.PARALLAX_ATTRIBUTE, this.pendingParallax);
+            changed |= PipelineSettings.setShaderPackToggle(RtAttributes.PARALLAX_ATTRIBUTE, this.pendingParallax);
         }
         if (this.pendingFogSamples != null) {
-            changed |= Pipeline.setShaderPackValue(RtAttributes.VOLUMETRIC_SAMPLES_ATTRIBUTE,
+            changed |= PipelineSettings.setShaderPackValue(RtAttributes.VOLUMETRIC_SAMPLES_ATTRIBUTE,
                 String.valueOf(this.pendingFogSamples));
         }
         if (this.pendingTunables != null) {
@@ -606,60 +608,60 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
             }
         }
         if (this.pendingToneMethod != null) {
-            changed |= Pipeline.setModuleValue(Pipeline.TONE_MAPPING_MODULE_NAME,
+            changed |= PipelineSettings.setModuleValue(Pipeline.TONE_MAPPING_MODULE_NAME,
                 "render_pipeline.module.tone_mapping.attribute.method", this.pendingToneMethod.value);
         }
         if (this.pendingMotionBlur != null) {
-            changed |= Pipeline.setShaderPackToggle(RtAttributes.MOTION_BLUR_ATTRIBUTE, this.pendingMotionBlur);
+            changed |= PipelineSettings.setShaderPackToggle(RtAttributes.MOTION_BLUR_ATTRIBUTE, this.pendingMotionBlur);
         }
         if (this.pendingSer != null) {
-            changed |= Pipeline.setShaderPackToggle(RtAttributes.SER_ATTRIBUTE, this.pendingSer);
+            changed |= PipelineSettings.setShaderPackToggle(RtAttributes.SER_ATTRIBUTE, this.pendingSer);
         }
         if (this.pendingFroxelFog != null) {
-            changed |= Pipeline.setShaderPackToggle(RtAttributes.FROXEL_FOG_ATTRIBUTE, this.pendingFroxelFog);
+            changed |= PipelineSettings.setShaderPackToggle(RtAttributes.FROXEL_FOG_ATTRIBUTE, this.pendingFroxelFog);
         }
         for (java.util.Map.Entry<String, Boolean> toggle : this.pendingPackToggles.entrySet()) {
-            changed |= Pipeline.setShaderPackToggle(toggle.getKey(), toggle.getValue());
+            changed |= PipelineSettings.setShaderPackToggle(toggle.getKey(), toggle.getValue());
         }
         if (this.pendingSeamlessGlass != null) {
-            changed |= Pipeline.setShaderPackToggle(RtAttributes.SEAMLESS_GLASS_ATTRIBUTE, this.pendingSeamlessGlass);
+            changed |= PipelineSettings.setShaderPackToggle(RtAttributes.SEAMLESS_GLASS_ATTRIBUTE, this.pendingSeamlessGlass);
         }
         if (this.pendingRestir != null) {
-            changed |= Pipeline.setShaderPackToggle(RtAttributes.RESTIR_ATTRIBUTE, this.pendingRestir);
+            changed |= PipelineSettings.setShaderPackToggle(RtAttributes.RESTIR_ATTRIBUTE, this.pendingRestir);
         }
         if (this.pendingRestirGi != null) {
-            changed |= Pipeline.setShaderPackToggle(RtAttributes.RESTIR_GI_ATTRIBUTE, this.pendingRestirGi);
+            changed |= PipelineSettings.setShaderPackToggle(RtAttributes.RESTIR_GI_ATTRIBUTE, this.pendingRestirGi);
         }
         if (this.pendingSeamlessScope != null) {
-            changed |= Pipeline.setShaderPackValue(SEAMLESS_SCOPE, this.pendingSeamlessScope);
+            changed |= PipelineSettings.setShaderPackValue(SEAMLESS_SCOPE, this.pendingSeamlessScope);
         }
         if (this.pendingCloudShadows != null) {
-            changed |= Pipeline.setShaderPackToggle(RtAttributes.CLOUD_SHADOWS_ATTRIBUTE, this.pendingCloudShadows);
+            changed |= PipelineSettings.setShaderPackToggle(RtAttributes.CLOUD_SHADOWS_ATTRIBUTE, this.pendingCloudShadows);
         }
         if (this.pendingDepthOfField != null) {
-            changed |= Pipeline.setShaderPackToggle(RtAttributes.DEPTH_OF_FIELD_ATTRIBUTE, this.pendingDepthOfField);
+            changed |= PipelineSettings.setShaderPackToggle(RtAttributes.DEPTH_OF_FIELD_ATTRIBUTE, this.pendingDepthOfField);
         }
-        if (this.pendingCloudMode != null && !Objects.equals(this.pendingCloudMode, Pipeline.getCloudMode())) {
-            changed |= Pipeline.setCloudMode(this.pendingCloudMode);
+        if (this.pendingCloudMode != null && !Objects.equals(this.pendingCloudMode, PipelineSettings.getCloudMode())) {
+            changed |= PipelineSettings.setCloudMode(this.pendingCloudMode);
         }
         // The mode lives on the DLSS module, which only exists once the DLSS pipeline is assembled.
         if (this.pendingDlssMode != null) {
-            changed |= Pipeline.setDlssMode(this.pendingDlssMode);
+            changed |= PipelineSettings.setDlssMode(this.pendingDlssMode);
         }
         if (this.pendingUpscalerMode != null && upscalerModes() != null) {
-            changed |= Pipeline.setModuleValue(upscalerModule(), upscalerAttribute(), this.pendingUpscalerMode);
+            changed |= PipelineSettings.setModuleValue(upscalerModule(), upscalerAttribute(), this.pendingUpscalerMode);
         }
         if (this.pendingDebugView != null) {
             changed |= Pipeline.setDebugView(this.pendingDebugView);
         }
         for (java.util.Map.Entry<String, String> advanced : this.pendingAdvanced.entrySet()) {
             String[] target = advanced.getKey().split("\n", 2);
-            changed |= Pipeline.setModuleValue(target[0], target[1], advanced.getValue());
+            changed |= PipelineSettings.setModuleValue(target[0], target[1], advanced.getValue());
         }
         this.pendingAdvanced.clear();
         String[] renderScale = renderScaleTarget();
         if (this.pendingRenderScale != null && renderScale != null) {
-            changed |= Pipeline.setModuleValue(renderScale[0], renderScale[1],
+            changed |= PipelineSettings.setModuleValue(renderScale[0], renderScale[1],
                 this.pendingCustomScale ? this.pendingRenderScale + ".0" : "0.0");
         }
         if (changed) {
@@ -670,7 +672,7 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
         }
         // Only what is compiled into the pipeline waits for a build; the rest reaches the renderer now, or is built
         // after all when the renderer turns it down. Saved after the push, as a build would have saved it.
-        boolean rebuild = structural || Pipeline.takeStructuralChange() || !Pipeline.pushRuntimeChanges();
+        boolean rebuild = structural || PipelineBuild.takeStructuralChange() || !PipelineBuild.pushRuntimeChanges();
         if (!rebuild) {
             Pipeline.savePipeline();
         }

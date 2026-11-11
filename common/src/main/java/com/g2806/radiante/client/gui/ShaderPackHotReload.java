@@ -2,6 +2,7 @@ package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.RadianteClient;
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineShaderPack;
 import com.g2806.radiante.client.pipeline.ShaderPackLibrary;
 import com.g2806.radiante.client.pipeline.ShaderPackValidation;
 import com.g2806.radiante.client.render.RadianteRenderer;
@@ -63,7 +64,7 @@ public final class ShaderPackHotReload {
         }
         ticks = 0;
         Path folder = activeFolderPack();
-        String path = folder == null ? null : Pipeline.shaderPackPath();
+        String path = folder == null ? null : PipelineShaderPack.shaderPackPath();
         if (folder == null || !RadianteRenderer.isActive()) {
             watchedPath = null;
             changeSettling = false;
@@ -134,7 +135,7 @@ public final class ShaderPackHotReload {
                 RebuildToast.failed(minecraft, Component.translatable("toast.radiante.pack_reload.failed"),
                     lines.isEmpty() ? null : lines.get(0));
             }
-        } else if (reloadOnSuccess && ShaderPackLibrary.samePack(result.packPath(), Pipeline.shaderPackPath())) {
+        } else if (reloadOnSuccess && ShaderPackLibrary.samePack(result.packPath(), PipelineShaderPack.shaderPackPath())) {
             RadianteClient.LOGGER.info("[shader packs] {} compiles ({} shaders, {} compiled); reloading", name,
                 result.shaders(), result.compiled());
             Pipeline.requestRebuild();
@@ -148,9 +149,9 @@ public final class ShaderPackHotReload {
 
     /** The active pack's folder when it is a folder pack under radiante/shaderpacks/, else null. */
     private static Path activeFolderPack() {
-        String path = Pipeline.shaderPackPath();
+        String path = PipelineShaderPack.shaderPackPath();
         if (path == null || RadianteClient.radianceDir == null
-            || ShaderPackLibrary.samePack(path, Pipeline.builtInShaderPackPath())) {
+            || ShaderPackLibrary.samePack(path, PipelineShaderPack.builtInShaderPackPath())) {
             return null;
         }
         Path folder = Path.of(path);

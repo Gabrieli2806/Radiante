@@ -1,5 +1,6 @@
 package com.g2806.radiante.client.compat.physicsmod;
 
+import com.g2806.radiante.client.compat.OtherMods;
 import com.g2806.radiante.api.RadianteGeometry;
 import com.g2806.radiante.client.RadianteClient;
 import com.g2806.radiante.compat.VersionCompat;
@@ -45,9 +46,7 @@ public final class PhysicsModCompat implements RadianteGeometry.Provider {
 
     /** Registers the bridge when Physics Mod is installed. */
     public static void init() {
-        try {
-            Class.forName("net.diebuddies.physics.PhysicsMod", false, PhysicsModCompat.class.getClassLoader());
-        } catch (ClassNotFoundException | LinkageError notInstalled) {
+        if (!OtherMods.has("net.diebuddies.physics.PhysicsMod")) {
             return;
         }
         RadianteGeometry.register(NAME, new PhysicsModCompat());

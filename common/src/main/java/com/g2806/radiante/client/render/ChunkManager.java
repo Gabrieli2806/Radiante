@@ -465,13 +465,13 @@ public final class ChunkManager {
 
         ChunkProxy.updateSectionPos(cameraSection.x(), cameraSection.y(), cameraSection.z());
 
-        boolean shading = com.g2806.radiante.client.pipeline.Pipeline.isShaderPackToggleOn(
+        boolean shading = com.g2806.radiante.client.pipeline.PipelineSettings.isShaderPackToggleOn(
             com.g2806.radiante.client.pipeline.RtAttributes.FACE_SHADING_ATTRIBUTE);
         if (shading != faceShading) {
             faceShading = shading;
             forceAllDirty = true;
         }
-        boolean windOn = com.g2806.radiante.client.pipeline.Pipeline.isShaderPackToggleOn(
+        boolean windOn = com.g2806.radiante.client.pipeline.PipelineSettings.isShaderPackToggleOn(
             com.g2806.radiante.client.pipeline.RtAttributes.WIND_ATTRIBUTE);
         if (windOn != wind) {
             wind = windOn;
@@ -665,7 +665,7 @@ public final class ChunkManager {
         boolean unshade = !faceShading;
         boolean windOn = wind;
         // The lights Bedrock RTX adds at torches, lanterns and end rods, where blocks cast their glow as it does.
-        boolean pointLights = com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow();
+        boolean pointLights = com.g2806.radiante.client.pipeline.PipelineSettings.castsBedrockGlow();
         net.minecraft.world.level.CardinalLighting cardinal = region.cardinalLighting();
         BlockQuadOutput quadOutput = (x, y, z, quad, instance) -> {
             if (scratch.dropInwardFaces && facesInward(quad)) {

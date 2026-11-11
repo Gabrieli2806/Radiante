@@ -368,6 +368,11 @@ public final class DevAutomation {
             minecraft.gui.setScreen(com.g2806.radiante.client.gui.RadianteOptionsScreen.create(minecraft.gui.screen(), minecraft.options));
             return;
         }
+        if (action.equals("share")) {
+            minecraft.gui.setScreen(com.g2806.radiante.client.gui.RadianteOptionsScreen.createShare(
+                minecraft.gui.screen(), minecraft.options));
+            return;
+        }
         if (action.equals("shaderpacks")) {
             // The shader pack list, as the settings' Shader Packs button opens it; back to the settings when left.
             var options = minecraft.options;
@@ -378,8 +383,8 @@ public final class DevAutomation {
         if (action.startsWith("shaderpack=")) {
             // shaderpack=shaderpacks/<pack>.zip (or "builtin"): switches pack at once, for comparing packs in one view.
             String path = action.substring(11);
-            boolean changed = com.g2806.radiante.client.pipeline.Pipeline.selectShaderPack(path.equals("builtin")
-                ? com.g2806.radiante.client.pipeline.Pipeline.builtInShaderPackPath() : path);
+            boolean changed = com.g2806.radiante.client.pipeline.PipelineShaderPack.selectShaderPack(path.equals("builtin")
+                ? com.g2806.radiante.client.pipeline.PipelineShaderPack.builtInShaderPackPath() : path);
             RadianteClient.LOGGER.info("[dev] shader pack {} rebuilt {}", path, changed && applyPipelineChange(true));
             return;
         }
@@ -444,7 +449,7 @@ public final class DevAutomation {
                 com.g2806.radiante.client.render.FrameGeneration.presentedFrameRate(),
                 com.g2806.radiante.client.pipeline.Pipeline.gpuStats());
         } else if (action.startsWith("rainmv=")) {
-            com.g2806.radiante.client.render.EntityManager.rainMotion = Boolean.parseBoolean(action.substring(7));
+            com.g2806.radiante.client.render.EntityWeather.rainMotion = Boolean.parseBoolean(action.substring(7));
         } else if (action.startsWith("hold=") || action.startsWith("release=")) {
             // hold=forward / release=forward (also sprint, jump): walk in a test world to see bobbing and motion.
             boolean down = action.startsWith("hold=");
@@ -563,9 +568,9 @@ public final class DevAutomation {
             // applyPipelineChange), for benchmarks.
             String[] parts = action.substring(5).split(":", 2);
             boolean changed = switch (parts[0]) {
-                case "dlss" -> com.g2806.radiante.client.pipeline.Pipeline.setDlssMode(
-                    com.g2806.radiante.client.pipeline.Pipeline.DLSS_MODES.get(Integer.parseInt(parts[1])));
-                case "fog" -> com.g2806.radiante.client.pipeline.Pipeline.setVolumetricFog(Boolean.parseBoolean(parts[1]));
+                case "dlss" -> com.g2806.radiante.client.pipeline.PipelineSettings.setDlssMode(
+                    com.g2806.radiante.client.pipeline.PipelineSettings.DLSS_MODES.get(Integer.parseInt(parts[1])));
+                case "fog" -> com.g2806.radiante.client.pipeline.PipelineSettings.setVolumetricFog(Boolean.parseBoolean(parts[1]));
                 // view:<debug view>, or view:off.
                 case "view" -> com.g2806.radiante.client.pipeline.Pipeline.setDebugView(parts[1]);
                 // preset:<preset key>, e.g. the NRD + FSR pipeline.
@@ -573,17 +578,17 @@ public final class DevAutomation {
                     com.g2806.radiante.client.pipeline.Pipeline.switchToPresetMode(parts[1]);
                     yield true;
                 }
-                case "clouds" -> com.g2806.radiante.client.pipeline.Pipeline.setCloudMode(
-                    com.g2806.radiante.client.pipeline.Pipeline.CLOUD_MODES.get(Integer.parseInt(parts[1])));
+                case "clouds" -> com.g2806.radiante.client.pipeline.PipelineSettings.setCloudMode(
+                    com.g2806.radiante.client.pipeline.PipelineSettings.CLOUD_MODES.get(Integer.parseInt(parts[1])));
                 // attr:<attribute name>:<value>, any shader pack attribute.
                 case "attr" -> {
                     String[] nameValue = parts[1].split(":", 2);
-                    yield com.g2806.radiante.client.pipeline.Pipeline.setShaderPackValue(nameValue[0], nameValue[1]);
+                    yield com.g2806.radiante.client.pipeline.PipelineSettings.setShaderPackValue(nameValue[0], nameValue[1]);
                 }
                 // mattr:<module name>:<attribute name>:<value>, any module's attribute.
                 case "mattr" -> {
                     String[] mv = parts[1].split(":", 3);
-                    yield com.g2806.radiante.client.pipeline.Pipeline.setModuleValue(mv[0], mv[1], mv[2]);
+                    yield com.g2806.radiante.client.pipeline.PipelineSettings.setModuleValue(mv[0], mv[1], mv[2]);
                 }
                 default -> false;
             };
@@ -695,9 +700,9 @@ public final class DevAutomation {
      * path too. Saved either way, as a build saves. True when it was built.
      */
     private static boolean applyPipelineChange(boolean structural) {
-        if (structural || com.g2806.radiante.client.pipeline.Pipeline.takeStructuralChange()
-            || !com.g2806.radiante.client.pipeline.Pipeline.pushRuntimeChanges()) {
-            com.g2806.radiante.client.pipeline.Pipeline.build();
+        if (structural || com.g2806.radiante.client.pipeline.PipelineBuild.takeStructuralChange()
+            || !com.g2806.radiante.client.pipeline.PipelineBuild.pushRuntimeChanges()) {
+            com.g2806.radiante.client.pipeline.PipelineBuild.build();
             return true;
         }
         com.g2806.radiante.client.pipeline.Pipeline.savePipeline();

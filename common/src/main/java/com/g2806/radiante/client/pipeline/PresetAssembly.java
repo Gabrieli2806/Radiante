@@ -1,19 +1,19 @@
 package com.g2806.radiante.client.pipeline;
 
 import static com.g2806.radiante.client.pipeline.Pipeline.DLSS_MODULE_NAME;
-import static com.g2806.radiante.client.pipeline.Pipeline.FSR_MODULE_NAME;
+import static com.g2806.radiante.client.pipeline.PipelineSettings.FSR_MODULE_NAME;
 import static com.g2806.radiante.client.pipeline.Pipeline.INSTANCE;
 import static com.g2806.radiante.client.pipeline.Pipeline.NRD_MODULE_NAME;
 import static com.g2806.radiante.client.pipeline.Pipeline.POST_RENDER_MODULE_NAME;
 import static com.g2806.radiante.client.pipeline.Pipeline.RAY_TRACING_MODULE_NAME;
 import static com.g2806.radiante.client.pipeline.Pipeline.TEMPORAL_ACCUMULATION_MODULE_NAME;
 import static com.g2806.radiante.client.pipeline.Pipeline.TONE_MAPPING_MODULE_NAME;
-import static com.g2806.radiante.client.pipeline.Pipeline.XESS_MODULE_NAME;
+import static com.g2806.radiante.client.pipeline.PipelineSettings.XESS_MODULE_NAME;
 import static com.g2806.radiante.client.pipeline.Pipeline.addModule;
 import static com.g2806.radiante.client.pipeline.Pipeline.clear;
 import static com.g2806.radiante.client.pipeline.Pipeline.connect;
 import static com.g2806.radiante.client.pipeline.Pipeline.connectOutput;
-import static com.g2806.radiante.client.pipeline.Pipeline.setRayReconstructionOn;
+import static com.g2806.radiante.client.pipeline.PipelineSettings.setRayReconstructionOn;
 
 import java.util.Objects;
 

@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineBuild;
 import com.g2806.radiante.client.proxy.vulkan.RendererProxy;
 import com.g2806.radiante.compat.VersionCompat;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -66,7 +67,7 @@ final class ApplyingSettingsScreen extends VersionCompat.DrawnScreen {
             return;
         }
         this.built = true;
-        Pipeline.build();
+        PipelineBuild.build();
         rebuildKeepingWindowAlive();
         BackgroundRebuild.finish(this.minecraft);
         this.minecraft.gui.setScreen(this.next);

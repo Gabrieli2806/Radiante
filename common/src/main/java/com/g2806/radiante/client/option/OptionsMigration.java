@@ -4,6 +4,7 @@ import com.g2806.radiante.client.RadianteClient;
 import com.g2806.radiante.client.bedrock.BedrockRtxValues;
 import com.g2806.radiante.client.bedrock.CompatParameter;
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineSettings;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -84,8 +85,8 @@ public final class OptionsMigration {
         }
         boolean changed = false;
         for (CompatParameter parameter : reset) {
-            changed |= parameter.module() == null ? Pipeline.setShaderPackValue(parameter.attribute(), parameter.value())
-                : Pipeline.setModuleValue(parameter.module(), parameter.attribute(), parameter.value());
+            changed |= parameter.module() == null ? PipelineSettings.setShaderPackValue(parameter.attribute(), parameter.value())
+                : PipelineSettings.setModuleValue(parameter.module(), parameter.attribute(), parameter.value());
         }
         if (changed) {
             Pipeline.savePipeline();

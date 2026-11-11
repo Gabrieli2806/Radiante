@@ -51,7 +51,7 @@ public final class RainExposure {
             long now = System.nanoTime();
             if (now - this.readAt > 1_000_000_000L) {
                 this.readAt = now;
-                String text = com.g2806.radiante.client.pipeline.Pipeline.getShaderPackValue(this.attribute);
+                String text = com.g2806.radiante.client.pipeline.PipelineSettings.getShaderPackValue(this.attribute);
                 try {
                     this.value = text == null ? this.fallback : Float.parseFloat(text.trim());
                 } catch (NumberFormatException notANumber) {

@@ -4,6 +4,7 @@ import com.g2806.radiante.client.RadianteClient;
 import com.g2806.radiante.client.compat.vivecraft.VivecraftCompat;
 import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineBuild;
 import com.g2806.radiante.platform.RadiantePlatform;
 import com.g2806.radiante.client.proxy.vulkan.RendererProxy;
 import com.g2806.radiante.client.render.OutputResolution;
@@ -208,7 +209,7 @@ public final class PipelineWarmUp {
             RadianteClient.LOGGER.info("[warmup] done in {} ms", millis);
         } else {
             // The pipeline is half made after a failed build: describing it again has the next frame build it.
-            Pipeline.build();
+            PipelineBuild.build();
             RebuildToast.failed(minecraft, Component.translatable("toast.radiante.warmup.failed"), result);
             RadianteClient.LOGGER.warn("[warmup] failed after {} ms: {}", millis, result);
         }

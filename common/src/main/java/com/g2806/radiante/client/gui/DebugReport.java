@@ -3,6 +3,8 @@ package com.g2806.radiante.client.gui;
 import com.g2806.radiante.client.RadianteClient;
 import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineShaderPack;
+import com.g2806.radiante.client.pipeline.PipelineSettings;
 import com.g2806.radiante.client.render.RadianteRenderer;
 import java.util.Locale;
 import java.util.Map;
@@ -30,8 +32,8 @@ final class DebugReport {
             minecraft.options.getEffectiveRenderDistance()));
         text.append("Ray tracing: ").append(Options.rayTracingEnabled ? "on" : "off").append('\n');
         text.append("Pipeline: ").append(Pipeline.INSTANCE.getActivePresetName()).append(", upscaler ")
-            .append(Pipeline.describeUpscaler()).append('\n');
-        text.append("Shader pack: ").append(Pipeline.shaderPackPath()).append('\n');
+            .append(PipelineSettings.describeUpscaler()).append('\n');
+        text.append("Shader pack: ").append(PipelineShaderPack.shaderPackPath()).append('\n');
         text.append("Debug view: ").append(Pipeline.debugView()).append('\n');
         text.append("HDR: ").append(com.g2806.radiante.client.hdr.HdrDisplay.isActive() ? "on" : "off").append('\n');
         try {
@@ -44,7 +46,7 @@ final class DebugReport {
             text.append("GPU time: renderer not loaded\n");
         }
         for (String module : AdvancedOptions.MODULES) {
-            Map<String, String> values = new TreeMap<>(Pipeline.moduleValues(module));
+            Map<String, String> values = new TreeMap<>(PipelineSettings.moduleValues(module));
             if (values.isEmpty()) {
                 continue;
             }

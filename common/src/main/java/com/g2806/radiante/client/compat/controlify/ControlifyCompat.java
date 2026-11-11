@@ -1,5 +1,6 @@
 package com.g2806.radiante.client.compat.controlify;
 
+import com.g2806.radiante.client.compat.OtherMods;
 import com.g2806.radiante.client.RadianteClient;
 
 /**
@@ -21,9 +22,7 @@ public final class ControlifyCompat {
     }
 
     public static void init() {
-        try {
-            Class.forName(API_CLASS, false, ControlifyCompat.class.getClassLoader());
-        } catch (ClassNotFoundException | LinkageError notInstalled) {
+        if (!OtherMods.has(API_CLASS)) {
             return;
         }
         try {

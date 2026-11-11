@@ -724,7 +724,7 @@ public final class BiomeAmbiance {
     private static final String CLEAR_TEAL_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.water_clear_teal";
 
     private static float clearTealShare() {
-        String value = com.g2806.radiante.client.pipeline.Pipeline.getShaderPackValue(CLEAR_TEAL_ATTRIBUTE);
+        String value = com.g2806.radiante.client.pipeline.PipelineSettings.getShaderPackValue(CLEAR_TEAL_ATTRIBUTE);
         if (value == null) {
             return 0.0f;
         }
@@ -752,7 +752,7 @@ public final class BiomeAmbiance {
         Vector3f extinction = new Vector3f();
         Vector3f albedo = new Vector3f();
         Vector4f fog = new Vector4f(0.0f);
-        boolean bedrock = com.g2806.radiante.client.pipeline.Pipeline.isShaderPackToggleOn(
+        boolean bedrock = com.g2806.radiante.client.pipeline.PipelineSettings.isShaderPackToggleOn(
             com.g2806.radiante.client.pipeline.RtAttributes.BEDROCK_ORIGINAL_ATTRIBUTE);
         for (int i = 0; i < SAMPLES; i++) {
             Water water = waterOf(sampled[i], styled, bedrock);

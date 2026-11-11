@@ -43,6 +43,11 @@ validation layers and debug labels.
 RADIANTE_DEV_PRESCRIPT="100:testworld=RadianteSmoke" RADIANTE_DEV_SCRIPT="400:quit" ./gradlew :fabric:runClient
 ```
 
+- `pipe=preset:<key>` switches pipeline, by the preset's translation key (`render_pipeline.preset.rt_nrd_fsr`,
+  `...rt_nrd_xess`, `...rt_nrd`, `...rt_dlss`). An unknown key falls back to the best pipeline silently: the
+  pass names in the `fps=` line (`Nrd`, `XessSr`, `FSRUpscaler`, `DLSS`) say which one really ran.
+- XeSS runs on any ray tracing GPU once its runtime is there: `download=xess` fetches it into the
+  development folder, and the next start finds it.
 - Use `testworld=`, not `join=`: `join=` hangs on the experimental-features prompt, `testworld=` answers it.
 - Scripts stop by themselves in a world whose name does not start with `Radiante`.
 - The other actions (`hud=`, `fov=`, `slot=`, `debug=`, `rejoin=`...) are listed in `DevAutomation.run`.

@@ -1,5 +1,6 @@
 package com.g2806.radiante.client.compat.litematica;
 
+import com.g2806.radiante.client.compat.OtherMods;
 import com.g2806.radiante.api.RadianteGeometry;
 import com.g2806.radiante.client.RadianteClient;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -65,10 +66,7 @@ public final class LitematicaCompat implements RadianteGeometry.Provider {
 
     /** Registers the bridge when Litematica is installed. */
     public static void init() {
-        try {
-            Class.forName("fi.dy.masa.litematica.world.SchematicWorldHandler", false,
-                LitematicaCompat.class.getClassLoader());
-        } catch (ClassNotFoundException | LinkageError notInstalled) {
+        if (!OtherMods.has("fi.dy.masa.litematica.world.SchematicWorldHandler")) {
             return;
         }
         // Ghosts are a guide, not part of the world: they cast no shadow.

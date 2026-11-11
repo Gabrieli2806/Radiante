@@ -3,6 +3,7 @@ package com.g2806.radiante.client.render;
 import com.g2806.radiante.client.RadianteClient;
 import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineBuild;
 import com.g2806.radiante.client.proxy.vulkan.BufferProxy;
 import com.g2806.radiante.client.proxy.vulkan.RendererProxy;
 import com.g2806.radiante.client.proxy.vulkan.TextureProxy;
@@ -254,7 +255,7 @@ public final class RadianteRenderer {
                 LOGGER.error("Radiante: the default pipeline could not be assembled either", second);
             }
         }
-        Pipeline.build();
+        PipelineBuild.build();
         LOGGER.info("Radiante renderer initialised on {} with the {} pipeline", gpuName,
             Pipeline.INSTANCE.getActivePresetName());
     }
@@ -488,7 +489,7 @@ public final class RadianteRenderer {
         BufferProxy.updateWorldUniform(new BufferProxy.WorldUniform(view, effectedView, projection,
             glintTextureMatrix(minecraft), dayFraction(levelRenderState),
             TextureTracker.idOf(gameRenderer.overlayTexture().getTextureView().texture()),
-            cameraState.isFirstPerson, EntityManager.handsDrawn(minecraft, levelRenderState),
+            cameraState.isFirstPerson, EntityHands.handsDrawn(minecraft, levelRenderState),
             fogStart, fogEnd, new Vector4f(fog.color), skyType,
             TextureTracker.idOf(AbstractEndPortalRenderer.END_SKY_LOCATION),
             TextureTracker.idOf(AbstractEndPortalRenderer.END_PORTAL_LOCATION),
@@ -501,8 +502,8 @@ public final class RadianteRenderer {
             heldLightColor(minecraft, net.minecraft.world.InteractionHand.OFF_HAND),
             Options.parallaxTransparentEdges, Options.dayBrightness / 100.0f, Options.nightBrightness / 100.0f,
             Options.emissionBrightness / 100.0f, false,
-            EntityManager.rainFallPerFrame(levelRenderState), farReach, Options.heldLightBrightness / 100.0f,
-            windTime(levelRenderState), com.g2806.radiante.client.pipeline.Pipeline.windStrength(),
+            EntityWeather.rainFallPerFrame(levelRenderState), farReach, Options.heldLightBrightness / 100.0f,
+            windTime(levelRenderState), com.g2806.radiante.client.pipeline.PipelineSettings.windStrength(),
             windWeather(minecraft, levelRenderState.worldPartialTicks)));
 
         SkyRenderState sky = levelRenderState.skyRenderState;

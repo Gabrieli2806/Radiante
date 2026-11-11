@@ -1,5 +1,6 @@
 package com.g2806.radiante.client.render;
 
+import com.g2806.radiante.client.pipeline.PipelineSettings;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -17,7 +18,7 @@ import net.minecraft.world.level.block.state.BlockState;
  * them, and a radius of 0.23 for lanterns, 0.115 for the rest. The soul torch has none there.
  *
  * <p>They exist while Bedrock's glow is cast, the default (ChunkManager writes them when Bedrock's glow is cast, see
- * Pipeline.castsBedrockGlow); without that glow every glowing block's texture lights the world.
+ * PipelineSettings.castsBedrockGlow); without that glow every glowing block's texture lights the world.
  *
  * <p>An enabled Bedrock pack with Vibrant Visuals local lighting (converted by BedrockLocalLighting) gives these
  * lights its own colours, and adds a point light to the other blocks it lists as one (candles, amethyst), at the

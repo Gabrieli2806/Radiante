@@ -3,6 +3,7 @@ package com.g2806.radiante.client.command;
 import com.g2806.radiante.client.gui.BackgroundRebuild;
 import com.g2806.radiante.client.gui.ShaderPackHotReload;
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineShaderPack;
 import com.g2806.radiante.client.pipeline.ShaderPackLibrary;
 import com.g2806.radiante.client.pipeline.ShaderPackValidation;
 import com.mojang.brigadier.Command;
@@ -83,7 +84,7 @@ public final class RadianteCommands {
     private static int validate(String name) {
         String path;
         if (name == null || name.isBlank()) {
-            path = Pipeline.shaderPackPath();
+            path = PipelineShaderPack.shaderPackPath();
         } else {
             path = findPack(name.trim());
             if (path == null) {
@@ -129,7 +130,7 @@ public final class RadianteCommands {
             say(Component.translatable("command.radiante.pack.reload.not_folder").withStyle(ChatFormatting.YELLOW));
             return 0;
         }
-        String path = Pipeline.shaderPackPath();
+        String path = PipelineShaderPack.shaderPackPath();
         String shown = displayName(path);
         boolean started = ShaderPackHotReload.startCheck(Minecraft.getInstance(), path, true, result -> {
             if (result.ok()) {

@@ -2,6 +2,7 @@ package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineSettings;
 import com.g2806.radiante.client.render.FrameGeneration;
 import com.g2806.radiante.client.render.RadianteRenderer;
 import java.util.ArrayList;
@@ -60,7 +61,7 @@ public final class RadianteDebugEntries {
         Registry.register(registry, UPSCALER, new Entry() {
             @Override
             void lines(DebugScreenDisplayer displayer) {
-                displayer.addToGroup(DebugGroups.MISC, "Upscaler: " + Pipeline.describeUpscaler());
+                displayer.addToGroup(DebugGroups.MISC, "Upscaler: " + PipelineSettings.describeUpscaler());
             }
         });
         Registry.register(registry, GPU_TIME, new Entry() {

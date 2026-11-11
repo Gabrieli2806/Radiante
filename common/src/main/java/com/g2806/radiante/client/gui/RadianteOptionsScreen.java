@@ -5,6 +5,7 @@ import com.g2806.radiante.client.render.RadianteRenderer;
 import com.g2806.radiante.client.RadianteClient;
 import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineSettings;
 import com.g2806.radiante.client.pipeline.RtAttributes;
 import com.g2806.radiante.client.pipeline.Presets;
 import com.g2806.radiante.compat.VersionCompat;
@@ -84,6 +85,11 @@ public class RadianteOptionsScreen extends SettingsRows {
      * settings reaches the renderer. Everything that opens the settings from outside (the video settings button, the
      * key binding, the mod list) goes through here.
      */
+    /** The Share Settings screen, as the settings' Share button opens it; back to the settings when left. */
+    public static Screen createShare(Screen parent, net.minecraft.client.Options options) {
+        return new ShareSettingsScreen(parent, () -> new RadianteOptionsScreen(parent, options));
+    }
+
     public static Screen create(Screen parent, net.minecraft.client.Options options) {
         if (!com.g2806.radiante.client.RadianteClient.isNativeLoaded()) {
             return new UnsupportedHardwareScreen(parent);
@@ -338,7 +344,7 @@ public class RadianteOptionsScreen extends SettingsRows {
         boolean depthOfField = Boolean.TRUE.equals(this.pendingDepthOfField);
         boolean blockLights = staged("blockLightSampling", Options.blockLightSampling);
         boolean volumetricClouds = this.pendingCloudMode != null && this.pendingCloudMode.endsWith(".volumetric");
-        String volumetricCloudMode = Pipeline.CLOUD_MODES.get(Pipeline.CLOUD_MODES.size() - 1);
+        String volumetricCloudMode = PipelineSettings.CLOUD_MODES.get(PipelineSettings.CLOUD_MODES.size() - 1);
         if (key.equals(SEAMLESS_SCOPE)) {
             return Boolean.TRUE.equals(this.pendingSeamlessGlass) ? null : needs(O + "seamless_glass");
         }
@@ -371,8 +377,8 @@ public class RadianteOptionsScreen extends SettingsRows {
             case "atmosphere_style" -> bedrockFilesPresent("sky.png", "look_up_tables.png") ? null
                 : Component.translatable("options.radiante.blocked.bedrock_files");
             case "cloud_height" -> this.pendingCloudMode == null
-                || this.pendingCloudMode.equals(Pipeline.CLOUD_MODES.get(1)) ? null
-                : needsValue(O + "cloud_mode", Pipeline.CLOUD_MODES.get(1));
+                || this.pendingCloudMode.equals(PipelineSettings.CLOUD_MODES.get(1)) ? null
+                : needsValue(O + "cloud_mode", PipelineSettings.CLOUD_MODES.get(1));
             case "cloud_shadows", "tunable.cloud_coverage", "tunable.cloud_density", "tunable.cloud_quality" ->
                 volumetricClouds ? null : needsValue(O + "cloud_mode", volumetricCloudMode);
             case "parallax_transparent_edges" ->

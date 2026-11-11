@@ -217,39 +217,7 @@ final class PipelineStore {
                 continue;
             }
 
-            String configuredPath = "";
-            for (AttributeConfig attributeConfig : module.attributeConfigs) {
-                if (attributeConfig == null || !Objects.equals(attributeConfig.name, RAY_TRACING_SHADER_PACK_PATH_ATTRIBUTE)) {
-                    continue;
-                }
-                configuredPath = attributeConfig.value == null ? "" : attributeConfig.value.trim();
-                break;
-            }
-
-            Path storagePath = null;
-            try {
-                Path shaderPackPath = null;
-                if (configuredPath.isEmpty()) {
-                    if (RadianteClient.radianceDir != null) {
-                        shaderPackPath = RadianteClient.radianceDir
-                                .resolve(BUILT_IN_SHADER_PACK_PATH)
-                                .toAbsolutePath()
-                                .normalize();
-                    }
-                } else {
-                    shaderPackPath = Path.of(configuredPath);
-                    if (!shaderPackPath.isAbsolute() && RadianteClient.radianceDir != null) {
-                        shaderPackPath = RadianteClient.radianceDir.resolve(shaderPackPath);
-                    }
-                    shaderPackPath = shaderPackPath.toAbsolutePath().normalize();
-                }
-
-                if (shaderPackPath != null && shaderPackPath.getFileName() != null) {
-                    storagePath = shaderPackPath.resolveSibling(shaderPackPath.getFileName().toString() + ".txt");
-                }
-            } catch (Exception e) {
-                RadianteClient.LOGGER.error("Error while resolving shader pack path: {}", configuredPath, e);
-            }
+            Path storagePath = PipelineShaderPack.settingsFileOf(module.attributeConfigs);
 
             if (storagePath == null) {
                 continue;

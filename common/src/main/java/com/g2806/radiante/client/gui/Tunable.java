@@ -1,6 +1,8 @@
 package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineBuild;
+import com.g2806.radiante.client.pipeline.PipelineSettings;
 import com.g2806.radiante.client.pipeline.RtAttributes;
 import java.util.List;
 import java.util.Locale;
@@ -28,7 +30,7 @@ enum Tunable {
         Format.BLOCKS),
     MOTION_BLUR_STRENGTH(null, "render_pipeline.module.ray_tracing.attribute.post_motion_blur_strength", 0.0135, 10,
         220, 100, Format.PERCENT),
-    FSR_SHARPNESS(Pipeline.FSR_MODULE_NAME, "render_pipeline.module.fsr_upscaler.attribute.sharpness", 0.01, 0, 100,
+    FSR_SHARPNESS(PipelineSettings.FSR_MODULE_NAME, "render_pipeline.module.fsr_upscaler.attribute.sharpness", 0.01, 0, 100,
         70, Format.PERCENT),
     // The most the exposure may brighten a dark scene; 100% is Bedrock RTX's 32, which lets a room lit through a
     // window come up as bright as in Bedrock.
@@ -157,8 +159,8 @@ enum Tunable {
 
     /** The current value in slider steps, or null when the pipeline does not have the setting. */
     Integer read() {
-        String value = this.module == null ? Pipeline.getShaderPackValue(this.attribute)
-            : Pipeline.getModuleValue(this.module, this.attribute);
+        String value = this.module == null ? PipelineSettings.getShaderPackValue(this.attribute)
+            : PipelineSettings.getModuleValue(this.module, this.attribute);
         if (value == null) {
             return null;
         }
@@ -169,13 +171,13 @@ enum Tunable {
         }
     }
 
-    /** Writes the value; true when it changed (see Pipeline.takeStructuralChange for whether that needs a rebuild). */
+    /** Writes the value; true when it changed (see PipelineBuild.takeStructuralChange for whether that needs a rebuild). */
     boolean write(int steps) {
         String value = this.format == Format.NUMBER ? String.valueOf(Math.round(clamp(steps) * this.unit))
             : String.format(Locale.ROOT, "%.5f", clamp(steps) * this.unit).replaceAll("0+$", "")
                 .replaceAll("\\.$", ".0");
-        String current = this.module == null ? Pipeline.getShaderPackValue(this.attribute)
-            : Pipeline.getModuleValue(this.module, this.attribute);
+        String current = this.module == null ? PipelineSettings.getShaderPackValue(this.attribute)
+            : PipelineSettings.getModuleValue(this.module, this.attribute);
         try {
             if (current != null) {
                 double stored = Double.parseDouble(current.trim());
@@ -192,11 +194,11 @@ enum Tunable {
         } catch (NumberFormatException ignored) {
             // Written below.
         }
-        boolean changed = this.module == null ? Pipeline.setShaderPackValue(this.attribute, value)
-            : Pipeline.setModuleValue(this.module, this.attribute, value);
+        boolean changed = this.module == null ? PipelineSettings.setShaderPackValue(this.attribute, value)
+            : PipelineSettings.setModuleValue(this.module, this.attribute, value);
         if (this.twin != null) {
-            changed |= this.module == null ? Pipeline.setShaderPackValue(this.twin, value)
-                : Pipeline.setModuleValue(this.module, this.twin, value);
+            changed |= this.module == null ? PipelineSettings.setShaderPackValue(this.twin, value)
+                : PipelineSettings.setModuleValue(this.module, this.twin, value);
         }
         return changed;
     }
