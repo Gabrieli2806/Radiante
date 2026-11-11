@@ -61,7 +61,7 @@ Versiones exactas: [Primeros pasos](docs/es/primeros-pasos.md).
 
 ## Licencia
 
-GPL-3.0, con [permisos adicionales](LICENSE-EXCEPTION.md) para las librerías de NVIDIA e Intel y para los paquetes de
+[GPL-3.0](LICENSE), con [permisos adicionales](LICENSE-EXCEPTION.md) para las librerías de NVIDIA e Intel y para los paquetes de
 shaders, que conservan su propia licencia si usan solo la interfaz para paquetes de Radiante. Radiante comenzó como un
 fork de Radiance y su renderer MCVR. Desde entonces se ha rehecho buena parte, y el proyecto sigue alejándose de ellos.
 

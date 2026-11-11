@@ -358,7 +358,7 @@ With the environment variable `RADIANTE_GPU_PROFILE` set, every stage is also lo
 ## Denoising, upscaling and post
 
 The world pipeline is a chain of **modules** (`render/modules/world/`), each a `WorldModule` with a per-slot
-context. Java assembles one of a few presets (`Pipeline.assemble*Internal`):
+context. Java assembles one of a few presets (`PresetAssembly.assemble*Internal`):
 
 ```
  DLSS RR:   ray_tracing ─▶ dlss (ray reconstruction)             ─▶ tone_mapping ─▶ post_render
@@ -372,7 +372,7 @@ diffuse and specular albedo, normal/roughness, motion vectors, linear and first-
 first-hit direct and indirect diffuse, specular, emission, refraction, and fog image and transmission.
 
 - **NRD** (`nrd/`): RELAX diffuse+specular. `nrd/prepare.comp` and `nrd/compose.comp` pack the inputs and put the
-  denoised signals back together. Built only with `PRISM_ENABLE_NRD`. Java sets the pack attribute `nrd_signals`
+  denoised signals back together. Left out of a build with `-DPRISM_ENABLE_NRD=OFF`. Java sets the pack attribute `nrd_signals`
   (`VPT_NRD_SIGNALS`) on every build whose pipeline has NRD: the path tracer then writes its signals for NRD (the
   glow of the surface seen kept out of them, the direct light always diffuse, the bounce's length as the diffuse hit
   distance).
@@ -428,7 +428,7 @@ When the player changes a setting, Java (`Pipeline.pushRuntimeChanges`) first tr
 
 A value applied live is also written into the blueprint, so the next rebuild keeps it.
 
-**`WorldUBO.packParams`** is an array of `PRISM_PACK_PARAM_COUNT` (256) `vec4`s at the end of the world uniform
+**`WorldUBO.packParams`** is an array of `PRISM_PACK_PARAM_COUNT` (256) `vec4`s near the end of the world uniform, after everything Java writes
 (`native/src/common/shared.hpp`). For a `"runtime": true` attribute, the shader pack loader does not compile the
 value in: the define becomes a read such as `int(worldUBO.packParams[N].x)` or `vec3(worldUBO.packParams[N].xyz)`.
 The shader text is then the same for every value, nothing recompiles, and the SPIR-V cache stays valid. Bools,
