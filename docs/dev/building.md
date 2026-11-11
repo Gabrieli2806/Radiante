@@ -22,6 +22,14 @@ mkdir -p native/extern/DLSS/lib
 cp -r /tmp/dlss/lib/Windows_x86_64 native/extern/DLSS/lib/   # or Linux_x86_64 on Linux
 ```
 
+To see what a machine has and what it lacks, run the setup check: `native/setup-windows.ps1` (with `-Install` it
+fetches the missing parts through winget and git) or `native/setup-linux.sh` (`--fetch-dlss` clones the DLSS
+libraries; the rest comes from your distribution's packages).
+
+```sh
+powershell -ExecutionPolicy Bypass -File native\setup-windows.ps1 -Install
+```
+
 ## Windows
 
 Visual Studio 2026, or its Build Tools, with the C++ workload (the script finds either with `vswhere`).

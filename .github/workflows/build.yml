@@ -119,6 +119,9 @@ jobs:
           restore-keys: ccache-linux-
       - name: Build
         run: native/build-linux.sh -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+      - name: Shaders under every setting
+        # The path tracer is compiled in game with the player's settings: this compiles it under each of them.
+        run: python3 native/src/tools/check_shaders.py
       - name: Check glibc requirement
         run: |
           lib=common/src/main/resources/radiante-native/linux-x64/libprismrt.so

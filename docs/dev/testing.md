@@ -47,6 +47,20 @@ RADIANTE_DEV_PRESCRIPT="100:testworld=RadianteSmoke" RADIANTE_DEV_SCRIPT="400:qu
 - Scripts stop by themselves in a world whose name does not start with `Radiante`.
 - The other actions (`hud=`, `fov=`, `slot=`, `debug=`, `rejoin=`...) are listed in `DevAutomation.run`.
 
+## Shaders under every setting
+
+The path tracer is compiled in game, with the player's settings as defines, so a shader that only breaks with one
+setting off its default is not caught by building the mod. After any change under `native/src/shader`, run:
+
+```sh
+python native/src/tools/check_shaders.py
+```
+
+It compiles Radiante PT at the defaults, then once for each compiled-in setting on each of its other values and once
+for each debug view (about fifty builds, under a minute). It needs Python 3 and `glslangValidator` from the Vulkan
+SDK, nothing else: no native build and no game. The CI runs it on every push; `--only <text>` runs the builds whose
+name contains the text.
+
 ## Settings files
 
 Settings tests write to the development `radiante/` files (`options.properties`, `pipeline.yaml`,

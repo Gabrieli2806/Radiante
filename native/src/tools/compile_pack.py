@@ -2,7 +2,7 @@
 """Compiles every shader of a staged shader pack offline, the way the renderer would, without the game.
 
     python compile_pack.py <pack folder> [--out <folder for .spv>] [--glslang <glslangValidator>] [--opt]
-                           [--debug-view <name>]
+                           [--debug-view <name>] [--set <attribute>=<value> ...]
 
 <pack folder> is a whole pack: radiante-pt as the native build stages it (<build>/src/shader/ray_tracing_internal_zip/
 radiante-pt), or a pack that extends it, staged with shader_pack_stage (src/tools/shader_pack_stage.cpp). The defines
@@ -12,6 +12,9 @@ runtime attribute as its worldUBO.packParams read, the debug views' defines (0, 
 them). glslangValidator stands in for shaderc: same front end, so a shader that compiles here compiles in game, short
 of driver limits. With --opt the SPIR-V also goes through spirv-opt -O --strip-debug (about shaderc's performance
 level), so two builds can be compared byte for byte.
+
+--set gives an attribute another value than its default, by the last part of its name (--set restir=false,
+--set cloud_mode=volumetric); check_shaders.py uses it to compile the pack under every setting.
 
 Exit status 0 when every shader compiles.
 """
@@ -240,10 +243,19 @@ def main():
     parser.add_argument("--glslang", default=shutil.which("glslangValidator") or "glslangValidator")
     parser.add_argument("--opt", action="store_true")
     parser.add_argument("--debug-view")
+    parser.add_argument("--set", action="append", default=[], metavar="ATTRIBUTE=VALUE")
+    parser.add_argument("--quiet", action="store_true", help="print only what fails and the count")
     args = parser.parse_args()
 
     root = Path(args.pack).resolve()
     config = json.loads((root / "configs.json").read_text(encoding="utf-8"))
+    for override in args.set:
+        name, _, value = override.partition("=")
+        matches = [a for a in config.get("attributes", []) if a.get("name", "").rsplit(".", 1)[-1] == name]
+        if not matches:
+            raise SystemExit(f"no attribute named {name}")
+        for attribute in matches:
+            attribute["default_value"] = value
     attributes = attribute_defines(config)
     for name, value in debug_view_defines(config, args.debug_view).items():
         attributes.setdefault(name, value)
@@ -293,7 +305,8 @@ def main():
                                       str(spv)], capture_output=True, text=True)
                 if opt.returncode != 0:
                     print(f"spirv-opt failed on {label}: {opt.stderr.strip()}")
-            print(f"ok   {label}")
+            if not args.quiet:
+                print(f"ok   {label}")
         if not out and spv.exists():
             spv.unlink()
     print(f"{len(requests) - failures}/{len(requests)} shaders compile")

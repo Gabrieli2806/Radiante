@@ -51,6 +51,9 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 
 ## Testing
 
+- After any change under `native/src/shader`, run `python native/src/tools/check_shaders.py`: it compiles Radiante PT
+  under every compiled-in setting and debug view without the game (under a minute; the CI runs it too). A shader that
+  compiles at the defaults can still fail with one setting off.
 - Never touch the user's worlds. Test only in worlds whose name starts with `Radiante` (for example
   `RadianteParityA`, `RadianteRealisticTerrain`); copies get a distinct level name; never delete a copy while a client
   is running.

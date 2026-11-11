@@ -138,6 +138,7 @@ Fill in the template: what changed and why, how you tested it, and what you did 
 
 - [ ] Based on `mc/26.3`
 - [ ] Native build run, if anything under `native/` changed; `./gradlew build` passes
+- [ ] `python native/src/tools/check_shaders.py` passes, if a shader changed
 - [ ] Run in game in a `Radiante*` test world; screenshots before and after for visual changes
 - [ ] Texts in all three lang files; docs and `changelog.md` updated where players will notice
 - [ ] No unrelated changes, and no regenerated `native/include/` headers

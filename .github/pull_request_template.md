@@ -14,6 +14,7 @@
 
 - [ ] Based on `mc/26.3` (or the branch of the version it is for)
 - [ ] Native build run, if anything under `native/` changed
+- [ ] `python native/src/tools/check_shaders.py` passes, if a shader changed
 - [ ] `./gradlew build` passes
 - [ ] Run in game in a `Radiante*` test world
 - [ ] Texts in all three lang files; docs and `changelog.md` updated where players will notice

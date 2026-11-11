@@ -278,7 +278,8 @@ loaded as a shader pack, like any external one.
 Each surface kind has its own closest hit shader in `world/` (`default.rchit`, `no_height.rchit`, `clouds.rchit`,
 `end_portal.rchit`, `end_gateway.rchit`, `water_mask.rchit`, `world_no_reflect.rchit`, `transparent_only.rchit`) and
 shades the surface where it is hit: material, direct light, the next bounce's direction. The ray generation shader
-(`world/world.rgen`) only drives the path: it sets up the camera ray, traces, reads back what the hit shader left in
+(`world/world.rgen`, its `main()` in one file a stage under `world/main/`: the camera's rays, the paths, fog, the
+denoiser's guides, the light meter, the final compose) only drives the path: it sets up the camera ray, traces, reads back what the hit shader left in
 the payload, and decides whether to go on. Misses (`world.rmiss`, `world_no_volumetric.rmiss`, `hand.rmiss`) draw the
 sky. Any-hit shaders (`*.rahit`) do alpha testing; shadow rays use `shadow.rahit` / `shadow.rmiss`.
 
