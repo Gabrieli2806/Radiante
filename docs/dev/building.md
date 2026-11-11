@@ -24,7 +24,7 @@ cp -r /tmp/dlss/lib/Windows_x86_64 native/extern/DLSS/lib/   # or Linux_x86_64 o
 
 ## Windows
 
-Visual Studio 2026 with the C++ workload.
+Visual Studio 2026, or its Build Tools, with the C++ workload (the script finds either with `vswhere`).
 
 ```sh
 native/build-windows.bat
