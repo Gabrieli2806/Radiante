@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.render;
 
 import com.g2806.radiante.client.option.Options;
+import com.g2806.radiante.compat.VersionCompat;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -192,6 +193,7 @@ public final class BiomeAmbiance {
     static {
         put(PLAINS, Biomes.PLAINS, Biomes.SUNFLOWER_PLAINS, Biomes.MEADOW);
         put(FOREST, Biomes.FOREST, Biomes.FLOWER_FOREST, Biomes.BIRCH_FOREST, Biomes.OLD_GROWTH_BIRCH_FOREST);
+        put(DAPPLED_FOREST, VersionCompat.dappledForest());
         put(DARK_FOREST, Biomes.DARK_FOREST);
         put(PALE_GARDEN, Biomes.PALE_GARDEN);
         put(TAIGA, Biomes.TAIGA, Biomes.OLD_GROWTH_PINE_TAIGA, Biomes.OLD_GROWTH_SPRUCE_TAIGA);
@@ -430,11 +432,11 @@ public final class BiomeAmbiance {
             // A mod draws the night sky's stars itself; negative tells the star pass to draw none of its own.
             return -1.0f;
         }
-        float t = Mth.clamp((eyeY - STARS_LOW) / (STARS_HIGH - STARS_LOW), 0.0f, 1.0f);
+        float t = Math.clamp((eyeY - STARS_LOW) / (STARS_HIGH - STARS_LOW), 0.0f, 1.0f);
         float clarity = 1.0f + Options.starAltitude / 100.0f * t * t * (3.0f - 2.0f * t);
         if (hasCurrent && currentSkyType == OVERWORLD_SKY && Options.biomeAmbianceStrength > 0) {
             float density = current.w / (Options.biomeAmbianceStrength / 100.0f);
-            clarity *= Mth.clamp(1.0f + STARS_HAZE_SHARE * (1.0f - density / STARS_HAZE_REFERENCE),
+            clarity *= Math.clamp(1.0f + STARS_HAZE_SHARE * (1.0f - density / STARS_HAZE_REFERENCE),
                 1.0f - STARS_HAZE_SHARE, 1.0f + STARS_HAZE_SHARE);
         }
         return clarity;
@@ -565,7 +567,7 @@ public final class BiomeAmbiance {
         float brightness = Math.min(1.0f,
             STYLED_MIN_BRIGHTNESS + (1.0f - STYLED_MIN_BRIGHTNESS) * (float) Math.sqrt(Math.max(luma, 0.0f)));
         // How much the albedo has to say about the colour: all of it from a luma of about a half up.
-        float packShare = Mth.clamp((float) Math.sqrt(Math.max(luma, 0.0f)) * 1.4f, 0.0f, 1.0f);
+        float packShare = Math.clamp((float) Math.sqrt(Math.max(luma, 0.0f)) * 1.4f, 0.0f, 1.0f);
         float[] ownTint = own == null || own.density() <= 0.0f ? null : new float[] {own.r(), own.g(), own.b()};
         float[] tint = new float[3];
         float[] chroma = new float[3];
@@ -580,7 +582,7 @@ public final class BiomeAmbiance {
         }
         float top = Math.max(zeroAt, fullBelow + STYLED_MIN_FADE);
         return new Haze(tint[0], tint[1], tint[2], density, chroma[0], chroma[1], chroma[2], fullBelow, top,
-            Mth.clamp(rainScale, 1.0f, 3.0f), false);
+            Math.clamp(rainScale, 1.0f, 3.0f), false);
     }
 
     private static float[] vec3(JsonArray array) {
@@ -679,7 +681,7 @@ public final class BiomeAmbiance {
         chroma.div(colourTotal).w = 0.0f;
         float exposure = 1.0f;
         if (overworld) {
-            density *= Mth.lerp(Mth.clamp(rain, 0.0f, 1.0f), 1.0f, rainScale);
+            density *= Mth.lerp(Math.clamp(rain, 0.0f, 1.0f), 1.0f, rainScale);
             exposure = level.getBrightness(LightLayer.SKY, pos.set(cx, cy, cz)) / 15.0f;
         }
         density *= Options.biomeAmbianceStrength / 100.0f;
@@ -884,7 +886,7 @@ public final class BiomeAmbiance {
             // The pack's own say in how far its water lets one see, met half way with the kind of water it is.
             float mean = Math.max((pack[0] + pack[1] + pack[2]) / 3.0f, 1.0e-3f);
             float packVisibility =
-                Mth.clamp(PLAIN_VISIBILITY * (float) Math.sqrt(PACK_WATER_REFERENCE / mean), 12.0f, 40.0f);
+                Math.clamp(PLAIN_VISIBILITY * (float) Math.sqrt(PACK_WATER_REFERENCE / mean), 12.0f, 40.0f);
             visibility = (float) Math.sqrt(packVisibility * visibility);
         }
         float[] fog = new float[3];
@@ -959,12 +961,12 @@ public final class BiomeAmbiance {
         // Vanilla's own knob for murky water: a swamp pulls its water fog in to 85 % of the usual distance.
         float end = biome.value().getAttributes().applyModifier(EnvironmentAttributes.WATER_FOG_END_DISTANCE,
             VANILLA_WATER_FOG_END);
-        float reach = Mth.clamp(end / VANILLA_WATER_FOG_END, 0.3f, 1.3f);
+        float reach = Math.clamp(end / VANILLA_WATER_FOG_END, 0.3f, 1.3f);
         if (Math.abs(reach - 1.0f) > 0.01f && style == PLAIN_WATER) {
             // Stronger than vanilla's own step: its 85 % stands for the swamp's murk.
             float factor = (float) Math.pow(reach, 4.0);
-            style = new WaterStyle(Mth.clamp(factor, 0.5f, 1.4f), Mth.clamp(PLAIN_VISIBILITY * factor, 8.0f, 36.0f),
-                Mth.clamp(0.6f + 0.4f * factor, 0.7f, 1.1f));
+            style = new WaterStyle(Math.clamp(factor, 0.5f, 1.4f), Math.clamp(PLAIN_VISIBILITY * factor, 8.0f, 36.0f),
+                Math.clamp(0.6f + 0.4f * factor, 0.7f, 1.1f));
         }
         return style;
     }
@@ -1049,9 +1051,7 @@ public final class BiomeAmbiance {
 
         // The biome's own fog colour, against the overworld's: its hue goes into the tint, and a darker fog thickens
         // the haze. A biome that leaves the fog alone comes out as its base.
-        int fogRgb = value.getAttributes().applyModifier(EnvironmentAttributes.FOG_COLOR, 0xC0D8FF);
-        Vector3fc fog = new Vector3f(net.minecraft.util.ARGB.redFloat(fogRgb), net.minecraft.util.ARGB.greenFloat(fogRgb),
-            net.minecraft.util.ARGB.blueFloat(fogRgb));
+        Vector3fc fog = VersionCompat.biomeFogColor(value, OVERWORLD_FOG);
         float rr = fog.x() / OVERWORLD_FOG.x();
         float rg = fog.y() / OVERWORLD_FOG.y();
         float rb = fog.z() / OVERWORLD_FOG.z();
@@ -1059,7 +1059,7 @@ public final class BiomeAmbiance {
         if (peak <= 1.0e-3f || Math.abs(rr - 1.0f) + Math.abs(rg - 1.0f) + Math.abs(rb - 1.0f) < 0.02f) {
             return base;
         }
-        float luma = Mth.clamp(0.2126f * rr + 0.7152f * rg + 0.0722f * rb, 0.0f, 1.0f);
+        float luma = Math.clamp(0.2126f * rr + 0.7152f * rg + 0.0722f * rb, 0.0f, 1.0f);
         // The fog colour has most of the say in the tint and the kind of place the rest. Not all of it, and softened:
         // the haze is lit by the sky, which such a biome has usually coloured to match already.
         float level = Math.max(base.r(), Math.max(base.g(), base.b()))

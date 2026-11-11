@@ -1,5 +1,6 @@
 package com.g2806.radiante.client;
 
+import com.g2806.radiante.compat.VersionCompat;
 import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.client.Minecraft;
@@ -58,7 +59,7 @@ public final class DevAutomation {
         }
         var player = minecraft.player;
         float yaw = player.getYRot() + (float) GLIDE_STEP[0];
-        float pitch = net.minecraft.util.Mth.clamp(player.getXRot() + (float) GLIDE_STEP[1], -90.0F, 90.0F);
+        float pitch = Math.clamp(player.getXRot() + (float) GLIDE_STEP[1], -90.0F, 90.0F);
         player.setYRot(yaw);
         player.setXRot(pitch);
         player.yRotO = yaw;
@@ -494,24 +495,22 @@ public final class DevAutomation {
             // key=up / down / left / right / enter / space / tab / esc, optionally ",shift": the key pressed and let
             // go on the open screen, as a keyboard (or a controller mod that presses keys) does.
             String[] parts = action.substring(4).split(",");
-            int key = switch (parts[0]) {
-                case "up" -> com.mojang.blaze3d.platform.InputConstants.KEY_UP;
-                case "down" -> com.mojang.blaze3d.platform.InputConstants.KEY_DOWN;
-                case "left" -> com.mojang.blaze3d.platform.InputConstants.KEY_LEFT;
-                case "right" -> com.mojang.blaze3d.platform.InputConstants.KEY_RIGHT;
-                case "enter" -> com.mojang.blaze3d.platform.InputConstants.KEY_RETURN;
-                case "space" -> com.mojang.blaze3d.platform.InputConstants.KEY_SPACE;
-                case "tab" -> com.mojang.blaze3d.platform.InputConstants.KEY_TAB;
-                case "esc" -> com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE;
-                default -> -1;
+            int[] codes = switch (parts[0]) {
+                case "up" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_UP, 0x40000052};
+                case "down" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_DOWN, 0x40000051};
+                case "left" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_LEFT, 0x40000050};
+                case "right" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_RIGHT, 0x4000004F};
+                case "enter" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_RETURN, 13};
+                case "space" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_SPACE, 32};
+                case "tab" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_TAB, 9};
+                case "esc" -> new int[] {com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE, 27};
+                default -> null;
             };
             var screen = minecraft.gui.screen();
-            if (key >= 0 && screen != null) {
+            if (codes != null && screen != null) {
                 // Shift's modifier bit, as the event carries it.
                 int modifiers = parts.length > 1 && parts[1].equals("shift") ? 1 : 0;
-                // 26.2 reads keys through GLFW: the scancode is the platform's own, asked of GLFW.
-                var event = new net.minecraft.client.input.KeyEvent(key,
-                    org.lwjgl.glfw.GLFW.glfwGetKeyScancode(key), modifiers);
+                var event = VersionCompat.keyEvent(codes[0], codes[1], modifiers);
                 boolean used = screen.keyPressed(event);
                 screen.keyReleased(event);
                 RadianteClient.LOGGER.info("[dev] key {} on {}: {}", action.substring(4),
@@ -661,7 +660,7 @@ public final class DevAutomation {
             RadianteClient.LOGGER.info("[dev] slot {}", slot);
         } else if (action.startsWith("debug=")) {
             String value = action.substring(6);
-            net.minecraft.resources.Identifier entry = switch (value) {
+            var entry = switch (value) {
                 case "hitboxes" -> net.minecraft.client.gui.components.debug.DebugScreenEntries.ENTITY_HITBOXES;
                 case "chunkborders" -> net.minecraft.client.gui.components.debug.DebugScreenEntries.CHUNK_BORDERS;
                 default -> null;

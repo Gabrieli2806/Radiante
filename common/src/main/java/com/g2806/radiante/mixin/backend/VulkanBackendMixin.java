@@ -55,7 +55,7 @@ public class VulkanBackendMixin {
         target = "Lcom/mojang/blaze3d/vulkan/VulkanBackend;throwForMissingRequrements(Lorg/lwjgl/vulkan/VkPhysicalDevice;)V"))
     private static void radiante$noRayTracingDevice(CallbackInfoReturnable<?> cir) {
         if (radiante$rejectedForRayTracing) {
-            com.g2806.radiante.client.render.RadianteRenderer.markNoRayTracing();
+            com.g2806.radiante.client.render.RadianteRenderer.noteDeviceWithoutRayTracing();
         }
     }
 }

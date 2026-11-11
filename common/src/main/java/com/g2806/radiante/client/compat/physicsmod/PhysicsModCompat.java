@@ -2,9 +2,8 @@ package com.g2806.radiante.client.compat.physicsmod;
 
 import com.g2806.radiante.api.RadianteGeometry;
 import com.g2806.radiante.client.RadianteClient;
+import com.g2806.radiante.compat.VersionCompat;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.blaze3d.textures.GpuTexture;
-import com.mojang.blaze3d.textures.GpuTextureView;
 import it.unimi.dsi.fastutil.ints.IntList;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -271,8 +270,7 @@ public final class PhysicsModCompat implements RadianteGeometry.Provider {
             this.snapshots.put(model, snapshot);
         }
         snapshot.seen = true;
-        GpuTextureView view = (GpuTextureView) this.modelTextureView.get(model);
-        GpuTexture texture = view == null ? null : view.texture();
+        var texture = VersionCompat.textureOfView(this.modelTextureView.get(model));
         if (texture == null) {
             return;
         }

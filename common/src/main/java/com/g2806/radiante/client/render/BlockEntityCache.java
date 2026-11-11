@@ -2,6 +2,7 @@ package com.g2806.radiante.client.render;
 
 import com.g2806.radiante.client.render.EntityManager.PendingEntity;
 import com.g2806.radiante.client.render.EntityManager.PendingLayer;
+import com.g2806.radiante.compat.VersionCompat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -150,7 +151,8 @@ final class BlockEntityCache {
         }
         // A sign's text objects are replaced, never edited, so the same two objects mean the same writing.
         if (blockEntity instanceof SignBlockEntity sign
-            && (sign.getText(true) != entry.frontText || sign.getText(false) != entry.backText)) {
+            && (VersionCompat.signFrontText(sign) != entry.frontText
+                || VersionCompat.signBackText(sign) != entry.backText)) {
             return false;
         }
         // A chest about to open: its lid has to be followed from the first frame.
@@ -168,8 +170,8 @@ final class BlockEntityCache {
         Entry entry = store(pos.immutable(), blockEntity, limit, pos.asLong(), collected, arenaBase);
         entry.blockState = blockEntity.getBlockState();
         if (blockEntity instanceof SignBlockEntity sign) {
-            entry.frontText = sign.getText(true);
-            entry.backText = sign.getText(false);
+            entry.frontText = VersionCompat.signFrontText(sign);
+            entry.backText = VersionCompat.signBackText(sign);
         }
     }
 

@@ -1,12 +1,12 @@
 package com.g2806.radiante.client.render;
 
+import com.g2806.radiante.compat.VersionCompat;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.client.renderer.texture.SpriteContents;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.RedStoneWireBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
@@ -54,13 +54,15 @@ public final class RedstoneGlow {
 
     /** The power of this redstone dust, 0 to 15, or -1 when it is not dust. */
     static int power(BlockState state) {
-        return state.is(Blocks.REDSTONE_WIRE) ? state.getValue(RedStoneWireBlock.POWER) : -1;
+        return state.is(Blocks.REDSTONE_WIRE) ? VersionCompat.redstoneWirePower(state) : -1;
     }
 
     /**
-     * Whether this quad of a dust block is the dust itself rather than the overlay drawn over it. This version's dust
-     * is one greyscale sprite tinted by power, and the overlay is the only quad left untinted. A pack's model may give
-     * the dust a sprite per power, already coloured, as Minecraft 26.3 does: so the sprite's name is what rules it out.
+     * Whether this quad of a dust block is the dust itself rather than the overlay drawn over it. By the Minecraft
+     * version and the pack, the dust is either one greyscale sprite tinted by power, the overlay being the only quad
+     * left untinted, or a sprite of its own per power, already coloured, with no quad tinted at all: tested on the
+     * tint alone, no quad of the second kind glowed. So a tinted quad is dust, and the sprite's name rules the overlay
+     * out among the rest.
      */
     static boolean isDust(net.minecraft.client.resources.model.geometry.BakedQuad quad) {
         return quad.materialInfo().isTinted()

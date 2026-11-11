@@ -2,6 +2,7 @@ package com.g2806.radiante.client.render;
 
 import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.proxy.world.ChunkProxy;
+import com.g2806.radiante.compat.VersionCompat;
 import it.unimi.dsi.fastutil.longs.Long2ByteOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongIterator;
@@ -670,8 +671,7 @@ public final class ChunkManager {
                 return;
             }
             if (unshade) {
-                // 26.2 port: a quad shades by its own face or, unshaded, as one facing up (no shade override).
-                float shade = quad.materialInfo().shade() ? cardinal.byFace(quad.direction()) : cardinal.up();
+                float shade = VersionCompat.faceShade(cardinal, quad);
                 if (shade > 0.0f && shade != 1.0f) {
                     instance.scaleColor(1.0f / shade);
                 }

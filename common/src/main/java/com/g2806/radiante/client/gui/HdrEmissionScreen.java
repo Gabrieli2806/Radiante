@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.option.EmissionColor;
+import com.g2806.radiante.compat.VersionCompat;
 import java.util.Locale;
 import java.util.function.Consumer;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -11,7 +12,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 /** An HDR tint is a linear RGB colour and exposure; the numeric fields also accept channels above one directly. */
-final class HdrEmissionScreen extends Screen {
+final class HdrEmissionScreen extends VersionCompat.DrawnScreen {
     private static final String KEY = "options.radiante.emission_colour.";
     private final Screen parent;
     private final Consumer<EmissionColor> save;
@@ -119,8 +120,7 @@ final class HdrEmissionScreen extends Screen {
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
-        super.extractRenderState(g, mouseX, mouseY, partialTick);
+    protected void extractContents(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         int top = Math.max(45, height / 2 - 78);
         g.centeredText(font, title, width / 2, top - 34, 0xFFFFFFFF);
         g.centeredText(font, Component.translatable(KEY + "hint"), width / 2, top - 20, 0xFFB0B8B4);

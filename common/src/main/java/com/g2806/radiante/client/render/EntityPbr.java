@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.render;
 
 import com.g2806.radiante.client.option.Options;
+import com.g2806.radiante.compat.VersionCompat;
 import com.g2806.radiante.mixin.texture.TextureAtlasAccessor;
 import com.mojang.blaze3d.platform.NativeImage;
 import java.io.InputStream;
@@ -179,9 +180,9 @@ public final class EntityPbr {
             return true;
         }
 
-        int width = atlas.getTexture().getWidth(0);
-        int height = atlas.getTexture().getHeight(0);
-        int mipLevels = atlas.getTexture().getMipLevels();
+        int width = VersionCompat.gpuTexture(atlas).getWidth(0);
+        int height = VersionCompat.gpuTexture(atlas).getHeight(0);
+        int mipLevels = VersionCompat.gpuTexture(atlas).getMipLevels();
         int specular = -1;
         int normal = -1;
         if (anySpecular) {

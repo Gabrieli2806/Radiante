@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.render;
 
 import com.g2806.radiante.client.proxy.vulkan.TextureProxy;
+import com.g2806.radiante.compat.VersionCompat;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -189,7 +190,7 @@ public final class EmissionTiles {
             return;
         }
 
-        int atlasId = TextureTracker.idOf(atlas.getTexture());
+        int atlasId = TextureTracker.idOf(VersionCompat.gpuTexture(atlas));
         if (atlasId == 0) {
             return;
         }
@@ -201,9 +202,9 @@ public final class EmissionTiles {
 
         Map<TextureAtlasSprite, Integer> emitters = collectEmissiveSprites(minecraft, atlas);
         lightLevels = emitters;
-        int atlasWidth = atlas.getTexture().getWidth(0);
-        int atlasHeight = atlas.getTexture().getHeight(0);
-        int mipLevels = atlas.getTexture().getMipLevels();
+        int atlasWidth = VersionCompat.gpuTexture(atlas).getWidth(0);
+        int atlasHeight = VersionCompat.gpuTexture(atlas).getHeight(0);
+        int mipLevels = VersionCompat.gpuTexture(atlas).getMipLevels();
         // The emission worked out from the albedo is written first and the authored maps go over it, so a pack
         // that covers some blocks and not others - Radiante's own built in maps are exactly that - leaves the rest
         // glowing instead of turning the derived emission off everywhere. A lit redstone lamp has no built in map
@@ -1047,8 +1048,7 @@ public final class EmissionTiles {
             specularWidth = 0;
         }
         if (specularWidth != width || specularHeight != height) {
-            TextureProxy.prepareImage(specularTextureId, mipLevels, width, height,
-                com.mojang.blaze3d.vulkan.VulkanConst.toVk(com.mojang.blaze3d.GpuFormat.RGBA8_UNORM));
+            TextureProxy.prepareImage(specularTextureId, mipLevels, width, height, VersionCompat.vkFormatRgba8());
             specularWidth = width;
             specularHeight = height;
         }

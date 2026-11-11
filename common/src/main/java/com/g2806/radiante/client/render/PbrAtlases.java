@@ -1,10 +1,9 @@
 package com.g2806.radiante.client.render;
 
 import com.g2806.radiante.client.proxy.vulkan.TextureProxy;
+import com.g2806.radiante.compat.VersionCompat;
 import com.g2806.radiante.mixin.texture.TextureAtlasAccessor;
 import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.GpuFormat;
-import com.mojang.blaze3d.vulkan.VulkanConst;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -71,9 +70,9 @@ public final class PbrAtlases {
             return 0;
         }
 
-        int width = atlas.getTexture().getWidth(0);
-        int height = atlas.getTexture().getHeight(0);
-        int mipLevels = atlas.getTexture().getMipLevels();
+        int width = VersionCompat.gpuTexture(atlas).getWidth(0);
+        int height = VersionCompat.gpuTexture(atlas).getHeight(0);
+        int mipLevels = VersionCompat.gpuTexture(atlas).getMipLevels();
         ResourceManager resources = minecraft.getResourceManager();
 
         // Emission Radiante derived from the albedo comes in as the seed, so a block whose map nobody authored -
@@ -344,7 +343,7 @@ public final class PbrAtlases {
         if (textureId < 0) {
             textureId = TextureProxy.generateTextureId();
         }
-        TextureProxy.prepareImage(textureId, mipLevels, width, height, VulkanConst.toVk(GpuFormat.RGBA8_UNORM));
+        TextureProxy.prepareImage(textureId, mipLevels, width, height, VersionCompat.vkFormatRgba8());
 
         ByteBuffer current = level0;
         int levelWidth = width;
