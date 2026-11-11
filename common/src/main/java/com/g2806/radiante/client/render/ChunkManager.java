@@ -222,10 +222,10 @@ public final class ChunkManager {
     private static int coverageOriginZ = Integer.MIN_VALUE;
     private static int coverageSize;
     private static boolean forceAllDirty;
-    /** Whether block faces keep vanilla's face shading in their colour (Pipeline.FACE_SHADING_ATTRIBUTE). */
+    /** Whether block faces keep vanilla's face shading in their colour (RtAttributes.FACE_SHADING_ATTRIBUTE). */
     private static volatile boolean faceShading = true;
     /**
-     * Whether foliage is meshed with wind codes (Pipeline.WIND_ATTRIBUTE). Without them nothing sways, and the
+     * Whether foliage is meshed with wind codes (RtAttributes.WIND_ATTRIBUTE). Without them nothing sways, and the
      * renderer neither moves nor refits anything: the wind costs nothing while it is off.
      */
     private static volatile boolean wind;
@@ -464,13 +464,13 @@ public final class ChunkManager {
         ChunkProxy.updateSectionPos(cameraSection.x(), cameraSection.y(), cameraSection.z());
 
         boolean shading = com.g2806.radiante.client.pipeline.Pipeline.isShaderPackToggleOn(
-            com.g2806.radiante.client.pipeline.Pipeline.FACE_SHADING_ATTRIBUTE);
+            com.g2806.radiante.client.pipeline.RtAttributes.FACE_SHADING_ATTRIBUTE);
         if (shading != faceShading) {
             faceShading = shading;
             forceAllDirty = true;
         }
         boolean windOn = com.g2806.radiante.client.pipeline.Pipeline.isShaderPackToggleOn(
-            com.g2806.radiante.client.pipeline.Pipeline.WIND_ATTRIBUTE);
+            com.g2806.radiante.client.pipeline.RtAttributes.WIND_ATTRIBUTE);
         if (windOn != wind) {
             wind = windOn;
             forceAllDirty = true;

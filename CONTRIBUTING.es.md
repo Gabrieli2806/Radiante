@@ -100,7 +100,7 @@ los mismos `\n`. Si no puedes traducir uno, copia el inglés y dilo en el pull r
 hace, y qué pasa al subirlo o bajarlo.
 
 **Un ajuste nuevo** suele necesitar: el atributo en el `configs.json` de radiante-pt (`"runtime": true` si puede
-cambiar sin recompilar), un `Tunable` o una fila en `RadianteOptionsScreen`, su `OptionImpact`, los tres archivos de
+cambiar sin recompilar), un `Tunable` o una fila en `SettingsRows`, su `OptionImpact`, los tres archivos de
 idioma, su página de ajustes en `docs/en` y `docs/es`, y una línea en `changelog.md`.
 
 ## 7. Ramas

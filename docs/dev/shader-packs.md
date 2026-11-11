@@ -55,7 +55,7 @@ interface, versioning, error reporting and a settings layout around the pack for
 | Java | `client/gui/ShaderPackTrial.java` | Watches a switch: rejected config, compile errors, failed rebuild, ten seconds of frames before a pack counts as good |
 | Java | `client/gui/ShaderPackHotReload.java`, `client/pipeline/ShaderPackValidation.java` | Hot reload of folder packs; a pack checked (loaded and compiled) without being used (section 10) |
 | Java | `client/command/RadianteCommands.java` | `/radiante pack validate`, `/radiante pack reload`, `/radiante debug view`; registered by each loader |
-| Java | `client/pipeline/Pipeline.java` | The selected pack (`shader_pack_path` attribute), per-pack values, `getModuleAttributes` (values checked against the pack's types), runtime attributes |
+| Java | `client/pipeline/Pipeline.java` | The selected pack (`shader_pack_path` attribute), per-pack values, `getModuleAttributes` in `ModuleAttributes.java` (values checked against the pack's types), runtime attributes |
 | Native | `prism/render/modules/world/shader_pack/shader_pack_loader.cpp` | Reads `configs.json` into `ShaderPack`, rejects bad configs (with the reason in the log) |
 | Native | `shader_pack/shader_pack_extends.cpp` | `extends`: stages the base and the pack, merges `configs.json` and `lang` (section 5); path checks for zips |
 | Native | `shader_pack/shader_compile.cpp` | Compiles the pack's GLSL with shaderc; include paths, attribute defines |

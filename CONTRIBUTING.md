@@ -97,7 +97,7 @@ If you cannot translate one, copy the English and say so in the pull request. To
 what raising or lowering it does.
 
 **A new setting** usually needs: the attribute in radiante-pt's `configs.json` (`"runtime": true` if it can change
-without a rebuild), a `Tunable` or a row in `RadianteOptionsScreen`, its `OptionImpact`, the three lang files, its
+without a rebuild), a `Tunable` or a row in `SettingsRows`, its `OptionImpact`, the three lang files, its
 settings page in `docs/en` and `docs/es`, and a line in `changelog.md`.
 
 ## 7. Branches

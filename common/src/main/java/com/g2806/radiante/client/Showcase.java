@@ -53,6 +53,14 @@ public final class Showcase {
             BiomeTour.handle(minecraft, server, java.util.Arrays.copyOfRange(parts, 2, parts.length));
             return true;
         }
+        if (parts.length >= 2 && parts[1].equals("benchmark")) {
+            if (parts.length > 2 && parts[2].equals("stop")) {
+                com.g2806.radiante.client.benchmark.Benchmark.stop(minecraft);
+            } else {
+                com.g2806.radiante.client.benchmark.Benchmark.start(minecraft, false);
+            }
+            return true;
+        }
         if (parts.length < 2 || !parts[1].equals("showcase")) {
             say(minecraft, "message.radiante.showcase.usage");
             return true;

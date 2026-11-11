@@ -109,6 +109,7 @@ public abstract class GameRendererMixin {
     private void radiante$renderLevel(GameRenderer gameRenderer, net.minecraft.client.DeltaTracker deltaTracker,
         Operation<Void> original) {
         com.g2806.radiante.client.DevAutomation.frame();
+        com.g2806.radiante.client.benchmark.Benchmark.frame();
         if (!RadianteRenderer.isRayTracingEnabled()) {
             original.call(gameRenderer, deltaTracker);
             return;
@@ -132,6 +133,7 @@ public abstract class GameRendererMixin {
             radiante$debugCrosshair();
         }
         com.g2806.radiante.client.DevAutomation.frameDrawn();
+        com.g2806.radiante.client.benchmark.Benchmark.frameDrawn();
     }
 
     // 26.2 has no render3dHud: renderLevel draws the hand, the screen effects and the F3 crosshair inline, and
