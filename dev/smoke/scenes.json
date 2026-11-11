@@ -1,0 +1,152 @@
+{
+  "world": "RadianteSmokeSuite",
+  "setup": [
+    "hud=false",
+    "cmd=/gamerule advance_time false",
+    "cmd=/time set 6000",
+    "cmd=/weather clear",
+    "cmd=/tp @s ~ ~ ~ -90 5",
+    "cmd=/radiante showcase"
+  ],
+  "setup_ticks": 320,
+  "settle_ticks": 70,
+  "scenes": [
+    {
+      "name": "walkway",
+      "what": "The gallery from its start: sky, clouds, sun and shadow on plain blocks.",
+      "actions": [
+        "cmd=/tp @s ~ ~ ~ -90 5"
+      ]
+    },
+    {
+      "name": "room_01",
+      "what": "Glass: clear, stained and tinted, seen through both ways.",
+      "actions": [
+        "cmd=/radiante showcase 1"
+      ]
+    },
+    {
+      "name": "room_02",
+      "actions": [
+        "cmd=/radiante showcase 2"
+      ]
+    },
+    {
+      "name": "room_03",
+      "actions": [
+        "cmd=/radiante showcase 3"
+      ]
+    },
+    {
+      "name": "room_04",
+      "actions": [
+        "cmd=/radiante showcase 4"
+      ]
+    },
+    {
+      "name": "room_05",
+      "actions": [
+        "cmd=/radiante showcase 5"
+      ]
+    },
+    {
+      "name": "room_06",
+      "actions": [
+        "cmd=/radiante showcase 6"
+      ]
+    },
+    {
+      "name": "room_07",
+      "actions": [
+        "cmd=/radiante showcase 7"
+      ]
+    },
+    {
+      "name": "room_08",
+      "what": "Light blocks: each one lights the wall behind it in its own colour.",
+      "actions": [
+        "cmd=/radiante showcase 8"
+      ]
+    },
+    {
+      "name": "room_09",
+      "actions": [
+        "cmd=/radiante showcase 9"
+      ]
+    },
+    {
+      "name": "room_10",
+      "actions": [
+        "cmd=/radiante showcase 10"
+      ]
+    },
+    {
+      "name": "room_11",
+      "actions": [
+        "cmd=/radiante showcase 11"
+      ]
+    },
+    {
+      "name": "room_12",
+      "actions": [
+        "cmd=/radiante showcase 12"
+      ]
+    },
+    {
+      "name": "room_13",
+      "actions": [
+        "cmd=/radiante showcase 13"
+      ]
+    },
+    {
+      "name": "room_14",
+      "actions": [
+        "cmd=/radiante showcase 14"
+      ]
+    },
+    {
+      "name": "night",
+      "what": "The light blocks' room at night: block light alone lights the picture.",
+      "actions": [
+        "cmd=/time set 18000",
+        "cmd=/radiante showcase 8"
+      ],
+      "settle_ticks": 160,
+      "after": [
+        "cmd=/time set 6000"
+      ]
+    }
+  ],
+  "toggles": [
+    {
+      "name": "ray_tracing",
+      "what": "Radiante's picture against Minecraft's own: they must differ.",
+      "view": [
+        "cmd=/radiante showcase 8"
+      ],
+      "off": [
+        "rt=false"
+      ],
+      "on": [
+        "rt=true"
+      ],
+      "settle_ticks": 120
+    },
+    {
+      "name": "volumetric_fog",
+      "what": "Light shafts and fog in the air.",
+      "view": [
+        "cmd=/radiante showcase 1",
+        "cmd=/tp @s ~ ~ ~ -90 -15"
+      ],
+      "off": [
+        "pipe=fog:false"
+      ],
+      "on": [
+        "pipe=fog:true"
+      ],
+      "settle_ticks": 160,
+      "min_difference": 0.15
+    }
+  ]
+}

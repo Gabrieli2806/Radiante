@@ -47,6 +47,48 @@ RADIANTE_DEV_PRESCRIPT="100:testworld=RadianteSmoke" RADIANTE_DEV_SCRIPT="400:qu
 - Scripts stop by themselves in a world whose name does not start with `Radiante`.
 - The other actions (`hud=`, `fov=`, `slot=`, `debug=`, `rejoin=`...) are listed in `DevAutomation.run`.
 
+## Smoke test
+
+Before a release, and after a Minecraft version bump or a merge between version branches, run the visual smoke
+test:
+
+```sh
+python dev/smoke/smoke.py
+```
+
+It starts a development client, opens the test world `RadianteSmokeSuite`, builds the showcase gallery
+(`/radiante showcase`) and takes a picture of each of its rooms, by day and at night, then of each feature in
+`toggles` off and on. It fails when the renderer did not start, a shader did not compile, the renderer logged an
+error, a picture is black or one flat colour, or a feature's two pictures do not differ. The pictures, each
+view's frame rate and GPU times, and what to look at are in `build/smoke/<time>/report.html`: read it, the
+automatic checks only catch what is plainly broken. About five minutes; it needs the native renderer built, a GPU
+that can ray trace, and Python with Pillow and numpy. It backs up the development settings and puts them back.
+
+- `--loader neoforge` (or `forge`) runs another loader's client; `--only <text>` the scenes whose name has it.
+- `--golden <folder>` compares each picture with the one of the same name from an earlier run (keep one set per
+  GPU vendor: their denoisers and upscalers differ) and reports the difference without failing on it.
+- Scenes are data, in `dev/smoke/scenes.json`: the commands that set a view up and a line saying what to check.
+  Add a scene for a regression once it is fixed.
+
+## What a setting costs
+
+```sh
+python dev/smoke/bench.py
+```
+
+walks a client through the views of `dev/smoke/bench.json` and, at each, through its variants (a setting moved
+off its default, then put back), reading the renderer's own GPU time per pass (the F3 numbers, averaged over 60
+frames). It prints a table per view and writes it with a picture of every variant to `build/bench/<time>/bench.md`,
+so what a cheaper setting saves can be seen next to what it does to the picture.
+
+- GPU times do not move with the frame limiter (Minecraft drops to 30 fps after a minute without input), which
+  is why they are measured rather than the frame rate.
+- **Nothing else may be using the GPU.** An animated wallpaper, a browser playing video or a second game moves
+  the numbers by more than most settings do. The bench file's last variant is the default again: when it does
+  not come out as the first one did, the run measured the other program, not Radiante. Check with
+  `nvidia-smi` that the GPU is idle before starting.
+- Compare variants within one run only.
+
 ## Shaders under every setting
 
 The path tracer is compiled in game, with the player's settings as defines, so a shader that only breaks with one

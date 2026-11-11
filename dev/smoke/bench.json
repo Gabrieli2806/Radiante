@@ -1,0 +1,107 @@
+{
+  "world": "RadianteSmokeSuite",
+  "setup": [
+    "hud=false",
+    "cmd=/gamerule advance_time false",
+    "cmd=/time set 6000",
+    "cmd=/weather clear",
+    "cmd=/tp @s ~ ~ ~ -90 5",
+    "cmd=/radiante showcase"
+  ],
+  "setup_ticks": 320,
+  "settle_ticks": 100,
+  "views": [
+    {
+      "name": "walkway",
+      "actions": [
+        "cmd=/tp @s ~ ~ ~ -90 5"
+      ]
+    },
+    {
+      "name": "room_09",
+      "actions": [
+        "cmd=/radiante showcase 9"
+      ]
+    }
+  ],
+  "variants": [
+    {
+      "name": "default"
+    },
+    {
+      "name": "bounces_3",
+      "actions": [
+        "pipe=attr:render_pipeline.module.ray_tracing.attribute.num_ray_bounces:3"
+      ],
+      "undo": [
+        "pipe=attr:render_pipeline.module.ray_tracing.attribute.num_ray_bounces:4"
+      ]
+    },
+    {
+      "name": "bounces_2",
+      "actions": [
+        "pipe=attr:render_pipeline.module.ray_tracing.attribute.num_ray_bounces:2"
+      ],
+      "undo": [
+        "pipe=attr:render_pipeline.module.ray_tracing.attribute.num_ray_bounces:4"
+      ]
+    },
+    {
+      "name": "one_bounce_plus_cache",
+      "actions": [
+        "pipe=attr:render_pipeline.module.ray_tracing.attribute.bedrock_one_bounce:render_pipeline.true"
+      ],
+      "undo": [
+        "pipe=attr:render_pipeline.module.ray_tracing.attribute.bedrock_one_bounce:render_pipeline.false"
+      ]
+    },
+    {
+      "name": "no_deep_bounce_cache",
+      "actions": [
+        "pipe=attr:render_pipeline.module.ray_tracing.attribute.cache_deep_bounces:render_pipeline.false"
+      ],
+      "undo": [
+        "pipe=attr:render_pipeline.module.ray_tracing.attribute.cache_deep_bounces:render_pipeline.true"
+      ]
+    },
+    {
+      "name": "hand_samples_1",
+      "actions": [
+        "pipe=attr:render_pipeline.module.ray_tracing.attribute.hand_samples:1"
+      ],
+      "undo": [
+        "pipe=attr:render_pipeline.module.ray_tracing.attribute.hand_samples:3"
+      ]
+    },
+    {
+      "name": "transparent_checkerboard",
+      "actions": [
+        "pipe=attr:render_pipeline.module.ray_tracing.attribute.transparent_checkerboard:render_pipeline.true"
+      ],
+      "undo": [
+        "pipe=attr:render_pipeline.module.ray_tracing.attribute.transparent_checkerboard:render_pipeline.false"
+      ]
+    },
+    {
+      "name": "fog_samples_8",
+      "actions": [
+        "pipe=attr:render_pipeline.module.ray_tracing.attribute.volumetric_light_samples:8"
+      ],
+      "undo": [
+        "pipe=attr:render_pipeline.module.ray_tracing.attribute.volumetric_light_samples:16"
+      ]
+    },
+    {
+      "name": "mirror_bounces_0",
+      "actions": [
+        "pipe=attr:render_pipeline.module.ray_tracing.attribute.mirror_extra_bounces:0"
+      ],
+      "undo": [
+        "pipe=attr:render_pipeline.module.ray_tracing.attribute.mirror_extra_bounces:8"
+      ]
+    },
+    {
+      "name": "default_again"
+    }
+  ]
+}
