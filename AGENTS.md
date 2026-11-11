@@ -38,6 +38,7 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 | `examples/shaderpacks/` | Example packs built on radiante-pt (`./gradlew shaderPackExamples`); the design is `docs/dev/shader-packs.md`, the author guide `docs/en/shader-packs.md`, the roadmap issue #55 |
 | `docs/en`, `docs/es` | Player documentation (same pages in both languages), one page per settings section in `settings/` (`opciones/`) |
 | `docs/dev` | Developer documentation, English only: building, testing, architecture, shader pack design |
+| `dev/smoke/` | The visual smoke test: `smoke.py` and its scenes, `scenes.json` |
 | `changelog.md` | What changed per version (open work is in GitHub Issues) |
 
 ## Building
@@ -81,6 +82,9 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
   the change is incomplete: fix the other side, do not loosen the test.
 - The native tests: `cmake --build <build dir> --config Release --target native_tests`, then
   `ctest --test-dir <build dir> -C Release --output-on-failure`.
+- `python dev/smoke/smoke.py` is the visual smoke test: a client walked through the showcase gallery, with
+  automatic checks and a report of pictures and frame times in `build/smoke/` (`docs/dev/testing.md`). Run it
+  before a release and after a port; add a scene to `dev/smoke/scenes.json` for a visual bug once it is fixed.
 - Never touch the user's worlds. Test only in worlds whose name starts with `Radiante` (for example
   `RadianteParityA`, `RadianteRealisticTerrain`); copies get a distinct level name; never delete a copy while a client
   is running.

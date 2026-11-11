@@ -47,6 +47,29 @@ RADIANTE_DEV_PRESCRIPT="100:testworld=RadianteSmoke" RADIANTE_DEV_SCRIPT="400:qu
 - Scripts stop by themselves in a world whose name does not start with `Radiante`.
 - The other actions (`hud=`, `fov=`, `slot=`, `debug=`, `rejoin=`...) are listed in `DevAutomation.run`.
 
+## Smoke test
+
+Before a release, and after a Minecraft version bump or a merge between version branches, run the visual smoke
+test:
+
+```sh
+python dev/smoke/smoke.py
+```
+
+It starts a development client, opens the test world `RadianteSmokeSuite`, builds the showcase gallery
+(`/radiante showcase`) and takes a picture of each of its rooms, by day and at night, then of each feature in
+`toggles` off and on. It fails when the renderer did not start, a shader did not compile, the renderer logged an
+error, a picture is black or one flat colour, or a feature's two pictures do not differ. The pictures, each
+view's frame rate and GPU times, and what to look at are in `build/smoke/<time>/report.html`: read it, the
+automatic checks only catch what is plainly broken. About five minutes; it needs the native renderer built, a GPU
+that can ray trace, and Python with Pillow and numpy. It backs up the development settings and puts them back.
+
+- `--loader neoforge` (or `forge`) runs another loader's client; `--only <text>` the scenes whose name has it.
+- `--golden <folder>` compares each picture with the one of the same name from an earlier run (keep one set per
+  GPU vendor: their denoisers and upscalers differ) and reports the difference without failing on it.
+- Scenes are data, in `dev/smoke/scenes.json`: the commands that set a view up and a line saying what to check.
+  Add a scene for a regression once it is fixed.
+
 ## Shaders under every setting
 
 The path tracer is compiled in game, with the player's settings as defines, so a shader that only breaks with one
