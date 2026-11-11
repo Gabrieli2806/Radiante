@@ -49,8 +49,9 @@ renderer, traces it on Minecraft's own Vulkan device. The path tracer itself is 
 
 ## 4. Build
 
-You need Java 25, the Vulkan SDK 1.4.341+, Visual Studio 2026 with C++ (Windows) or cmake, ninja and g++ 13+ (Linux),
-and the DLSS SDK libraries. Full setup: [Building](docs/dev/building.md).
+You need Java 25, the Vulkan SDK 1.4.341+, Visual Studio 2026 or its Build Tools with C++ (Windows) or cmake, ninja
+and g++ 13+ (Linux), Python 3 and the DLSS SDK libraries. `native/setup-windows.ps1` and `native/setup-linux.sh` say
+what a machine lacks. Full setup: [Building](docs/dev/building.md).
 
 ```sh
 native/build-windows.bat      # the renderer (Linux: native/build-linux.sh)

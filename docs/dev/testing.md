@@ -78,7 +78,8 @@ Settings tests write to the development `radiante/` files (`options.properties`,
 ## Unit tests
 
 - `./gradlew build` runs the Java tests in `common/src/test`: code that needs no running game, such as the Bedrock
-  pack reader, shader pack settings, and the check that `BedrockRtxValues` agrees with radiante-pt's defaults.
+  pack reader, shader pack settings, the check that `BedrockRtxValues` agrees with radiante-pt's defaults, and the
+  check that the three lang files hold the same keys and `%s` placeholders.
 - Small native tests and the offline shader pack checker are in `native/src/tools/`
   ([shader packs, §5](shader-packs.md#checking-a-pack-offline)).
 

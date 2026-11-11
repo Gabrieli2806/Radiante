@@ -26,7 +26,7 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 | `common/.../compat/VersionCompat.java` | Where Minecraft's API differs between the versions Radiante is built for: one small static method per differing call, with the same signatures on every version branch and each branch's own bodies. Not `client/compat/`, which is for other mods |
 | `common/src/main/resources/assets/radiante/lang/` | Texts: `en_us`, `es_es`, `zh_cn` |
 | `native/src/prism/` | Renderer: `gpu/`, `render/` (modules, framework, pipeline), `middleware/` (JNI, one file per Java class) |
-| `native/src/shader/world/ray_tracing/internal/radiante-pt/` | The path tracer: `configs.json` (attributes, textures, passes), `world/`, `pt/`, `common/`, and `hooks/`, the hook points shader packs replace |
+| `native/src/shader/world/ray_tracing/internal/radiante-pt/` | The path tracer: `configs.json` (attributes, textures, passes), `world/` (the ray generation shader's `main()` is one file a stage in `world/main/`), `pt/`, `common/`, and `hooks/`, the hook points shader packs replace |
 | `native/src/shader/include/radiante/v1/` | The public headers shader packs include (`#include <radiante/v1/surface.glsl>`; `uniforms.glsl`, the per-frame uniforms under names of their own), the same for every pack on this Radiante. Written from scratch, nothing copied, so packs on them can keep their own licence (`LICENSE-EXCEPTION.md`); within v1 functions are only added, never renamed, removed or changed |
 | `examples/shaderpacks/` | Example packs built on radiante-pt (`./gradlew shaderPackExamples`); the design is `docs/dev/shader-packs.md`, the author guide `docs/en/shader-packs.md`, the roadmap issue #55 |
 | `docs/en`, `docs/es` | Player documentation (same pages in both languages), one page per settings section in `settings/` (`opciones/`) |
@@ -39,6 +39,8 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
   Forge run in `run-neoforge/` and `run-forge/`. Worlds, resource and shader packs, settings and servers live once in
   `run-shared/` (linked or copied into each by `shareRun` in the root `build.gradle`); mods and configs stay per loader.
   Their screenshots land in the repo's `screenshots/`, ignored by git; only its subfolders (`art/`, `promo/`...) are tracked.
+- `native/setup-windows.ps1` (Linux: `native/setup-linux.sh`) says what the machine lacks for the build; with
+  `-Install` the Windows one fetches it.
 - Native: `native/build-windows.bat` (Linux: `native/build-linux.sh`). It installs `prismrt.dll` and the shader pack
   zip into `common/src/main/resources/radiante-native/`, which is gitignored.
 - **Any change under `native/src/shader` or `native/src/prism` needs the native build**, and so does every branch

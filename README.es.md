@@ -20,7 +20,7 @@ NeoForge y Forge), 26.2 (Fabric, NeoForge y Forge) y las snapshots de 26.4 (Fabr
 
 ## Características
 
-- **Path tracing** de todo el mundo: luz del sol, sombras, luz rebotada, reflejos y luces de bloque (ReSTIR), en
+- **Path tracing** de todo el mundo: luz del sol, sombras, luz rebotada, reflejos y luces de bloque, en
   Windows y Linux.
 - **El aspecto de Bedrock RTX** por defecto, y lectura directa de resource packs `.mcpack` de Bedrock RTX. También
   packs LabPBR.
