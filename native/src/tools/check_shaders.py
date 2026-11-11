@@ -2,6 +2,7 @@
 """Compiles Radiante PT under every setting that changes its shaders, without the game.
 
     python native/src/tools/check_shaders.py [--glslang <glslangValidator>] [--jobs <n>] [--only <text>]
+                                             [--out <folder>]
 
 The path tracer is compiled in game, with the player's settings as defines, so a shader that only breaks with one
 setting off the default is not caught by building the mod. This stages the pack as the native build does (the pack,
@@ -14,7 +15,9 @@ runs it, and so should anyone who changes a shader:
 
     python native/src/tools/check_shaders.py
 
---only keeps the builds whose name contains the text (--only restir).
+--only keeps the builds whose name contains the text (--only restir). --out keeps the SPIR-V of every build, one
+folder a build: after a change that should not alter what the shaders do (moving code between files), two such folders
+must hold the same bytes.
 """
 
 import argparse
@@ -68,6 +71,7 @@ def main():
     parser.add_argument("--glslang", default=shutil.which("glslangValidator") or "glslangValidator")
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 4)
     parser.add_argument("--only")
+    parser.add_argument("--out")
     args = parser.parse_args()
     if not shutil.which(args.glslang) and not Path(args.glslang).exists():
         sys.exit("glslangValidator was not found: install the Vulkan SDK, or pass --glslang <path>")
@@ -82,8 +86,9 @@ def main():
             # A copy of its own: compile_pack.py writes its temporary sources next to the shaders.
             folder = Path(temp) / f"pack{todo.index(build)}"
             stage(folder)
+            keep = ["--out", str(Path(args.out) / build[0].replace(" ", "_").replace("=", "-"))] if args.out else []
             result = subprocess.run([sys.executable, str(TOOLS / "compile_pack.py"), str(folder), "--quiet",
-                                     "--glslang", args.glslang, *build[1]], capture_output=True, text=True)
+                                     "--glslang", args.glslang, *build[1], *keep], capture_output=True, text=True)
             shutil.rmtree(folder, ignore_errors=True)
             return build[0], result.returncode, (result.stdout + result.stderr).strip()
 
