@@ -1,5 +1,6 @@
 #include "prism/render/modules/world/shader_pack/shader_pack_internal.hpp"
 
+#include "prism/gpu/shader_source.hpp"
 #include "prism/render/pipeline.hpp"
 #include "prism/render/renderer.hpp"
 #include "prism/util/logging.hpp"
@@ -30,69 +31,12 @@ fs::path shaderCacheFolder() {
 
 // ---- which attribute defines a shader names
 
-bool isSpace(char ch) {
-    return std::isspace(static_cast<unsigned char>(ch)) != 0;
-}
-
-bool isIdentifierStart(char ch) {
-    return std::isalpha(static_cast<unsigned char>(ch)) != 0 || ch == '_';
-}
-
-bool isIdentifierChar(char ch) {
-    return std::isalnum(static_cast<unsigned char>(ch)) != 0 || ch == '_';
-}
-
-// `line` without its comments, into `code`. A block comment may have begun on an earlier line and run on past this one.
-void stripComments(std::string_view line, bool &inBlockComment, std::string &code) {
-    code.clear();
-    for (size_t i = 0; i < line.size();) {
-        const bool twoLeft = i + 1 < line.size();
-        if (inBlockComment) {
-            if (twoLeft && line[i] == '*' && line[i + 1] == '/') {
-                inBlockComment = false;
-                i += 2;
-            } else {
-                i++;
-            }
-            continue;
-        }
-        if (twoLeft && line[i] == '/' && line[i + 1] == '*') {
-            inBlockComment = true;
-            i += 2;
-            continue;
-        }
-        if (twoLeft && line[i] == '/' && line[i + 1] == '/') break;
-        code.push_back(line[i++]);
-    }
-}
-
-// The file an #include line names, and whether in angle brackets (radiante/v1/...), which the compiler looks for only
-// in the include folders.
-struct IncludeLine {
-    std::string_view name;
-    bool angled = false;
-};
-
-std::optional<IncludeLine> includeLine(std::string_view line) {
-    size_t i = 0;
-    const auto skipSpaces = [&] {
-        while (i < line.size() && isSpace(line[i])) i++;
-    };
-    skipSpaces();
-    if (i >= line.size() || line[i] != '#') return std::nullopt;
-    i++;
-    skipSpaces();
-    const size_t directive = i;
-    while (i < line.size() && isIdentifierChar(line[i])) i++;
-    if (line.substr(directive, i - directive) != "include") return std::nullopt;
-    skipSpaces();
-    if (i >= line.size() || (line[i] != '"' && line[i] != '<')) return std::nullopt;
-    const bool angled = line[i] == '<';
-    const size_t start = i + 1;
-    const size_t end = line.find(angled ? '>' : '"', start);
-    if (end == std::string_view::npos) return std::nullopt;
-    return IncludeLine{line.substr(start, end - start), angled};
-}
+// Reading the lines is shared with the shader cache's dependency hash (gpu/shader_source.hpp).
+using gpu::shader_source::IncludeLine;
+using gpu::shader_source::includeLine;
+using gpu::shader_source::isIdentifierChar;
+using gpu::shader_source::isIdentifierStart;
+using gpu::shader_source::stripComments;
 
 // An included file next to the file including it when its name is in quotes, else in the first include folder that
 // has it.
