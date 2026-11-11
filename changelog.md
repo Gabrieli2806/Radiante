@@ -8,6 +8,8 @@ All notable changes to this project are documented in this file.
 
 - `/radiante showcase` and `/radiante biome` need a world with commands (cheats) allowed: they build with `fill` and move the player, which a survival world without commands should not allow.
 
+- `/radiante showcase` and `/radiante biome` work again: since `/radiante pack` and `/radiante debug` were added they answered "Incorrect argument".
+
 - A stored pipeline that cannot be applied no longer stops the game from starting: the default pipeline is used.
 
 - For contributors: native method signatures, the vertex layout and the modules' image counts are checked when building; the example shader packs are compiled and the native tests run in the CI; a test looks up every mixin's targets in the Minecraft the build compiles against. `native/extern` holds only what the build reads (about 4200 files fewer).
