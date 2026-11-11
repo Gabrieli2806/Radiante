@@ -38,6 +38,7 @@ renderer, traces it on Minecraft's own Vulkan device. The path tracer itself is 
 |---|---|
 | `common/` | Everything that is plain Minecraft: mixins, settings, screens, collection of the world. No loader code. |
 | `fabric/`, `neoforge/`, `forge/` | Each loader's small entrypoint and its `RadiantePlatform` implementation |
+| `common/.../compat/VersionCompat.java` | Where Minecraft's API differs between versions: the same methods on every version branch, each with its own bodies |
 | `common/src/main/resources/assets/radiante/lang/` | Player-facing texts |
 | `native/src/prism/` | The renderer ([architecture](docs/dev/architecture.md)) |
 | `native/src/shader/world/ray_tracing/internal/radiante-pt/` | The path tracer, and the hooks shader packs replace |
@@ -84,6 +85,10 @@ Scripted runs, test worlds, settings files and unit tests: [Testing](docs/dev/te
 
 - **Keep `common/` free of loader code.** Behaviour that differs per loader goes behind `RadiantePlatform`.
 - **Comments explain why,** in full sentences, in the style of the code around them.
+- **API differences between Minecraft versions go in `VersionCompat`,** not inline: a small static method named
+  for what it does, with the same signature on every version branch (`mc/26.2`, `mc/26.3`, `mc/26.4`) and that
+  version's body. The class that calls it stays the same file on every branch, so changes merge across without
+  conflicts. Mixins and accessors are a version's own and stay as they are.
 - **Fix compatibility generally.** If a mod breaks because Radiante skips something vanilla does, restore that
   behaviour for every mod instead of special-casing one. A mod-specific patch is the last resort, and optional
   (reflection, no hard dependency).

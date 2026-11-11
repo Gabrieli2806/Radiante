@@ -40,6 +40,7 @@ incluido en PrismRT, **radiante-pt**.
 |---|---|
 | `common/` | Todo lo que es Minecraft puro: mixins, ajustes, pantallas, recogida del mundo. Sin código de loader. |
 | `fabric/`, `neoforge/`, `forge/` | El pequeño punto de entrada de cada loader y su implementación de `RadiantePlatform` |
+| `common/.../compat/VersionCompat.java` | Donde la API de Minecraft cambia entre versiones: los mismos métodos en la rama de cada versión, cada una con sus propios cuerpos |
 | `common/src/main/resources/assets/radiante/lang/` | Los textos que ve el jugador |
 | `native/src/prism/` | El renderizador ([arquitectura](docs/dev/architecture.md)) |
 | `native/src/shader/world/ray_tracing/internal/radiante-pt/` | El trazador, y los hooks que reemplazan los paquetes de shaders |
@@ -86,6 +87,11 @@ Ejecuciones con scripts, mundos de prueba, archivos de ajustes y tests: [Testing
 
 - **Nada de código de loader en `common/`.** Lo que cambie según el loader va detrás de `RadiantePlatform`.
 - **Los comentarios explican el porqué,** con frases completas, al estilo del código de alrededor.
+- **Las diferencias de API entre versiones de Minecraft van en `VersionCompat`,** no en línea: un método estático
+  pequeño con el nombre de lo que hace, con la misma firma en la rama de cada versión (`mc/26.2`, `mc/26.3`,
+  `mc/26.4`) y el cuerpo de esa versión. La clase que lo llama es el mismo archivo en todas las ramas, así que los
+  cambios se fusionan entre ellas sin conflictos. Los mixins y accessors son propios de cada versión y se quedan
+  como están.
 - **Arregla la compatibilidad en general.** Si un mod se rompe porque Radiante se salta algo que hace vanilla,
   restaura ese comportamiento para todos los mods en vez de tratar uno aparte. Un parche para un mod concreto es el
   último recurso, y opcional (reflexión, sin dependencia obligatoria).

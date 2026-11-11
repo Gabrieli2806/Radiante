@@ -23,6 +23,7 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 | `common/.../client/gui/` | Settings screen (`RadianteOptionsScreen`, on top of `SettingsChoices`, what is chosen until Apply and applying it, and `SettingsRows`, each section's rows; `SettingsLayout`, `AdvancedOptions`, `Tunable`), Shader Packs screen and a pack's settings page (`ShaderPacksScreen`, `PackSettingsPage`), toasts, background rebuild, start-up warm-up |
 | `common/.../client/render/` | Chunk and entity collection, point lights (`BedrockPointLights`), emission (`EmissionTiles`), held light, biome ambiance |
 | `common/.../client/option/Options.java` | Plain options saved in `radiante/options.properties` |
+| `common/.../compat/VersionCompat.java` | Where Minecraft's API differs between the versions Radiante is built for: one small static method per differing call, with the same signatures on every version branch and each branch's own bodies. Not `client/compat/`, which is for other mods |
 | `common/src/main/resources/assets/radiante/lang/` | Texts: `en_us`, `es_es`, `zh_cn` |
 | `native/src/prism/` | Renderer: `gpu/`, `render/` (modules, framework, pipeline), `middleware/` (JNI, one file per Java class) |
 | `native/src/shader/world/ray_tracing/internal/radiante-pt/` | The path tracer: `configs.json` (attributes, textures, passes), `world/`, `pt/`, `common/`, and `hooks/`, the hook points shader packs replace |
@@ -73,6 +74,12 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 - Commit messages: a short lowercase subject `area: what changed`, a body saying why when it is not obvious.
   **No `Co-Authored-By` or any other AI attribution lines.**
 - Comments explain why, in full sentences, in the style of the surrounding code.
+- An API difference between Minecraft versions goes in `VersionCompat`, not inline: a static method named for what
+  it does, with a line saying what differs, added to every version branch (`mc/26.2`, `mc/26.3`, `mc/26.4`) with
+  the same signature and that version's body. The class that calls it then stays the same file on every branch and
+  merges without a conflict. Mixins and accessors are a version's own and stay as they are. A method called per
+  vertex, entity or frame allocates nothing and uses no boxing, lambda or reflection; what cannot be written that
+  way stays inline.
 - Every player-facing text goes in all three lang files with the same keys, the same `%s` placeholders and the same
   `\n` line breaks. Tooltips stay short: what it does, and what raising or lowering it does.
 - A new setting usually needs: the attribute in `configs.json` (`"runtime": true` when it can change without a
@@ -100,7 +107,7 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 - Every Minecraft version has its own branch, named after it: `mc/26.2`, `mc/26.3` (the default branch for now) and
   `mc/26.4`. When 26.4 is stable, `mc/26.4` becomes the default branch. Work on `mc/26.3` first, then port: merge it into
   the other version branches,
-  adapt the API differences, check the mixins against that version's jar (wrong mixin targets do not fail the
-  compile), rebuild native, build.
+  adapt the API differences (in that branch's `VersionCompat`, the one file expected to conflict), check the mixins
+  against that version's jar (wrong mixin targets do not fail the compile), rebuild native, build.
 - **Changing `mod_version` in `gradle.properties` and pushing publishes a release** to GitHub, Modrinth and
   CurseForge through CI (tag `v<mod_version>+<minecraft_version>`). Only do that when asked.
