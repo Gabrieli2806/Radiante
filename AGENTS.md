@@ -74,7 +74,7 @@ in `native/src/shader/world/ray_tracing/internal/radiante-pt/`.
 - Every player-facing text goes in all three lang files with the same keys, the same `%s` placeholders and the same
   `\n` line breaks. Tooltips stay short: what it does, and what raising or lowering it does.
 - A new setting usually needs: the attribute in `configs.json` (`"runtime": true` when it can change without a
-  rebuild), a `Tunable` or a row in `RadianteOptionsScreen`, `OptionImpact`, the three lang files, the settings page in
+  rebuild), a `Tunable` or a row in `SettingsRows`, `OptionImpact`, the three lang files, the settings page in
   `docs/en` and `docs/es`, and a `changelog.md` line.
 - radiante-pt's defaults are the Bedrock RTX look: a change to one of them goes in `configs.json` (or
   `tone_mapping.yaml`) and in `BedrockRtxValues`. Other looks are shader packs, not settings.
