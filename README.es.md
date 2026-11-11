@@ -7,7 +7,7 @@ NeoForge y Forge), 26.2 (Fabric, NeoForge y Forge) y las snapshots de 26.4 (Fabr
 [Discord](https://discord.gg/DhBbAzugZ9) · [Documentación](docs/es/README.md) ·
 [Issues](https://github.com/Gabrieli2806/Radiante/issues) · Idiomas: [EN](README.md) · **ES**
 
-![Radiante con DLSS Quality: bosque y río con sol](docs/images/scenes/hero.webp)
+![Radiante con DLSS Quality: un estanque en un bosque de flores al sol de la mañana](docs/images/scenes/hero.webp)
 
 | Trazado de rayos apagado (vanilla) | Trazado de rayos encendido (DLSS Quality) |
 |---|---|
@@ -15,8 +15,8 @@ NeoForge y Forge), 26.2 (Fabric, NeoForge y Forge) y las snapshots de 26.4 (Fabr
 
 | | |
 |---|---|
-| ![Una costa al mediodía con reflejos de agua con ray tracing](docs/images/scenes/coast-noon.webp) | ![Dosel de selva visto desde arriba](docs/images/scenes/jungle-canopy.webp) |
-| ![Una ciudad de neón de noche iluminada por luces de bloque](docs/images/scenes/neon-city-night.webp) | ![Partículas de humo de fogata](docs/images/scenes/campfire-smoke.webp) |
+| ![Un estanque de agua clara con caña de azúcar](docs/images/scenes/pond.webp) | ![Un bosque de flores al sol](docs/images/scenes/flower-forest.webp) |
+| ![Una puerta de cristal tintado y cobre](docs/images/scenes/garden-gate.webp) | ![Un farol en un muelle de noche](docs/images/scenes/night-lantern.webp) |
 
 ## Características
 

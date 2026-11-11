@@ -2,7 +2,7 @@
 
 Languages: **EN** · [ES](../es/README.md)
 
-![Radiante with DLSS Quality: forest and river in sunlight](../images/scenes/hero.webp)
+![Radiante with DLSS Quality: a pond in a flower forest in the morning sun](../images/scenes/hero.webp)
 
 Radiante is a path tracing mod for Minecraft Java. These pages describe the 26.3 version; the 26.2 and 26.4 builds
 work the same.
