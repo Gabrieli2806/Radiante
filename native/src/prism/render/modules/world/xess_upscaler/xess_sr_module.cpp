@@ -93,46 +93,6 @@ constexpr VkImageUsageFlags kOutputUsage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE
                                            VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 constexpr VkImageUsageFlags kInternalUsage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
-// Takes the size of the first image another module already made, if there is one.
-void adoptSize(const std::vector<std::shared_ptr<gpu::DeviceLocalImage>> &images, uint32_t &width, uint32_t &height) {
-    for (const auto &image : images) {
-        if (image == nullptr) continue;
-        width = image->width();
-        height = image->height();
-        return;
-    }
-}
-
-// Makes the images the pipeline left to this module at width x height and keeps every image in `slots`. False for an
-// image another module made at a different size.
-template <size_t N>
-bool takeImages(std::vector<std::shared_ptr<gpu::DeviceLocalImage>> &images,
-                const std::vector<VkFormat> &formats,
-                uint32_t width,
-                uint32_t height,
-                VkImageUsageFlags usage,
-                Framework &framework,
-                std::array<std::shared_ptr<gpu::DeviceLocalImage>, N> &slots) {
-    return upscaler::adoptOrCreateImages(framework, images, formats, width, height, usage,
-                                         std::span<std::shared_ptr<gpu::DeviceLocalImage>>(slots));
-}
-
-// One helper pass over width x height texels, in 16 x 16 groups.
-template <typename PushConstants>
-void recordPass(gpu::CommandBuffer &commandBuffer,
-                const std::shared_ptr<gpu::DescriptorTable> &descriptors,
-                const std::shared_ptr<gpu::ComputePipeline> &pipeline,
-                const PushConstants &pushConstants,
-                uint32_t width,
-                uint32_t height) {
-    static_assert(sizeof(PushConstants) == kPushConstantSize);
-    commandBuffer.bindDescriptorTable(descriptors, VK_PIPELINE_BIND_POINT_COMPUTE);
-    commandBuffer.bindComputePipeline(pipeline);
-    vkCmdPushConstants(commandBuffer.vkCommandBuffer(), descriptors->vkPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT, 0,
-                       sizeof(PushConstants), &pushConstants);
-    vkCmdDispatch(commandBuffer.vkCommandBuffer(), (width + 15) / 16, (height + 15) / 16, 1);
-}
-
 prism::XeSSImage xessImage(gpu::DeviceLocalImage &image) {
     prism::XeSSImage described;
     described.image = image.vkImage();
@@ -196,18 +156,9 @@ bool XessSrModule::setOrCreateInputImages(std::vector<std::shared_ptr<gpu::Devic
     auto framework = framework_.lock();
     if (framework == nullptr) return false;
 
-    if (displayWidth_ == 0 || displayHeight_ == 0) {
-        const VkExtent2D extent = framework->swapchain()->vkExtent();
-        displayWidth_ = extent.width;
-        displayHeight_ = extent.height;
-    }
-    // An input another module already made fixes the render size; otherwise the settings choose it.
-    if (renderWidth_ == 0 || renderHeight_ == 0) {
-        adoptSize(images, renderWidth_, renderHeight_);
-        if (renderWidth_ == 0 || renderHeight_ == 0) updateRenderResolution();
-    }
-    return takeImages(images, formats, renderWidth_, renderHeight_, kInputUsage, *framework,
-                      frames_[frameIndex].inputs);
+    return upscaler::takeInputImages(*framework, images, formats, renderWidth_, renderHeight_, displayWidth_,
+                                     displayHeight_, kInputUsage, frames_[frameIndex].inputs,
+                                     [this] { updateRenderResolution(); });
 }
 
 bool XessSrModule::setOrCreateOutputImages(std::vector<std::shared_ptr<gpu::DeviceLocalImage>> &images,
@@ -219,17 +170,8 @@ bool XessSrModule::setOrCreateOutputImages(std::vector<std::shared_ptr<gpu::Devi
     auto framework = framework_.lock();
     if (framework == nullptr) return false;
 
-    // An output a later module already made fixes the display size; otherwise it is the swapchain's.
-    if (displayWidth_ == 0 || displayHeight_ == 0) {
-        adoptSize(images, displayWidth_, displayHeight_);
-        if (displayWidth_ == 0 || displayHeight_ == 0) {
-            const VkExtent2D extent = framework->swapchain()->vkExtent();
-            displayWidth_ = extent.width;
-            displayHeight_ = extent.height;
-        }
-    }
-    return takeImages(images, formats, displayWidth_, displayHeight_, kOutputUsage, *framework,
-                      frames_[frameIndex].outputs);
+    return upscaler::takeOutputImages(*framework, images, formats, displayWidth_, displayHeight_, kOutputUsage,
+                                      frames_[frameIndex].outputs);
 }
 
 void XessSrModule::setAttributes(int attributeCount, std::vector<std::string> &attributeKVs) {
@@ -448,7 +390,7 @@ bool XessSrModule::upscaleWithXeSS(Frame &frame, gpu::CommandBuffer &commandBuff
     });
     const DepthConversionPushConstants conversion{
         kNearPlane, kFarPlane, renderWidth_, renderHeight_, world.cameraJitter.x, world.cameraJitter.y};
-    recordPass(commandBuffer, frame.descriptors, depthConversionPipeline_, conversion, renderWidth_, renderHeight_);
+    upscaler::recordPass(commandBuffer, frame.descriptors, depthConversionPipeline_, conversion, renderWidth_, renderHeight_);
 
     commandBuffer.sync({
         {frame.inputs[Input::Color], gpu::ImageUsage::Sampled, kCompute},
@@ -479,14 +421,7 @@ void XessSrModule::blitColor(Frame &frame, gpu::CommandBuffer &commandBuffer) {
     auto &color = frame.inputs[Input::Color];
     auto &output = frame.outputs[Output::Upscaled];
     commandBuffer.sync({{color, gpu::ImageUsage::TransferSrc}, {output, gpu::ImageUsage::TransferDst}});
-
-    VkImageBlit region{};
-    region.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    region.srcOffsets[1] = {static_cast<int32_t>(color->width()), static_cast<int32_t>(color->height()), 1};
-    region.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    region.dstOffsets[1] = {static_cast<int32_t>(output->width()), static_cast<int32_t>(output->height()), 1};
-    vkCmdBlitImage(commandBuffer.vkCommandBuffer(), color->vkImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                   output->vkImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, VK_FILTER_LINEAR);
+    upscaler::blitScaled(commandBuffer, *color, *output);
 }
 
 void XessSrModule::upscaleGuides(Frame &frame, gpu::CommandBuffer &commandBuffer, bool blitted) {
@@ -502,18 +437,9 @@ void XessSrModule::upscaleGuides(Frame &frame, gpu::CommandBuffer &commandBuffer
         {frame.outputs[Output::UpscaledNormalRoughness], gpu::ImageUsage::StorageWrite, kCompute},
     });
 
-    const MotionUpscalePushConstants scale{
-        static_cast<float>(displayWidth_) / static_cast<float>(std::max(1u, renderWidth_)),
-        static_cast<float>(displayHeight_) / static_cast<float>(std::max(1u, renderHeight_)),
-        renderWidth_,
-        renderHeight_,
-        displayWidth_,
-        displayHeight_,
-    };
-    for (const auto *pipeline :
-         {&firstHitDepthUpscalePipeline_, &motionUpscalePipeline_, &normalRoughnessUpscalePipeline_}) {
-        recordPass(commandBuffer, frame.descriptors, *pipeline, scale, displayWidth_, displayHeight_);
-    }
+    upscaler::recordGuideUpscales(commandBuffer, frame.descriptors, firstHitDepthUpscalePipeline_,
+                                  motionUpscalePipeline_, normalRoughnessUpscalePipeline_, renderWidth_, renderHeight_,
+                                  displayWidth_, displayHeight_);
 }
 
 // XeSS drops its history on its first frame and whenever the camera jumped since the last frame it ran: moved more

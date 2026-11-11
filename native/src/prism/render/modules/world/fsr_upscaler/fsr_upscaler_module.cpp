@@ -66,10 +66,6 @@ static_assert(sizeof(DepthConversionPushConstants) == kPushConstantSize);
 static_assert(sizeof(MotionUpscalePushConstants) == kPushConstantSize);
 
 // Work groups for a size in pixels (the passes run 16 x 16 invocations each).
-uint32_t groupCount(uint32_t pixels) {
-    return (pixels + 15) / 16;
-}
-
 float upscaleRatio(FSRUpscalerModule::QualityMode mode) {
     switch (mode) {
         case FSRUpscalerModule::QualityMode::NativeAA: return 1.0f;
@@ -84,12 +80,6 @@ float upscaleRatio(FSRUpscalerModule::QualityMode mode) {
 bool isHdrFormat(VkFormat format) {
     return format == VK_FORMAT_R16G16B16A16_SFLOAT || format == VK_FORMAT_R32G32B32A32_SFLOAT ||
            format == VK_FORMAT_B10G11R11_UFLOAT_PACK32;
-}
-
-const std::shared_ptr<gpu::DeviceLocalImage> *firstMade(
-    const std::vector<std::shared_ptr<gpu::DeviceLocalImage>> &images) {
-    auto made = std::ranges::find_if(images, [](const auto &image) { return image != nullptr; });
-    return made == images.end() ? nullptr : &*made;
 }
 
 std::shared_ptr<gpu::ComputePipeline> buildPipeline(const std::shared_ptr<gpu::Device> &device,
@@ -141,24 +131,10 @@ bool FSRUpscalerModule::setOrCreateInputImages(std::vector<std::shared_ptr<gpu::
     auto framework = framework_.lock();
     if (!framework) return false;
 
-    if (displayWidth_ == 0 || displayHeight_ == 0) {
-        VkExtent2D extent = framework->swapchain()->vkExtent();
-        displayWidth_ = extent.width;
-        displayHeight_ = extent.height;
-    }
-    if (renderWidth_ == 0 || renderHeight_ == 0) {
-        // An input another module already made fixes the render size; otherwise the settings choose it.
-        if (auto made = firstMade(images)) {
-            renderWidth_ = (*made)->width();
-            renderHeight_ = (*made)->height();
-        }
-        if (renderWidth_ == 0 || renderHeight_ == 0) resolveRenderResolution();
-    }
-
-    return upscaler::adoptOrCreateImages(
-        *framework, images, formats, renderWidth_, renderHeight_,
+    return upscaler::takeInputImages(
+        *framework, images, formats, renderWidth_, renderHeight_, displayWidth_, displayHeight_,
         VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-        frames_.at(frameIndex).inputs);
+        frames_.at(frameIndex).inputs, [this] { resolveRenderResolution(); });
 }
 
 bool FSRUpscalerModule::setOrCreateOutputImages(std::vector<std::shared_ptr<gpu::DeviceLocalImage>> &images,
@@ -168,23 +144,10 @@ bool FSRUpscalerModule::setOrCreateOutputImages(std::vector<std::shared_ptr<gpu:
     auto framework = framework_.lock();
     if (!framework) return false;
 
-    if (displayWidth_ == 0 || displayHeight_ == 0) {
-        // An output a later module already made fixes the display size; otherwise it is the target's.
-        if (auto made = firstMade(images)) {
-            displayWidth_ = (*made)->width();
-            displayHeight_ = (*made)->height();
-        }
-        if (displayWidth_ == 0 || displayHeight_ == 0) {
-            VkExtent2D extent = framework->swapchain()->vkExtent();
-            displayWidth_ = extent.width;
-            displayHeight_ = extent.height;
-        }
-    }
-
-    return upscaler::adoptOrCreateImages(*framework, images, formats, displayWidth_, displayHeight_,
-                         VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-                             VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-                         frames_.at(frameIndex).outputs);
+    return upscaler::takeOutputImages(*framework, images, formats, displayWidth_, displayHeight_,
+                                      VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+                                          VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                                      frames_.at(frameIndex).outputs);
 }
 
 void FSRUpscalerModule::build() {
@@ -388,14 +351,7 @@ void FSRUpscalerModuleContext::recordBlit(gpu::CommandBuffer &commandBuffer) {
         {color, gpu::ImageUsage::TransferSrc},
         {output, gpu::ImageUsage::TransferDst, 0, true},
     });
-
-    VkImageBlit region{};
-    region.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    region.srcOffsets[1] = {static_cast<int32_t>(color->width()), static_cast<int32_t>(color->height()), 1};
-    region.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
-    region.dstOffsets[1] = {static_cast<int32_t>(output->width()), static_cast<int32_t>(output->height()), 1};
-    vkCmdBlitImage(commandBuffer.vkCommandBuffer(), color->vkImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                   output->vkImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, VK_FILTER_LINEAR);
+    upscaler::blitScaled(commandBuffer, *color, *output);
 
     // Handed on in GENERAL, as FSR leaves it.
     commandBuffer.sync({{output, gpu::ImageUsage::General}});
@@ -421,12 +377,8 @@ void FSRUpscalerModuleContext::recordDepthConversion(FSRUpscalerModule &module,
     const DepthConversionPushConstants constants{
         kCameraNear, kCameraFar, module.renderWidth_, module.renderHeight_, jitter.x, jitter.y,
     };
-    commandBuffer.bindDescriptorTable(frame_.descriptorTable, VK_PIPELINE_BIND_POINT_COMPUTE);
-    commandBuffer.bindComputePipeline(module.depthConversionPipeline_);
-    vkCmdPushConstants(commandBuffer.vkCommandBuffer(), frame_.descriptorTable->vkPipelineLayout(),
-                       VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(constants), &constants);
-    vkCmdDispatch(commandBuffer.vkCommandBuffer(), groupCount(module.renderWidth_), groupCount(module.renderHeight_),
-                  1);
+    upscaler::recordPass(commandBuffer, frame_.descriptorTable, module.depthConversionPipeline_, constants,
+                         module.renderWidth_, module.renderHeight_);
 }
 
 void FSRUpscalerModuleContext::recordFsr(FSRUpscalerModule &module,
@@ -488,23 +440,10 @@ void FSRUpscalerModuleContext::recordAuxiliaryUpscales(FSRUpscalerModule &module
         {frame_.outputs[kUpscaledNormalRoughness], gpu::ImageUsage::StorageWrite, 0, true},
     });
 
-    const MotionUpscalePushConstants constants{
-        static_cast<float>(module.displayWidth_) / static_cast<float>(std::max(1u, module.renderWidth_)),
-        static_cast<float>(module.displayHeight_) / static_cast<float>(std::max(1u, module.renderHeight_)),
-        module.renderWidth_,
-        module.renderHeight_,
-        module.displayWidth_,
-        module.displayHeight_,
-    };
-    commandBuffer.bindDescriptorTable(frame_.descriptorTable, VK_PIPELINE_BIND_POINT_COMPUTE);
-    for (const auto *pipeline : {&module.firstHitDepthUpscalePipeline_, &module.motionUpscalePipeline_,
-                                 &module.normalRoughnessUpscalePipeline_}) {
-        commandBuffer.bindComputePipeline(*pipeline);
-        vkCmdPushConstants(commandBuffer.vkCommandBuffer(), frame_.descriptorTable->vkPipelineLayout(),
-                           VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(constants), &constants);
-        vkCmdDispatch(commandBuffer.vkCommandBuffer(), groupCount(module.displayWidth_),
-                      groupCount(module.displayHeight_), 1);
-    }
+    upscaler::recordGuideUpscales(commandBuffer, frame_.descriptorTable, module.firstHitDepthUpscalePipeline_,
+                                  module.motionUpscalePipeline_, module.normalRoughnessUpscalePipeline_,
+                                  module.renderWidth_, module.renderHeight_, module.displayWidth_,
+                                  module.displayHeight_);
 }
 
 float FSRUpscalerModuleContext::smoothedFrameTime() {
