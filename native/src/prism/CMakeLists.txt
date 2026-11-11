@@ -1,4 +1,9 @@
 file(GLOB_RECURSE SOURCE_FILES CONFIGURE_DEPENDS "*.cpp")
+# A build without NRD (-DPRISM_ENABLE_NRD=OFF) leaves its module out: the pipelines that denoise with it are then
+# not offered, as with any module a build lacks.
+if(NOT PRISM_ENABLE_NRD)
+    list(FILTER SOURCE_FILES EXCLUDE REGEX "/render/modules/world/nrd/")
+endif()
 
 add_library(prismrt SHARED ${SOURCE_FILES})
 if(NOT WIN32)
@@ -29,7 +34,9 @@ if(NOT SHADERC_INCLUDE_DIR OR NOT SHADERC_LIBRARY)
     message(FATAL_ERROR "shaderc was not found. Set VULKAN_SDK or install shaderc.")
 endif()
 
-target_include_directories(prismrt PUBLIC ${GENTOOL_OUTPUT_DIR} ${VOLK_INCLUDE_DIR} ${VMA_INCLUDE_DIR} ${STB_INCLUDE_DIR} ${TINYEXPR_INCLUDE_DIR} ${JNI_INCLUDE_DIRS} ${GLM_INCLUDE_DIR} ${SHADERC_INCLUDE_DIR})
+# native/include holds the JNI headers javac generates (common/build.gradle); the middleware includes them.
+target_include_directories(prismrt PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(prismrt PUBLIC ${VOLK_INCLUDE_DIR} ${VMA_INCLUDE_DIR} ${STB_INCLUDE_DIR} ${TINYEXPR_INCLUDE_DIR} ${JNI_INCLUDE_DIRS} ${GLM_INCLUDE_DIR} ${SHADERC_INCLUDE_DIR})
 target_link_libraries(prismrt PUBLIC ${SHADERC_LIBRARY})
 target_compile_definitions(prismrt PUBLIC VK_NO_PROTOTYPES PRISMRT_LIB)
 if(USE_AMD)

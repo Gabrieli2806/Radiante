@@ -1,4 +1,7 @@
 #include "prism/middleware/jni_support.hpp"
+// The header javac writes for the Java class: a native method whose signature here differs from the Java one
+// then fails to compile instead of failing in the game.
+#include "com_g2806_radiante_client_option_Options.h"
 #include "prism/render/chunks.hpp"
 #include "prism/render/renderer.hpp"
 #include "prism/render/textures.hpp"
