@@ -140,6 +140,7 @@ Rellena la plantilla: qué cambió y por qué, cómo lo probaste y qué no compr
 
 - [ ] Basado en `mc/26.3`
 - [ ] Compilación nativa hecha si cambió algo en `native/`; `./gradlew build` pasa
+- [ ] `python native/src/tools/check_shaders.py` pasa, si cambió algún shader
 - [ ] Probado en el juego en un mundo `Radiante*`; capturas de antes y después si es un cambio visual
 - [ ] Textos en los tres archivos de idioma; documentación y `changelog.md` actualizados si el jugador lo notará
 - [ ] Sin cambios ajenos, y sin las cabeceras regeneradas de `native/include/`
