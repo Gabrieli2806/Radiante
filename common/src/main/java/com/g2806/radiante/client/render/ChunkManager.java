@@ -210,9 +210,10 @@ public final class ChunkManager {
     private static final ReentrantReadWriteLock GRID_LOCK = new ReentrantReadWriteLock();
     private static volatile int generation;
 
-    private static int gridSizeXZ;
-    private static int gridSizeY;
-    private static int minSectionY;
+    // Written when the grid is replaced (render thread, under the write lock) and read by the section builders.
+    private static volatile int gridSizeXZ;
+    private static volatile int gridSizeY;
+    private static volatile int minSectionY;
     private static final LongOpenHashSet compiledSections = new LongOpenHashSet();
     /** Columns whose sections changed since {@link #updateLodCoverage} last looked; guarded by compiledSections. */
     private static final LongOpenHashSet dirtyColumns = new LongOpenHashSet();
