@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Water Waves is grey unless the Water Surface (Advanced) is Realistic, the only one with waves of its own: with Bedrock's surface, the default, the slider did nothing.
+
 - The eye adapts over the same time at any frame rate. With Bedrock RTX's light meter (the default) the exposure moved a share of the way each frame, so at 30 frames a second a room took four times longer to come up than at 120.
 
 - The pictures of the documentation and the README are retaken with the look as it is now: the settings screens, the comparisons and the scenes.

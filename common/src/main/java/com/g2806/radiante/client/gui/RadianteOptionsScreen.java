@@ -313,6 +313,8 @@ public class RadianteOptionsScreen extends SettingsRows {
     private static final String METERING_MODE = "render_pipeline.module.tone_mapping.attribute.exposure_metering_mode";
     private static final String METERING_BEDROCK = METERING_MODE + ".bedrock_original";
     private static final String METERING_INCIDENT = METERING_MODE + ".incident";
+    private static final String WATER_SURFACE = "render_pipeline.module.ray_tracing.attribute.water_surface_mode";
+    private static final String WATER_REALISTIC = WATER_SURFACE + ".realistic";
 
     /** A pipeline attribute as the screen stands: changed in the Advanced settings and not applied yet, or applied. */
     private String advancedValue(String module, String attribute) {
@@ -409,6 +411,9 @@ public class RadianteOptionsScreen extends SettingsRows {
             // Only the incident light meter has a limit of its own by day.
             case "tunable.day_low_light_limit" -> METERING_INCIDENT.equals(advancedValue(
                 Pipeline.TONE_MAPPING_MODULE_NAME, METERING_MODE)) ? null : needsValue(METERING_MODE, METERING_INCIDENT);
+            // Only the Realistic water surface has waves of its own: Bedrock's is its water texture, vanilla's flat.
+            case "tunable.water_waves" -> WATER_REALISTIC.equals(advancedValue(Pipeline.RAY_TRACING_MODULE_NAME,
+                WATER_SURFACE)) ? null : needsValue(WATER_SURFACE, WATER_REALISTIC);
             case "tunable.texture_contrast" -> exactTextures
                 ? overriddenBy("render_pipeline.module.ray_tracing.attribute.albedo_srgb_exact") : null;
             case "cache_deep_bounces", "bedrock_one_bounce" -> radianceCache ? null
