@@ -6,6 +6,7 @@
 #include "prism/gpu/gpu.hpp"
 
 #include "prism/render/modules/world/dlss/dlss_wrapper.hpp"
+#include "prism/render/modules/world/upscaler_common.hpp"
 #include "prism/render/modules/world/world_module.hpp"
 
 #include <array>
@@ -128,7 +129,6 @@ class DLSSModule : public WorldModule, public SharedObject<DLSSModule> {
 
     // First-hit depth, motion vectors, normal/roughness: the order the passes run in.
     std::array<std::shared_ptr<gpu::ComputePipeline>, 3> upscalePipelines_;
-    MotionUpscalePushConstants upscaleConstants_{};
 
     std::vector<std::shared_ptr<WorldModuleContext>> contexts_;
 };

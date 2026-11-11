@@ -294,15 +294,6 @@ void DLSSModule::build() {
                                 framework->mainCommandPool(), dlssSR_);
     }
 
-    upscaleConstants_ = {
-        .scaleX = static_cast<float>(outputWidth_) / static_cast<float>(std::max(1u, inputWidth_)),
-        .scaleY = static_cast<float>(outputHeight_) / static_cast<float>(std::max(1u, inputHeight_)),
-        .srcWidth = inputWidth_,
-        .srcHeight = inputHeight_,
-        .dstWidth = outputWidth_,
-        .dstHeight = outputHeight_,
-    };
-
     std::array<std::shared_ptr<gpu::Shader>, kUpscaleShaders.size()> shaders;
     for (size_t i = 0; i < shaders.size(); i++) {
         shaders[i] = gpu::Shader::create(device, (Renderer::folderPath / kUpscaleShaders[i]).string());
@@ -431,14 +422,7 @@ void DLSSModuleContext::render() {
         {normalRoughnessImage, gpu::ImageUsage::StorageRead, compute},
         {upscaledNormalRoughnessImage, gpu::ImageUsage::StorageWrite, compute},
     });
-    // Their pipelines share one layout, so the set and the push constants are bound once for all three.
-    cmd->bindDescriptorTable(motionDescriptorTable, VK_PIPELINE_BIND_POINT_COMPUTE);
-    vkCmdPushConstants(cmd->vkCommandBuffer(), motionDescriptorTable->vkPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT,
-                       0, sizeof(MotionUpscalePushConstants), &module->upscaleConstants_);
-    const uint32_t groupsX = (module->outputWidth_ + 15) / 16;
-    const uint32_t groupsY = (module->outputHeight_ + 15) / 16;
-    for (const auto &pipeline : module->upscalePipelines_) {
-        cmd->bindComputePipeline(pipeline);
-        vkCmdDispatch(cmd->vkCommandBuffer(), groupsX, groupsY, 1);
-    }
+    upscaler::recordGuideUpscales(*cmd, motionDescriptorTable, module->upscalePipelines_[0],
+                                  module->upscalePipelines_[1], module->upscalePipelines_[2], module->inputWidth_,
+                                  module->inputHeight_, module->outputWidth_, module->outputHeight_);
 }
