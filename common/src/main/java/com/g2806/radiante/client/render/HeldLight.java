@@ -124,7 +124,7 @@ public final class HeldLight {
      * ground: the same colour, strength and fall-off, so walking into a cave and setting it down changes nothing.
      */
     private static int[] pointLightOf(ItemStack stack) {
-        if (!com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow()) {
+        if (!com.g2806.radiante.client.pipeline.PipelineSettings.castsBedrockGlow()) {
             return null;
         }
         int[] pack = BedrockPointLights.packHeldColour(stack.getItem());

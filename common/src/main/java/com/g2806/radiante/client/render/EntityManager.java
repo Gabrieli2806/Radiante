@@ -298,7 +298,7 @@ public final class EntityManager {
             configureHeldLights(minecraft, COLLECTOR, state);
         }
         net.minecraft.world.level.block.Block droppedLight = null;
-        if (minecraft.level != null && com.g2806.radiante.client.pipeline.Pipeline.castsBedrockGlow()
+        if (minecraft.level != null && com.g2806.radiante.client.pipeline.PipelineSettings.castsBedrockGlow()
             && minecraft.level.getEntity(((EntityIdHolder) state).radiante$entityId())
                 instanceof net.minecraft.world.entity.item.ItemEntity item
             && item.getItem().getItem() instanceof net.minecraft.world.item.BlockItem blockItem
@@ -925,7 +925,7 @@ public final class EntityManager {
     /** Vanilla's clouds, when the shader pack's cloud mode asks for them rather than its ray marched ones. */
     private static void collectClouds(Minecraft minecraft, LevelRenderState levelRenderState,
         CameraRenderState cameraState) {
-        String mode = com.g2806.radiante.client.pipeline.Pipeline.getCloudMode();
+        String mode = com.g2806.radiante.client.pipeline.PipelineSettings.getCloudMode();
         if (mode == null || !mode.endsWith(".vanilla") || net.minecraft.util.ARGB.alpha(levelRenderState.cloudColor) == 0) {
             cloudsShownLastFrame = false;
             return;

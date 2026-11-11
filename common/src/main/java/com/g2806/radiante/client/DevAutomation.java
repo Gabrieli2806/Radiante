@@ -563,9 +563,9 @@ public final class DevAutomation {
             // applyPipelineChange), for benchmarks.
             String[] parts = action.substring(5).split(":", 2);
             boolean changed = switch (parts[0]) {
-                case "dlss" -> com.g2806.radiante.client.pipeline.Pipeline.setDlssMode(
-                    com.g2806.radiante.client.pipeline.Pipeline.DLSS_MODES.get(Integer.parseInt(parts[1])));
-                case "fog" -> com.g2806.radiante.client.pipeline.Pipeline.setVolumetricFog(Boolean.parseBoolean(parts[1]));
+                case "dlss" -> com.g2806.radiante.client.pipeline.PipelineSettings.setDlssMode(
+                    com.g2806.radiante.client.pipeline.PipelineSettings.DLSS_MODES.get(Integer.parseInt(parts[1])));
+                case "fog" -> com.g2806.radiante.client.pipeline.PipelineSettings.setVolumetricFog(Boolean.parseBoolean(parts[1]));
                 // view:<debug view>, or view:off.
                 case "view" -> com.g2806.radiante.client.pipeline.Pipeline.setDebugView(parts[1]);
                 // preset:<preset key>, e.g. the NRD + FSR pipeline.
@@ -573,17 +573,17 @@ public final class DevAutomation {
                     com.g2806.radiante.client.pipeline.Pipeline.switchToPresetMode(parts[1]);
                     yield true;
                 }
-                case "clouds" -> com.g2806.radiante.client.pipeline.Pipeline.setCloudMode(
-                    com.g2806.radiante.client.pipeline.Pipeline.CLOUD_MODES.get(Integer.parseInt(parts[1])));
+                case "clouds" -> com.g2806.radiante.client.pipeline.PipelineSettings.setCloudMode(
+                    com.g2806.radiante.client.pipeline.PipelineSettings.CLOUD_MODES.get(Integer.parseInt(parts[1])));
                 // attr:<attribute name>:<value>, any shader pack attribute.
                 case "attr" -> {
                     String[] nameValue = parts[1].split(":", 2);
-                    yield com.g2806.radiante.client.pipeline.Pipeline.setShaderPackValue(nameValue[0], nameValue[1]);
+                    yield com.g2806.radiante.client.pipeline.PipelineSettings.setShaderPackValue(nameValue[0], nameValue[1]);
                 }
                 // mattr:<module name>:<attribute name>:<value>, any module's attribute.
                 case "mattr" -> {
                     String[] mv = parts[1].split(":", 3);
-                    yield com.g2806.radiante.client.pipeline.Pipeline.setModuleValue(mv[0], mv[1], mv[2]);
+                    yield com.g2806.radiante.client.pipeline.PipelineSettings.setModuleValue(mv[0], mv[1], mv[2]);
                 }
                 default -> false;
             };

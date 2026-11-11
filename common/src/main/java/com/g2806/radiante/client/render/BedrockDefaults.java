@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.render;
 
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineSettings;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -50,7 +51,7 @@ public final class BedrockDefaults {
 
     /** Whether the light blocks take their glow from the table: only while Bedrock's glow is cast. */
     static boolean emissionActive() {
-        return Pipeline.castsBedrockGlow();
+        return PipelineSettings.castsBedrockGlow();
     }
 
     /** The built-in fog file's biomes, in the format of a converted pack's bedrock_fog.json; null if unreadable. */

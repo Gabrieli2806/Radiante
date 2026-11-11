@@ -502,7 +502,7 @@ public final class RadianteRenderer {
             Options.parallaxTransparentEdges, Options.dayBrightness / 100.0f, Options.nightBrightness / 100.0f,
             Options.emissionBrightness / 100.0f, false,
             EntityManager.rainFallPerFrame(levelRenderState), farReach, Options.heldLightBrightness / 100.0f,
-            windTime(levelRenderState), com.g2806.radiante.client.pipeline.Pipeline.windStrength(),
+            windTime(levelRenderState), com.g2806.radiante.client.pipeline.PipelineSettings.windStrength(),
             windWeather(minecraft, levelRenderState.worldPartialTicks)));
 
         SkyRenderState sky = levelRenderState.skyRenderState;

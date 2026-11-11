@@ -2,6 +2,7 @@ package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineSettings;
 import com.g2806.radiante.client.render.FrameGeneration;
 import com.g2806.radiante.client.render.RadianteRenderer;
 import com.g2806.radiante.mixin.debug.DebugScreenEntriesInvoker;
@@ -52,7 +53,7 @@ public final class RadianteDebugEntries {
         DebugScreenEntriesInvoker.radiante$register(UPSCALER, new Entry() {
             @Override
             void lines(DebugScreenDisplayer displayer) {
-                displayer.addLine("Upscaler: " + Pipeline.describeUpscaler());
+                displayer.addLine("Upscaler: " + PipelineSettings.describeUpscaler());
             }
         });
         DebugScreenEntriesInvoker.radiante$register(GPU_TIME, new Entry() {

@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineSettings;
 import com.g2806.radiante.client.pipeline.RtAttributes;
 import com.mojang.serialization.Codec;
 import java.lang.reflect.Field;
@@ -33,8 +34,8 @@ final class AdvancedOptions {
         Pipeline.TONE_MAPPING_MODULE_NAME,
         Pipeline.POST_RENDER_MODULE_NAME,
         "render_pipeline.module.nrd.name",
-        Pipeline.FSR_MODULE_NAME,
-        Pipeline.XESS_MODULE_NAME};
+        PipelineSettings.FSR_MODULE_NAME,
+        PipelineSettings.XESS_MODULE_NAME};
 
     /** Steps of a slider for a fractional setting; a row's track is under a hundred pixels wide. */
     private static final int FLOAT_STEPS = 200;
@@ -93,7 +94,7 @@ final class AdvancedOptions {
         com.g2806.radiante.client.pipeline.ShaderPackSettings packOwn = Pipeline.shaderPackSettings();
         for (String module : MODULES) {
             String prefix = module.substring(0, module.length() - "name".length()) + "attribute.";
-            for (Map.Entry<String, String> attribute : Pipeline.moduleValues(module).entrySet()) {
+            for (Map.Entry<String, String> attribute : PipelineSettings.moduleValues(module).entrySet()) {
                 String name = attribute.getKey();
                 if (!name.startsWith(prefix) || covered().contains(name)
                     || (module.equals(Pipeline.RAY_TRACING_MODULE_NAME) && packOwn.isOwn(name))) {
@@ -105,7 +106,7 @@ final class AdvancedOptions {
                 if (place == null || !place[0].equals(category.name())) {
                     continue;
                 }
-                String type = Pipeline.getModuleAttributeType(module, name);
+                String type = PipelineSettings.getModuleAttributeType(module, name);
                 String value = staged.getOrDefault(key(module, name), attribute.getValue());
                 OptionInstance<?> row = row(module, name, shortName, type, value, staged);
                 if (row != null) {
@@ -133,7 +134,7 @@ final class AdvancedOptions {
         if (module.equals("render_pipeline.module.nrd.name")) {
             return new String[] {"PERFORMANCE", "denoiser"};
         }
-        if (module.equals(Pipeline.FSR_MODULE_NAME) || module.equals(Pipeline.XESS_MODULE_NAME)) {
+        if (module.equals(PipelineSettings.FSR_MODULE_NAME) || module.equals(PipelineSettings.XESS_MODULE_NAME)) {
             return new String[] {"QUALITY", "upscaler"};
         }
         if (name.contains("debug")) {

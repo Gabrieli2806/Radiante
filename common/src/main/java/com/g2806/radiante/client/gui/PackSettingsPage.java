@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineSettings;
 import com.g2806.radiante.client.pipeline.ShaderPackLibrary;
 import com.g2806.radiante.client.pipeline.ShaderPackSettings;
 import com.mojang.serialization.Codec;
@@ -49,7 +50,7 @@ final class PackSettingsPage {
             return null;
         }
         ShaderPackSettings settings = Pipeline.shaderPackSettings();
-        Map<String, String> values = Pipeline.moduleValues(MODULE);
+        Map<String, String> values = PipelineSettings.moduleValues(MODULE);
         // Rows only for what the renderer actually loaded: a pack that failed to load leaves Radiante PT's values.
         List<ShaderPackSettings.Attribute> loaded = new ArrayList<>();
         for (ShaderPackSettings.Attribute attribute : settings.attributes()) {
@@ -88,7 +89,7 @@ final class PackSettingsPage {
         }
         for (ShaderPackSettings.Attribute attribute : loaded) {
             ShaderPackSettings.VisibleWhen when = attribute.visibleWhen();
-            if (when != null && !when.test(Pipeline.getModuleAttributeType(MODULE, when.attribute()),
+            if (when != null && !when.test(PipelineSettings.getModuleAttributeType(MODULE, when.attribute()),
                 current.apply(when.attribute()))) {
                 continue;
             }
@@ -97,7 +98,7 @@ final class PackSettingsPage {
             String shortName = at < 0 ? name : name.substring(at + ".attribute.".length());
             boolean shows = watched.contains(name);
             OptionInstance<?> row = AdvancedOptions.row(MODULE, name, shortName,
-                Pipeline.getModuleAttributeType(MODULE, name), current.apply(name), staged, attribute.step(),
+                PipelineSettings.getModuleAttributeType(MODULE, name), current.apply(name), staged, attribute.step(),
                 attribute.description() == null ? null : text(attribute.description()),
                 // Another row's visible_when reads this one: the page is laid out again to show or hide it.
                 shows ? relayout : () -> { });
@@ -164,7 +165,7 @@ final class PackSettingsPage {
         for (int i = 0; i < presets.size() && matching == CUSTOM; i++) {
             boolean all = true;
             for (Map.Entry<String, String> value : presets.get(i).values().entrySet()) {
-                String type = Pipeline.getModuleAttributeType(MODULE, value.getKey());
+                String type = PipelineSettings.getModuleAttributeType(MODULE, value.getKey());
                 if (!names.contains(value.getKey())
                     || !ShaderPackSettings.sameValue(type, value.getKey(), value.getValue(),
                         current.apply(value.getKey()))) {
@@ -203,7 +204,7 @@ final class PackSettingsPage {
                     if (!names.contains(entry.getKey())) {
                         continue;
                     }
-                    String type = Pipeline.getModuleAttributeType(MODULE, entry.getKey());
+                    String type = PipelineSettings.getModuleAttributeType(MODULE, entry.getKey());
                     String normalized = ShaderPackSettings.normalize(type, entry.getKey(), entry.getValue());
                     if (normalized == null) {
                         com.g2806.radiante.client.RadianteClient.LOGGER.warn(

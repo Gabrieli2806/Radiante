@@ -9,6 +9,7 @@ import com.g2806.radiante.client.option.Options;
 import com.g2806.radiante.client.render.FrameGeneration;
 import com.g2806.radiante.client.render.OutputResolution;
 import com.g2806.radiante.client.pipeline.Pipeline;
+import com.g2806.radiante.client.pipeline.PipelineSettings;
 import com.g2806.radiante.client.pipeline.RtAttributes;
 import com.g2806.radiante.client.pipeline.Presets;
 import com.mojang.serialization.Codec;
@@ -195,21 +196,21 @@ abstract class SettingsRows extends SettingsChoices {
 
     /** Clouds come from the shader pack, which ray marches them, so nothing has to be submitted for them. */
     private OptionInstance<String> cloudModeOption() {
-        if (!Pipeline.supportsClouds()) {
+        if (!PipelineSettings.supportsClouds()) {
             return null;
         }
 
         // A choice carried over from the previous screen (a quality level, say) is kept; only a fresh screen reads
         // the pipeline. Reading it every time undid the quality level's clouds, so it always came back as Custom.
         if (this.pendingCloudMode == null) {
-            String current = Pipeline.getCloudMode();
-            this.pendingCloudMode = current != null && Pipeline.CLOUD_MODES.contains(current) ? current
-                : Pipeline.CLOUD_MODES.get(0);
+            String current = PipelineSettings.getCloudMode();
+            this.pendingCloudMode = current != null && PipelineSettings.CLOUD_MODES.contains(current) ? current
+                : PipelineSettings.CLOUD_MODES.get(0);
         }
 
         return new OptionInstance<>("options.radiante.cloud_mode", tooltip("options.radiante.cloud_mode"),
             (caption, value) -> Component.translatable(value),
-            new OptionInstance.Enum<>(Pipeline.CLOUD_MODES, Codec.STRING), this.pendingCloudMode,
+            new OptionInstance.Enum<>(PipelineSettings.CLOUD_MODES, Codec.STRING), this.pendingCloudMode,
             value -> {
                 this.pendingCloudMode = value;
                 refreshQualityLater();
@@ -241,15 +242,15 @@ abstract class SettingsRows extends SettingsChoices {
         }
 
         if (this.pendingDlssMode == null) {
-            String current = Pipeline.getDlssMode();
-            this.pendingDlssMode = current != null && Pipeline.DLSS_MODES.contains(current) ? current
+            String current = PipelineSettings.getDlssMode();
+            this.pendingDlssMode = current != null && PipelineSettings.DLSS_MODES.contains(current) ? current
                 : "render_pipeline.module.dlss.attribute.mode.ultra_performance";
         }
 
         loadRenderScale();
         return new OptionInstance<>("options.radiante.dlss_mode", tooltip("options.radiante.dlss_mode"),
             (caption, value) -> Component.translatable(value),
-            new OptionInstance.Enum<>(withCustom(Pipeline.DLSS_MODES), Codec.STRING),
+            new OptionInstance.Enum<>(withCustom(PipelineSettings.DLSS_MODES), Codec.STRING),
             this.pendingCustomScale ? CUSTOM_MODE : this.pendingDlssMode, value -> {
                 if (!chooseCustomMode(value)) {
                     this.pendingDlssMode = value;
@@ -295,11 +296,11 @@ abstract class SettingsRows extends SettingsChoices {
 
     /** Shader Execution Reordering, where the shader pack has it. */
     private OptionInstance<Boolean> serOption() {
-        if (!Pipeline.supportsShaderPackToggle(RtAttributes.SER_ATTRIBUTE)) {
+        if (!PipelineSettings.supportsShaderPackToggle(RtAttributes.SER_ATTRIBUTE)) {
             return null;
         }
         if (this.pendingSer == null) {
-            this.pendingSer = Pipeline.isShaderPackToggleOn(RtAttributes.SER_ATTRIBUTE);
+            this.pendingSer = PipelineSettings.isShaderPackToggleOn(RtAttributes.SER_ATTRIBUTE);
         }
         return OptionInstance.createBoolean("options.radiante.ser", tooltip("options.radiante.ser"),
             this.pendingSer, value -> this.pendingSer = value);
@@ -307,11 +308,11 @@ abstract class SettingsRows extends SettingsChoices {
 
     /** ReSTIR for block lights, where the shader pack has it. */
     private OptionInstance<Boolean> restirOption() {
-        if (!Pipeline.supportsShaderPackToggle(RtAttributes.RESTIR_ATTRIBUTE)) {
+        if (!PipelineSettings.supportsShaderPackToggle(RtAttributes.RESTIR_ATTRIBUTE)) {
             return null;
         }
         if (this.pendingRestir == null) {
-            this.pendingRestir = Pipeline.isShaderPackToggleOn(RtAttributes.RESTIR_ATTRIBUTE);
+            this.pendingRestir = PipelineSettings.isShaderPackToggleOn(RtAttributes.RESTIR_ATTRIBUTE);
         }
         return OptionInstance.createBoolean("options.radiante.restir", tooltip("options.radiante.restir"),
             this.pendingRestir, value -> this.pendingRestir = value);
@@ -319,11 +320,11 @@ abstract class SettingsRows extends SettingsChoices {
 
     /** ReSTIR GI for the first bounce of light, where the shader pack has it. */
     private OptionInstance<Boolean> restirGiOption() {
-        if (!Pipeline.supportsShaderPackToggle(RtAttributes.RESTIR_GI_ATTRIBUTE)) {
+        if (!PipelineSettings.supportsShaderPackToggle(RtAttributes.RESTIR_GI_ATTRIBUTE)) {
             return null;
         }
         if (this.pendingRestirGi == null) {
-            this.pendingRestirGi = Pipeline.isShaderPackToggleOn(RtAttributes.RESTIR_GI_ATTRIBUTE);
+            this.pendingRestirGi = PipelineSettings.isShaderPackToggleOn(RtAttributes.RESTIR_GI_ATTRIBUTE);
         }
         return OptionInstance.createBoolean("options.radiante.restir_gi", tooltip("options.radiante.restir_gi"),
             this.pendingRestirGi, value -> this.pendingRestirGi = value);
@@ -359,7 +360,7 @@ abstract class SettingsRows extends SettingsChoices {
             return null;
         }
         if (this.pendingUpscalerMode == null || !modes.contains(this.pendingUpscalerMode)) {
-            String current = Pipeline.getModuleValue(upscalerModule(), upscalerAttribute());
+            String current = PipelineSettings.getModuleValue(upscalerModule(), upscalerAttribute());
             this.pendingUpscalerMode = current != null && modes.contains(current) ? current : modes.get(0);
         }
         loadRenderScale();
@@ -500,24 +501,24 @@ abstract class SettingsRows extends SettingsChoices {
         OptionInstance<String> dlssMode = dlssModeOption();
         OptionInstance<Integer> frameGeneration = frameGenerationOption();
         OptionInstance<String> clouds = cloudModeOption();
-        if (Pipeline.supportsVolumetricFog() && this.pendingVolumetricFog == null) {
-            this.pendingVolumetricFog = Pipeline.isVolumetricFog();
+        if (PipelineSettings.supportsVolumetricFog() && this.pendingVolumetricFog == null) {
+            this.pendingVolumetricFog = PipelineSettings.isVolumetricFog();
         }
-        if (this.pendingBounces == null && Pipeline.getShaderPackValue(RtAttributes.RAY_BOUNCES_ATTRIBUTE) != null) {
+        if (this.pendingBounces == null && PipelineSettings.getShaderPackValue(RtAttributes.RAY_BOUNCES_ATTRIBUTE) != null) {
             this.pendingBounces = Math.max(1, Math.min(128,
-                Pipeline.getShaderPackInt(RtAttributes.RAY_BOUNCES_ATTRIBUTE, 4)));
+                PipelineSettings.getShaderPackInt(RtAttributes.RAY_BOUNCES_ATTRIBUTE, 4)));
         }
-        if (this.pendingParallax == null && Pipeline.supportsShaderPackToggle(RtAttributes.PARALLAX_ATTRIBUTE)) {
-            this.pendingParallax = Pipeline.isShaderPackToggleOn(RtAttributes.PARALLAX_ATTRIBUTE);
+        if (this.pendingParallax == null && PipelineSettings.supportsShaderPackToggle(RtAttributes.PARALLAX_ATTRIBUTE)) {
+            this.pendingParallax = PipelineSettings.isShaderPackToggleOn(RtAttributes.PARALLAX_ATTRIBUTE);
         }
         if (this.pendingBedrockAtmosphere == null
-            && Pipeline.supportsShaderPackToggle(RtAttributes.BEDROCK_ATMOSPHERE_ATTRIBUTE)) {
-            this.pendingBedrockAtmosphere = Pipeline.isShaderPackToggleOn(RtAttributes.BEDROCK_ATMOSPHERE_ATTRIBUTE);
+            && PipelineSettings.supportsShaderPackToggle(RtAttributes.BEDROCK_ATMOSPHERE_ATTRIBUTE)) {
+            this.pendingBedrockAtmosphere = PipelineSettings.isShaderPackToggleOn(RtAttributes.BEDROCK_ATMOSPHERE_ATTRIBUTE);
         }
         if (this.pendingFogSamples == null
-            && Pipeline.getShaderPackValue(RtAttributes.VOLUMETRIC_SAMPLES_ATTRIBUTE) != null) {
+            && PipelineSettings.getShaderPackValue(RtAttributes.VOLUMETRIC_SAMPLES_ATTRIBUTE) != null) {
             this.pendingFogSamples = Math.max(4, Math.min(32,
-                Pipeline.getShaderPackInt(RtAttributes.VOLUMETRIC_SAMPLES_ATTRIBUTE, 16)));
+                PipelineSettings.getShaderPackInt(RtAttributes.VOLUMETRIC_SAMPLES_ATTRIBUTE, 16)));
         }
 
         readTunables();
@@ -704,13 +705,13 @@ abstract class SettingsRows extends SettingsChoices {
             tunable(Tunable.EXPOSURE_NIGHT, false), tunable(Tunable.DAY_LOW_LIGHT_LIMIT, false),
             tunable(Tunable.FSR_SHARPNESS, false));
         addHdrOptions();
-        if (Pipeline.supportsShaderPackToggle(RtAttributes.MOTION_BLUR_ATTRIBUTE)
-            && Pipeline.supportsShaderPackToggle(RtAttributes.DEPTH_OF_FIELD_ATTRIBUTE)) {
+        if (PipelineSettings.supportsShaderPackToggle(RtAttributes.MOTION_BLUR_ATTRIBUTE)
+            && PipelineSettings.supportsShaderPackToggle(RtAttributes.DEPTH_OF_FIELD_ATTRIBUTE)) {
             if (this.pendingMotionBlur == null) {
-                this.pendingMotionBlur = Pipeline.isShaderPackToggleOn(RtAttributes.MOTION_BLUR_ATTRIBUTE);
+                this.pendingMotionBlur = PipelineSettings.isShaderPackToggleOn(RtAttributes.MOTION_BLUR_ATTRIBUTE);
             }
             if (this.pendingDepthOfField == null) {
-                this.pendingDepthOfField = Pipeline.isShaderPackToggleOn(RtAttributes.DEPTH_OF_FIELD_ATTRIBUTE);
+                this.pendingDepthOfField = PipelineSettings.isShaderPackToggleOn(RtAttributes.DEPTH_OF_FIELD_ATTRIBUTE);
             }
             addRows(
                 OptionInstance.createBoolean("options.radiante.motion_blur", tooltip("options.radiante.motion_blur"),
@@ -780,7 +781,7 @@ abstract class SettingsRows extends SettingsChoices {
         OptionInstance<Boolean> volumetricFog = null;
         OptionInstance<Integer> volumetricStrength = null;
         OptionInstance<Boolean> fogStyle = null;
-        if (Pipeline.supportsVolumetricFog()) {
+        if (PipelineSettings.supportsVolumetricFog()) {
             volumetricFog = OptionInstance.createBoolean("options.radiante.volumetric_fog",
                 OptionInstance.cachedConstantTooltip(Component.translatable("options.radiante.volumetric_fog.tooltip")),
                 this.pendingVolumetricFog, value -> {
@@ -788,9 +789,9 @@ abstract class SettingsRows extends SettingsChoices {
                     refreshQualityLater();
                 });
             // Bedrock's fog is always its froxel volume: the style is only a choice with Bedrock's fog off.
-            if (Pipeline.supportsShaderPackToggle(RtAttributes.FROXEL_FOG_ATTRIBUTE) && !bedrockFog()) {
+            if (PipelineSettings.supportsShaderPackToggle(RtAttributes.FROXEL_FOG_ATTRIBUTE) && !bedrockFog()) {
                 if (this.pendingFroxelFog == null) {
-                    this.pendingFroxelFog = Pipeline.isShaderPackToggleOn(RtAttributes.FROXEL_FOG_ATTRIBUTE);
+                    this.pendingFroxelFog = PipelineSettings.isShaderPackToggleOn(RtAttributes.FROXEL_FOG_ATTRIBUTE);
                 }
                 fogStyle = OptionInstance.createBoolean("options.radiante.fog_style", tooltip("options.radiante.fog_style"),
                     (caption, value) -> Component.translatable(value ? "options.radiante.fog_style.froxel"
@@ -801,18 +802,18 @@ abstract class SettingsRows extends SettingsChoices {
                 staged("volumetricFogStrength", Options.volumetricFogStrength), value -> stage("volumetricFogStrength", value));
         }
         OptionInstance<Boolean> cloudShadows = null;
-        if (Pipeline.supportsShaderPackToggle(RtAttributes.CLOUD_SHADOWS_ATTRIBUTE)) {
+        if (PipelineSettings.supportsShaderPackToggle(RtAttributes.CLOUD_SHADOWS_ATTRIBUTE)) {
             if (this.pendingCloudShadows == null) {
-                this.pendingCloudShadows = Pipeline.isShaderPackToggleOn(RtAttributes.CLOUD_SHADOWS_ATTRIBUTE);
+                this.pendingCloudShadows = PipelineSettings.isShaderPackToggleOn(RtAttributes.CLOUD_SHADOWS_ATTRIBUTE);
             }
             cloudShadows = OptionInstance.createBoolean("options.radiante.cloud_shadows",
                 tooltip("options.radiante.cloud_shadows"), this.pendingCloudShadows,
                 value -> this.pendingCloudShadows = value);
         }
         OptionInstance<Boolean> seamlessGlass = null;
-        if (Pipeline.supportsShaderPackToggle(RtAttributes.SEAMLESS_GLASS_ATTRIBUTE)) {
+        if (PipelineSettings.supportsShaderPackToggle(RtAttributes.SEAMLESS_GLASS_ATTRIBUTE)) {
             if (this.pendingSeamlessGlass == null) {
-                this.pendingSeamlessGlass = Pipeline.isShaderPackToggleOn(RtAttributes.SEAMLESS_GLASS_ATTRIBUTE);
+                this.pendingSeamlessGlass = PipelineSettings.isShaderPackToggleOn(RtAttributes.SEAMLESS_GLASS_ATTRIBUTE);
             }
             seamlessGlass = OptionInstance.createBoolean("options.radiante.seamless_glass",
                 tooltip("options.radiante.seamless_glass"), this.pendingSeamlessGlass, value -> {
@@ -821,7 +822,7 @@ abstract class SettingsRows extends SettingsChoices {
         }
         // Which glass seamless glass joins: blocks and panes, blocks only or panes only.
         OptionInstance<String> seamlessScope = null;
-        String scopeValue = Pipeline.getShaderPackValue(SEAMLESS_SCOPE);
+        String scopeValue = PipelineSettings.getShaderPackValue(SEAMLESS_SCOPE);
         if (scopeValue != null) {
             if (this.pendingSeamlessScope == null) {
                 this.pendingSeamlessScope = scopeValue;
@@ -958,10 +959,10 @@ abstract class SettingsRows extends SettingsChoices {
 
     /** An on/off shader pack setting applied with the rest; null where the pack lacks it. */
     private OptionInstance<Boolean> packToggle(String attribute, String key) {
-        if (!Pipeline.supportsShaderPackToggle(attribute)) {
+        if (!PipelineSettings.supportsShaderPackToggle(attribute)) {
             return null;
         }
-        boolean value = this.pendingPackToggles.computeIfAbsent(attribute, Pipeline::isShaderPackToggleOn);
+        boolean value = this.pendingPackToggles.computeIfAbsent(attribute, PipelineSettings::isShaderPackToggleOn);
         return OptionInstance.createBoolean(key, tooltip(key), value, newValue -> {
             this.pendingPackToggles.put(attribute, newValue);
         });
@@ -979,7 +980,7 @@ abstract class SettingsRows extends SettingsChoices {
                     this.pendingParallax = value;
                     refreshQualityLater();
                 });
-        OptionInstance<Integer> fogSamples = this.pendingFogSamples == null || !Pipeline.supportsVolumetricFog() ? null
+        OptionInstance<Integer> fogSamples = this.pendingFogSamples == null || !PipelineSettings.supportsVolumetricFog() ? null
             : slider("options.radiante.volumetric_fog_samples", 4, 32, this.pendingFogSamples, value -> {
                 this.pendingFogSamples = value;
                 refreshQualityLater();
