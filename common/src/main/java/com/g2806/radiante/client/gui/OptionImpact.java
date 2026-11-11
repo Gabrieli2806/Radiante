@@ -77,7 +77,6 @@ enum OptionImpact {
         Map.entry("options.radiante.debug_view", VARIES),
         Map.entry("options.radiante.tunable.dof_range", LOW),
         Map.entry("options.radiante.tunable.motion_blur_strength", LOW),
-        Map.entry("options.radiante.tunable.glass_reflections", LOW),
         Map.entry("options.radiante.tunable.water_texture", LOW),
         Map.entry("options.radiante.tunable.portal_transparency", LOW),
         Map.entry("options.radiante.tunable.rain_opacity", LOW),

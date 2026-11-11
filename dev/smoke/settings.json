@@ -1,0 +1,491 @@
+{
+  "world": "RadianteSmokeSuite",
+  "setup": ["hud=false", "cmd=/gamerule advance_time false", "cmd=/time set 1000", "cmd=/weather clear", "cmd=/tp @s ~ ~ ~ -90 -10", "cmd=/radiante showcase"],
+  "setup_ticks": 320,
+  "settle_ticks": 80,
+  "structural_settle_ticks": 110,
+  "views": [
+    {
+      "name": "morning",
+      "what": "The gallery from its start in the morning, looking east at the low sun: sky, sun, vanilla clouds, sunlit blocks.",
+      "actions": ["cmd=/time set 1000", "cmd=/tp @s ~ ~ ~ -90 -10"],
+      "tests": [
+        {"opt": "dayBrightness", "to": "100"},
+        {"opt": "sunPathTilt", "to": "40"},
+        {"opt": "sunPathAzimuth", "to": "60"},
+        {"opt": "sunSpriteRotation", "to": "45"},
+        {"opt": "vanillaCelestialOrientation", "to": "false"},
+        {"opt": "cloudHeightOffset", "to": "150"},
+        {"opt": "biomeAmbiance", "to": "true"},
+        {"opt": "outputResolution", "to": "CUSTOM"},
+        "sun_glow",
+        "sun_glow_width",
+        "aerial_perspective",
+        {"attr": "aerial_perspective_start", "to": "0.0"},
+        "bedrock_atmosphere",
+        "bedrock_sky_intensity",
+        "mie_anisotropy",
+        "minimum_view_cosine",
+        "rayleigh_scale_height",
+        "mie_scale_height",
+        "atmosphere_top_radius",
+        "atmosphere_planet_radius",
+        {"attr": "rayleigh_scattering_coefficient", "to": "0.00003,0.00001,0.000005"},
+        {"attr": "mie_scattering_coefficient", "to": "0.0002,0.0002,0.0002"},
+        {"attr": "sun_radiance", "to": "1.0,1.0,1.0"},
+        "direct_light_strength",
+        "indirect_light_strength",
+        "exposure_day_max",
+        "albedo_gamma",
+        "albedo_srgb_exact",
+        {"attr": "cloud_mode", "to": "off"},
+        "face_shading",
+        "translucency",
+        {"attr": "num_ray_bounces", "to": "1"},
+        "cache_deep_bounces",
+        "bedrock_one_bounce",
+        "ser",
+        "restir_gi",
+        "transparent_split_mode",
+        "transparent_checkerboard",
+        "pbr_sampling_mode",
+        "nrd_signals",
+        {"module": "tone_mapping"},
+        {"mattr": "ray_tracing.use_jitter"},
+        {"mattr": "ray_tracing.use_sharc"},
+        {"mattr": "dlss.mode", "to": "quality"},
+        {"mattr": "dlss.render_scale", "to": "100.0"}
+      ]
+    },
+    {
+      "name": "morning_ambiance",
+      "what": "The same view with Biome Ambiance on.",
+      "actions": ["opt=biomeAmbiance=true"],
+      "after": ["opt=biomeAmbiance=false"],
+      "tests": [
+        {"opt": "biomeAmbianceStrength", "to": "400"},
+        "biome_fog_scattering",
+        "biome_fog_forward"
+      ]
+    },
+    {
+      "name": "morning_bloom",
+      "what": "The same view with bloom on.",
+      "actions": ["pipe=mattr:render_pipeline.module.tone_mapping.name:render_pipeline.module.tone_mapping.attribute.bloom_enable:render_pipeline.true"],
+      "after": ["pipe=mattr:render_pipeline.module.tone_mapping.name:render_pipeline.module.tone_mapping.attribute.bloom_enable:render_pipeline.false"],
+      "tests": [
+        {"mattr": "tone_mapping.bloom_intensity"},
+        {"mattr": "tone_mapping.bloom_scatter"},
+        {"mattr": "tone_mapping.bloom_threshold"},
+        {"mattr": "tone_mapping.bloom_weight_1"},
+        {"mattr": "tone_mapping.bloom_weight_2"},
+        {"mattr": "tone_mapping.bloom_weight_3"},
+        {"mattr": "tone_mapping.bloom_weight_4"}
+      ]
+    },
+    {
+      "name": "morning_manual_exposure",
+      "what": "The same view with automatic exposure off.",
+      "actions": ["pipe=mattr:render_pipeline.module.tone_mapping.name:render_pipeline.module.tone_mapping.attribute.enable_auto_exposure:render_pipeline.false"],
+      "after": ["pipe=mattr:render_pipeline.module.tone_mapping.name:render_pipeline.module.tone_mapping.attribute.enable_auto_exposure:render_pipeline.true"],
+      "tests": [
+        {"mattr": "tone_mapping.manual_exposure"},
+        {"mattr": "tone_mapping.exposure_bias"},
+        {"mattr": "tone_mapping.max_exposure"}
+      ]
+    },
+    {
+      "name": "clouds",
+      "what": "The same view with the volumetric clouds.",
+      "actions": ["pipe=clouds:2"],
+      "after": ["pipe=clouds:1"],
+      "tests": [
+        "volumetric_cloud_coverage",
+        "volumetric_cloud_density",
+        "volumetric_cloud_view_steps",
+        "volumetric_cloud_light_steps",
+        "volumetric_cloud_ambient_steps",
+        "volumetric_cloud_ambient_strength",
+        "volumetric_cloud_powder_strength",
+        "volumetric_cloud_weather_scale",
+        "volumetric_cloud_base_scale",
+        "volumetric_cloud_detail_scale",
+        "volumetric_cloud_bottom_height",
+        "volumetric_cloud_top_height",
+        "volumetric_cloud_clear_amount",
+        "volumetric_cloud_cast_shadow",
+        "volumetric_cloud_temporal_accumulation",
+        "volumetric_cloud_shadow_softness",
+        "capture_volumetric_cloud_indirect",
+        "indirect_volumetric_cloud_view_steps",
+        "indirect_volumetric_cloud_light_steps",
+        "indirect_volumetric_cloud_ambient_steps",
+        "indirect_volumetric_cloud_reflection_max_roughness",
+        {"opt": "cloudHeightOffset", "to": "150", "expect": "none", "why": "moves the vanilla clouds only"}
+      ]
+    },
+    {
+      "name": "cloud_shadows",
+      "what": "Volumetric clouds that cast shadows.",
+      "actions": ["pipe=clouds:2", "pipe=attr:render_pipeline.module.ray_tracing.attribute.volumetric_cloud_cast_shadow:render_pipeline.true"],
+      "after": ["pipe=attr:render_pipeline.module.ray_tracing.attribute.volumetric_cloud_cast_shadow:render_pipeline.false", "pipe=clouds:1"],
+      "tests": [
+        "volumetric_cloud_shadow_softness",
+        "volumetric_cloud_coverage"
+      ]
+    },
+    {
+      "name": "night_sky",
+      "what": "The start of the gallery after dusk, looking east and up at the rising moon and the stars.",
+      "actions": ["cmd=/time set 14500", "cmd=/tp @s ~ ~ ~ -90 -25"],
+      "after": ["cmd=/time set 1000"],
+      "settle_ticks": 220,
+      "tests": [
+        {"opt": "nightBrightness", "to": "200"},
+        {"opt": "starAltitude", "to": "400"},
+        {"opt": "moonSpriteRotation", "to": "45"},
+        {"opt": "moonFollowsSun", "to": "false", "expect": "none", "why": "the moon's own path is the same until it is tilted"},
+        {"opt": "sunPathTilt", "to": "40"},
+        {"attr": "moon_radiance", "to": "4.0,4.0,4.0"},
+        {"module": "post_render"}
+      ]
+    },
+    {
+      "name": "night_moon_path",
+      "what": "The same view with the moon on a path of its own.",
+      "actions": ["cmd=/time set 14500", "cmd=/tp @s ~ ~ ~ -90 -25", "opt=moonFollowsSun=false"],
+      "after": ["opt=moonFollowsSun=true", "cmd=/time set 1000"],
+      "settle_ticks": 220,
+      "tests": [
+        {"opt": "moonPathTilt", "to": "40"},
+        {"opt": "moonPathAzimuth", "to": "90"},
+        {"opt": "sunPathTilt", "to": "40", "expect": "none", "why": "the moon no longer follows the sun"}
+      ]
+    },
+    {
+      "name": "feet",
+      "what": "Looking down and west with the morning sun behind: the player's own shadow on the walkway, the crosshair on a block.",
+      "actions": ["cmd=/time set 1000", "cmd=/tp @s ~ ~ ~ 90 55"],
+      "tests": [
+        {"opt": "firstPersonShadow", "to": "false"},
+        {"opt": "blockOutline", "to": "true"}
+      ]
+    },
+    {
+      "name": "lights",
+      "what": "The light blocks' room at night.",
+      "actions": ["cmd=/time set 18000", "cmd=/radiante showcase 8", "cmd=/tp @s ^2 ^1.5 ^1.5"],
+      "after": ["cmd=/time set 1000"],
+      "settle_ticks": 220,
+      "tests": [
+        {"opt": "emissionBrightness", "to": "100"},
+        {"opt": "blockLightSampling", "to": "false"},
+        {"opt": "glowingPixelLight", "to": "true", "settle": 200},
+        {"opt": "unlitBlockLight", "to": "false", "settle": 200},
+        {"opt": "collectChunkEmission", "to": "false", "settle": 260},
+        "restir",
+        "bedrock_emission",
+        "indirect_light_strength",
+        {"attr": "num_ray_bounces", "to": "1"},
+        "cache_deep_bounces",
+        "restir_gi"
+      ]
+    },
+    {
+      "name": "lights_restir",
+      "what": "The same room without block light sampling: ReSTIR hangs on it.",
+      "actions": ["cmd=/time set 18000", "cmd=/radiante showcase 8", "cmd=/tp @s ^2 ^1.5 ^1.5", "opt=blockLightSampling=false"],
+      "after": ["opt=blockLightSampling=true", "cmd=/time set 1000"],
+      "settle_ticks": 220,
+      "tests": [
+        {"attr": "restir", "expect": "none", "why": "needs Block Light Sampling"}
+      ]
+    },
+    {
+      "name": "held_light",
+      "what": "The shapes' room at night with a torch in hand.",
+      "actions": ["cmd=/time set 18000", "cmd=/radiante showcase 6", "cmd=/tp @s ^2 ^1.5 ^1.5", "cmd=/item replace entity @s weapon.mainhand with minecraft:torch"],
+      "after": ["cmd=/item replace entity @s weapon.mainhand with minecraft:air", "cmd=/time set 1000"],
+      "settle_ticks": 220,
+      "tests": [
+        {"opt": "heldItemLight", "to": "false"},
+        {"opt": "heldLightBrightness", "to": "100"},
+        {"opt": "emissionBrightness", "to": "100", "expect": "none", "why": "held lights have their own brightness"},
+        "hand_samples"
+      ]
+    },
+    {
+      "name": "entity_lights",
+      "what": "The entity lights' room: dropped glowing items, an end crystal, a glow item frame.",
+      "actions": ["cmd=/time set 18000", "cmd=/radiante showcase 5", "cmd=/tp @s ^2 ^1.5 ^1.5"],
+      "after": ["cmd=/time set 1000"],
+      "settle_ticks": 220,
+      "tests": [
+        {"opt": "entityLightReach", "to": "8", "expect": "none", "why": "everything in the room is nearer than 8 blocks"},
+        {"opt": "emissionBrightness", "to": "100"}
+      ]
+    },
+    {
+      "name": "water",
+      "what": "The water room at noon.",
+      "actions": ["cmd=/time set 6000", "cmd=/radiante showcase 9", "cmd=/tp @s ^2 ^1.5 ^1.5"],
+      "tests": [
+        "water_wave_strength",
+        "water_density",
+        "water_scattering",
+        "water_ambient",
+        "water_light_depth",
+        "water_god_rays",
+        "water_texture_layer",
+        "water_clear_teal",
+        {"attr": "water_surface_mode", "to": "vanilla"},
+        {"attr": "water_surface_mode", "to": "realistic", "name": "water_surface_mode_realistic"},
+        {"attr": "bedrock_caustics", "expect": "none", "why": "needs Bedrock's caustics.png"},
+        "bedrock_medium_clamp",
+        "bedrock_fresnel"
+      ]
+    },
+    {
+      "name": "glass",
+      "what": "The glass room at noon.",
+      "actions": ["cmd=/time set 6000", "cmd=/radiante showcase 1", "cmd=/tp @s ^2 ^1.5 ^1.5"],
+      "tests": [
+        "seamless_glass",
+        "bedrock_glass_tint",
+        "bedrock_shadow_tint",
+        "bedrock_fresnel",
+        "bedrock_medium_clamp",
+        "transparent_checkerboard",
+        "transparent_split_mode",
+        {"attr": "seamless_glass_scope", "to": "panes", "expect": "none", "why": "needs Seamless Glass"}
+      ]
+    },
+    {
+      "name": "glass_seamless",
+      "what": "The glass room with seamless glass.",
+      "actions": ["cmd=/radiante showcase 1", "cmd=/tp @s ^2 ^1.5 ^1.5", "pipe=attr:render_pipeline.module.ray_tracing.attribute.seamless_glass:render_pipeline.true"],
+      "after": ["pipe=attr:render_pipeline.module.ray_tracing.attribute.seamless_glass:render_pipeline.false"],
+      "tests": [
+        {"attr": "seamless_glass_scope", "to": "panes"},
+        {"attr": "seamless_glass_scope", "to": "blocks", "name": "seamless_glass_scope_blocks"}
+      ]
+    },
+    {
+      "name": "materials",
+      "what": "The materials room: metals, gems, polished stone.",
+      "actions": ["cmd=/radiante showcase 13", "cmd=/tp @s ^2 ^1.5 ^1.5"],
+      "tests": [
+        {"attr": "mirror_extra_bounces", "to": "0"},
+        "mirror_max_roughness",
+        "bedrock_materials",
+        "pbr_sampling_mode",
+        {"attr": "enable_parallax", "expect": "none", "why": "needs a resource pack with height maps"},
+        {"opt": "parallaxTransparentEdges", "to": "true", "expect": "none", "why": "needs a resource pack with height maps"},
+        "albedo_gamma",
+        "face_shading"
+      ]
+    },
+    {
+      "name": "translucent",
+      "what": "The translucent room: slime, honey, ice, stained glass, a nether portal.",
+      "actions": ["cmd=/radiante showcase 4", "cmd=/tp @s ^2 ^1.5 ^1.5"],
+      "tests": [
+        {"attr": "portal_transparency", "to": "0.0"},
+        {"attr": "portal_transparency", "to": "1.0", "name": "portal_transparency_full"},
+        "translucency",
+        "transparent_checkerboard",
+        "transparent_split_mode"
+      ]
+    },
+    {
+      "name": "foliage",
+      "what": "The foliage room: leaves, plants, cobweb, bars.",
+      "actions": ["cmd=/radiante showcase 10", "cmd=/tp @s ^2 ^1.5 ^1.5"],
+      "tests": [
+        "wind",
+        "translucency",
+        {"attr": "wind_strength", "expect": "none", "why": "needs Wind"}
+      ]
+    },
+    {
+      "name": "foliage_wind",
+      "what": "The foliage room with wind.",
+      "actions": ["cmd=/radiante showcase 10", "cmd=/tp @s ^2 ^1.5 ^1.5", "pipe=attr:render_pipeline.module.ray_tracing.attribute.wind:render_pipeline.true"],
+      "after": ["pipe=attr:render_pipeline.module.ray_tracing.attribute.wind:render_pipeline.false"],
+      "tests": [
+        {"attr": "wind_strength", "to": "0.0"}
+      ]
+    },
+    {
+      "name": "fog",
+      "what": "The glass room looking up into the air, with the fog as it is by default (Bedrock's fog volume).",
+      "actions": ["cmd=/time set 1000", "cmd=/radiante showcase 1", "cmd=/tp @s ~ ~ ~ -90 -15"],
+      "tests": [
+        {"attr": "volumetric_light_mode", "to": "vanilla"},
+        {"opt": "volumetricFogStrength", "to": "400"},
+        "light_shafts",
+        "fog_veil_dimming",
+        "volumetric_light_max_distance",
+        "volumetric_light_samples",
+        "froxel_fog",
+        "bedrock_volumetric_fog",
+        "bedrock_fog_anisotropy",
+        "volumetric_light_scattering_strength",
+        "volumetric_light_luminance_limit"
+      ]
+    },
+    {
+      "name": "fog_grid",
+      "what": "The same with Bedrock's fog volume off: the air's own fog, on the grid.",
+      "actions": ["cmd=/radiante showcase 1", "cmd=/tp @s ~ ~ ~ -90 -15", "pipe=attr:render_pipeline.module.ray_tracing.attribute.bedrock_volumetric_fog:render_pipeline.false"],
+      "after": ["pipe=attr:render_pipeline.module.ray_tracing.attribute.bedrock_volumetric_fog:render_pipeline.true"],
+      "tests": [
+        {"opt": "volumetricFogStrength", "to": "400"},
+        "light_shafts",
+        "fog_veil_dimming",
+        "volumetric_light_max_distance",
+        "volumetric_light_samples",
+        "froxel_fog",
+        "bedrock_fog_anisotropy",
+        "volumetric_light_scattering_strength",
+        "volumetric_light_luminance_limit"
+      ]
+    },
+    {
+      "name": "fog_march",
+      "what": "The same with the grid off too: the fog marched along each ray.",
+      "actions": ["cmd=/radiante showcase 1", "cmd=/tp @s ~ ~ ~ -90 -15", "pipe=attr:render_pipeline.module.ray_tracing.attribute.bedrock_volumetric_fog:render_pipeline.false", "pipe=attr:render_pipeline.module.ray_tracing.attribute.froxel_fog:render_pipeline.false"],
+      "after": ["pipe=attr:render_pipeline.module.ray_tracing.attribute.froxel_fog:render_pipeline.true", "pipe=attr:render_pipeline.module.ray_tracing.attribute.bedrock_volumetric_fog:render_pipeline.true"],
+      "tests": [
+        {"opt": "volumetricFogStrength", "to": "400"},
+        "light_shafts",
+        "fog_veil_dimming",
+        "volumetric_light_max_distance",
+        "volumetric_light_samples",
+        "volumetric_light_scattering_strength",
+        "volumetric_light_luminance_limit"
+      ]
+    },
+    {
+      "name": "dof_off",
+      "what": "The entities room; the camera effects are off.",
+      "actions": ["cmd=/time set 6000", "cmd=/radiante showcase 11", "cmd=/tp @s ^2 ^1.5 ^1.5"],
+      "tests": [
+        "post_enable_dof",
+        {"attr": "post_enable_motion_blur", "expect": "none", "why": "the camera stands still"},
+        {"attr": "post_dof_max_radius", "expect": "none", "why": "needs Depth of Field"},
+        {"attr": "post_motion_blur_strength", "expect": "none", "why": "needs Motion Blur"}
+      ]
+    },
+    {
+      "name": "dof_on",
+      "what": "The entities room with depth of field.",
+      "actions": ["cmd=/radiante showcase 11", "cmd=/tp @s ^2 ^1.5 ^1.5", "pipe=attr:render_pipeline.module.ray_tracing.attribute.post_enable_dof:render_pipeline.true"],
+      "after": ["pipe=attr:render_pipeline.module.ray_tracing.attribute.post_enable_dof:render_pipeline.false"],
+      "tests": [
+        "post_dof_max_radius",
+        "post_dof_focus_range",
+        "post_dof_auto_focus",
+        {"attr": "post_dof_focus_distance", "to": "200.0", "expect": "none", "why": "overridden by Auto Focus"}
+      ]
+    },
+    {
+      "name": "dof_manual",
+      "what": "The entities room with depth of field focused by hand.",
+      "actions": ["cmd=/radiante showcase 11", "cmd=/tp @s ^2 ^1.5 ^1.5", "pipe=attr:render_pipeline.module.ray_tracing.attribute.post_enable_dof:render_pipeline.true", "pipe=attr:render_pipeline.module.ray_tracing.attribute.post_dof_auto_focus:render_pipeline.false"],
+      "after": ["pipe=attr:render_pipeline.module.ray_tracing.attribute.post_dof_auto_focus:render_pipeline.true", "pipe=attr:render_pipeline.module.ray_tracing.attribute.post_enable_dof:render_pipeline.false"],
+      "tests": [
+        {"attr": "post_dof_focus_distance", "to": "200.0"}
+      ]
+    },
+    {
+      "name": "motion_blur",
+      "what": "The entities room with motion blur on, the camera still.",
+      "actions": ["cmd=/radiante showcase 11", "cmd=/tp @s ^2 ^1.5 ^1.5", "pipe=attr:render_pipeline.module.ray_tracing.attribute.post_enable_motion_blur:render_pipeline.true"],
+      "after": ["pipe=attr:render_pipeline.module.ray_tracing.attribute.post_enable_motion_blur:render_pipeline.false"],
+      "tests": [
+        {"attr": "post_motion_blur_strength", "expect": "none", "why": "the camera stands still"},
+        {"attr": "post_motion_blur_samples", "expect": "none", "why": "the camera stands still"}
+      ]
+    },
+    {
+      "name": "rain",
+      "what": "The walkway in the rain, looking along it and down: wet ground, puddles, streaks. Needs a test world where it rains: in a desert the picture shows none of it.",
+      "actions": ["cmd=/time set 6000", "cmd=/weather rain", "cmd=/radiante showcase 7", "cmd=/tp @s ^ ^1.5 ^-3", "cmd=/tp @s ~ ~ ~ ~90 25"],
+      "after": ["cmd=/weather clear"],
+      "settle_ticks": 700,
+      "tests": [
+        {"name": "debug_screen", "set": ["f3"], "undo": ["f3"], "structural": false, "why": "not a setting: the picture shows the biome, to know whether it rains here"},
+        {"opt": "rainWetness", "to": "false", "settle": 160},
+        {"attr": "rain_wetness_strength", "to": "0.0"},
+        {"attr": "rain_wet_walls", "to": "0.0"},
+        {"attr": "rain_puddles", "to": "0.0"},
+        {"attr": "rain_opacity", "to": "1.0"},
+        {"attr": "rain_streak_brightness", "to": "0.0"},
+        {"attr": "rain_wet_up_time", "expect": "none", "why": "the ground is already soaked"},
+        {"attr": "rain_drying_time", "expect": "none", "why": "it is still raining"},
+        {"attr": "lightning_flash", "expect": "none", "why": "no lightning"}
+      ]
+    },
+    {
+      "name": "stars",
+      "what": "Midnight, looking high into the sky.",
+      "actions": ["cmd=/time set 18000", "cmd=/radiante showcase 7", "cmd=/tp @s ~ ~ ~ ~ -65"],
+      "after": ["cmd=/time set 1000"],
+      "settle_ticks": 260,
+      "tests": [
+        {"mattr": "post_render.star_count", "to": "20000"},
+        {"mattr": "post_render.star_max_size", "to": "4.0"},
+        {"mattr": "post_render.star_min_size", "to": "4.0"},
+        {"mattr": "post_render.star_radius", "to": "4000.0"},
+        {"opt": "starAltitude", "to": "400", "expect": "none", "why": "the gallery is near sea level"},
+        {"opt": "nightBrightness", "to": "200"}
+      ]
+    },
+    {
+      "name": "clouds_thin",
+      "what": "The volumetric clouds from the start of the gallery, for the settings that take cloud away.",
+      "actions": ["cmd=/time set 1000", "cmd=/radiante showcase 7", "cmd=/tp @s ~ ~ ~ ~ -35", "pipe=clouds:2"],
+      "after": ["pipe=clouds:1"],
+      "settle_ticks": 200,
+      "tests": [
+        {"attr": "volumetric_cloud_density", "to": "0.1"},
+        {"attr": "volumetric_cloud_view_steps", "to": "8"},
+        {"attr": "volumetric_cloud_light_steps", "to": "1"},
+        {"attr": "volumetric_cloud_coverage", "to": "0.0"},
+        {"attr": "volumetric_cloud_temporal_accumulation"}
+      ]
+    },
+    {
+      "name": "water_close",
+      "what": "The water room from above the pool.",
+      "actions": ["cmd=/time set 6000", "cmd=/radiante showcase 9", "cmd=/tp @s ^2 ^1.5 ^1.5", "cmd=/tp @s ~ ~ ~ ~ 30"],
+      "tests": [
+        {"attr": "water_clear_teal", "to": "1.0"},
+        {"attr": "water_density", "to": "4.0"},
+        {"attr": "water_density", "to": "0.0", "name": "water_density_none"},
+        {"attr": "water_scattering", "to": "64.0"},
+        {"attr": "water_surface_mode", "to": "vanilla"},
+        {"attr": "water_surface_mode", "to": "realistic", "name": "water_surface_mode_realistic"},
+        {"attr": "water_wave_strength", "to": "0.0"},
+        {"attr": "transparent_checkerboard"},
+        {"attr": "bedrock_fresnel"},
+        {"attr": "bedrock_medium_clamp"}
+      ]
+    },
+    {
+      "name": "fsr",
+      "what": "The materials room on the NRD + FSR pipeline.",
+      "actions": ["cmd=/time set 6000", "cmd=/radiante showcase 13", "cmd=/tp @s ^2 ^1.5 ^1.5", "pipe=preset:render_pipeline.preset.rt_nrd_fsr"],
+      "after": ["pipe=preset:render_pipeline.preset.rt_dlss"],
+      "settle_ticks": 260,
+      "tests": [
+        {"mattr": "fsr_upscaler.sharpness", "to": "0.0"},
+        {"mattr": "fsr_upscaler.quality_mode", "to": "quality"},
+        {"mattr": "fsr_upscaler.render_scale", "to": "100.0"},
+        {"mattr": "fsr_upscaler.enable"},
+        {"module": "nrd"}
+      ]
+    }
+  ]
+}

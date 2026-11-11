@@ -112,9 +112,6 @@ vec4 evalSunBillboard(vec3 rayDir) {
 }
 
 /** How much of a halo of the given angular width (radians) and strength reaches `rayDir`; 0 behind the body. */
-#ifndef VPT_SKY_LIGHT_BOOST
-#    define VPT_SKY_LIGHT_BOOST 1.0
-#endif
 #ifndef VPT_SUN_GLOW
 #    define VPT_SUN_GLOW 0.08
 #endif
@@ -252,12 +249,8 @@ vec3 waterMissRadiance(vec3 backgroundRadiance) {
     uint mediumBounce = mainRay.pad0 == RAY_VIEW_BOUNCE_MARK || rayCameraPath(mainRay) ? min(bounce, 1u) : bounce;
     vec3 transmittance;
     vec3 scatter;
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     waterMediumSegmentBedrock(INF_DISTANCE, waterMediumBounceDensity(mediumBounce), mainRay.origin, mainRay.direction,
                               transmittance, scatter);
-#else
-    waterMediumSegmentUnclamped(INF_DISTANCE, waterMediumBounceDensity(mediumBounce), transmittance, scatter);
-#endif
     return backgroundRadiance * transmittance + scatter * max(waterMediumBounceAmbient(mediumBounce), 0.0);
 }
 
@@ -468,13 +461,7 @@ void main() {
     // The camera's own ray, seen through glass or a sheet of water, is still the sky the camera sees, not light.
     // Nor is the sky mirrored in a window or on water: boosted like the light, every pane facing the open sky
     // showed it nearly twice as bright as the sky itself, a pale band over whatever was behind the glass.
-    // The experimental Bedrock profile lights the world with the sky as Bedrock RTX does, unboosted.
-#if !defined(VPT_BEDROCK_ORIGINAL) || VPT_BEDROCK_ORIGINAL == 0
-    if (rayBounce(mainRay) > 0u && !rayCameraPath(mainRay) && worldUBO.skyType == 1 &&
-        mainRay.pad0 != RAY_VIEW_BOUNCE_MARK) {
-        backgroundRadiance *= max(VPT_SKY_LIGHT_BOOST, 0.0);
-    }
-#endif
+    // Radiante PT lights the world with the sky as Bedrock RTX does, unboosted.
     mainRay.radiance += waterMissRadiance(backgroundRadiance) * mainRay.throughput;
     raySetStop(mainRay, true);
     mainRay.hitT = INF_DISTANCE;

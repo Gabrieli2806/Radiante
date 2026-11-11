@@ -335,7 +335,6 @@ vec3 volumetricCloudPrimaryLightRadiance() {
     float sunScale = volumetricCloudSunDirectScale();
     float moonScale = volumetricCloudMoonDirectScale();
     float rainDimming = mix(1.0, 0.35, volumetricCloudRainBlend());
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     if (bedrockAtmosphereActive()) {
         // Bedrock RTX's sun or moon, the same light shadow.rmiss gives surfaces.
         float sunHeight = celestialSunDirection().y;
@@ -343,7 +342,6 @@ vec3 volumetricCloudPrimaryLightRadiance() {
                                             : worldUBO.moonBrightness / 0.35 * celestialMoonLitFraction();
         return bedrockCelestialLight(sunHeight) * brightness * rainDimming;
     }
-#endif
     if (sunScale >= moonScale) {
         return (VPT_SUN_RADIANCE * worldUBO.sunBrightness) * sunScale * rainDimming;
     }

@@ -11,18 +11,14 @@
         // times alpha was nearly black for clear glass and panes (alpha 0 where they are clear), and DLSS Ray
         // Reconstruction, dividing the picture by that guide, drew everything seen through them dark.
         vec3 transmissionGuide = clamp(viewGlassTint(firstHitMat.albedoValue.rgb, firstHitMat.albedoValue.a), 0.0, 1.0);
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
         // Water has no surface colour filter; absorption is integrated in its medium.
         if (firstHitWaterSurface) { transmissionGuide = vec3(1.0); }
-#endif
         imageStore(diffuseAlbedoImage, pixel, vec4(transmissionGuide, 0.0));
         firstHitEmission += transparentFogAdditive;
         mainRay.radiance = transparentReflectionRadiance + transparentRefractionRadiance + firstHitEmission;
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
         // This replaces the radiance put together earlier: the glass's own reflection, traced apart, is put back
         // where the surface behind a pane is water. NRD takes it once through the emission image below.
         mainRay.radiance += glassReflectionRadiance;
-#endif
         composeFogAdditive = vec3(0.0);
         composeFogTransmittance = -1.0;
     }

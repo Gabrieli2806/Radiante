@@ -34,13 +34,6 @@ public final class RtAttributes {
      * material from the same block's top. Bedrock RTX has no such shading.
      */
     public static final String FACE_SHADING_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.face_shading";
-    /** Bedrock RTX's own mode (sky, sun, exposure, materials); on by default. */
-    public static final String BEDROCK_ORIGINAL_ATTRIBUTE =
-        "render_pipeline.module.ray_tracing.attribute.bedrock_original";
-    /** On top of that one, what goes beyond Bedrock on purpose (glowing light blocks and end portal); on by default. */
-    public static final String BEDROCK_ENHANCED_ATTRIBUTE =
-        "render_pipeline.module.ray_tracing.attribute.bedrock_enhanced";
-
     /** Past the first bounce, diffuse light taken from the radiance cache instead of traced further. */
     public static final String CACHE_DEEP_BOUNCES_ATTRIBUTE =
         "render_pipeline.module.ray_tracing.attribute.cache_deep_bounces";

@@ -76,15 +76,9 @@ hitAttributeEXT vec2 attribs;
 #    define VPT_SHADOW_TINT_MODEL 0
 #endif
 
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
-#    define SHADOW_BEDROCK_PROFILE 1
-#else
-#    define SHADOW_BEDROCK_PROFILE 0
-#endif
-
 // Light reaching the bottom through a (near) horizontal water surface: absorbed on the way down, then focused into
 // the moving caustic pattern. Returns false for steep faces (the sides of a water body), which keep the plain
-// transmission. useRayDistance (Bedrock profile, underwater celestial queries) measures the depth along the ray, as
+// transmission. useRayDistance (underwater celestial queries) measures the depth along the ray, as
 // Bedrock's sun shadows do, instead of the vertical, softened depth.
 bool waterSurfaceLight(PositionVertex p0, PositionVertex p1, PositionVertex p2,
                        MaterialVertex m0, MaterialVertex m1, MaterialVertex m2,
@@ -197,12 +191,10 @@ void main() {
     }
 
     vec4 surface = albedo * vertexColour;
-    // Bedrock profile: camera rays already treat glass and blend surfaces by their authored coverage, regardless of
+    // Camera rays already treat glass and blend surfaces by their authored coverage, regardless of
     // Java's cut-out/stochastic layer, so shadow rays use that coverage too instead of rounding it to opaque.
     bool authoredCoverage = false;
-#if SHADOW_BEDROCK_PROFILE
     authoredCoverage = (radianteIsGlass(flags) || radianteIsBlend(flags)) && !water;
-#endif
 
     // ---- Coverage ----
     // Additive surfaces only add light; they never cast a shadow.
@@ -255,7 +247,6 @@ void main() {
             ignoreIntersectionEXT;
         }
         bool underwaterQuery = false;
-#if SHADOW_BEDROCK_PROFILE
         underwaterQuery = shadowRay.pad0 == UNDERWATER_CELESTIAL_QUERY;
         if (underwaterQuery) {
             // Candidates arrive in no particular order and one candidate can be reported more than once; only the
@@ -268,18 +259,15 @@ void main() {
             // reconstructed yet, so it must not inherit a top-surface caustic.
             shadowRay.waterTransmission = vec3(1.0);
         }
-#endif
         vec3 surfaceLight;
         if (waterSurfaceLight(p0, p1, p2, m0, m1, m2, vertexColour.rgb, underwaterQuery, surfaceLight)) {
             transmission = surfaceLight;
         }
-#if SHADOW_BEDROCK_PROFILE
         // The underwater query keeps the water factor aside (the miss shader applies it) instead of in throughput.
         if (underwaterQuery) {
             shadowRay.waterTransmission = transmission;
             ignoreIntersectionEXT;
         }
-#endif
     } else {
         vec4 specular = vec4(0.0);
         if (textured) {

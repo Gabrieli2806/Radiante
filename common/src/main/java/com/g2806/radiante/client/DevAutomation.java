@@ -110,6 +110,18 @@ public final class DevAutomation {
             active = !PRE_STEPS.isEmpty();
             return;
         }
+        // "@<file>": the script is that file's text, for one too long for an environment variable (a sweep of every
+        // setting). Its steps may be on lines of their own.
+        if (script.startsWith("@")) {
+            try {
+                script = java.nio.file.Files.readString(java.nio.file.Path.of(script.substring(1).trim()))
+                    .replace("\r", "").replace("\n", ";");
+            } catch (java.io.IOException e) {
+                RadianteClient.LOGGER.error("[dev] the script file {} could not be read", script.substring(1), e);
+                active = !PRE_STEPS.isEmpty();
+                return;
+            }
+        }
         for (String part : script.split(";")) {
             int colon = part.indexOf(':');
             if (colon > 0) {
@@ -612,7 +624,15 @@ public final class DevAutomation {
                 Object value = type == boolean.class ? Boolean.parseBoolean(parts[1])
                     : type == int.class ? Integer.parseInt(parts[1])
                     : type == float.class ? Float.parseFloat(parts[1]) : parts[1];
-                field.set(null, value);
+                // Through the option's own setter where it has one (set<Field>(value, write)), which is what hands
+                // the value to the renderer; a plain field otherwise, read where it is used.
+                String setter = "set" + Character.toUpperCase(parts[0].charAt(0)) + parts[0].substring(1);
+                try {
+                    com.g2806.radiante.client.option.Options.class.getMethod(setter, type, boolean.class)
+                        .invoke(null, value, false);
+                } catch (NoSuchMethodException noSetter) {
+                    field.set(null, value);
+                }
                 RadianteClient.LOGGER.info("[dev] option {} = {}", parts[0], value);
             } catch (ReflectiveOperationException | RuntimeException e) {
                 RadianteClient.LOGGER.warn("[dev] option {} not set", action, e);

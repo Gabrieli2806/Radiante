@@ -2,7 +2,7 @@
 #define VPT_PT_DIRECT_GLSL
 
 // Light arriving at a surface: the sun or moon (one shadow ray), the block lights (block_light.glsl), the sky seen
-// along a direction, a blended face's own light under the Bedrock profile, and last frame's position of the hit
+// along a direction, a blended face's own light in Radiante PT, and last frame's position of the hit
 // for motion vectors. Moved out of the default closest-hit shader unchanged; the hit is read through g_hit.
 
 // Vanilla's moon quad: half-width 20 at distance 100, as the miss shader draws it (evalMoonBillboard).
@@ -155,7 +155,6 @@ vec3 sampleSurfaceDirectLight(SampledSurface surface,
     if (backLit) {
         lightBRDF = translucentBackLight(surface, viewDir, sampledLightDir, sampledLightNoL);
     } else if (!lightBehind) {
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
         if (!endFlash && isOpaqueSurface) {
             // Bedrock evaluates the BRDF at directionToSun. Jitter only the
             // visibility ray: jittering a narrow GGX peak produced bright fireflies
@@ -163,7 +162,6 @@ vec3 sampleSurfaceDirectLight(SampledSurface surface,
             if (dot(lightDir, surface.geometricNormal) <= 0.0) { return vec3(0.0); }
             lightBRDF = bedrockSolarBrdf(surface.mat, viewDir, surface.shadingNormal, lightDir);
         } else
-#endif
         {
             float lightPdf;
             lightBRDF = DisneyEval(surface.mat, viewDir, surface.shadingNormal, sampledLightDir, lightPdf);
@@ -210,7 +208,6 @@ vec3 sampleSurfaceDirectLight(SampledSurface surface,
     shadowRay.throughput = vec3(1.0);
     shadowRay.insideBoat = rayInsideBoat(mainRay) ? 1u : 0u;
     shadowRay.pad0 = 0u;
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     // Incoming medium identifies an underwater receiver, but not which side of a
     // transparent boundary the shadow origin occupies. Restrict this path to opaque surfaces.
     if (rayInWater(mainRay) && isOpaqueSurface) {
@@ -218,7 +215,6 @@ vec3 sampleSurfaceDirectLight(SampledSurface surface,
         shadowRay.nearestWaterT = 1000.0;
         shadowRay.waterTransmission = vec3(1.0);
     }
-#endif
 
     vec3 baseWorldPos = shadowOriginPos;
     vec3 exitGeoNormal = shadowOriginGeomNormal;
@@ -268,12 +264,10 @@ vec3 ptTraceDeferredShadowRay(uint slot) {
     shadowRay.throughput = vec3(1.0);
     shadowRay.insideBoat = g_shadowInsideBoat[slot];
     shadowRay.pad0 = g_shadowQuery[slot];
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     if (g_shadowQuery[slot] == UNDERWATER_CELESTIAL_QUERY) {
         shadowRay.nearestWaterT = 1000.0;
         shadowRay.waterTransmission = vec3(1.0);
     }
-#endif
     traceRayEXT(topLevelAS, VPT_SHADOW_RAY_FLAGS, g_shadowMask[slot], 0, 0, 0, g_shadowOrigin[slot], 0.0001,
                 g_shadowDirection[slot], g_shadowLength[slot], 1);
     shadowRay.pad0 = 0u;
@@ -381,7 +375,6 @@ float skyVisibilityAlong(vec3 position, vec3 direction) {
     return clamp(dot(shadowRay.radiance, vec3(0.2126, 0.7152, 0.0722)), 0.0, 1.0);
 }
 
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
 // The sky's light off a face, for a surface that returns all of it: the sky out from the face, leaning up (a wall's
 // half of the sky is the half over the ground), and at a slant around that; none where a ray that way meets a roof.
 vec3 bedrockFaceSkyLight(vec3 position, vec3 normal) {
@@ -440,6 +433,5 @@ vec3 bedrockBlendedFaceLight(vec3 position, vec3 normal, vec3 viewDir, vec3 colo
     g_translucency = translucency;
     return light;
 }
-#endif
 
 #endif // VPT_PT_DIRECT_GLSL

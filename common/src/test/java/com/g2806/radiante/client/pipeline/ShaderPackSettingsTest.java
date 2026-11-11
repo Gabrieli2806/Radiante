@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ShaderPackSettingsTest {
 
     private static final String P = ShaderPackSettings.ATTRIBUTE_PREFIX;
-    private static final Set<String> BASE = Set.of(P + "cloud_mode", P + "bedrock_original");
+    private static final Set<String> BASE = Set.of(P + "cloud_mode", P + "bedrock_materials");
 
     private static ShaderPackSettings parse(String json) {
         return ShaderPackSettings.parse(JsonParser.parseString(json).getAsJsonObject(), BASE);
@@ -50,7 +50,7 @@ class ShaderPackSettingsTest {
             + attribute("mine", "bool", "") + ","
             // Radiante PT's attribute with a new default, and a new type: still Radiante PT's.
             + "{\"name\": \"" + P + "cloud_mode\", \"default_value\": \"x\"},"
-            + attribute("bedrock_original", "bool", "\"group\": \"g\"") + ","
+            + attribute("bedrock_materials", "bool", "\"group\": \"g\"") + ","
             // No type: not something the renderer would load as a new attribute.
             + "{\"name\": \"" + P + "untyped\", \"default_value\": \"1\"}]}");
         assertEquals(1, settings.attributes().size());

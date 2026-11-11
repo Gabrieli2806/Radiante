@@ -49,8 +49,7 @@ parecido a Bedrock RTX. **Restablecer valores** lo devuelve tras cambiar ajustes
 Sin un pack de Bedrock, Radiante usa valores propios para la niebla y el agua de cada bioma y para el brillo de cada
 bloque de luz. Cualquier pack de Bedrock que actives los reemplaza.
 
-Otros aspectos son [paquetes de shaders](opciones.md#paquetes-de-shaders). El antiguo perfil **Realista** es ahora el
-paquete de ejemplo `realistic`.
+Otros aspectos son [paquetes de shaders](opciones.md#paquetes-de-shaders).
 
 ## Archivos de una instalación de Bedrock
 

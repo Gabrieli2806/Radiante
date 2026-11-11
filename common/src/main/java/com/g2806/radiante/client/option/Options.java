@@ -86,10 +86,9 @@ public class Options {
     public static final int MAX_PATH_TILT = 45;
     public static final int MAX_ROTATION = 180;
 
-    /** Whether the sun follows vanilla's path: no lean, no turn. */
-    public static boolean vanillaSunPath() {
-        return sunPathTilt == 0 && sunPathAzimuth == 0;
-    }
+    /** The on/off switch older versions and their share codes had for the sun's path; only read, never written. */
+    public static final String OLD_SUN_PATH_KEY = "vanillaSunPath";
+
     /** Sun and moon sprites keep vanilla's fixed orientation instead of turning as they cross the sky. */
     public static volatile boolean vanillaCelestialOrientation = true;
     /**
@@ -283,12 +282,6 @@ public class Options {
         number("nightBrightness", () -> nightBrightness, v -> nightBrightness = v),
         number("emissionBrightness", () -> emissionBrightness, v -> emissionBrightness = v),
         number("heldLightBrightness", () -> heldLightBrightness, v -> heldLightBrightness = v),
-        // The on/off switch of before the path settings, still written for older versions and old codes: off is
-        // the tilted path. The settings after it, when present, give the path exactly.
-        bool("vanillaSunPath", Options::vanillaSunPath, v -> {
-            sunPathTilt = v ? 0 : SUN_PATH_TILTED_DEGREES;
-            sunPathAzimuth = 0;
-        }),
         number("sunPathTilt", () -> sunPathTilt, v -> sunPathTilt = clamp(v, MAX_PATH_TILT)),
         number("sunPathAzimuth", () -> sunPathAzimuth, v -> sunPathAzimuth = clamp(v, MAX_ROTATION)),
         number("sunSpriteRotation", () -> sunSpriteRotation, v -> sunSpriteRotation = clamp(v, MAX_ROTATION)),
@@ -400,9 +393,10 @@ public class Options {
             chunkBuildingAuto = chunkBuildingBatchSize == 12 && chunkBuildingTotalBatches == 12;
         }
         applyChunkBuildingAuto();
-        // Renderer profiles are gone; the one saved is dealt with once the pipeline is loaded (OptionsMigration), and
-        // the key goes with the rewrite below.
-        OptionsMigration.rememberProfile(props.getProperty(OptionsMigration.PROFILE_KEY));
+        // A file from before the path settings has only their on/off switch: off was the tilted path.
+        if (!props.containsKey("sunPathTilt") && "false".equals(props.getProperty(OLD_SUN_PATH_KEY))) {
+            sunPathTilt = SUN_PATH_TILTED_DEGREES;
+        }
         // Held lights used to follow the block setting; a config from before keeps them where they were.
         if (!props.containsKey("heldLightBrightness")) {
             heldLightBrightness = emissionBrightness;

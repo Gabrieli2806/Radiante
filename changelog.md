@@ -4,6 +4,26 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Radiante PT has one look: the Bedrock RTX (Enhanced) look is simply its default settings. The hidden switches behind it (`bedrock_original`, shown as "Bedrock RTX (Experimental)", and `bedrock_enhanced`) are gone, and so is the other branch of the shaders, the remains of the old Realistic profile. Settings of the old Realistic and Custom profiles are no longer reset on the first start.
+
+- Sky Light, Bounced Light, Daytime Exposure, Night-time Exposure and Glass Reflections are removed, with the advanced attributes `basic_radiance` and `water_density_from_above`: nothing read them in that one look.
+
+- Picture Style (Image) sets only the tone mapping curve and Saturation: Natural is PBR Neutral at 100%, Bedrock the Bedrock RTX curve at 100%, Vivid ACES at 130%. It no longer changes bounced or sky light.
+
+- The Realistic example shader pack (`examples/shaderpacks/realistic`) and its page of values are removed.
+
+- New Entity Light Reach row (Lighting, 8 to 256 blocks, 64 by default): how far from the player glowing dropped items, item frames and end crystals still light their surroundings. The option was saved before but had no row.
+
+- Rows that did nothing without saying so are grey and say why: Eye Adaptation, Eye Adaptation Speed and Low-Light Boost while the Exposure Metering Mode (Advanced) is Bedrock RTX's, the default, which has its own limits and speed; Daytime Low-Light Limit unless the metering mode is the incident light meter; Texture Contrast while Exact sRGB Textures (Advanced) is on, the default; Cache Deep Bounces and One Bounce + Cache when the radiance cache (Use SHaRC, Advanced) is off.
+
+- Reset to Defaults also resets Light From Glowing Pixels, Light From Unlit Blocks, Other Mods' Overlays, Text Display Backgrounds, Entity Light Reach, the frame generation backend, HDR Peak Brightness and HDR Paper White, and the Seamless Glass Scope.
+
+- `options.properties` no longer writes the old `vanillaSunPath` key; it is still read from old files and old share codes.
+
+- Eight more settings apply at once instead of rebuilding the shaders: Carved Surfaces, Cloud Shadows, Water Surface, PBR Sampling Mode, Transparent Split Mode, Clouds in Reflections, Clouds in Clear Weather and the Bedrock fresnel of glass and water. 78 of radiante-pt's 108 settings now change live.
+
+- For contributors: `python dev/smoke/settings.py`, the settings sweep, changes each setting in a view where it should show and reports the ones that leave the picture as it was (`docs/dev/testing.md`). A scripted run reads its script from a file with `RADIANTE_DEV_SCRIPT="@<file>"`, and `opt=field=value` goes through the option's own setter when it has one. `BedrockRtxValuesTest` and `SettingsCodeTest` replace `OptionsMigrationTest`.
+
 - A settings file is no longer lost to a crash or a full disk in the middle of a save: it is written whole beside the old one and then takes its place. A `pipeline.yaml` or `options.properties` that cannot be read is kept as `pipeline.yaml.bak` or `options.properties.bak` before the defaults replace it.
 
 - `/radiante showcase` and `/radiante biome` need a world with commands (cheats) allowed: they build with `fill` and move the player, which a survival world without commands should not allow.

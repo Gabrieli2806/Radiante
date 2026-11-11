@@ -105,7 +105,7 @@
 #    define NETHER_EXPOSURE_SCALE 0.25
 #endif
 
-// The Bedrock profile's picture by day, against what the meter would bring it to.
+// Radiante PT's picture by day, against what the meter would bring it to.
 #ifndef BEDROCK_DAY_EXPOSURE_SCALE
 #    define BEDROCK_DAY_EXPOSURE_SCALE 0.85
 #endif

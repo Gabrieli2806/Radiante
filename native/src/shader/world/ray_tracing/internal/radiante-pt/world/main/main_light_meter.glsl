@@ -14,23 +14,17 @@
         ivec2 meterIndex = pixel / meterCell;
         if (all(lessThan(meterIndex, ivec2(16))) && all(equal(pixel, meterIndex * meterCell + meterCell / 2))) {
             vec4 meterSample = vec4(0.0);
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
             // As Bedrock RTX weights them: in full to 21/32 of the render distance, fading out to none at it (its
             // distance fade, calibrated to Bedrock RTX).
             float renderDistance = max(worldUBO.fogEnd, 32.0);
             float meterWeight = 1.0 - clamp(surfaceDepth * 32.0 / (11.0 * renderDistance) - 21.0 / 11.0, 0.0, 1.0);
-#else
-            float meterWeight = 1.0 - clamp((surfaceDepth - 32.0) / 96.0, 0.0, 1.0);
-#endif
             vec3 white = vec3(-1.0); // Negative: no reading this frame.
             if (!psrHitSky && isFirstHitDiffuse && isHand == 0) {
                 vec3 albedo = max(firstHitMat.albedoValue.rgb * firstHitMat.albedoValue.a, vec3(0.04));
                 vec3 surfaceLight = firstHitDirectRadiance + firstHitIndirectRadiance;
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
                 // Bedrock meters the light falling on the surface, not the light it gives off: its own glow is no
                 // part of it (a lamp in view read as bright as the glow it shows, not as the light it stands in).
                 surfaceLight -= firstHitEmission;
-#endif
                 vec3 reading = max(surfaceLight / albedo, vec3(0.0));
                 if (!any(isnan(reading)) && !any(isinf(reading))) { white = reading; }
             }
@@ -43,7 +37,6 @@
                 meterWeight = 1.0;
             }
             uint meterSlot = uint(meterIndex.y * 16 + meterIndex.x);
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
             // Bedrock meters the light its denoiser leaves, not one path's: each sample here is accumulated over the
             // frames its surface stays under the cell, as that denoiser accumulates - all of it on a surface just come
             // into view, 1/n of the way on its n-th frame, never less than a fiftieth (its diffuse temporal alpha,
@@ -85,13 +78,6 @@
                 lightMeter.sampleHistory[meterSlot] = vec4(0.0);
             }
             lightMeter.samples[meterSlot] = meterSample;
-#else
-            if (white.x >= 0.0) { meterSample = vec4(exp2(log2(max(white, vec3(1e-12))) / 3.0), meterWeight); }
-            // Averaged over frames: each sample is one noisy path, and the meter shimmered with it.
-            vec4 previousSample = lightMeter.samples[meterSlot];
-            bool usable = !any(isnan(previousSample)) && !any(isinf(previousSample));
-            lightMeter.samples[meterSlot] = usable ? mix(previousSample, meterSample, 0.2) : meterSample;
-#endif
         }
         // How much of a day it is, by the sun's height: the eye may open far by day (a room, a cave) but not at
         // night, which is meant to stay dark. Other dimensions have no night.
@@ -106,24 +92,15 @@
             // z: the camera is under water. The eye holds the exposure it had there (exposure.comp): the water
             // darkens with depth on its own (water_medium.glsl), and an eye adapting to it brought the brightness
             // back as the camera sank - dimming, then opening up again.
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
             // Bedrock RTX's eye goes on metering under water: going in from a sunny pool, its picture brightens by
             // about a stop over a second and a half (observed), and the water reads a bright blue.
             float underWater = 0.0;
-#else
-            float underWater = skyUBO.cameraSubmersionType == 1 ? 1.0 : 0.0;
-#endif
             // The picture a little under what the meter brings it to, by day and by night (settings); w: how far the
             // eye may open by day at most, so a sealed room stays dark instead of being opened up to its faint
             // leftover light.
-#if !defined(VPT_BEDROCK_ORIGINAL) || VPT_BEDROCK_ORIGINAL == 0
-            // (The experimental Bedrock profile exposes as Bedrock RTX does, with no offset of its own.)
-            darkness *= mix(VPT_EXPOSURE_NIGHT_SCALE, VPT_EXPOSURE_DAY_SCALE, day);
-#else
             // By day a little under Bedrock's: with the sun's light cut (shadow.rmiss) the meter alone opened the eye
             // back up and the picture came out as bright as before, only flatter; held under, daylight is softer.
             darkness *= mix(1.0, BEDROCK_DAY_EXPOSURE_SCALE, day);
-#endif
             // In lava or powder snow the eye is held below what the medium meters (cameraMedium), by day or night and
             // in any dimension alike.
             if (cameraInMedium) { darkness = cameraMediumExposure; }

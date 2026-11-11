@@ -21,9 +21,6 @@
 
 // How thick the water looks through its surface from above (VPT_WATER_DENSITY is the same from inside it): Bedrock
 // RTX shows the sea floor teal and darkened from above, while under water the same water reads clear.
-#ifndef VPT_WATER_DENSITY_ABOVE
-#    define VPT_WATER_DENSITY_ABOVE 0.4
-#endif
 #ifndef VPT_WATER_AMBIENT
 #    define VPT_WATER_AMBIENT 1.0
 #endif
@@ -45,20 +42,14 @@ vec3 waterMediumExtinction(float density) {
 // thinned (VPT_WATER_DENSITY) and not brightened: Bedrock RTX's water is clear and dark from above, and only the
 // light filling it under water glows (VPT_WATER_AMBIENT, when the camera is in it).
 float waterMediumBounceDensity(uint bounce) {
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     return 1.0; // Bedrock applies the medium's extinction (observed) without an above-water density multiplier.
-#else
-    return bounce <= 1u && skyUBO.cameraSubmersionType != 1 ? VPT_WATER_DENSITY_ABOVE : 1.0;
-#endif
 }
 
 float waterMediumBounceAmbient(uint bounce) {
     if (skyUBO.cameraSubmersionType == 1) { return VPT_WATER_AMBIENT; }
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
     // Bedrock RTX's water glows with the light it scatters seen from above too: a deep pool is a lit blue down to
     // its walls, where without it they were black behind the clear surface.
     return VPT_WATER_AMBIENT;
-#endif
     // Seen from above, the water shows what is under it and nothing of its own: the scattered light is lit by the
     // open sky whether or not the water is (an indoor pool glowed sky blue), and Bedrock's water is clear.
     return bounce <= 1u ? 0.0 : 1.0;
@@ -138,13 +129,12 @@ void waterMediumSegment(float distance, float density, out vec3 transmittance, o
     waterMediumSegmentUnclamped(distance, density, transmittance, inScatter);
 }
 
-#if defined(VPT_BEDROCK_ORIGINAL) && VPT_BEDROCK_ORIGINAL != 0
 // How much brighter Bedrock RTX's water glows than single scattering of the sun and sky with an even phase would
 // make it, with the pack's coefficients as they stand (matched against Bedrock RTX side by side: Vanilla RTX, plains,
 // noon, pools seen from above and from under water).
-#    ifndef VPT_BEDROCK_WATER_SCATTER_GAIN
-#        define VPT_BEDROCK_WATER_SCATTER_GAIN 2.4
-#    endif
+#ifndef VPT_BEDROCK_WATER_SCATTER_GAIN
+#    define VPT_BEDROCK_WATER_SCATTER_GAIN 2.4
+#endif
 const float BEDROCK_WATER_SKY_SHARE = 0.5;
 const float BEDROCK_WATER_SUN_SHARE = 1.6;
 
@@ -178,6 +168,5 @@ void waterMediumSegmentBedrock(float distance, float density, vec3 origin, vec3 
     inScatter = VPT_BEDROCK_WATER_SCATTER_GAIN * sigmaS * max(light, vec3(0.0)) * exp(-sigmaLight * startDepth) *
                 along;
 }
-#endif
 
 #endif

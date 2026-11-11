@@ -58,6 +58,7 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
     Boolean pendingGpuTimings;
     boolean pendingBiomeAmbiance = Options.biomeAmbiance;
     boolean pendingFirstPersonShadow = Options.firstPersonShadow;
+    int pendingEntityLightReach = Options.entityLightReach;
     int pendingBiomeAmbianceStrength = Options.biomeAmbianceStrength;
     Boolean pendingVolumetricFog;
     Boolean pendingMotionBlur;
@@ -162,6 +163,7 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
         this.pendingDebugLogging = previous.pendingDebugLogging;
         this.pendingBiomeAmbiance = previous.pendingBiomeAmbiance;
         this.pendingFirstPersonShadow = previous.pendingFirstPersonShadow;
+        this.pendingEntityLightReach = previous.pendingEntityLightReach;
         this.pendingBiomeAmbianceStrength = previous.pendingBiomeAmbianceStrength;
         this.pendingVolumetricFog = previous.pendingVolumetricFog;
         this.pendingMotionBlur = previous.pendingMotionBlur;
@@ -385,6 +387,12 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
         stage("heldItemLight", true);
         stage("rainWetness", true);
         stage("blockOutline", false);
+        stage("modOverlays", true);
+        stage("textBackgrounds", true);
+        stage("glowingPixelLight", false);
+        stage("unlitBlockLight", true);
+        stage("hdrPeakNits", 1000);
+        stage("hdrPaperWhiteNits", 200);
         stage("parallaxTransparentEdges", false);
         stage("dayBrightness", 25);
         stage("nightBrightness", 35);
@@ -417,6 +425,8 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
         this.pendingDebugLogging = true;
         this.pendingBiomeAmbiance = false;
         this.pendingFirstPersonShadow = true;
+        this.pendingEntityLightReach = 64;
+        this.pendingFrameGenerationBackend = 0;
         this.pendingBiomeAmbianceStrength = 100;
         this.pendingVolumetricFog = PipelineSettings.supportsVolumetricFog() ? Boolean.TRUE : null;
         this.pendingMotionBlur = Boolean.FALSE;
@@ -431,6 +441,8 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
             ? Boolean.TRUE : null;
         this.pendingSeamlessGlass =
             PipelineSettings.supportsShaderPackToggle(RtAttributes.SEAMLESS_GLASS_ATTRIBUTE) ? Boolean.FALSE : null;
+        // Not carried over the pack's defaults (applyChanges): the pack's own default stands.
+        this.pendingSeamlessScope = null;
         this.pendingPackToggles.clear();
         for (String attribute : List.of(RtAttributes.CACHE_DEEP_BOUNCES_ATTRIBUTE,
             RtAttributes.BEDROCK_MATERIALS_ATTRIBUTE)) {
@@ -537,6 +549,9 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
         }
         Options.biomeAmbiance = this.pendingBiomeAmbiance;
         Options.firstPersonShadow = this.pendingFirstPersonShadow;
+        if (this.pendingEntityLightReach != Options.entityLightReach) {
+            Options.setEntityLightReach(this.pendingEntityLightReach, false);
+        }
         if (this.pendingReflex != Options.reflex) {
             Options.reflex = this.pendingReflex;
             FrameGeneration.applyReflex();

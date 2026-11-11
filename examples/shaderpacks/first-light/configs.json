@@ -134,10 +134,6 @@
             "default_value": "0.035"
         },
         {
-            "name": "render_pipeline.module.ray_tracing.attribute.basic_radiance",
-            "default_value": "0.0"
-        },
-        {
             "name": "render_pipeline.module.ray_tracing.attribute.exposure_day_max",
             "default_value": "1.6"
         },
