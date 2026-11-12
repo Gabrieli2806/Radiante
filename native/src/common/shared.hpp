@@ -441,6 +441,13 @@ struct SkyUBO {
     // Width: how far the water runs across at eye level, averaged over four directions, in blocks (1 for a 1x1 pool,
     // at most 49).
     T_FLOAT waterBodyWidth;
+
+    // ---- The player for shader packs (352..383), PackPlayer on the Java side, read through
+    // common/pack_world.glsl; radiante-pt reads none of it.
+    // x: health, y: the flash of a hit (1 as it lands, dying away), z: food, w: air, each 0 to 1.
+    T_VEC4 playerState;
+    // x: speed in blocks a second, y: sprinting, z: on the ground, w: how hurt (1 - health); eased.
+    T_VEC4 playerMotion;
 };
 
 // Per-texture lookup from an atlas texture to its PBR companions. specular, normal and rawMer are texture ids,

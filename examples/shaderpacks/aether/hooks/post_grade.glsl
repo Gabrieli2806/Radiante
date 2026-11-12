@@ -13,6 +13,9 @@
 //   Vignette       the corners darken gently
 //   Film Grain     a fine grain that changes every frame, stronger in the shadows, as film's is
 //   Wide Screen    black bars above and below, up to a cinema's 2.39:1 frame
+//   Vitals         the picture answers to the player (common/pack_world.glsl's radianteHurt and radianteHealth): a
+//                  red pulse from the edges when hit, and with under a third of the health left the colour drains
+//                  and the corners close in
 // then a dither of half an 8-bit step against banding in the soft sky. All are live settings, read from the world
 // uniform while the pass runs (tested with if, never #if). The pass runs because configs.json sets
 // RADIANTE_HOOK_POST_GRADE; hooks/underwater.glsl runs in it first.
@@ -87,6 +90,23 @@ void hookPostGrade(inout vec3 color, vec2 uv) {
         // 1 at the corners.
         float corner = length(uv - 0.5) * 1.41421356;
         color *= 1.0 - vignette * 0.55 * smoothstep(0.25, 1.0, corner) * corner;
+    }
+
+    float vitals = clamp(float(AETHER_VITALS), 0.0, 1.0);
+    if (vitals > 0.0) {
+        float corner = length(uv - 0.5) * 1.41421356;
+        // Little health: 0 from a third of it up, 1 with none left.
+        float faint = (1.0 - smoothstep(0.0, 0.33, radianteHealth())) * vitals;
+        if (faint > 0.0) {
+            color = mix(color, vec3(aetherLuma(color)), 0.65 * faint);
+            color *= 1.0 - 0.5 * faint * smoothstep(0.3, 1.0, corner);
+        }
+        // A hit: red in from the edges, gone in about half a second.
+        float hit = radianteHurt() * vitals;
+        if (hit > 0.0) {
+            float edge = smoothstep(0.25, 1.0, corner);
+            color = mix(color, vec3(0.75, 0.04, 0.03), 0.55 * hit * edge);
+        }
     }
 
     vec2 size = vec2(textureSize(hookPostGradeInput, 0));

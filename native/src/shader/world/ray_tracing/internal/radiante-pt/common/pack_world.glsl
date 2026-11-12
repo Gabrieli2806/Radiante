@@ -24,6 +24,24 @@ float radianteTime() { return worldUBO.windTime; }
 // The frames drawn so far: for a pattern that changes every frame (dither, a grain).
 uint radianteFrame() { return worldUBO.frameCounter; }
 
+// ---- The player
+//
+// For effects on the picture that follow how the player is doing: a red flash when hit, colour draining away with
+// the health, a blur at a sprint. All eased, so an effect fades instead of switching, and still while paused.
+
+// Health, 0 (none left) to 1 (full).
+float radianteHealth() { return skyUBO.playerState.x; }
+// The flash of a hit: 1 as it lands (less for a light one), dying away over about half a second.
+float radianteHurt() { return skyUBO.playerState.y; }
+// Food, 0 to 1, and the air left under water, 0 to 1 (1 out of water).
+float radianteFood() { return skyUBO.playerState.z; }
+float radianteAir() { return skyUBO.playerState.w; }
+// How fast the player moves, in blocks a second (about 4.3 walking, 5.6 sprinting).
+float radianteSpeed() { return skyUBO.playerMotion.x; }
+// How much the player is sprinting and how much they stand on the ground, each 0 to 1.
+float radianteSprinting() { return skyUBO.playerMotion.y; }
+float radianteOnGround() { return skyUBO.playerMotion.z; }
+
 // ---- Weather
 
 // Rain, 0..1 (Iris's rainStrength).

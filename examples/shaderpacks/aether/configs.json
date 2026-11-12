@@ -419,6 +419,17 @@
             "description": "aether.desc.letterbox"
         },
         {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_vitals",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.6",
+            "runtime": true,
+            "define": "AETHER_VITALS",
+            "group": "aether.group.post",
+            "order": 77,
+            "step": 0.05,
+            "description": "aether.desc.vitals"
+        },
+        {
             "name": "render_pipeline.module.ray_tracing.attribute.cloud_mode",
             "default_value": "render_pipeline.module.ray_tracing.attribute.cloud_mode.off"
         },
@@ -465,7 +476,8 @@
                 "aether_vignette": 0.35,
                 "aether_aberration": 0.25,
                 "aether_grain": 0.2,
-                "aether_letterbox": 0.0
+                "aether_letterbox": 0.0,
+                "aether_vitals": 0.6
             }
         },
         {
@@ -505,7 +517,8 @@
                 "aether_vignette": 0.4,
                 "aether_aberration": 0.25,
                 "aether_grain": 0.2,
-                "aether_letterbox": 0.0
+                "aether_letterbox": 0.0,
+                "aether_vitals": 0.6
             }
         },
         {
@@ -545,7 +558,8 @@
                 "aether_vignette": 0.6,
                 "aether_aberration": 0.35,
                 "aether_grain": 0.2,
-                "aether_letterbox": 0.0
+                "aether_letterbox": 0.0,
+                "aether_vitals": 0.6
             }
         },
         {
@@ -585,7 +599,8 @@
                 "aether_vignette": 0.15,
                 "aether_aberration": 0.0,
                 "aether_grain": 0.0,
-                "aether_letterbox": 0.0
+                "aether_letterbox": 0.0,
+                "aether_vitals": 0.6
             }
         }
     ],
@@ -594,7 +609,6 @@
             "name": "aether_noise",
             "type": "file",
             "path": "textures/aether_noise.png",
-            "sampled_binding": 70,
             "filter": "linear",
             "address_mode": "repeat"
         }

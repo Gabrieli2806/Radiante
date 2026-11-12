@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Shader packs, more for those who write them:
+  - Textures by name. A texture that leaves its binding out of `configs.json` gets one of the pack's own, and the shader names it by a define (`RADIANTE_TEXTURE_<NAME>`, with `RADIANTE_PACK_SET_RAY_TRACING` or `RADIANTE_PACK_SET_POST` for the set), so a pack holds no number a later Radiante could take. Numbers written by hand work as before.
+  - The player's state: `radianteHealth()`, `radianteHurt()` (the flash of a hit), `radianteFood()`, `radianteAir()`, `radianteSpeed()`, `radianteSprinting()` and `radianteOnGround()` in `common/pack_world.glsl`.
+  - A `vec3` setting shows in the pack's settings as three sliders, one a channel; it had no row at all.
+
+- Aether: Vitals, on those values (a red pulse from the edges when hit; with under a third of the health left the colour drains and the corners close in), and its noise image declared by name.
+
 - Shader packs, for those who write them:
   - `radiante/v1/noise.glsl`, a public header of noise and colour helpers (hashes, value and fractal noise, Worley cells in two and three dimensions, a per-pixel, per-frame hash for dither and grain, luminance, saturation, sRGB to linear and back), so a pack need not carry its own.
   - `radianteTime()` and `radianteFrame()` in `common/pack_world.glsl`: a clock in seconds that runs on through the days (the day's fraction starts over every twenty minutes, and every pack that animated by it had to hide that) and the frame count.

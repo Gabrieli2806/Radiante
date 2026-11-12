@@ -85,6 +85,9 @@ every hook including `post_grade.glsl`:
 | --- | --- |
 | `radianteTime()` | Seconds of game time, running on through the days and standing still while paused: the clock for anything that moves on its own (clouds, a flicker, scan lines). `worldUBO.gameTime` starts over every twenty minutes; this one only after six hours of play |
 | `radianteFrame()` | The frames drawn so far, for a pattern that changes every frame (a dither, a grain) |
+| `radianteHealth()`, `radianteHurt()` | The player's health, 0 to 1, and the flash of a hit: 1 as it lands, gone in about half a second |
+| `radianteFood()`, `radianteAir()` | Food and the air left under water, 0 to 1 |
+| `radianteSpeed()`, `radianteSprinting()`, `radianteOnGround()` | How fast the player moves in blocks a second (about 4.3 walking), and how much they sprint and stand on the ground, 0 to 1, eased |
 | `radianteRain()`, `radianteThunder()` | Rain and thunder, 0 to 1 (Iris's `rainStrength`, `thunderStrength`) |
 | `radianteWaterDepth()`, `radianteWaterWidth()` | The body of water the camera is in: the water column's height and how far the water runs across, in blocks; 0 out of water |
 | `radianteWetness()`, `radianteRainStoppedFor()` | The air's wetness, the rain smoothed so it lingers after rain (Iris's `wetness`), and seconds since the rain stopped (0 while it rains), for what follows rain for minutes |
@@ -227,9 +230,22 @@ pack runs on; noise and colour from `#include <radiante/v1/noise.glsl>`, so a pa
 per-frame hash for dither and grain, `radianteLuminance`, `radianteSaturate`, sRGB to linear and back); the sun, moon
 and weather in `worldUBO` and `skyUBO`.
 
-Textures and buffers of your own go on binding numbers 64 to 119. A pack that extends Radiante PT shares those
-numbers with it; Radiante PT keeps the lower ones and 120 up, and two resources on one number stop the pack from
-loading. A pack with passes of its own declares those
+**Textures by name.** Leave `sampled_binding` out of a texture in `configs.json` and Radiante gives it a number of
+the pack's own; the shader names it, and the set it is in, by defines Radiante passes to every compile:
+
+```glsl
+layout(set = RADIANTE_PACK_SET_RAY_TRACING, binding = RADIANTE_TEXTURE_MY_NOISE) uniform sampler2D myNoise;
+```
+
+`RADIANTE_TEXTURE_<NAME>` is the texture's name in capitals (anything but letters and digits becomes `_`);
+`RADIANTE_IMAGE_<NAME>` is its storage binding and `RADIANTE_BUFFER_<NAME>` a buffer's. The set is
+`RADIANTE_PACK_SET_RAY_TRACING` in a hook of the world's shaders and `RADIANTE_PACK_SET_POST` in a post pass or
+`hooks/post_grade.glsl`. Written this way a pack holds no number a later Radiante could take.
+
+Numbers written by hand still work, on 64 to 119: a pack that extends Radiante PT shares the numbers with it,
+Radiante PT keeps the lower ones and 120 up, and two resources on one number stop the pack from loading.
+
+A `vec3` setting shows in the pack's settings as three sliders, one a channel, 0 to 4. A pack with passes of its own declares those
 uniforms with `#include <radiante/v1/uniforms.glsl>`: `RadianteWorld` (the camera, the fog, the hands' lights, the
 wind, its live settings) and `RadianteSky` (the sun and the moon, the weather, the biome, the water).
 

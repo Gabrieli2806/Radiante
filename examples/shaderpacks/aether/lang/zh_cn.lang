@@ -85,3 +85,5 @@ render_pipeline.module.ray_tracing.attribute.aether_letterbox=宽银幕
 aether.desc.aurora=夜晚雪地生物群系上空的绿色与紫色光幕，会微微照亮雪地。0 为关闭。
 aether.desc.grain=每帧变化的细腻颗粒，如同胶片。数值越高越明显。
 aether.desc.letterbox=画面上下的黑边，数值为 1 时达到电影的 2.39:1 画幅。0 为全屏。
+render_pipeline.module.ray_tracing.attribute.aether_vitals=生命体征
+aether.desc.vitals=画面随玩家状态变化：受击时边缘泛起红色脉冲，生命值较低时色彩褪去、四角变暗。0 为关闭。

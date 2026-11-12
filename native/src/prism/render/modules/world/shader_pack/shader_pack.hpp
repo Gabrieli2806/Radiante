@@ -372,6 +372,19 @@ class ShaderPackLoader {
                                         const std::string &view,
                                         std::unordered_map<std::string, std::string> &definitions);
 
+    // The defines a pack names its own resources by, added to `definitions`, so its shaders never write a set or a
+    // binding number: RADIANTE_TEXTURE_<NAME> (a texture's sampled binding), RADIANTE_IMAGE_<NAME> (its storage
+    // binding) and RADIANTE_BUFFER_<NAME>, the name in capitals with anything but letters and digits as _; and the
+    // set those bindings are in for each stage, RADIANTE_PACK_SET_RAY_TRACING and RADIANTE_PACK_SET_POST.
+    static void addResourceDefinitions(const std::vector<TextureConfig> &textures,
+                                       const std::vector<BufferConfig> &buffers,
+                                       std::unordered_map<std::string, std::string> &definitions);
+
+    // The binding numbers a pack's own textures and buffers go on; Radiante PT keeps the others. A texture that
+    // gives neither binding is put on the first free one of these.
+    static constexpr uint32_t PACK_BINDING_FIRST = 64;
+    static constexpr uint32_t PACK_BINDING_LAST = 119;
+
     // The defines the attributes write with these values (an attribute missing from them has its default).
     static std::unordered_map<std::string, std::string>
     buildAttributeDefinitions(const std::vector<AttributeConfig> &attributes,

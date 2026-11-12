@@ -88,6 +88,9 @@ todos los hooks, también en `post_grade.glsl`:
 | --- | --- |
 | `radianteTime()` | Segundos de tiempo de juego, que siguen de un día al siguiente y se detienen en pausa: el reloj para todo lo que se mueve solo (nubes, un parpadeo, líneas de barrido). `worldUBO.gameTime` vuelve a empezar cada veinte minutos; este solo tras seis horas de juego |
 | `radianteFrame()` | Los fotogramas dibujados hasta ahora, para un patrón que cambia en cada fotograma (un tramado, un grano) |
+| `radianteHealth()`, `radianteHurt()` | La vida del jugador, de 0 a 1, y el destello de un golpe: 1 al recibirlo, desaparece en medio segundo |
+| `radianteFood()`, `radianteAir()` | La comida y el aire que queda bajo el agua, de 0 a 1 |
+| `radianteSpeed()`, `radianteSprinting()`, `radianteOnGround()` | La velocidad del jugador en bloques por segundo (unos 4.3 caminando) y cuánto corre y pisa el suelo, de 0 a 1, suavizado |
 | `radianteRain()`, `radianteThunder()` | Lluvia y tormenta, de 0 a 1 (`rainStrength` y `thunderStrength` de Iris) |
 | `radianteWaterDepth()`, `radianteWaterWidth()` | La masa de agua en la que está la cámara: la altura de la columna de agua y lo que se extiende a lo ancho, en bloques; 0 fuera del agua |
 | `radianteWetness()`, `radianteRainStoppedFor()` | La humedad del aire, la lluvia suavizada para que dure tras llover (`wetness` de Iris), y los segundos desde que paró la lluvia (0 mientras llueve), para lo que sigue a la lluvia durante minutos |
@@ -235,9 +238,23 @@ tu paquete; ruido y color con `#include <radiante/v1/noise.glsl>`, para que el p
 fotograma para tramado y grano, `radianteLuminance`, `radianteSaturate`, de sRGB a lineal y de vuelta); el sol, la
 luna y el clima en `worldUBO` y `skyUBO`.
 
-Las texturas y los buffers propios van en los números de enlace 64 a 119. Un paquete que extiende Radiante PT comparte
-esos números con él; Radiante PT se queda con los más bajos y del 120 en adelante, y dos recursos en el mismo número
-impiden que el paquete cargue. Un paquete con pases propios declara esos uniforms
+**Texturas por nombre.** Quita `sampled_binding` de una textura en `configs.json` y Radiante le da un número de los
+del paquete; el shader la nombra, y el set en el que está, con defines que Radiante pasa a cada compilación:
+
+```glsl
+layout(set = RADIANTE_PACK_SET_RAY_TRACING, binding = RADIANTE_TEXTURE_MY_NOISE) uniform sampler2D myNoise;
+```
+
+`RADIANTE_TEXTURE_<NOMBRE>` es el nombre de la textura en mayúsculas (todo lo que no sea letra o dígito pasa a `_`);
+`RADIANTE_IMAGE_<NOMBRE>` es su enlace de almacenamiento y `RADIANTE_BUFFER_<NOMBRE>` el de un buffer. El set es
+`RADIANTE_PACK_SET_RAY_TRACING` en un hook de los shaders del mundo y `RADIANTE_PACK_SET_POST` en un pase de post o en
+`hooks/post_grade.glsl`. Así el paquete no contiene ningún número que un Radiante posterior pueda ocupar.
+
+Los números escritos a mano siguen funcionando, del 64 al 119: un paquete que extiende Radiante PT comparte los
+números con él, Radiante PT se queda con los más bajos y del 120 en adelante, y dos recursos en el mismo número
+impiden que el paquete cargue.
+
+Un ajuste `vec3` aparece en los ajustes del paquete como tres deslizadores, uno por canal, de 0 a 4. Un paquete con pases propios declara esos uniforms
 con `#include <radiante/v1/uniforms.glsl>`: `RadianteWorld` (la cámara, la niebla, las luces de las manos, el viento,
 sus ajustes en vivo) y `RadianteSky` (el sol y la luna, el clima, el bioma, el agua).
 

@@ -235,6 +235,8 @@ only added.
 | --- | --- | --- | --- |
 | `float radianteTime()` | Seconds of game time, continuous over the days, still while paused; starts over after six hours of play | `frameTimeCounter` (which is real time and wraps hourly) | `RadianteRenderer.windTime` (`worldUBO.windTime`) |
 | `uint radianteFrame()` | Frames drawn so far | `frameCounter` | `worldUBO.frameCounter`, counted natively |
+| `float radianteHealth()`, `radianteHurt()`, `radianteFood()`, `radianteAir()` | The player: health, the flash of a hit, food, air, each 0 to 1 | `currentPlayerHealth`, `currentPlayerHunger`, `currentPlayerAir` | `PackPlayer.state()` (`skyUBO.playerState`) |
+| `float radianteSpeed()`, `radianteSprinting()`, `radianteOnGround()` | Speed in blocks a second; sprinting and on the ground, 0 to 1, eased | `is_sprinting`, `is_on_ground` | `PackPlayer.motion()` (`skyUBO.playerMotion`) |
 | `float radianteRain()` | Rain, 0 to 1 | `rainStrength` | `1 - SkyRenderState.rainBrightness` (`skyUBO.rainGradient`) |
 | `float radianteThunder()` | Thunder, 0 to 1 | `thunderStrength` | `ClientLevel.getThunderLevel(partialTick)` (`skyUBO.thunderGradient`) |
 | `float radianteWaterDepth()`, `float radianteWaterWidth()` | The water column at the eye, floor to surface, and the water's reach across at eye level, in blocks, eased; 0 out of water | none | `WaterBody` (`skyUBO.waterBodyDepth`, `waterBodyWidth`) |
@@ -281,6 +283,13 @@ extends it must not use them.
 it, and two resources on one number stop the pack from loading ("duplicate runtime binding"). Radiante PT keeps 0
 to 63 and 120 up for itself and adds textures there as it grows (48 to 50 were free once, and the Mellow port, which
 had taken them, stopped loading when Radiante PT did); a pack's own textures and buffers go on 64 to 119.
+
+**Resources by name.** A texture that gives neither `sampled_binding` nor `storage_binding` is put on the first
+free number of 64 to 119, in the order the pack lists them (`shader_pack_loader.cpp`), and every compile gets the
+numbers as defines (`ShaderPackLoader::addResourceDefinitions`; `resource_defines` in `compile_pack.py` for the
+offline check): `RADIANTE_TEXTURE_<NAME>`, `RADIANTE_IMAGE_<NAME>`, `RADIANTE_BUFFER_<NAME>`, and the sets
+`RADIANTE_PACK_SET_RAY_TRACING` (5) and `RADIANTE_PACK_SET_POST` (4). Aether declares its noise image this way.
+A pack written so holds no set or binding number at all, which is what lets Radiante PT grow without breaking it.
 
 ### Post passes: live settings and bloom
 
