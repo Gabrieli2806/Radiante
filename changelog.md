@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- A light block lights the same in the hand as set down. Only torches did: measured in a sealed room, the same patch of wall read with the block set down and then held at the same spot, a lantern in the hand lit 2.3 times what it lit set down, a campfire 1.9, glowstone and a sea lantern over 4, shroomlight nearly 6. Glowstone, lamps, froglights, shroomlight, magma and a bucket of lava now cast in the hand by the very glow their faces cast set down, falling off the same way; a campfire held casts its flame's light; and a lantern set down no longer shadows its own light with its frame (it lit less than a torch). All of them are now within a tenth or so of each other, held and set down.
+
+- Lights by day. With the eye closed for the sun a torch, a campfire or a lantern lit nothing around it, not even the shaded ground at its foot, and looked switched off. Their light now counts for more the further the eye is closed (by the square root of it, five times at most): in the shade there is a warm pool of light around them, under the sun a faint one, and by night nothing changes. What glows also shows at least a flame's brightness by day, on the ground and in the hand.
+
+- The Nether and lava. Lava shows its texture: its bright swirls were over white and the whole sheet came out one pale, flat peach in a haze of bloom; it is now a deep orange with its pattern, by day in the Overworld too. The eye is opened a little further in the Nether (0.35 of the metered exposure, was 0.25), so the rock beside a sea of lava is no longer a few dark reds against one bright sheet, and lava's light is a little yellower than its texture, so quartz, gold or basalt lit by it keep a colour of their own.
+
 - After the time is set (`/time set night` by day) sand and other pale blocks no longer stay lit for a moment and fade: the light kept from frame to frame, in the radiance cache and in the denoiser, belonged to the hour before. It is dropped on the frame the sun jumps, and the cache catches up within half a second.
 
 - In first person, standing in water and looking down no longer shows the player's own body under the surface (nor through a cloud from inside it). The body, there for its shadow and its reflection, was hidden only while the view ran dead straight; water bends it. It now shows only in a view a mirror-like surface turned back: the reflection on the water is as it was.
