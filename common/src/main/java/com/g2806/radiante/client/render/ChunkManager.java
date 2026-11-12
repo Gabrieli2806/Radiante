@@ -532,7 +532,13 @@ public final class ChunkManager {
             if (scratch.dropInwardFaces && facesInward(quad)) {
                 return;
             }
-            if (scratch.dropTorchHalo && isTorchHalo(quad)) {
+            if (scratch.torchHalo && isTorchHalo(quad)) {
+                // Seen through, with a glow of its own that lights nothing (the torch's point light does).
+                PBRVertexWriter halo = scratch.glowWriter(ChunkSectionLayer.TRANSLUCENT, atlasId)
+                    .alphaMode(PBRVertexWriter.ALPHA_MODE_STOCHASTIC).albedoEmission(TORCH_HALO_GLOW).castLight(0.0f)
+                    .alphaScale(TORCH_HALO_ALPHA);
+                halo.putBlockBakedQuad(x, y, z, quad, instance);
+                halo.alphaScale(1.0f);
                 return;
             }
             if (unshade) {
@@ -640,7 +646,7 @@ public final class ChunkManager {
 
             if (blockState.getRenderShape() == RenderShape.MODEL) {
                 scratch.dropInwardFaces = blockState.is(Blocks.POWDER_SNOW);
-                scratch.dropTorchHalo = blockState.is(Blocks.REDSTONE_TORCH) || blockState.is(Blocks.REDSTONE_WALL_TORCH);
+                scratch.torchHalo = blockState.is(Blocks.REDSTONE_TORCH) || blockState.is(Blocks.REDSTONE_WALL_TORCH);
                 scratch.collectPanel = blockState.is(BlockTags.DOORS) || blockState.is(BlockTags.TRAPDOORS);
                 scratch.panelQuads.clear();
                 java.util.Arrays.fill(scratch.faceSeen, false);
@@ -922,8 +928,8 @@ public final class ChunkManager {
         private Object fluidModels;
         private PBRVertexWriter current;
         private boolean dropInwardFaces;
-        /** The block being written is a redstone torch, whose halo is left out; see BlockKinds.isTorchHalo. */
-        private boolean dropTorchHalo;
+        /** The block being written is a redstone torch, whose halo is seen through; see BlockKinds.isTorchHalo. */
+        private boolean torchHalo;
         /** Per face direction, whether this block has written one yet and the plane it lies on (see the quad output). */
         private final boolean[] faceSeen = new boolean[6];
         private final float[] facePlane = new float[6];
