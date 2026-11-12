@@ -228,8 +228,10 @@ void tracePrimary(vec3 eyePos,
             g_glassReflectionWeight = rayState.directLightRadiance;
             g_glassReflectionMedium = uint(round(rayLoadAux(rayState).y));
         }
-        if (rayIsPassThrough(rayState) && dot(rayState.normal, rayState.normal) > 0.5 &&
-            dot(tracedDirection, rayState.normal) * dot(rayState.direction, rayState.normal) < 0.0) {
+        // A mirror the view is looked into leaves the material of a perfect mirror behind (pt_shade_default.glsl)
+        // and a new direction; water and glass leave neither.
+        if (rayIsPassThrough(rayState) && rayLoadMaterial(rayState).metallic > 0.5 &&
+            dot(tracedDirection, rayState.direction) < 0.9999) {
             turnedBack = true;
         }
         cameraPath = cameraPath && rayIsPassThrough(rayState);
