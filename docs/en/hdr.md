@@ -14,7 +14,7 @@ On an HDR display, sunlight, lava, lamps and reflections go brighter than white 
 | Control | Range | Default | Applies |
 |---|---|---|---|
 | HDR Output | On / Off | Off | After a restart |
-| HDR Peak Brightness | 400 – 4000 nits | 1000 | At once |
+| HDR Peak Brightness | 200 – 4000 nits | 1000 | At once |
 | HDR Paper White | 80 – 400 nits | 200 | At once |
 
 - **Peak Brightness:** the brightest your display can show. Use your monitor's specification or Windows' HDR

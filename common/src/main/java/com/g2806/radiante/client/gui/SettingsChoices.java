@@ -450,6 +450,10 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
         if (PipelineSettings.supportsShaderPackToggle(RtAttributes.WIND_ATTRIBUTE)) {
             this.pendingPackToggles.put(RtAttributes.WIND_ATTRIBUTE, Boolean.FALSE);
         }
+        // Auto Focus back on too: cleared with the other toggles above, the row could hand its old value back.
+        if (PipelineSettings.supportsShaderPackToggle(RtAttributes.DOF_AUTO_FOCUS_ATTRIBUTE)) {
+            this.pendingPackToggles.put(RtAttributes.DOF_AUTO_FOCUS_ATTRIBUTE, Boolean.TRUE);
+        }
         this.pendingDepthOfField = Boolean.FALSE;
         this.pendingReflex = false;
         // The shader pack's own defaults.

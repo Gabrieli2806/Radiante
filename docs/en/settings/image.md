@@ -21,7 +21,7 @@ Defaults are radiante-pt's, the Bedrock RTX look ([bedrock-rtx.md](../bedrock-rt
 | **HDR Output** | On / Off | Off | HDR on an HDR display; the brightness controls below it show when it is on. See [HDR](../hdr.md). |
 | **Motion Blur** | On / Off | Off | Smears what moves across the screen along its motion, as a camera does. Changing it rebuilds the shaders (a brief hitch when applying). |
 | **Depth of Field** | On / Off | Off | Keeps what you look at sharp and blurs what is much nearer or farther, focusing on the centre of the screen. Also rebuilds the shaders when changed. |
-| **Motion Blur Strength** | 10% – 220% | 100% | How long the smear of Motion Blur is. Needs Motion Blur. |
+| **Motion Blur Strength** | 10% – 220% | 100% | How long the smear of Motion Blur is: 100% is half the time of a frame, a film camera's shutter. Needs Motion Blur. |
 | **Depth of Field Blur** | 25% – 400% | 100% | How strongly what is out of focus blurs. Needs Depth of Field. |
 | **Depth of Field Focus Range** | 10% – 400% | 100% | How much around what you look at stays sharp. Lower blurs sooner, for a close-up look. |
 | **Auto Focus** | On / Off | On | Depth of Field focuses on whatever is at the centre of the screen. Off keeps the focus at Focus Distance, for screenshots. |

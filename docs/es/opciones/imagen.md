@@ -21,7 +21,7 @@ Los valores por defecto son los de radiante-pt, el aspecto Bedrock RTX ([bedrock
 | **Salida HDR** | Activado / Desactivado | Desactivado | HDR en una pantalla HDR; los controles de brillo aparecen debajo al activarlo. Ver [HDR](../hdr.md). |
 | **Desenfoque de Movimiento** | Activado / Desactivado | Desactivado | Difumina lo que se mueve en pantalla a lo largo de su movimiento, como una cámara. Cambiarlo recompila los shaders (un breve tirón al aplicar). |
 | **Profundidad de Campo** | Activado / Desactivado | Desactivado | Mantiene nítido lo que miras y desenfoca lo mucho más cerca o más lejos, enfocando el centro de la pantalla. También recompila los shaders al cambiarlo. |
-| **Fuerza de Motion Blur** | 10% – 220% | 100% | Qué tan largo es el barrido del Desenfoque de Movimiento. Requiere Desenfoque de Movimiento. |
+| **Fuerza de Motion Blur** | 10% – 220% | 100% | Qué tan largo es el barrido del Desenfoque de Movimiento: 100% es la mitad del tiempo de un fotograma, el obturador de una cámara de cine. Requiere Desenfoque de Movimiento. |
 | **Desenfoque de Profundidad de Campo** | 25% – 400% | 100% | Cuánto se desenfoca lo que está fuera de foco. Requiere Profundidad de Campo. |
 | **Rango de Enfoque** | 10% – 400% | 100% | Cuánto alrededor de lo que miras se mantiene nítido. Menos desenfoca antes, para un aspecto de primer plano. |
 | **Enfoque Automático** | Activado / Desactivado | Activado | La Profundidad de Campo enfoca lo que esté en el centro de la pantalla. Apagado mantiene el foco en Distancia de Enfoque, para capturas. |

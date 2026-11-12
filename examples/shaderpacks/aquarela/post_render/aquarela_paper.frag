@@ -61,7 +61,7 @@
 
 // The brushed picture, a pack image: set 4 at its sampled_binding. This pass writes out:ldr, so it never samples
 // set 3 binding 0.
-layout(set = 4, binding = 61) uniform sampler2D aquarelaWash;
+layout(set = 4, binding = 73) uniform sampler2D aquarelaWash;
 
 layout(location = 0) in vec2 fragTexCoord;
 layout(location = 0) out vec4 outColor;

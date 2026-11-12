@@ -268,7 +268,7 @@
   "options.radiante.hdr_calibration.tooltip": "Una prueba guiada que ajusta el Brillo Máximo HDR y el Blanco de Papel HDR a tu pantalla. A mano, los controles de abajo son los mismos ajustes.",
   "options.radiante.hdr_calibration.title": "Calibración HDR",
   "options.radiante.hdr_calibration.next": "Siguiente",
-  "options.radiante.hdr_calibration.hint.0": "Sube el valor hasta que las marcas del cuadrado apenas desaparezcan, mirando la pantalla de frente.",
+  "options.radiante.hdr_calibration.hint.0": "Baja el valor hasta que se vean las marcas del cuadrado y luego súbelo hasta que apenas desaparezcan, mirando la pantalla de frente. Si nunca desaparecen, activa HGIG (o desactiva el tone mapping dinámico) en la pantalla.",
   "options.radiante.hdr_calibration.hint.1": "Elige el brillo que te guste para esta sala: las sombras deben leerse sin que la imagen se vea lavada.",
   "options.radiante.hdr_calibration.hint.2": "Comprueba el resultado: las zonas brillantes deben conservar su detalle. Vuelve atrás para cambiar algo.",
   "options.radiante.hdr_calibration.values": "Máximo: %s nits, Blanco de Papel: %s nits",

@@ -268,7 +268,7 @@
   "options.radiante.hdr_calibration.tooltip": "A guided test that sets HDR Peak Brightness and HDR Paper White for your display. Set by hand, the sliders below are the same settings.",
   "options.radiante.hdr_calibration.title": "HDR Calibration",
   "options.radiante.hdr_calibration.next": "Next",
-  "options.radiante.hdr_calibration.hint.0": "Raise the value until the marks in the square just disappear, facing the screen head-on.",
+  "options.radiante.hdr_calibration.hint.0": "Lower the value until the marks in the square show, then raise it until they just disappear, facing the screen head-on. If they never disappear, turn on HGIG (or turn off dynamic tone mapping) on the display.",
   "options.radiante.hdr_calibration.hint.1": "Set the brightness you like for this room: shadows should stay readable without the picture looking washed out.",
   "options.radiante.hdr_calibration.hint.2": "Check the result: bright areas should keep their detail. Go back to change anything.",
   "options.radiante.hdr_calibration.values": "Peak: %s nits, Paper White: %s nits",

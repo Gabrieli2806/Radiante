@@ -71,7 +71,9 @@ float vptPointLightFalloff(VptPackedLight light, vec3 scenePos) {
 // that meter is not the one in use.
 float vptMeteredExposure() {
     if (lightMeter.bedrockMeter.w != 1.0) { return -1.0; }
-    return exp2(clamp(lightMeter.bedrockMeter.x, -1.0, 6.0) + log2(clamp(lightMeter.daylight.y, 0.05, 1.0)));
+    // The Nether's eye may close further (exposure.comp, which marks it with a negative daylight.w).
+    float minEV = lightMeter.daylight.w < 0.0 ? -4.0 : -1.0;
+    return exp2(clamp(lightMeter.bedrockMeter.x, minEV, 6.0) + log2(clamp(lightMeter.daylight.y, 0.05, 1.0)));
 }
 
 // How much more a lamp's light counts while the eye is closed down for a brighter place. A torch's light is a
@@ -81,6 +83,8 @@ float vptMeteredExposure() {
 // tells the warm light apart. So the light is lifted by the square root of how far the eye is closed past
 // VPT_LIFT_EXPOSURE (the exposure of a room lit by lamps, where nothing is lifted), VPT_LIFT_MAX times at most:
 // under the sun it still drowns, in the shade it is a faint warm pool, and by night nothing changes.
+// Only as far as it is day and the camera stands open to the sky: the eye closes for a sea of lava too, and lifted
+// there, in the Nether or in a cave, lava's own light was multiplied by five and burnt every block around it.
 #ifndef VPT_LIFT_EXPOSURE
 #    define VPT_LIFT_EXPOSURE 12.0
 #endif
@@ -92,7 +96,9 @@ float g_vptDayLift = -1.0;
 float vptDayLift() {
     if (g_vptDayLift < 0.0) {
         float exposure = vptMeteredExposure();
-        g_vptDayLift = exposure <= 0.0 ? 1.0 : clamp(sqrt(VPT_LIFT_EXPOSURE / exposure), 1.0, VPT_LIFT_MAX);
+        float daylight = clamp(lightMeter.daylight.x, 0.0, 1.0) * clamp(skyUBO.biomeFogHeights.z, 0.0, 1.0);
+        g_vptDayLift = exposure <= 0.0 || worldUBO.skyType != 1 ? 1.0 :
+                       mix(1.0, clamp(sqrt(VPT_LIFT_EXPOSURE / exposure), 1.0, VPT_LIFT_MAX), daylight);
     }
     return g_vptDayLift;
 }

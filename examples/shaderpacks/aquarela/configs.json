@@ -265,7 +265,7 @@
             "type": "intermediate",
             "format": "R16G16B16A16_SFLOAT",
             "scale": 0.25,
-            "sampled_binding": 60,
+            "sampled_binding": 72,
             "filter": "linear",
             "address_mode": "clamp_to_edge"
         },
@@ -274,7 +274,7 @@
             "type": "intermediate",
             "format": "R16G16B16A16_SFLOAT",
             "scale": 1,
-            "sampled_binding": 61,
+            "sampled_binding": 73,
             "filter": "linear",
             "address_mode": "clamp_to_edge"
         }

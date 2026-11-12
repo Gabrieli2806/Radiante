@@ -84,10 +84,10 @@ attributeConfigs:
     runtime: true
   - name: "render_pipeline.module.tone_mapping.attribute.bloom_enable"
     type: "bool"
-    value: "render_pipeline.true"
+    value: "render_pipeline.false"
   - name: "render_pipeline.module.tone_mapping.attribute.bloom_intensity"
     type: "float_range:0.0-4.0"
-    value: "0.15"
+    value: "0.08"
     runtime: true
   - name: "render_pipeline.module.tone_mapping.attribute.bloom_scatter"
     type: "float_range:0.0-1.0"

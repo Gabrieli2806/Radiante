@@ -23,6 +23,12 @@
 #define VPT_POST_DOF_FOCUS_SPEED 0.2
 #endif
 
+// What auto focus leaves out: anything nearer than this (the hand and what it holds), and the sky's stored distance.
+#define VPT_DOF_NEAREST_FOCUS 1.5
+#define VPT_DOF_SKY_DEPTH 60000.0
+// Where the focus rests with nothing to focus on and no focus to keep.
+#define VPT_DOF_REST_FOCUS 96.0
+
 #ifndef VPT_POST_DOF_FOCUS_HISTORY_READY
 #define VPT_POST_DOF_FOCUS_HISTORY_READY false
 #endif
@@ -92,8 +98,11 @@ bool autoFocusDistance(vec2 texelSize, out float focus) {
     int foundCount = 0;
     for (int probe = 0; probe < 9; ++probe) {
         float depth = sampleRawDepth(clampUv(vec2(0.5) + VPT_AUTO_FOCUS_OFFSETS[probe] * radius, texelSize));
-        // Skip sky (zero) probes; written as "not <= 0" so a NaN depth is kept, as it always has been.
-        if (!(depth <= 0.0)) {
+        // Probes that are nothing to focus on are left out: the sky, which is stored as a distance of 65504
+        // (INF_DISTANCE), not as zero - with the crosshair on the sky the focus ran out to it and the whole
+        // world, the hand included, blurred; and whatever is within arm's reach (the hand, an item being eaten, a
+        // raised shield or a map), which took the focus to half a block and blurred everything past a few blocks.
+        if (depth >= VPT_DOF_NEAREST_FOCUS && depth < VPT_DOF_SKY_DEPTH) {
             found[foundCount] = depth;
             ++foundCount;
         }
@@ -119,30 +128,39 @@ bool autoFocusDistance(vec2 texelSize, out float focus) {
         band = total / max(taken, 1);
     }
 
-    if (centre <= 0.0) { centre = median; }
+    if (!(centre >= VPT_DOF_NEAREST_FOCUS && centre < VPT_DOF_SKY_DEPTH)) { centre = median; }
     focus = mix(centre, band, smoothstep(16.0, 96.0, max(centre, band)));
     return true;
 }
 
 void main() {
     vec2 texelSize = 1.0 / vec2(textureSize(postFirstHitDepth, 0));
+    float previous = texture(postPreviousDofFocus, vec2(0.5)).r;
+    bool historyValid = VPT_POST_DOF_FOCUS_HISTORY_READY && !(previous <= 0.0 || previous >= 100000.0);
     float target = VPT_POST_DOF_FOCUS_DISTANCE;
 #if VPT_POST_DOF_AUTO_FOCUS != 0
     float autoFocus;
-    if (autoFocusDistance(texelSize, autoFocus)) { target = autoFocus; }
+    if (autoFocusDistance(texelSize, autoFocus)) {
+        target = autoFocus;
+    } else {
+        // Nothing to focus on (the sky, or the hand over the whole centre): the focus stays where it was, or far
+        // away when there is nothing to keep. It went to the manual distance, 12 blocks, and the landscape under
+        // an open sky blurred each time the view crossed it.
+        target = historyValid ? previous : VPT_DOF_REST_FOCUS;
+    }
 #endif
 
     // No usable history (first frame, reset, or a sentinel value): take the target as is.
-    float previous = texture(postPreviousDofFocus, vec2(0.5)).r;
-    bool historyValid = VPT_POST_DOF_FOCUS_HISTORY_READY && !(previous <= 0.0 || previous >= 100000.0);
     if (!historyValid) {
         outFocusDistance = target;
         return;
     }
 
-    // Ease towards the target; jumps that are large relative to the distance speed the easing up.
+    // Ease towards the target; jumps that are large relative to the distance speed the easing up. Gently: at up to
+    // half the way each frame the focal plane snapped from one thing to the next as the view moved over them and
+    // the picture pumped; a quarter of the way at most, it glides.
     float jump = abs(target - previous);
     float urgency = smoothstep(max(0.5, target * 0.04), max(4.0, target * 0.35), jump);
-    float rate = clamp(VPT_POST_DOF_FOCUS_SPEED * mix(0.45, 2.5, urgency), 0.0, 1.0);
+    float rate = clamp(VPT_POST_DOF_FOCUS_SPEED * mix(0.35, 1.25, urgency), 0.0, 1.0);
     outFocusDistance = mix(previous, target, rate);
 }
