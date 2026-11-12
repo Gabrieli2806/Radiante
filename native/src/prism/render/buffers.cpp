@@ -267,6 +267,13 @@ void Buffers::setAndUploadSkyUniformBuffer(const gpu::Data::SkyUBO &source) {
     // The day moves the sun a third of a degree a second. A degree in one frame is the time being set, and light kept
     // over time (the fog's grids) belongs to another hour.
     ubo.biomeFogHeights.w = glm::dot(ubo.sunDirection, lastSunDirection_) < 0.99985f ? 1.0f : 0.0f;
+    // Not on the first frame of all, when there is no hour before.
+    const bool known = glm::dot(lastSunDirection_, lastSunDirection_) > 0.0f;
+    if (ubo.biomeFogHeights.w > 0.5f && known) {
+        framesSinceTimeSet_ = 0;
+    } else if (framesSinceTimeSet_ < (1u << 20)) {
+        framesSinceTimeSet_++;
+    }
     lastSunDirection_ = ubo.sunDirection;
     auto &buffer = ensureUniform(uniforms_[frame].sky, *framework, sizeof(ubo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
     write(*buffer, &ubo, sizeof(ubo));
@@ -299,7 +306,13 @@ std::shared_ptr<gpu::HostVisibleBuffer> Buffers::lastWorldUniformBuffer() {
 bool Buffers::heldLightHistoryReset() {
     const uint32_t frame = currentFrame();
     std::scoped_lock lock(mutex_);
-    return uniforms_[frame].heldLightHistoryReset;
+    // The time being set is a changed source too: the sun's light of the hour before is not this frame's.
+    return uniforms_[frame].heldLightHistoryReset || framesSinceTimeSet_ == 0;
+}
+
+uint32_t Buffers::framesSinceTimeSet() {
+    std::scoped_lock lock(mutex_);
+    return framesSinceTimeSet_;
 }
 
 std::shared_ptr<gpu::HostVisibleBuffer> Buffers::skyUniformBuffer() {
