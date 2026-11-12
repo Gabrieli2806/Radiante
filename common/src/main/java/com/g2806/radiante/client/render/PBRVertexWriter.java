@@ -407,6 +407,43 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         return this;
     }
 
+    /**
+     * Moves the quads written at full light (Minecraft's own mark of what glows: a flame, a spark, a drop of lava)
+     * to the front, gives them this glow, and says how many vertices they are. The rest follow in the buffer.
+     */
+    public int bringGlowingQuadsFirst(float glow) {
+        long quadBytes = 4L * STRIDE;
+        long spare = MemoryUtil.nmemAlloc(quadBytes);
+        int glowing = 0;
+        try {
+            for (int quad = 0; quad < this.vertexCount / 4; quad++) {
+                long at = this.address + quad * quadBytes;
+                boolean full = MemoryUtil.memGetInt(at + OFF_USE_LIGHT) != 0
+                    && MemoryUtil.memGetInt(at + OFF_LIGHT_UV) >= FULL_LIGHT
+                    && MemoryUtil.memGetInt(at + OFF_LIGHT_UV + 4) >= FULL_LIGHT;
+                if (!full) {
+                    continue;
+                }
+                for (int corner = 0; corner < 4; corner++) {
+                    MemoryUtil.memPutFloat(at + (long) corner * STRIDE + OFF_ALBEDO_EMISSION, glow);
+                }
+                long front = this.address + glowing * quadBytes;
+                if (front != at) {
+                    MemoryUtil.memCopy(front, spare, quadBytes);
+                    MemoryUtil.memCopy(at, front, quadBytes);
+                    MemoryUtil.memCopy(spare, at, quadBytes);
+                }
+                glowing++;
+            }
+        } finally {
+            MemoryUtil.nmemFree(spare);
+        }
+        return glowing * 4;
+    }
+
+    /** Block or sky light at its fullest, as a vertex carries it (15 times 16). */
+    private static final int FULL_LIGHT = 240;
+
     /** Scales the alpha of every vertex colour from here on; 1 leaves it alone. */
     public PBRVertexWriter alphaScale(float alphaScale) {
         this.alphaScale = alphaScale;

@@ -409,8 +409,16 @@ void ptShadeDefault(bool viewMark) {
     // side its short grass is three quarters as bright as the grass block under it, where lit by their own upright
     // quads a noon sun only grazed the blades and they came out at two fifths (and facing straight up, brighter than
     // the block).
+    // Seen from below the lift is held back, down to none, so the normal never turns away from the eye: turned
+    // away, the blades were shaded as a surface seen from behind and came out black against the sky.
     if (radianteIsPlant(packedData)) {
-        vec3 plantNormal = normalize(surface.geometricNormal + vec3(0.0, 0.75, 0.0));
+        float lift = 0.75;
+        vec3 bladeNormal = surface.geometricNormal;
+        if (viewDir.y < 0.0) {
+            if (dot(bladeNormal, viewDir) < 0.0) { bladeNormal = -bladeNormal; }
+            lift = min(lift, max(dot(bladeNormal, viewDir) - 0.1, 0.0) / -viewDir.y);
+        }
+        vec3 plantNormal = normalize(bladeNormal + vec3(0.0, lift, 0.0));
         surface.shadingNormal = plantNormal;
         surface.geometricNormal = plantNormal;
     }
