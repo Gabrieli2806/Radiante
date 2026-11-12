@@ -52,25 +52,29 @@ uint32_t high32(VkDeviceAddress address) {
     return static_cast<uint32_t>(address >> 32u);
 }
 
-// Point `index` of the Halton (2, 3) sequence, after https://www.shadertoy.com/view/wdXSW8. The loop stops when the
-// base 3 digits run out, which cuts the base 2 coordinate short of its later digits; the camera jitter has always
-// been this exact sequence, and the temporal passes see it.
-glm::vec2 halton(int index) {
-    float remainingX = static_cast<float>(index);
-    float remainingY = static_cast<float>(index);
-    float weightX = 1.0f;
-    float weightY = 1.0f;
-    glm::vec2 point(0.0f);
-    while (remainingX > 0.0f && remainingY > 0.0f) {
-        weightX = weightX / 2.0f;
-        weightY = weightY / 3.0f;
-        point.x += weightX * std::fmod(remainingX, 2.0f);
-        point.y += weightY * std::fmod(remainingY, 3.0f);
-        remainingX = std::floor(remainingX / 2.0f);
-        remainingY = std::floor(remainingY / 3.0f);
+// The radical inverse of `index` in `base`: its digits mirrored round the point, 0..1.
+float radicalInverse(uint32_t index, uint32_t base) {
+    float fraction = 1.0f;
+    float result = 0.0f;
+    while (index > 0) {
+        fraction /= static_cast<float>(base);
+        result += fraction * static_cast<float>(index % base);
+        index /= base;
     }
-    return point;
+    return result;
 }
+
+// Point `index` of the Halton (2, 3) sequence, each coordinate worked out on its own. The loop it replaced stopped
+// when the base 3 digits ran out and cut the base 2 coordinate short: in 72 frames the jitter took 16 horizontal
+// positions in a pixel instead of 72, so the upscalers, which build their detail out of those positions, had a
+// quarter as many to build it from across the picture as down it.
+glm::vec2 halton(uint32_t index) {
+    return glm::vec2(radicalInverse(index, 2), radicalInverse(index, 3));
+}
+
+// How many jitter positions the camera goes round before it starts over: NVIDIA asks for at least 8 times the area
+// scale (72 at Ultra Performance's third of the size); more costs nothing, and a cycle keeps the index small.
+constexpr uint32_t kJitterPhases = 128;
 
 VkBufferMemoryBarrier2 bufferBarrier(VkBuffer buffer,
                                      uint32_t queueFamily,
@@ -222,7 +226,8 @@ void Buffers::setAndUploadWorldUniformBuffer(gpu::Data::WorldUBO &ubo) {
     ubo.seed = static_cast<uint32_t>(seedDistribution_(seedEngine_));
     ubo.frameCounter = frameCounter_++;
     std::copy(packParams_.begin(), packParams_.end(), ubo.packParams);
-    ubo.cameraJitter = useJitter_ ? halton(static_cast<int>(jitterIndex_++)) - glm::vec2(0.5f) : glm::vec2(0.0f);
+    ubo.cameraJitter =
+        useJitter_ ? halton(static_cast<uint32_t>(jitterIndex_++ % kJitterPhases) + 1u) - glm::vec2(0.5f) : glm::vec2(0.0f);
 
     FrameUniforms &uniforms = uniforms_[frame];
     uniforms.heldLightHistoryReset = held_light_history::changed(ubo, lastWorld_);

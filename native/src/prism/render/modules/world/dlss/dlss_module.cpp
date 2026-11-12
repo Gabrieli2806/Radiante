@@ -383,7 +383,14 @@ void DLSSModuleContext::render() {
     if (ubo != nullptr) {
         const bool starting = module->framesSinceBuild_ < kHistoryResetFrames;
         if (starting) module->framesSinceBuild_++;
-        const bool reset = starting || Renderer::instance().buffers()->heldLightHistoryReset();
+        // A teleport, a respawn or a change of dimension: what DLSS kept belongs to another place, and carried over
+        // it smeared the last place across the new one for a moment. Only a jump no walk, sprint or flight makes
+        // in one frame; turning the camera is left to the motion vectors, which DLSS follows.
+        const glm::dvec3 camera(ubo->cameraPos.x, ubo->cameraPos.y, ubo->cameraPos.z);
+        const bool teleported = module->lastCameraKnown_ && glm::length(camera - module->lastCamera_) > 8.0;
+        module->lastCamera_ = camera;
+        module->lastCameraKnown_ = true;
+        const bool reset = starting || teleported || Renderer::instance().buffers()->heldLightHistoryReset();
         const glm::uvec2 renderSize{module->inputWidth_, module->inputHeight_};
 
         if (module->rayReconstruction_) {
