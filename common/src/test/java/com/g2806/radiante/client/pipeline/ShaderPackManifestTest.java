@@ -35,6 +35,18 @@ class ShaderPackManifestTest {
     }
 
     @Test
+    void knownFeaturesPassAndUnknownOnesAreNamed() {
+        assertNull(check("{\"requires\": {\"features\": [\"noise\", \"Player_State\", \"named_resources\"]}}",
+            "1.1.0"));
+        ShaderPackManifest.Problem problem =
+            check("{\"requires\": {\"features\": [\"noise\", \"block_ids\"]}}", "1.1.0");
+        assertEquals("screen.radiante.shader_packs.problem.feature", problem.key());
+        assertEquals("block_ids", problem.detail());
+        // Not a list: nothing to check.
+        assertNull(check("{\"requires\": {\"features\": \"noise\"}}", "1.1.0"));
+    }
+
+    @Test
     void newerApiVersionRefused() {
         assertNull(check("{\"api_version\": 1}", "1.1.0"));
         ShaderPackManifest.Problem problem = check("{\"api_version\": 2}", "1.1.0");
@@ -54,8 +66,9 @@ class ShaderPackManifestTest {
             check("{\"requires\": {\"radiante\": \"=1.2\"}}", "1.1.0").key());
         assertEquals("screen.radiante.shader_packs.problem.requires",
             check("{\"requires\": {\"radiante\": \"soon\"}}", "1.1.0").key());
-        // Features are not checked yet.
-        assertNull(check("{\"requires\": {\"features\": [\"omm?\"]}}", "1.1.0"));
+        // A feature this Radiante lacks is named before the version is looked at.
+        assertEquals("screen.radiante.shader_packs.problem.feature",
+            check("{\"requires\": {\"radiante\": \">=1.1\", \"features\": [\"omm?\"]}}", "1.1.0").key());
     }
 
     @Test

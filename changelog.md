@@ -18,6 +18,7 @@ All notable changes to this project are documented in this file.
   - Textures by name. A texture that leaves its binding out of `configs.json` gets one of the pack's own, and the shader names it by a define (`RADIANTE_TEXTURE_<NAME>`, with `RADIANTE_PACK_SET_RAY_TRACING` or `RADIANTE_PACK_SET_POST` for the set), so a pack holds no number a later Radiante could take. Numbers written by hand work as before.
   - The player's state: `radianteHealth()`, `radianteHurt()` (the flash of a hit), `radianteFood()`, `radianteAir()`, `radianteSpeed()`, `radianteSprinting()` and `radianteOnGround()` in `common/pack_world.glsl`.
   - A `vec3` setting shows in the pack's settings as three sliders, one a channel; it had no row at all.
+  - `"requires": {"features": [...]}` is checked: a pack names what it uses that came after the first release with shader packs (`noise`, `clock`, `player_state`, `named_resources`, `shadow_softness`, `colour_settings`), and a Radiante that lacks one shows the pack in the list as needing it, by name, instead of failing to compile it when chosen. The same names hold on every Minecraft version's build.
 
 - Aether: Vitals, on those values (a red pulse from the edges when hit; with under a third of the health left the colour drains and the corners close in; running out of air the edges close in dark blue, pulsing), Rush (at a sprint the edges of the picture streak outwards a little), the film grade's Shadow Tone and Highlight Tone as colours to set, and its noise image declared by name.
 
