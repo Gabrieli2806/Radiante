@@ -85,3 +85,5 @@ render_pipeline.module.ray_tracing.attribute.aether_letterbox=Pantalla Ancha
 aether.desc.aurora=Cortinas de luz verde y violeta sobre los biomas nevados de noche, que iluminan un poco la nieve. 0 la apaga.
 aether.desc.grain=Un grano fino que cambia en cada fotograma, como el del cine. Más alto se nota más.
 aether.desc.letterbox=Barras negras arriba y abajo de la imagen, hasta el formato de cine 2.39:1 en 1. 0 es la pantalla entera.
+render_pipeline.module.ray_tracing.attribute.aether_vitals=Signos Vitales
+aether.desc.vitals=La imagen responde al jugador: un pulso rojo desde los bordes al recibir un golpe y, con poca vida, el color se apaga y las esquinas se cierran. 0 lo apaga.

@@ -128,6 +128,8 @@ ShaderPrewarm::Work RayTracingModule::preparePrewarm(const std::vector<std::stri
     auto definitions =
         ShaderPackLoader::buildAttributeDefinitions(shaderPack_->shaderPack().attributes, config.staticAttributes);
     ShaderPackLoader::addDebugViewDefinitions(shaderPack_->shaderPack().debugViews, config.debugView, definitions);
+    ShaderPackLoader::addResourceDefinitions(shaderPack_->shaderPack().textures, shaderPack_->shaderPack().buffers,
+                                             definitions);
 
     // Fresh passes with only their configuration, so collectShaders asks for exactly what the rebuild's own passes
     // will (the hit groups, SHaRC variants and SER flag included) and nothing built for the frames is shared.

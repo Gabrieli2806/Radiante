@@ -87,6 +87,43 @@ def debug_view_defines(config, view):
     return defines
 
 
+PACK_BINDINGS = range(64, 120)
+
+
+def resource_defines(config):
+    """As ShaderPackLoader::addResourceDefinitions, with the loader's bindings for textures that name none."""
+    def macro(prefix, name):
+        return prefix + "".join(c.upper() if c.isalnum() else "_" for c in name)
+
+    defines = {"RADIANTE_PACK_SET_RAY_TRACING": "5", "RADIANTE_PACK_SET_POST": "4"}
+    textures = [t for t in config.get("textures", []) if isinstance(t, dict)]
+    buffers = [b for b in config.get("buffers", []) if isinstance(b, dict)]
+    taken = set()
+    for texture in textures:
+        for key in ("sampled_binding", "storage_binding"):
+            if key in texture:
+                taken.add(int(texture[key]))
+    for buffer in buffers:
+        if "binding" in buffer:
+            taken.add(int(buffer["binding"]))
+    free = iter(number for number in PACK_BINDINGS if number not in taken)
+    for texture in textures:
+        name = str(texture.get("name", ""))
+        sampled = texture.get("sampled_binding")
+        if sampled is None and "storage_binding" not in texture:
+            sampled = next(free, None)
+            if sampled is None:
+                raise SystemExit(f"texture {name} has no binding left")
+        if sampled is not None:
+            defines.setdefault(macro("RADIANTE_TEXTURE_", name), str(int(sampled)))
+        if "storage_binding" in texture:
+            defines.setdefault(macro("RADIANTE_IMAGE_", name), str(int(texture["storage_binding"])))
+    for buffer in buffers:
+        if "binding" in buffer:
+            defines.setdefault(macro("RADIANTE_BUFFER_", str(buffer.get("name", ""))), str(int(buffer["binding"])))
+    return defines
+
+
 def attribute_defines(config):
     defines = {}
     slot = 0
@@ -257,6 +294,8 @@ def main():
         for attribute in matches:
             attribute["default_value"] = value
     attributes = attribute_defines(config)
+    for name, value in resource_defines(config).items():
+        attributes.setdefault(name, value)
     for name, value in debug_view_defines(config, args.debug_view).items():
         attributes.setdefault(name, value)
         if args.debug_view is not None:

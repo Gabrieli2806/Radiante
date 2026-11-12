@@ -561,7 +561,8 @@ Loader::TextureConfig parseTexture(const json &object, const fs::path &root, con
             }
         }
         texture.format = parseFormat(optionalString(object, Loader::KEY_FORMAT, context).value_or("R8G8B8A8_UNORM"));
-        if (!texture.sampledBinding.has_value()) fail(context + " requires sampled_binding");
+        // Without a sampled_binding it gets one of the pack's own (below), and the shader names it by
+        // RADIANTE_TEXTURE_<NAME>.
 
         if (isLayered(texture.dimension)) {
             auto extent = [&](std::string_view key) {
@@ -1186,6 +1187,20 @@ PackConfig parseConfigFile(const fs::path &root, const std::string &language) {
         }
     }
     for (const auto &buffer : pack.buffers) claimBinding(buffer.binding, "buffer:" + buffer.name);
+    // A texture that names no binding gets the first free one of a pack's own, in the order the pack lists them:
+    // nothing to choose, and nothing that a later Radiante PT can take from under it. The shader reads the number
+    // from RADIANTE_TEXTURE_<NAME> (addResourceDefinitions).
+    uint32_t nextFree = Loader::PACK_BINDING_FIRST;
+    for (auto &texture : pack.textures) {
+        if (texture.sampledBinding.has_value() || texture.storageBinding.has_value()) continue;
+        while (nextFree <= Loader::PACK_BINDING_LAST && bindingOwners.contains(nextFree)) nextFree++;
+        if (nextFree > Loader::PACK_BINDING_LAST) {
+            fail("texture " + texture.name + " has no binding left: a pack's own go on " +
+                 std::to_string(Loader::PACK_BINDING_FIRST) + " to " + std::to_string(Loader::PACK_BINDING_LAST));
+        }
+        texture.sampledBinding = nextFree;
+        claimBinding(nextFree, "texture(sampled):" + texture.name);
+    }
 
     return pack;
 }
@@ -1263,6 +1278,34 @@ ShaderPackLoader::LoadResult ShaderPackLoader::load(const fs::path &path,
         tryLoad(fallbackPath);
     }
     return result;
+}
+
+void ShaderPackLoader::addResourceDefinitions(const std::vector<TextureConfig> &textures,
+                                              const std::vector<BufferConfig> &buffers,
+                                              std::unordered_map<std::string, std::string> &definitions) {
+    const auto macro = [](std::string_view prefix, const std::string &name) {
+        std::string text(prefix);
+        for (const char c : name) {
+            text += std::isalnum(static_cast<unsigned char>(c)) != 0
+                        ? static_cast<char>(std::toupper(static_cast<unsigned char>(c)))
+                        : '_';
+        }
+        return text;
+    };
+    // The runtime resources' set in each stage (kRuntimeResourceSet of the ray tracing and post render modules).
+    definitions.try_emplace("RADIANTE_PACK_SET_RAY_TRACING", "5");
+    definitions.try_emplace("RADIANTE_PACK_SET_POST", "4");
+    for (const auto &texture : textures) {
+        if (texture.sampledBinding.has_value()) {
+            definitions.try_emplace(macro("RADIANTE_TEXTURE_", texture.name), std::to_string(*texture.sampledBinding));
+        }
+        if (texture.storageBinding.has_value()) {
+            definitions.try_emplace(macro("RADIANTE_IMAGE_", texture.name), std::to_string(*texture.storageBinding));
+        }
+    }
+    for (const auto &buffer : buffers) {
+        definitions.try_emplace(macro("RADIANTE_BUFFER_", buffer.name), std::to_string(buffer.binding));
+    }
 }
 
 bool ShaderPackLoader::addDebugViewDefinitions(const std::vector<DebugViewConfig> &views,

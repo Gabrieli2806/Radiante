@@ -98,9 +98,21 @@ final class PackSettingsPage {
             int at = name.indexOf(".attribute.");
             String shortName = at < 0 ? name : name.substring(at + ".attribute.".length());
             boolean shows = watched.contains(name);
-            OptionInstance<?> row = AdvancedOptions.row(MODULE, name, shortName,
-                PipelineSettings.getModuleAttributeType(MODULE, name), current.apply(name), staged, attribute.step(),
-                attribute.description() == null ? null : text(attribute.description()),
+            String type = PipelineSettings.getModuleAttributeType(MODULE, name);
+            if ("vec3".equals(type)) {
+                // A colour: three sliders, one a channel.
+                List<OptionInstance<?>> channels = AdvancedOptions.colourRows(MODULE, name, shortName,
+                    current.apply(name), staged,
+                    attribute.description() == null ? null : text(attribute.description()), () -> { });
+                if (attribute.group() == null) {
+                    (attribute.advanced() ? topAdvanced : top).addAll(channels);
+                } else {
+                    (attribute.advanced() ? advanced : everyday).get(attribute.group()).addAll(channels);
+                }
+                continue;
+            }
+            OptionInstance<?> row = AdvancedOptions.row(MODULE, name, shortName, type, current.apply(name), staged,
+                attribute.step(), attribute.description() == null ? null : text(attribute.description()),
                 // Another row's visible_when reads this one: the page is laid out again to show or hide it.
                 shows ? relayout : () -> { });
             if (row == null) {
