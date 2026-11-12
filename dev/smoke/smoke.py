@@ -50,7 +50,7 @@ PACK_SETTINGS = "radiante/shaders/world/ray_tracing"
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 # Lines the game or the loader write as errors without anything being wrong with the renderer.
 HARMLESS = ("Realms", "Block-attached entity", "FabricLoader/Mixin", "Failed to parse into SignedJWT",
-            "Error loading class")
+            "Error loading class", "sessionserver.mojang.com")
 
 
 def build_script(config, only):

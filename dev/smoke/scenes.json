@@ -5,7 +5,7 @@
     "cmd=/gamerule advance_time false",
     "cmd=/time set 6000",
     "cmd=/weather clear",
-    "cmd=/tp @s ~ ~ ~ -90 5",
+    "cmd=/tp @s 223.5 4 -11.5 -90 5",
     "cmd=/radiante showcase"
   ],
   "setup_ticks": 320,
@@ -115,6 +115,97 @@
       "after": [
         "cmd=/time set 6000"
       ]
+    },
+    {
+      "name": "bench_build",
+      "what": "The regression bench being built (nothing to check).",
+      "actions": [
+        "cmd=/gamerule spawn_mobs false",
+        "cmd=/kill @e[type=!player]",
+        "cmd=/tp @s 3020.5 205 20.5 0 30",
+        "cmd=/fill 3000 199 0 3040 199 40 minecraft:smooth_stone",
+        "cmd=/fill 3000 200 0 3040 212 40 minecraft:air",
+        "cmd=/fill 3002 200 8 3008 204 8 minecraft:stone",
+        "cmd=/setblock 3004 200 6 minecraft:redstone_torch",
+        "cmd=/setblock 3006 202 7 minecraft:redstone_wall_torch[facing=north]",
+        "cmd=/fill 3012 206 6 3016 206 6 minecraft:grass_block",
+        "cmd=/setblock 3012 207 6 minecraft:short_grass",
+        "cmd=/setblock 3014 207 6 minecraft:tall_grass[half=lower]",
+        "cmd=/setblock 3014 208 6 minecraft:tall_grass[half=upper]",
+        "cmd=/setblock 3016 207 6 minecraft:poppy",
+        "cmd=/fill 3022 197 4 3030 199 12 minecraft:smooth_stone",
+        "cmd=/fill 3023 198 5 3029 199 11 minecraft:water",
+        "cmd=/fill 3002 204 20 3012 204 26 minecraft:stone",
+        "cmd=/fill 3002 200 26 3012 203 26 minecraft:stone",
+        "cmd=/setblock 3004 200 24 minecraft:torch",
+        "cmd=/setblock 3007 200 24 minecraft:campfire",
+        "cmd=/setblock 3010 200 24 minecraft:lantern",
+        "cmd=/fill 3022 197 20 3030 199 28 minecraft:smooth_stone",
+        "cmd=/fill 3023 199 21 3029 199 27 minecraft:lava",
+        "cmd=/fill 3034 199 34 3036 199 36 minecraft:iron_block",
+        "cmd=/setblock 3035 200 35 minecraft:beacon"
+      ],
+      "settle_ticks": 220
+    },
+    {
+      "name": "redstone_torch",
+      "what": "Redstone torches, standing and on a wall: the head shows its texture inside a faint red halo, not a flat red cube; red light on the wall and floor.",
+      "actions": [
+        "cmd=/kill @e[type=!player]",
+        "cmd=/time set 18000",
+        "cmd=/tp @s 3004.5 200 4.4 0 18"
+      ],
+      "settle_ticks": 140
+    },
+    {
+      "name": "grass_from_below",
+      "what": "Grass, tall grass and a poppy seen from under the block they grow on, against the sky: green, not black.",
+      "actions": [
+        "cmd=/time set 6000",
+        "cmd=/tp @s 3014.5 200 3.5 0 -40"
+      ],
+      "settle_ticks": 120
+    },
+    {
+      "name": "first_person_in_water",
+      "what": "Standing waist deep, looking down: the water and the pool's floor, no body of the player under the surface.",
+      "actions": [
+        "opt=firstPersonShadow=true",
+        "cmd=/tp @s 3026.5 198 8.5 0 70"
+      ],
+      "settle_ticks": 140
+    },
+    {
+      "name": "lamps_by_day",
+      "what": "A torch, a campfire and a lantern under a roof by day: a warm pool of light round each in the shade, and their flames lit.",
+      "actions": [
+        "cmd=/time set 6000",
+        "cmd=/tp @s 3007.5 200 18.5 0 20"
+      ],
+      "settle_ticks": 140
+    },
+    {
+      "name": "lava_pool_night",
+      "what": "A pool of lava at night: deep orange with its pattern, not a pale peach; the rim lit orange, not burnt white.",
+      "actions": [
+        "cmd=/kill @e[type=!player]",
+        "cmd=/time set 18000",
+        "cmd=/tp @s 3026.5 203 16.5 0 40"
+      ],
+      "settle_ticks": 160
+    },
+    {
+      "name": "beacon_night",
+      "what": "An active beacon at night from the platform: the beam and its light on the blocks near it; the ground far from it as dark and as calm as without it.",
+      "actions": [
+        "cmd=/kill @e[type=!player]",
+        "cmd=/time set 18000",
+        "cmd=/tp @s 3022.5 200 22.5 -45 0"
+      ],
+      "settle_ticks": 160,
+      "after": [
+        "cmd=/time set 6000"
+      ]
     }
   ],
   "toggles": [
@@ -147,6 +238,24 @@
       ],
       "settle_ticks": 160,
       "min_difference": 0.15
+    },
+    {
+      "name": "glowing_pixel_light",
+      "what": "Light From Glowing Pixels on a lit redstone lamp, close: where the light starts on the block.",
+      "view": [
+        "cmd=/time set 18000",
+        "cmd=/setblock 3018 199 32 minecraft:redstone_block",
+        "cmd=/setblock 3018 200 32 minecraft:redstone_lamp[lit=true]",
+        "cmd=/tp @s 3018.5 200 30.5 0 25"
+      ],
+      "off": [
+        "opt=glowingPixelLight=false"
+      ],
+      "on": [
+        "opt=glowingPixelLight=true"
+      ],
+      "settle_ticks": 260,
+      "min_difference": 0.05
     }
   ]
 }

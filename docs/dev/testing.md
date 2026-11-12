@@ -78,7 +78,11 @@ that can ray trace, and Python with Pillow and numpy. It backs up the developmen
 - `--golden <folder>` compares each picture with the one of the same name from an earlier run (keep one set per
   GPU vendor: their denoisers and upscalers differ) and reports the difference without failing on it.
 - Scenes are data, in `dev/smoke/scenes.json`: the commands that set a view up and a line saying what to check.
-  Add a scene for a regression once it is fixed.
+  Add a scene for a regression once it is fixed. Regressions that need a setup of their own go on the bench at x
+  3000, y 200 in the same world (`bench_build` puts it up; the scenes after it look at the redstone torch's halo,
+  grass seen from below, the player's body under water, lamps by day, a lava pool and a beacon at night). The setup
+  sends the player back to the gallery's start (223.5, 4, -11.5) before the showcase is built round them.
+- `--only <text>` skips `bench_build`, so a bench scene run alone sees the bench as the last full run left it.
 
 ## What a setting costs
 
