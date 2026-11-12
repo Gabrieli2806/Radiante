@@ -571,6 +571,7 @@ NVSDK_NGX_Result DlssRR::denoise(std::shared_ptr<gpu::CommandBuffer> cmdBuffer,
     eval.pInRoughness = bound(RESOURCE_NORMALROUGHNESS);
     eval.pInDepth = bound(RESOURCE_LINEARDEPTH);
     eval.pInMotionVectors = bound(RESOURCE_MOTIONVECTOR);
+    eval.pInBiasCurrentColorMask = bound(RESOURCE_BIAS_MASK);
 
     // NGX counts the jitter with the opposite sign.
     eval.InJitterOffsetX = -jitter.x;

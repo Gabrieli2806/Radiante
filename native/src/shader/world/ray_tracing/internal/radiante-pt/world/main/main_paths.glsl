@@ -79,7 +79,8 @@
             // follows their directional reflectance.
             specularGuide = reflectionAlbedoGuide(firstHitMat.f0, firstHitMat.roughness, guideNoV);
         }
-        imageStore(specularAlbedoImage, pixel, vec4(specularGuide, 0.0));
+        // The alpha: 1 where DLSS is to favour this frame's colour (the dlss module's bias mask, rayFavourCurrent).
+        imageStore(specularAlbedoImage, pixel, vec4(specularGuide, rayFavourCurrent(mainRay) ? 1.0 : 0.0));
 
         imageStore(normalRoughnessImage, pixel, vec4(mainRay.normal, firstHitMat.roughness));
 
