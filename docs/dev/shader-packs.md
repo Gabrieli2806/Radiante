@@ -101,7 +101,7 @@ In `configs.json`, under `"radiante"`:
 | `icon` | yes | Image in the pack, shown in the list |
 | `api_version` | checked | The `radiante/vN` interface the pack is written for; 0 = built on Radiante PT's internals, 1 = uses the `radiante/v1` headers. Radiante offers up to 1; a pack asking for more is refused in the list |
 | `extends` | yes | The pack this one builds on: `"radiante-pt"` or `"radiante-pt@1"` (section 5) |
-| `requires` | `radiante` checked | `{"radiante": ">=1.4", "features": ["omm?"]}`. `radiante`: `>=`, `>`, `=`, `<=`, `<` or a bare version (meaning `>=`) against the mod version. `features` (`?` = optional, the shader gets a define) is planned |
+| `requires` | `radiante` checked | `{"radiante": ">=1.4", "features": ["omm?"]}`. `radiante`: `>=`, `>`, `=`, `<=`, `<` or a bare version (meaning `>=`) against the mod version. `features`: the parts of the interface the pack needs, by name (`ShaderPackManifest.FEATURES`: `noise`, `clock`, `player_state`, `named_resources`, `shadow_softness`, `colour_settings`); a name this Radiante does not know refuses the pack in the list, with the name. Optional features (`?`, with a define) are planned |
 | `id` | planned | Stable id (lowercase), for settings files and future pack lists |
 | `homepage` | planned | Link shown in the list |
 

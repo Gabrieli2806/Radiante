@@ -773,6 +773,7 @@
   "screen.radiante.shader_packs.problem.base_version": "Hecho para %s; este Radiante tiene radiante-pt@1. Busca una versión del paquete para él.",
   "screen.radiante.shader_packs.problem.api_version": "Hecho para la interfaz de paquetes %s, más nueva de la que ofrece este Radiante. Actualiza Radiante.",
   "screen.radiante.shader_packs.problem.requires": "Necesita Radiante %s. Actualiza Radiante.",
+  "screen.radiante.shader_packs.problem.feature": "Necesita \"%s\", que este Radiante no tiene. Actualiza Radiante.",
   "toast.radiante.shader_pack_failed": "Radiante: falló el paquete de shaders",
   "toast.radiante.shader_pack_failed.detail": "%s: se vuelve a Radiante PT.",
   "toast.radiante.pack_reload": "Radiante: recargando el paquete de shaders",
