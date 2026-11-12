@@ -405,6 +405,14 @@ void ptShadeDefault(bool viewMark) {
     // current exposure brings to LAVA_DISPLAY of its colour, and the light other things throw on it counts for
     // little. (What lava casts on its surroundings is the light list's, unchanged.)
     if (radianteIsLava(packedData) && bounce == 0u) { ptShapeLava(surface); }
+    // What the camera sees changes in a way its motion vector does not follow (lava's flowing texture, a translucent
+    // particle, which drifts and is rebuilt each frame): DLSS is told to favour this frame there. Not rain, whose
+    // sheets carry their fall in their motion vectors (transparent_only.rchit).
+    if (bounce == 0u || rayCameraPath(mainRay)) {
+        if (radianteIsLava(packedData) || (radianteIsThin(packedData) && alphaMode == ALPHA_MODE_STOCHASTIC)) {
+            raySetFavourCurrent(mainRay, true);
+        }
+    }
     // Small plants (grass, flowers, ferns) are lit as if they faced half way up, as Bedrock RTX lights them: side by
     // side its short grass is three quarters as bright as the grass block under it, where lit by their own upright
     // quads a noon sun only grazed the blades and they came out at two fifths (and facing straight up, brighter than

@@ -67,7 +67,9 @@ constexpr std::array<const char *, 3> kUpscaleShaders = {
     "shaders/world/upscaler/upscale_motion_vector_comp.spv",
     "shaders/world/upscaler/upscale_normal_roughness_comp.spv",
 };
-constexpr std::array<uint32_t, 6> kUpscaleBindings = {0, 1, 2, 4, 5, 6};
+// The bias mask pass reads the specular albedo guide at 3 and writes the mask at 7.
+constexpr std::array<uint32_t, 8> kUpscaleBindings = {0, 1, 2, 4, 5, 6, 3, 7};
+constexpr const char *kBiasMaskShader = "shaders/world/upscaler/bias_mask_comp.spv";
 
 std::shared_ptr<gpu::DescriptorTable> makeUpscaleTable(const std::shared_ptr<gpu::Device> &device) {
     gpu::DescriptorTableBuilder builder;
@@ -302,13 +304,18 @@ void DLSSModule::build() {
     // A frame's images never change after the build, so its set is written once, here.
     for (uint32_t i = 0; i < frameCount; i++) {
         Frame &frame = frames_[i];
+        frame.biasMask = gpu::DeviceLocalImage::create(device, framework->vma(), false, inputWidth_, inputHeight_, 1,
+                                                       VK_FORMAT_R8_UNORM,
+                                                       VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
         frame.upscaleTable = makeUpscaleTable(device);
         frame.upscaleTable->bindImage(frame.inputs[FirstHitDepth], VK_IMAGE_LAYOUT_GENERAL, 0, 0)
             ->bindImage(frame.outputs[UpscaledFirstHitDepth], VK_IMAGE_LAYOUT_GENERAL, 0, 1)
             ->bindImage(frame.inputs[MotionVector], VK_IMAGE_LAYOUT_GENERAL, 0, 2)
+            ->bindImage(frame.inputs[SpecularAlbedo], VK_IMAGE_LAYOUT_GENERAL, 0, 3)
             ->bindImage(frame.outputs[UpscaledMotionVector], VK_IMAGE_LAYOUT_GENERAL, 0, 4)
             ->bindImage(frame.inputs[NormalRoughness], VK_IMAGE_LAYOUT_GENERAL, 0, 5)
-            ->bindImage(frame.outputs[UpscaledNormalRoughness], VK_IMAGE_LAYOUT_GENERAL, 0, 6);
+            ->bindImage(frame.outputs[UpscaledNormalRoughness], VK_IMAGE_LAYOUT_GENERAL, 0, 6)
+            ->bindImage(frame.biasMask, VK_IMAGE_LAYOUT_GENERAL, 0, 7);
     }
     for (size_t i = 0; i < upscalePipelines_.size(); i++) {
         upscalePipelines_[i] = gpu::ComputePipelineBuilder{}
@@ -316,6 +323,10 @@ void DLSSModule::build() {
                                    .definePipelineLayout(frames_[0].upscaleTable)
                                    .build(device);
     }
+    biasMaskPipeline_ = gpu::ComputePipelineBuilder{}
+                            .defineShader(gpu::Shader::create(device, (Renderer::folderPath / kBiasMaskShader).string()))
+                            .definePipelineLayout(frames_[0].upscaleTable)
+                            .build(device);
 
     contexts_.resize(frameCount);
     for (uint32_t i = 0; i < frameCount; i++) {
@@ -349,6 +360,7 @@ DLSSModuleContext::DLSSModuleContext(std::shared_ptr<FrameworkContext> framework
     specularHitDepthImage = frame.inputs[DLSSModule::SpecularHitDepth];
     firstHitDepthImage = frame.inputs[DLSSModule::FirstHitDepth];
     processedImage = frame.outputs[DLSSModule::Processed];
+    biasMaskImage = frame.biasMask;
     upscaledFirstHitDepthImage = frame.outputs[DLSSModule::UpscaledFirstHitDepth];
     upscaledMotionVectorImage = frame.outputs[DLSSModule::UpscaledMotionVector];
     upscaledNormalRoughnessImage = frame.outputs[DLSSModule::UpscaledNormalRoughness];
@@ -374,6 +386,20 @@ void DLSSModuleContext::render() {
         {specularHitDepthImage, gpu::ImageUsage::General},
     };
     const size_t ngxImageCount = module->rayReconstruction_ ? std::size(ngxImages) : std::size(ngxImages) - 1;
+
+    // Ray Reconstruction's bias mask, out of the specular albedo guide's alpha, before NGX reads either.
+    if (module->rayReconstruction_ && biasMaskImage != nullptr && module->biasMaskPipeline_ != nullptr) {
+        constexpr VkPipelineStageFlags2 compute = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+        cmd->sync({
+            {specularAlbedoImage, gpu::ImageUsage::StorageRead, compute},
+            {biasMaskImage, gpu::ImageUsage::StorageWrite, compute},
+        });
+        const MotionUpscalePushConstants size{1.0f, 1.0f, module->inputWidth_, module->inputHeight_,
+                                                         module->inputWidth_, module->inputHeight_};
+        upscaler::recordPass(*cmd, motionDescriptorTable, module->biasMaskPipeline_, size, module->inputWidth_,
+                             module->inputHeight_);
+        cmd->sync({{biasMaskImage, gpu::ImageUsage::General}});
+    }
     cmd->sync(std::span(ngxImages).first(ngxImageCount));
 
     // The camera of this frame, as the CPU wrote it for the shaders.
@@ -404,6 +430,7 @@ void DLSSModuleContext::render() {
                 dlss.setResource(DlssRR::RESOURCE_MOTIONVECTOR, motionVectorImage);
                 dlss.setResource(DlssRR::RESOURCE_LINEARDEPTH, linearDepthImage);
                 dlss.setResource(DlssRR::RESOURCE_SPECULAR_HITDISTANCE, specularHitDepthImage);
+                dlss.setResource(DlssRR::RESOURCE_BIAS_MASK, biasMaskImage);
                 dlss.denoise(cmd, renderSize, ubo->cameraJitter, ubo->cameraViewMat, ubo->cameraProjMat, reset);
             }
         } else {

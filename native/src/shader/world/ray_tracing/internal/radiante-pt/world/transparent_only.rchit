@@ -148,6 +148,11 @@ void main() {
     raySetNoisy(mainRay, false);
     mainRay.directLightRadiance = vec3(0.0);
     mainRay.hasPrevScenePos = 0u;
+    // A translucent particle the camera sees: DLSS favours this frame there (see pt_shade_default.glsl).
+    if ((rayBounce(mainRay) == 0u || rayCameraPath(mainRay)) && radianteIsThin(m0.packedData) &&
+        getAlphaMode(m0.packedData) == 9u) { // ALPHA_MODE_STOCHASTIC (util/alpha_mode.glsl)
+        raySetFavourCurrent(mainRay, true);
+    }
     if (rayBounce(mainRay) == 0u) {
         vec3 prevScenePos;
         if (loadPreviousScenePos(geometryBufferIndex, gl_PrimitiveID, bary, prevScenePos)) {

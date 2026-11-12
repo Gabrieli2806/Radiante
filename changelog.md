@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- The denoiser settings shown with FSR and XeSS (Settings > Performance > Denoiser) work. They were twenty-four of REBLUR's, a denoiser that has not run since RELAX replaced it, so none of them changed anything. They are now three of RELAX's, applied without a rebuild: History Frames (how long the light is averaged over, 30), Spatial Passes (how far the spatial filter reaches, 5; fewer is sharper and noisier) and Anti Firefly (on). Their defaults are RELAX's own, which a comparison at 2 to 6 passes and 8 to 60 frames did not beat.
+
+- DLSS Ray Reconstruction is told where to trust the current frame over its history (its bias mask): translucent particles such as campfire smoke, and lava's flowing surface. Their motion vectors do not follow how they move or change. Seen in a pan past a campfire, the smoke stays more solid and in place; its edges show a little more grain.
+
 - Sharper with every upscaler, and steadier. The camera's sub-pixel jitter, which DLSS, FSR and XeSS build the picture's detail out of, took only 16 horizontal positions in a pixel where it should take 72 (a slip in the sequence cut its horizontal half short). It now covers the pixel evenly over a cycle of 128 frames. Measured on a textured floor, RTX 5070 at 1080p: DLSS Quality's edges 58 % stronger, and at Ultra Performance the picture moves a quarter less from frame to frame with the camera still.
 
 - DLSS starts over after a teleport, a respawn or a change of dimension (a jump of more than 8 blocks in a frame), instead of smearing the last place over the new one for a moment.
