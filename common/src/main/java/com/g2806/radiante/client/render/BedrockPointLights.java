@@ -131,6 +131,25 @@ final class BedrockPointLights {
         }
     }
 
+    /**
+     * The point light this block has set down, for the same block held in the hand (HeldLight): its colour (0..255)
+     * and its share of CAST_STRENGTH, or null when it has none. The torches, lanterns and end rods, and the flame of
+     * a campfire, which held lit by its light level alone and came out about twice as bright as set down.
+     */
+    static float[] heldPointLight(Block block) {
+        int[] rgb = colourOf(block);
+        if (rgb != null) {
+            return new float[] {rgb[0], rgb[1], rgb[2], 1.0f};
+        }
+        if (block == Blocks.CAMPFIRE || block == Blocks.SOUL_CAMPFIRE) {
+            boolean soul = block == Blocks.SOUL_CAMPFIRE;
+            int[] flame = packColourOr(block, soul ? 0 : 255, soul ? 230 : 120, soul ? 255 : 40);
+            // Set down, the logs around the flame take about a third of its light (measured, as HeldLight's glow).
+            return new float[] {flame[0], flame[1], flame[2], FLAME_STRENGTH * 1.2f * 0.66f};
+        }
+        return null;
+    }
+
     // ---- an enabled Bedrock pack's local lighting
 
     /** Written into converted Bedrock packs (BedrockLocalLighting.PATH). */

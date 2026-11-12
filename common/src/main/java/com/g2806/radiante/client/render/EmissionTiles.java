@@ -138,7 +138,22 @@ public final class EmissionTiles {
     static Set<String> authoredEmissionProfiles() {
         return authoredEmission.stream().map(Identifier::toString).collect(java.util.stream.Collectors.toUnmodifiableSet());
     }
-    static void beginAuthoredEmission() { authoredEmission.clear(); }
+    static void beginAuthoredEmission() {
+        authoredEmission.clear();
+        authoredCast.clear();
+    }
+
+    /**
+     * What each sprite with an authored glow casts, as uploadAuthoredEmission hands it to the light list: the mean
+     * over the whole sprite of each texel's colour (linear) times its emission. HeldLight reads it, so a block in
+     * the hand casts by the very numbers it casts by set down.
+     */
+    private static final Map<Identifier, float[]> authoredCast = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** The mean light this sprite casts (linear rgb), or null when it has no authored glow. */
+    static float[] authoredCast(Identifier sprite) {
+        return authoredCast.get(sprite);
+    }
 
     private EmissionTiles() {
     }
@@ -563,6 +578,7 @@ public final class EmissionTiles {
         float boost = lightBoost(sprite);
 
         List<float[]> cells = new ArrayList<>();
+        float[] castSum = new float[3];
         for (int cellY = 0; cellY < height; cellY += cellHeight) {
             for (int cellX = 0; cellX < width; cellX += cellWidth) {
                 float emission = 0.0f;
@@ -603,8 +619,18 @@ public final class EmissionTiles {
                 float v1 = (originY + Math.min(height, cellY + cellHeight)) / (float) atlasHeight;
                 // Lava lights its surroundings red-orange, with the cast of a sea of it held down (see LAVA_MER_CAST).
                 boolean lava = isLava(sprite);
+                // Its light a little yellower than its texture: by the texture's own deep red-orange every block a
+                // sea of lava lit, whatever its colour, came out the one red.
+                if (lava) {
+                    green *= LAVA_CAST_GREEN;
+                    blue *= LAVA_CAST_GREEN;
+                }
                 cells.add(new float[] {u0, v0, u1, v1, -emission / texels * boost * (lava ? LAVA_MER_CAST : 1.0f),
                     red / emission, green / emission, blue / emission});
+                float cast = boost * (lava ? LAVA_MER_CAST : 1.0f);
+                castSum[0] += red * cast;
+                castSum[1] += green * cast;
+                castSum[2] += blue * cast;
             }
         }
         long tileKey = ((long) sprite.getX() << 32) ^ sprite.getY() ^ ((long) width << 48) ^ height;
@@ -617,6 +643,9 @@ public final class EmissionTiles {
             return;
         }
         authoredEmission.add(sprite.contents().name());
+        float allTexels = Math.max(1, width * height);
+        authoredCast.put(sprite.contents().name(),
+            new float[] {castSum[0] / allTexels, castSum[1] / allTexels, castSum[2] / allTexels});
         long address = MemoryUtil.nmemAllocChecked((long) cells.size() * CELL_BYTES);
         try {
             for (int i = 0; i < cells.size(); i++) {
@@ -812,6 +841,7 @@ public final class EmissionTiles {
      */
     private static final float LAVA_MER_GLOW = 0.008f;
     private static final float LAVA_MER_CAST = 0.7f;
+    private static final float LAVA_CAST_GREEN = 1.6f;
 
     private static boolean isLava(TextureAtlasSprite sprite) {
         Identifier name = sprite.contents().name();

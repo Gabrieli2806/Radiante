@@ -58,7 +58,10 @@ public final class HeldLight {
                 at = hit.getLocation().add(hit.getDirection().getUnitVec3().scale(0.11));
             }
         }
-        float reach = pointLightOf(player.getItemInHand(hand)) != null ? POINT_LIGHT_REACH : REACH * level / 15.0f;
+        ItemStack held = player.getItemInHand(hand);
+        // A block lit by its faces reaches as far set down as the search for lights goes (vptLightRangeFade).
+        float reach = pointLightOf(held) != null ? POINT_LIGHT_REACH
+            : glowCastOf(held) != null ? GLOW_REACH : REACH * level / 15.0f;
         return new Vector4f((float) (at.x - camera.x), (float) (at.y - camera.y), (float) (at.z - camera.z), reach);
     }
 
@@ -107,15 +110,77 @@ public final class HeldLight {
         }
         var multiplier = stack.getItem() instanceof BlockItem item ? BlockEmissionControls.forBlock(item.getBlock())
             : stack.is(Items.LAVA_BUCKET) ? BlockEmissionControls.forBlock("minecraft", "lava") : com.g2806.radiante.client.option.EmissionColor.WHITE;
-        int[] pointLight = pointLightOf(stack);
+        float[] pointLight = pointLightOf(stack);
         if (pointLight != null) {
             // The light the same block casts set down (BedrockPointLights), on the held light's scale: the shaders
             // multiply a placed one by (100 / 12) and the Emission Brightness, a held one by 16 and the Held Light
             // Brightness, both 12 by default.
-            float scale = BedrockPointLights.CAST_STRENGTH * (100.0f / 12.0f) / 16.0f / 255.0f;
+            float scale = BedrockPointLights.CAST_STRENGTH * pointLight[3] * (100.0f / 12.0f) / 16.0f / 255.0f;
             return new Vector4f(pointLight[0] * scale * multiplier.red(), pointLight[1] * scale * multiplier.green(), pointLight[2] * scale * multiplier.blue(), 1.0f);
         }
+        float[] cast = glowCastOf(stack);
+        if (cast != null) {
+            // A block that lights by the glow of its faces: the same glow, gathered into one light at the hand, and
+            // w 2 so the shaders let it fall off with the square of the distance as the faces' light does.
+            return new Vector4f(cast[0] * GLOW_CAST * multiplier.red(), cast[1] * GLOW_CAST * multiplier.green(),
+                cast[2] * GLOW_CAST * multiplier.blue(), 2.0f);
+        }
         return new Vector4f(tintOf(stack).mul(multiplier.red(), multiplier.green(), multiplier.blue()).mul(STRENGTH * level / 15.0f), 1.0f);
+    }
+
+    /**
+     * What a block's glowing faces cast, as one light in the hand, for each unit of the mean their sprites cast
+     * (EmissionTiles.authoredCast). Set by measure: a sealed room, the block set down and then held at the same
+     * spot, the same patch of the far wall read both times (glowstone, a sea lantern, shroomlight, magma).
+     */
+    private static final float GLOW_CAST = 4.1f;
+    private static final float GLOW_REACH = 16.0f;
+
+    /** The sprites a light block's faces may be named by, after its own id. */
+    private static final String[] FACE_SUFFIXES = {"", "_side", "_top", "_on", "_front_on", "_front"};
+
+    /**
+     * The mean light the faces of the held block cast set down (linear rgb), when they cast by an authored glow (a
+     * Bedrock pack's, or the built-in values): glowstone, lamps, froglights, shroomlight, magma, a bucket of lava.
+     * Null for anything else, which keeps the light of its light level.
+     */
+    private static float[] glowCastOf(ItemStack stack) {
+        if (!com.g2806.radiante.client.pipeline.PipelineSettings.castsBedrockGlow()) {
+            return null;
+        }
+        String namespace;
+        String path;
+        if (stack.is(Items.LAVA_BUCKET)) {
+            namespace = "minecraft";
+            path = "lava_still";
+        } else if (stack.getItem() instanceof BlockItem blockItem) {
+            var id = BuiltInRegistries.BLOCK.getKey(blockItem.getBlock());
+            namespace = id.getNamespace();
+            path = id.getPath();
+        } else {
+            return null;
+        }
+        float[] sum = new float[3];
+        int found = 0;
+        for (String name : new String[] {path, path.endsWith("_block") ? path.substring(0, path.length() - 6) : null}) {
+            if (name == null) {
+                continue;
+            }
+            for (String suffix : FACE_SUFFIXES) {
+                float[] cast = EmissionTiles.authoredCast(
+                    net.minecraft.resources.Identifier.fromNamespaceAndPath(namespace, "block/" + name + suffix));
+                if (cast != null) {
+                    sum[0] += cast[0];
+                    sum[1] += cast[1];
+                    sum[2] += cast[2];
+                    found++;
+                }
+            }
+        }
+        if (found == 0 || sum[0] + sum[1] + sum[2] <= 0.0f) {
+            return null;
+        }
+        return new float[] {sum[0] / found, sum[1] / found, sum[2] / found};
     }
 
     /**
@@ -123,19 +188,19 @@ public final class HeldLight {
      * are cast; null otherwise. A torch, lantern or end rod then lights the same in the hand as on the
      * ground: the same colour, strength and fall-off, so walking into a cave and setting it down changes nothing.
      */
-    private static int[] pointLightOf(ItemStack stack) {
+    private static float[] pointLightOf(ItemStack stack) {
         if (!com.g2806.radiante.client.pipeline.PipelineSettings.castsBedrockGlow()) {
             return null;
         }
         int[] pack = BedrockPointLights.packHeldColour(stack.getItem());
         if (pack != null) {
             // A shield with a torch on it (an enabled Bedrock pack's attachable) lights as that torch would.
-            return pack;
+            return new float[] {pack[0], pack[1], pack[2], 1.0f};
         }
         if (!(stack.getItem() instanceof BlockItem blockItem)) {
             return null;
         }
-        return BedrockPointLights.colourOf(blockItem.getBlock());
+        return BedrockPointLights.heldPointLight(blockItem.getBlock());
     }
 
     /** Light level of a torch, for an item an enabled pack makes a light in the hand. */
