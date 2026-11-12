@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Particles that Minecraft draws at full light (a torch's flame, sparks, drops of lava, an end rod's glitter) glow: they are bright in the dark and the light bouncing around picks a little of it up. The other particles (campfire smoke, dust, falling leaves) cast a shadow; before, no particle did.
+
+- Grass, tall grass, ferns and flowers seen from below are no longer black. They are lit as if they leaned half way up, and looking up at them from under that lean they were shaded as a surface seen from behind.
+
 - The redstone torch shows its own head. It was a flat, pale red cube half again the head's size with none of its texture: Minecraft's model has a halo around the head, six one sided faces that the tracer saw from both sides and made glow. They are now a see-through, faintly glowing shell: the head shows through it with its texture, on the floor and on a wall.
 
 - Torches, lanterns and the other small lights look like the light comes from them. Their light is strongest beside the flame and fades with distance, a pool of light on the wall around a torch, where it used to light a whole wall almost evenly. And what glows has a halo: Bloom Intensity starts at 0.15 (was 0.01, too little to see), Bloom Threshold at 1.0 (was 0) so only what is brighter than white blooms and the daylight picture is as it was, Bloom Scatter at 0.7 (was 0.5). Values already saved are kept; Reset to Defaults gives the new ones. A shader pack that draws Radiante's bloom itself gets the new threshold and scatter too.
