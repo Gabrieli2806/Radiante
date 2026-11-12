@@ -94,8 +94,10 @@ class DLSSModule : public WorldModule, public SharedObject<DLSSModule> {
     struct Frame {
         std::array<std::shared_ptr<gpu::DeviceLocalImage>, inputImageNum> inputs;
         std::array<std::shared_ptr<gpu::DeviceLocalImage>, outputImageNum> outputs;
-        // The storage images of the three upscale passes.
+        // The storage images of the three upscale passes, and of the bias mask pass.
         std::shared_ptr<gpu::DescriptorTable> upscaleTable;
+        // Ray Reconstruction's bias mask, at the render size: copied out of the specular albedo guide's alpha.
+        std::shared_ptr<gpu::DeviceLocalImage> biasMask;
     };
 
     // Picks the mode DLSS runs and the size the world is rendered at, for the current output size.
@@ -132,6 +134,7 @@ class DLSSModule : public WorldModule, public SharedObject<DLSSModule> {
 
     // First-hit depth, motion vectors, normal/roughness: the order the passes run in.
     std::array<std::shared_ptr<gpu::ComputePipeline>, 3> upscalePipelines_;
+    std::shared_ptr<gpu::ComputePipeline> biasMaskPipeline_;
 
     std::vector<std::shared_ptr<WorldModuleContext>> contexts_;
 };
@@ -151,6 +154,7 @@ struct DLSSModuleContext : public WorldModuleContext, SharedObject<DLSSModuleCon
 
     // output
     std::shared_ptr<gpu::DeviceLocalImage> processedImage;
+    std::shared_ptr<gpu::DeviceLocalImage> biasMaskImage;
     std::shared_ptr<gpu::DeviceLocalImage> upscaledFirstHitDepthImage;
     std::shared_ptr<gpu::DeviceLocalImage> upscaledMotionVectorImage;
     std::shared_ptr<gpu::DeviceLocalImage> upscaledNormalRoughnessImage;

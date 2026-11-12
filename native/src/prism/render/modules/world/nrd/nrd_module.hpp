@@ -54,8 +54,9 @@ class NrdModule : public WorldModule, public SharedObject<NrdModule> {
     // Records the frame's prepare, denoise and compose passes into the context's world command buffer.
     void record(FrameworkContext &context);
 
-    // The module's attributes configure REBLUR; they reach NRD only when REBLUR is the denoiser that runs.
+    // REBLUR's settings, kept for the switch back (kDenoiser); the module's attributes set RELAX's.
     nrd::ReblurSettings reblurSettings_;
+    nrd::RelaxSettings relaxSettings_;
     uint32_t width_ = 0;
     uint32_t height_ = 0;
     // NRD's frame counter. Every build restarts it, and with it NRD's history.

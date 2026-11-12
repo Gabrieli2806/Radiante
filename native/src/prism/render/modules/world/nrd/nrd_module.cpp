@@ -24,9 +24,8 @@ namespace {
 // RELAX rather than REBLUR. On this path tracer's one-sample signal REBLUR converged to blotches when still and to
 // streaky noise whenever the camera moved (roughly 2.5x DLSS-RR's high-frequency noise), and lost about a quarter of
 // the light in dim, bounce-lit rooms. RELAX on the same inputs is as clean as DLSS-RR in motion and within a few
-// percent of its brightness. prepare.comp and compose.comp pack and unpack RELAX's signal. The REBLUR settings (the
-// module's attributes and clampReblurSettings) are kept on purpose as the switch-back path; they reach NRD only when
-// kDenoiser is REBLUR_DIFFUSE_SPECULAR.
+// percent of its brightness. prepare.comp and compose.comp pack and unpack RELAX's signal. REBLUR's settings
+// (defaultReblurSettings, clampReblurSettings) are kept for the switch back; the module's attributes set RELAX's.
 constexpr nrd::Denoiser kDenoiser = nrd::Denoiser::RELAX_DIFFUSE_SPECULAR;
 constexpr std::array kDenoisers = {kDenoiser};
 
@@ -132,7 +131,7 @@ nrd::RelaxSettings relaxSettings() {
 }
 
 // Keeps every REBLUR parameter in the range NRD accepts, and the two motion vector thresholds in order.
-void clampReblurSettings(nrd::ReblurSettings &s) {
+[[maybe_unused]] void clampReblurSettings(nrd::ReblurSettings &s) {
     s.hitDistanceParameters.A = std::max(s.hitDistanceParameters.A, 0.0f);
     s.hitDistanceParameters.B = std::max(s.hitDistanceParameters.B, 0.0f);
     s.hitDistanceParameters.C = std::max(s.hitDistanceParameters.C, 1.0f);
@@ -201,62 +200,36 @@ void parse(const std::string &text, nrd::HitDistanceReconstructionMode &field) {
     else if (text == "5x5") field = nrd::HitDistanceReconstructionMode::AREA_5X5;
 }
 
-using Reblur = nrd::ReblurSettings;
+using Relax = nrd::RelaxSettings;
 
 struct Attribute {
     std::string_view name; // the key after kAttributePrefix
-    void (*set)(Reblur &, const std::string &);
+    void (*set)(Relax &, const std::string &);
 };
 
 constexpr std::string_view kAttributePrefix = "render_pipeline.module.nrd.attribute.";
 
-// hit_distance_parameters_d is no longer read: NRD 4.17.2 replaced D with a remapped roughness.
+// The settings a player can change, all of them RELAX's. They used to be twenty-four of REBLUR's, which has not run
+// since RELAX replaced it (see kDenoiser), so none of them changed the picture.
 constexpr Attribute kAttributes[] = {
-    {"hit_distance_parameters_a", [](Reblur &r, const std::string &v) { parse(v, r.hitDistanceParameters.A); }},
-    {"hit_distance_parameters_b", [](Reblur &r, const std::string &v) { parse(v, r.hitDistanceParameters.B); }},
-    {"hit_distance_parameters_c", [](Reblur &r, const std::string &v) { parse(v, r.hitDistanceParameters.C); }},
-    {"antilag_luminance_sigma_scale",
-     [](Reblur &r, const std::string &v) { parse(v, r.antilagSettings.luminanceSigmaScale); }},
-    {"antilag_luminance_sensitivity",
-     [](Reblur &r, const std::string &v) { parse(v, r.antilagSettings.luminanceSensitivity); }},
-    {"responsive_accumulation_roughness_threshold",
-     [](Reblur &r, const std::string &v) { parse(v, r.responsiveAccumulationSettings.roughnessThreshold); }},
-    {"responsive_accumulation_min_accumulated_frame_num",
-     [](Reblur &r, const std::string &v) { parse(v, r.responsiveAccumulationSettings.minAccumulatedFrameNum); }},
-    {"max_accumulated_frame_num", [](Reblur &r, const std::string &v) { parse(v, r.maxAccumulatedFrameNum); }},
-    {"max_fast_accumulated_frame_num", [](Reblur &r, const std::string &v) { parse(v, r.maxFastAccumulatedFrameNum); }},
-    {"max_stabilized_frame_num", [](Reblur &r, const std::string &v) { parse(v, r.maxStabilizedFrameNum); }},
-    {"history_fix_frame_num", [](Reblur &r, const std::string &v) { parse(v, r.historyFixFrameNum); }},
-    {"history_fix_base_pixel_stride", [](Reblur &r, const std::string &v) { parse(v, r.historyFixBasePixelStride); }},
-    {"history_fix_alternate_pixel_stride",
-     [](Reblur &r, const std::string &v) { parse(v, r.historyFixAlternatePixelStride); }},
-    {"fast_history_clamping_sigma_scale",
-     [](Reblur &r, const std::string &v) { parse(v, r.fastHistoryClampingSigmaScale); }},
-    {"diffuse_prepass_blur_radius", [](Reblur &r, const std::string &v) { parse(v, r.diffusePrepassBlurRadius); }},
-    {"specular_prepass_blur_radius", [](Reblur &r, const std::string &v) { parse(v, r.specularPrepassBlurRadius); }},
-    {"min_hit_distance_weight", [](Reblur &r, const std::string &v) { parse(v, r.minHitDistanceWeight); }},
-    {"min_blur_radius", [](Reblur &r, const std::string &v) { parse(v, r.minBlurRadius); }},
-    {"max_blur_radius", [](Reblur &r, const std::string &v) { parse(v, r.maxBlurRadius); }},
-    {"lobe_angle_fraction", [](Reblur &r, const std::string &v) { parse(v, r.lobeAngleFraction); }},
-    {"roughness_fraction", [](Reblur &r, const std::string &v) { parse(v, r.roughnessFraction); }},
-    {"plane_distance_sensitivity", [](Reblur &r, const std::string &v) { parse(v, r.planeDistanceSensitivity); }},
-    {"specular_probability_thresholds_for_mv_modification_min",
-     [](Reblur &r, const std::string &v) { parse(v, r.specularProbabilityThresholdsForMvModification[0]); }},
-    {"specular_probability_thresholds_for_mv_modification_max",
-     [](Reblur &r, const std::string &v) { parse(v, r.specularProbabilityThresholdsForMvModification[1]); }},
-    {"firefly_suppressor_min_relative_scale",
-     [](Reblur &r, const std::string &v) { parse(v, r.fireflySuppressorMinRelativeScale); }},
-    {"min_material_for_diffuse", [](Reblur &r, const std::string &v) { parse(v, r.minMaterialForDiffuse); }},
-    {"min_material_for_specular", [](Reblur &r, const std::string &v) { parse(v, r.minMaterialForSpecular); }},
-    {"checkerboard_mode", [](Reblur &r, const std::string &v) { parse(v, r.checkerboardMode); }},
-    {"enable_anti_firefly", [](Reblur &r, const std::string &v) { parse(v, r.enableAntiFirefly); }},
-    {"hit_distance_reconstruction_mode",
-     [](Reblur &r, const std::string &v) { parse(v, r.hitDistanceReconstructionMode); }},
-    {"use_prepass_only_for_specular_motion_estimation",
-     [](Reblur &r, const std::string &v) { parse(v, r.usePrepassOnlyForSpecularMotionEstimation); }},
-    {"return_history_length_instead_of_occlusion",
-     [](Reblur &r, const std::string &v) { parse(v, r.returnHistoryLengthInsteadOfOcclusion); }},
+    // How many frames of history the light is averaged over, diffuse and specular alike: more is calmer when still
+    // and smears longer when the light changes.
+    {"history_frames",
+     [](Relax &r, const std::string &v) {
+         parse(v, r.diffuseMaxAccumulatedFrameNum);
+         r.specularMaxAccumulatedFrameNum = r.diffuseMaxAccumulatedFrameNum;
+     }},
+    // How many passes of the spatial (a-trous) filter: each doubles its reach. Fewer is sharper and noisier.
+    {"spatial_passes", [](Relax &r, const std::string &v) { parse(v, r.atrousIterationNum); }},
+    {"enable_anti_firefly", [](Relax &r, const std::string &v) { parse(v, r.enableAntiFirefly); }},
 };
+
+// Keeps the settings in the ranges RELAX accepts.
+void clampRelaxSettings(Relax &r) {
+    r.diffuseMaxAccumulatedFrameNum = std::clamp(r.diffuseMaxAccumulatedFrameNum, 4u, nrd::RELAX_MAX_HISTORY_FRAME_NUM);
+    r.specularMaxAccumulatedFrameNum = r.diffuseMaxAccumulatedFrameNum;
+    r.atrousIterationNum = std::clamp(r.atrousIterationNum, 2u, 8u);
+}
 
 // The camera NRD sees this frame and the last.
 nrd::CommonSettings commonSettings(const gpu::Data::WorldUBO &world,
@@ -342,7 +315,7 @@ struct NrdModule::Frame {
     std::shared_ptr<gpu::HostVisibleBuffer> boundSkyUniform;
 };
 
-NrdModule::NrdModule() : reblurSettings_(defaultReblurSettings()) {}
+NrdModule::NrdModule() : reblurSettings_(defaultReblurSettings()), relaxSettings_(relaxSettings()) {}
 
 NrdModule::~NrdModule() = default;
 
@@ -394,7 +367,7 @@ void NrdModule::build() {
     if constexpr (kDenoiser == nrd::Denoiser::REBLUR_DIFFUSE_SPECULAR) {
         wrapper_->setReblurSettings(kDenoiser, reblurSettings_);
     } else {
-        wrapper_->setRelaxSettings(kDenoiser, relaxSettings());
+        wrapper_->setRelaxSettings(kDenoiser, relaxSettings_);
     }
     nrdFrameIndex_ = 0;
 
@@ -477,9 +450,9 @@ void NrdModule::setAttributes(int attributeCount, std::vector<std::string> &attr
         if (!key.starts_with(kAttributePrefix)) continue;
         key.remove_prefix(kAttributePrefix.size());
         const auto attribute = std::ranges::find(kAttributes, key, &Attribute::name);
-        if (attribute != std::end(kAttributes)) attribute->set(reblurSettings_, attributeKVs[2 * i + 1]);
+        if (attribute != std::end(kAttributes)) attribute->set(relaxSettings_, attributeKVs[2 * i + 1]);
     }
-    clampReblurSettings(reblurSettings_);
+    clampRelaxSettings(relaxSettings_);
 }
 
 bool NrdModule::setRuntimeAttribute(const std::string &key, const std::string &value) {
@@ -488,12 +461,14 @@ bool NrdModule::setRuntimeAttribute(const std::string &key, const std::string &v
     name.remove_prefix(kAttributePrefix.size());
     const auto attribute = std::ranges::find(kAttributes, name, &Attribute::name);
     if (attribute == std::end(kAttributes)) return false;
-    attribute->set(reblurSettings_, value);
-    clampReblurSettings(reblurSettings_);
+    attribute->set(relaxSettings_, value);
+    clampRelaxSettings(relaxSettings_);
     // NRD reads a denoiser's settings at every dispatch, so new ones apply from the next frame and its history stays.
+    if (wrapper_ == nullptr) return false;
     if constexpr (kDenoiser == nrd::Denoiser::REBLUR_DIFFUSE_SPECULAR) {
-        if (wrapper_ == nullptr) return false;
         wrapper_->setReblurSettings(kDenoiser, reblurSettings_);
+    } else {
+        wrapper_->setRelaxSettings(kDenoiser, relaxSettings_);
     }
     return true;
 }

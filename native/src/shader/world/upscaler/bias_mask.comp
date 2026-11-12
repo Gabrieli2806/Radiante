@@ -1,0 +1,28 @@
+#version 460
+
+// DLSS Ray Reconstruction's bias mask, at the render size: 1 where the picture's own colour this frame is to be
+// trusted over the history DLSS carries. The path tracer marks those pixels in the specular albedo guide's alpha,
+// which nothing else reads (world/main/main_paths.glsl): rain, translucent particles (smoke, a campfire's), lava. They
+// move or change in ways their motion vectors do not follow, and carried over the history they left trails behind
+// them. NGX takes the mask as one channel of its own, so the alpha is copied out to it here.
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(set = 0, binding = 3, rgba8) uniform readonly image2D specularAlbedo;
+layout(set = 0, binding = 7, r8) uniform writeonly image2D biasMask;
+
+// The guide upscales' push constants (upscaler_common.hpp); only the render size is read.
+layout(push_constant) uniform Params {
+    float scaleX;
+    float scaleY;
+    uint srcWidth;
+    uint srcHeight;
+    uint dstWidth;
+    uint dstHeight;
+} params;
+
+void main() {
+    uvec2 pixel = gl_GlobalInvocationID.xy;
+    if (pixel.x >= params.srcWidth || pixel.y >= params.srcHeight) { return; }
+    imageStore(biasMask, ivec2(pixel), vec4(imageLoad(specularAlbedo, ivec2(pixel)).a, 0.0, 0.0, 0.0));
+}

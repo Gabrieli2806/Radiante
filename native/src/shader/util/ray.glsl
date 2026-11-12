@@ -69,6 +69,9 @@ const uint rayCacheUpdateBit = 1u << 28u;
 // Since it last scattered off a surface, the ray has gone into a vanilla cloud (world/clouds.rchit): the sun and moon
 // behind it are hidden, not shown through its haze. Cleared when the ray leaves a surface it did not just pass through.
 const uint rayCrossedCloudBit = 1u << 29u;
+// The surface the camera sees moves or changes in a way its motion vector does not follow (rain, a translucent
+// particle, lava): DLSS Ray Reconstruction is told to trust this frame's colour there (its bias mask).
+const uint rayFavourCurrentBit = 1u << 30u;
 
 // Every flag accessor below has one of two shapes: test the bit, or set / clear it.
 
@@ -174,6 +177,10 @@ void raySetInWater(inout MainRay ray, bool enabled) {
     ray.stateBits = enabled ? (ray.stateBits | rayInWaterBit) : (ray.stateBits & ~rayInWaterBit);
 }
 bool rayInWater(MainRay ray) { return (ray.stateBits & rayInWaterBit) != 0u; }
+void raySetFavourCurrent(inout MainRay ray, bool on) {
+    ray.stateBits = on ? (ray.stateBits | rayFavourCurrentBit) : (ray.stateBits & ~rayFavourCurrentBit);
+}
+bool rayFavourCurrent(MainRay ray) { return (ray.stateBits & rayFavourCurrentBit) != 0u; }
 
 // Written to a ray's pad0 before tracing, for the miss shader's benefit (a hit overwrites pad0 with its own data):
 // the ray carries what the camera sees off or through a surface - a reflection or refraction - rather than light

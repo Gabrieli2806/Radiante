@@ -228,6 +228,8 @@ class DlssRR : public NgxFeature, public SharedObject<DlssRR> {
         RESOURCE_LINEARDEPTH,
         // Optional guides
         RESOURCE_SPECULAR_HITDISTANCE,
+        // Where to favour this frame's colour over the history (dlss_module.cpp, shaders/world/upscaler/bias_mask.comp).
+        RESOURCE_BIAS_MASK,
 
         RESOURCE_NUM
     };
