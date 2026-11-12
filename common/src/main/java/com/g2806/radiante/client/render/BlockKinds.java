@@ -164,6 +164,20 @@ final class BlockKinds {
         }
     }
 
+    /**
+     * Whether a quad of a lit redstone torch is one of its halo: the six faces of a box three pixels wide around the
+     * torch's head, turned inward, each showing one red texel. Minecraft draws them one sided, so from any side the
+     * far ones show as a dark red rim behind the head. Traced, a face is seen from both sides and these glow like the
+     * head, so the torch's head was a flat, pale red cube half again its size with none of its texture. Without them
+     * the head itself shows, as Bedrock draws the torch (its model has no halo). Told by size: the torch's own faces
+     * are two pixels wide.
+     */
+    static boolean isTorchHalo(net.minecraft.client.resources.model.geometry.BakedQuad quad) {
+        float limit = 2.5f / 16.0f;
+        return quad.position0().distance(quad.position1()) > limit
+            && quad.position1().distance(quad.position2()) > limit;
+    }
+
     /** Leaves of every tree (the LEAVES tag): foliage a shader pack may treat apart from small plants. */
     static boolean isLeaves(BlockState state) {
         return state.is(BlockTags.LEAVES);

@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- The redstone torch shows its own head. It was a flat, pale red cube half again the head's size with none of its texture: Minecraft's model has a halo around the head, six one sided faces that the tracer saw from both sides and made glow. They are left out, so the torch looks as it does without ray tracing and as Bedrock draws it, on the floor and on a wall.
+
 - Torches, lanterns and the other small lights look like the light comes from them. Their light is strongest beside the flame and fades with distance, a pool of light on the wall around a torch, where it used to light a whole wall almost evenly. And what glows has a halo: Bloom Intensity starts at 0.2 (was 0.01, too little to see), Bloom Threshold at 1.0 (was 0) so only what is brighter than white blooms and the daylight picture is as it was, Bloom Scatter at 0.7 (was 0.5). Values already saved are kept; Reset to Defaults gives the new ones. A shader pack that draws Radiante's bloom itself gets the new threshold and scatter too.
 
 - Water, seen from under it: no more bright circle of sky overhead with a dark mirror around it (the circle appeared the moment the camera went under and followed the player). The surface is looked straight through from below, as Bedrock RTX shows it, and a view up at it traces one path where it traced two: under water the frame costs far less (the path tracer went from 20.7 ms to 5.8 ms a frame looking up from a pool, RTX 5070 at DLSS Quality).

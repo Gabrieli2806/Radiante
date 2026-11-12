@@ -532,6 +532,9 @@ public final class ChunkManager {
             if (scratch.dropInwardFaces && facesInward(quad)) {
                 return;
             }
+            if (scratch.dropTorchHalo && isTorchHalo(quad)) {
+                return;
+            }
             if (unshade) {
                 float shade = VersionCompat.faceShade(cardinal, quad);
                 if (shade > 0.0f && shade != 1.0f) {
@@ -637,6 +640,7 @@ public final class ChunkManager {
 
             if (blockState.getRenderShape() == RenderShape.MODEL) {
                 scratch.dropInwardFaces = blockState.is(Blocks.POWDER_SNOW);
+                scratch.dropTorchHalo = blockState.is(Blocks.REDSTONE_TORCH) || blockState.is(Blocks.REDSTONE_WALL_TORCH);
                 scratch.collectPanel = blockState.is(BlockTags.DOORS) || blockState.is(BlockTags.TRAPDOORS);
                 scratch.panelQuads.clear();
                 java.util.Arrays.fill(scratch.faceSeen, false);
@@ -918,6 +922,8 @@ public final class ChunkManager {
         private Object fluidModels;
         private PBRVertexWriter current;
         private boolean dropInwardFaces;
+        /** The block being written is a redstone torch, whose halo is left out; see BlockKinds.isTorchHalo. */
+        private boolean dropTorchHalo;
         /** Per face direction, whether this block has written one yet and the plane it lies on (see the quad output). */
         private final boolean[] faceSeen = new boolean[6];
         private final float[] facePlane = new float[6];
