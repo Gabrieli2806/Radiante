@@ -258,6 +258,11 @@ wind, its live settings) and `RadianteSky` (the sun and the moon, the weather, t
 - Settings are kept per pack, so a pack starts from its own defaults, not from Radiante PT's.
 - A pack made for another Radiante (`extends` of another base or hook version, a newer `api_version`, or
   `"requires": {"radiante": ">=..."}` this version does not meet) is listed with the reason and cannot be chosen.
+- Better than a version number: name what your pack uses in `"requires": {"features": [...]}`, from `noise`
+  (`radiante/v1/noise.glsl`), `clock` (`radianteTime`, `radianteFrame`), `player_state` (`radianteHealth`...),
+  `named_resources` (textures without a binding), `shadow_softness` and `colour_settings` (`vec3` sliders). A
+  Radiante without one of them lists the pack with the missing name instead of failing to compile it, on every
+  Minecraft version alike.
 
 ## Licence
 

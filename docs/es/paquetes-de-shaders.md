@@ -267,6 +267,11 @@ sus ajustes en vivo) y `RadianteSky` (el sol y la luna, el clima, el bioma, el a
 - Los ajustes se guardan por paquete, así que un paquete empieza con sus propios valores, no con los de Radiante PT.
 - Un paquete hecho para otro Radiante (`extends` de otra base o versión de hooks, un `api_version` más nuevo, o
   `"requires": {"radiante": ">=..."}` que esta versión no cumple) aparece con el motivo y no se puede elegir.
+- Mejor que un número de versión: nombra lo que usa tu paquete en `"requires": {"features": [...]}`, entre `noise`
+  (`radiante/v1/noise.glsl`), `clock` (`radianteTime`, `radianteFrame`), `player_state` (`radianteHealth`...),
+  `named_resources` (texturas sin enlace), `shadow_softness` y `colour_settings` (deslizadores `vec3`). Un Radiante
+  sin alguna de ellas muestra el paquete con el nombre que falta en vez de fallar al compilarlo, en todas las
+  versiones de Minecraft por igual.
 
 ## Licencia
 

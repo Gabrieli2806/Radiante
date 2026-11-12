@@ -27,6 +27,27 @@ public final class ShaderPackManifest {
      */
     public static final int API_VERSION = 1;
 
+    /**
+     * The parts of the pack interface a pack can ask for by name in {@code "requires": {"features": [...]}}, each
+     * added to radiante/v1 or radiante-pt@1 after the first release that had shader packs. A pack that names one this
+     * Radiante does not know is refused in the list, with the name, instead of failing to compile when chosen: a
+     * feature names what the pack needs, where a version number only says when it came, and works across the mod's
+     * versions for every Minecraft version alike.
+     */
+    public static final java.util.Set<String> FEATURES = java.util.Set.of(
+        // radiante/v1/noise.glsl.
+        "noise",
+        // radianteTime() and radianteFrame() in common/pack_world.glsl.
+        "clock",
+        // radianteHealth(), radianteHurt() and the other values of the player in common/pack_world.glsl.
+        "player_state",
+        // Textures without a binding, named in shaders by RADIANTE_TEXTURE_<NAME>.
+        "named_resources",
+        // hookShadowSoftness in hooks/ray_origins.glsl, behind RADIANTE_HOOK_SHADOW_SOFTNESS.
+        "shadow_softness",
+        // A vec3 attribute shown as three sliders.
+        "colour_settings");
+
     /** Why a pack cannot be used: a translation key and its argument. */
     public record Problem(String key, String detail) {
     }
@@ -92,12 +113,16 @@ public final class ShaderPackManifest {
 
     /**
      * {@code "requires": {"radiante": ">=1.2"}}: the Radiante version the pack needs ({@code >=}, {@code >},
-     * {@code =}, {@code <=}, {@code <}, or a bare version meaning {@code >=}). {@code "features"} is not checked
-     * yet.
+     * {@code =}, {@code <=}, {@code <}, or a bare version meaning {@code >=}). {@code "features"} is checked first, by
+     * featuresProblem.
      */
     static Problem requiresProblem(JsonElement value, String modVersion) {
         if (value == null || !value.isJsonObject()) {
             return null;
+        }
+        Problem missing = featuresProblem(value.getAsJsonObject().get("features"));
+        if (missing != null) {
+            return missing;
         }
         JsonElement radiante = value.getAsJsonObject().get("radiante");
         if (radiante == null || !radiante.isJsonPrimitive() || modVersion == null || modVersion.isBlank()) {
@@ -124,6 +149,23 @@ public final class ShaderPackManifest {
             default -> order >= 0;
         };
         return met ? null : new Problem("screen.radiante.shader_packs.problem.requires", radiante.getAsString());
+    }
+
+    /** The first feature a pack asks for that this Radiante does not have (FEATURES), or null. */
+    static Problem featuresProblem(JsonElement value) {
+        if (value == null || !value.isJsonArray()) {
+            return null;
+        }
+        for (JsonElement feature : value.getAsJsonArray()) {
+            if (!feature.isJsonPrimitive()) {
+                continue;
+            }
+            String name = feature.getAsString().trim().toLowerCase(Locale.ROOT);
+            if (!name.isEmpty() && !FEATURES.contains(name)) {
+                return new Problem("screen.radiante.shader_packs.problem.feature", feature.getAsString().trim());
+            }
+        }
+        return null;
     }
 
     /** Dotted versions compared number by number ("1.10" after "1.9"); "+26.3" or "-beta" suffixes are ignored. */

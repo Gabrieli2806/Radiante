@@ -773,6 +773,7 @@
   "screen.radiante.shader_packs.problem.base_version": "为 %s 制作；此版本 Radiante 提供 radiante-pt@1。请寻找适用于它的光影包版本。",
   "screen.radiante.shader_packs.problem.api_version": "为光影包接口 %s 制作，比此版本 Radiante 提供的更新。请更新 Radiante。",
   "screen.radiante.shader_packs.problem.requires": "需要 Radiante %s。请更新 Radiante。",
+  "screen.radiante.shader_packs.problem.feature": "需要“%s”，当前 Radiante 不支持。请更新 Radiante。",
   "toast.radiante.shader_pack_failed": "Radiante：光影包失败",
   "toast.radiante.shader_pack_failed.detail": "%s：已回到 Radiante PT。",
   "toast.radiante.pack_reload": "Radiante：正在重新加载光影包",
