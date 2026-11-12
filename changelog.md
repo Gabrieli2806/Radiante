@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- After the time is set (`/time set night` by day) sand and other pale blocks no longer stay lit for a moment and fade: the light kept from frame to frame, in the radiance cache and in the denoiser, belonged to the hour before. It is dropped on the frame the sun jumps, and the cache catches up within half a second.
+
+- In first person, standing in water and looking down no longer shows the player's own body under the surface (nor through a cloud from inside it). The body, there for its shadow and its reflection, was hidden only while the view ran dead straight; water bends it. It now shows only in a view a mirror-like surface turned back: the reflection on the water is as it was.
+
+- Campfire smoke no longer glows as it leaves the fire. Inside a block of light level 15 every particle is at full light, which is how glowing particles are told; a particle now glows only where the light around it is less than that.
+
 - Particles that Minecraft draws at full light (a torch's flame, sparks, drops of lava, an end rod's glitter) glow: they are bright in the dark and the light bouncing around picks a little of it up. The other particles (campfire smoke, dust, falling leaves) cast a shadow; before, no particle did.
 
 - Grass, tall grass, ferns and flowers seen from below are no longer black. They are lit as if they leaned half way up, and looking up at them from under that lean they were shaded as a surface seen from behind.

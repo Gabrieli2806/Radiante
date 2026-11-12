@@ -410,6 +410,9 @@ public final class EntityManager {
      * Minecraft draws at full light whatever is around them (flames, sparks, drops of lava, an end rod's glitter) glow:
      * they are seen bright in the dark and the bounced light picks a little of it up, and they cast no shadow. The
      * others (smoke, dust, falling leaves) are under the world's mask, so they cast the shadow of what they are.
+     * Full light alone does not tell them apart: inside a block of light level 15 under the open sky (a campfire, a
+     * fire, lava) every particle is at full light, and campfire smoke glowed until it rose out of the campfire's
+     * block. So a particle glows only where the block light around it is less than full.
      */
     static void collectParticles(LevelRenderState levelRenderState, CameraRenderState cameraState) {
         COLLECTOR.reset();
@@ -417,6 +420,8 @@ public final class EntityManager {
 
         List<PendingLayer> layers = new ArrayList<>();
         List<PendingLayer> shadowLayers = new ArrayList<>();
+        Vec3 eye = cameraState.pos;
+        net.minecraft.client.multiplayer.ClientLevel level = Minecraft.getInstance().level;
         for (QuadParticleRenderState group : COLLECTOR.drainParticleGroups()) {
             for (SingleQuadParticle.Layer layer : group.layers()) {
                 int textureId = TextureTracker.idOf(layer.textureAtlasLocation());
@@ -440,7 +445,9 @@ public final class EntityManager {
                 // Cut out particles must not be traced as solid geometry; see RenderTypeInfo.geometryType. The
                 // no-reflect geometry type looks like the right home for billboards, but its hit group shades them
                 // black, so they stay ordinary transparent geometry until that is understood.
-                int glowing = writer.bringGlowingQuadsFirst(PARTICLE_GLOW);
+                int glowing = writer.bringGlowingQuadsFirst(PARTICLE_GLOW, (x, y, z) -> level == null
+                    || level.getBrightness(net.minecraft.world.level.LightLayer.BLOCK,
+                        BlockPos.containing(eye.x() + x, eye.y() + y, eye.z() + z)) < 15);
                 if (glowing > 0) {
                     layers.add(new PendingLayer(NativeGeometry.GEOMETRY_TYPE_WORLD_TRANSPARENT, textureId, glowing,
                         copyVertices(writer, 0, glowing), "Entity"));

@@ -54,6 +54,9 @@ class Buffers : public SharedObject<Buffers> {
     std::shared_ptr<gpu::HostVisibleBuffer> lastWorldUniformBuffer();
     // Drops obsolete illumination after a held source changes, without resetting for hand or camera movement.
     bool heldLightHistoryReset();
+    // Frames drawn since the time was set and the sun jumped (0 on that frame); large when it never was. Light kept
+    // from frame to frame belongs to the hour before: see the radiance cache (RayTracingModule::updateSharcConfig).
+    uint32_t framesSinceTimeSet();
     std::shared_ptr<gpu::HostVisibleBuffer> skyUniformBuffer();
     std::shared_ptr<gpu::HostVisibleBuffer> textureMappingBuffer();
     // The incident light meter: the ray generation shader writes one sample per cell of a 16 x 16 grid each frame,
@@ -62,6 +65,7 @@ class Buffers : public SharedObject<Buffers> {
 
   private:
     glm::vec3 lastSunDirection_{0.0f};
+    uint32_t framesSinceTimeSet_ = 1u << 20;
 
     struct FrameUniforms {
         bool heldLightHistoryReset = false;
