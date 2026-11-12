@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Sharper with every upscaler, and steadier. The camera's sub-pixel jitter, which DLSS, FSR and XeSS build the picture's detail out of, took only 16 horizontal positions in a pixel where it should take 72 (a slip in the sequence cut its horizontal half short). It now covers the pixel evenly over a cycle of 128 frames. Measured on a textured floor, RTX 5070 at 1080p: DLSS Quality's edges 58 % stronger, and at Ultra Performance the picture moves a quarter less from frame to frame with the camera still.
+
+- DLSS starts over after a teleport, a respawn or a change of dimension (a jump of more than 8 blocks in a frame), instead of smearing the last place over the new one for a moment.
+
 - Light From Glowing Pixels does what it says with the default settings. It changed the cells a light block casts from only on the path used without Bedrock's glow; with it (the default) every block kept four cells a side whatever the option said, which is why nobody could see a difference. Finer cells, each shrunk to the texels that glow in it, on both paths now; the light a block casts in all is the same. The difference is small by design: where the light starts on the block, seen within a block or two of it.
 
 - Shader packs, more for those who write them:
