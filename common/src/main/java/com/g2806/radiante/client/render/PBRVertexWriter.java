@@ -141,6 +141,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private boolean thin;
     private boolean glowLight;
     private float castLight;
+    private float alphaScale = 1.0f;
     private int castColor = 0xFFFFFF;
     private int paneFlags;
     private boolean computeQuadNormals;
@@ -406,6 +407,12 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         return this;
     }
 
+    /** Scales the alpha of every vertex colour from here on; 1 leaves it alone. */
+    public PBRVertexWriter alphaScale(float alphaScale) {
+        this.alphaScale = alphaScale;
+        return this;
+    }
+
     public PBRVertexWriter layerOffset(float layerOffset) {
         this.layerOffset = layerOffset;
         return this;
@@ -655,7 +662,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         MemoryUtil.memPutFloat(this.current + OFF_COLOR, r / 255.0f);
         MemoryUtil.memPutFloat(this.current + OFF_COLOR + 4, g / 255.0f);
         MemoryUtil.memPutFloat(this.current + OFF_COLOR + 8, b / 255.0f);
-        MemoryUtil.memPutFloat(this.current + OFF_COLOR + 12, a / 255.0f);
+        MemoryUtil.memPutFloat(this.current + OFF_COLOR + 12, a / 255.0f * this.alphaScale);
         return this;
     }
 
