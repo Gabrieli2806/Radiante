@@ -28,7 +28,7 @@
 // out:ldr is read directly (set 3, binding 0): this pass writes aquarela_wash, not out:ldr. The flow field is a pack
 // image, in set 4 at its sampled_binding.
 layout(set = 3, binding = 0) uniform sampler2D aquarelaPicture;
-layout(set = 4, binding = 60) uniform sampler2D aquarelaFlow;
+layout(set = 4, binding = 72) uniform sampler2D aquarelaFlow;
 
 layout(location = 0) in vec2 fragTexCoord;
 layout(location = 0) out vec4 outWash;

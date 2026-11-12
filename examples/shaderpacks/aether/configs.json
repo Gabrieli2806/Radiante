@@ -548,7 +548,7 @@
             "name": "aether_noise",
             "type": "file",
             "path": "textures/aether_noise.png",
-            "sampled_binding": 56,
+            "sampled_binding": 70,
             "filter": "linear",
             "address_mode": "repeat"
         }

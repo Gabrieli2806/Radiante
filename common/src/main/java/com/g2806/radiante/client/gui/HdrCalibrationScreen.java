@@ -43,7 +43,7 @@ final class HdrCalibrationScreen extends VersionCompat.DrawnScreen {
         super(Component.translatable(KEY + "title"));
         this.parent = parent;
         this.save = save;
-        Options.hdrPeakNits = Math.clamp(peak, 400, 4000);
+        Options.hdrPeakNits = Math.clamp(peak, 200, 4000);
         Options.hdrPaperWhiteNits = Math.clamp(paperWhite, 80, 400);
     }
 
@@ -52,7 +52,7 @@ final class HdrCalibrationScreen extends VersionCompat.DrawnScreen {
         int left = width / 2 - 150;
         int buttons = height - 28;
         if (page == PAGE_PEAK) {
-            addRenderableWidget(new NitsSlider(left, buttons - 26, "options.radiante.hdr_peak", 400, 4000, 10,
+            addRenderableWidget(new NitsSlider(left, buttons - 26, "options.radiante.hdr_peak", 200, 4000, 10,
                 Options.hdrPeakNits, value -> Options.hdrPeakNits = value));
         } else if (page == PAGE_PAPER_WHITE) {
             addRenderableWidget(new NitsSlider(left, buttons - 26, "options.radiante.hdr_paper_white", 80, 400, 5,

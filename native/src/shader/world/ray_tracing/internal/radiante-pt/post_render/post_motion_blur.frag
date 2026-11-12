@@ -12,7 +12,7 @@
 #endif
 
 #ifndef VPT_POST_MOTION_BLUR_STRENGTH
-#define VPT_POST_MOTION_BLUR_STRENGTH 1.35
+#define VPT_POST_MOTION_BLUR_STRENGTH 0.5
 #endif
 
 #ifndef VPT_POST_MOTION_BLUR_SAMPLE_COUNT
@@ -37,6 +37,10 @@ vec2 clampUv(vec2 uv, vec2 texelSize) {
     vec2 margin = texelSize * 0.5;
     return clamp(uv, margin, vec2(1.0) - margin);
 }
+
+// The longest streak, as a share of the picture's height, and how near the hand is (blocks from the eye).
+#define MOTION_BLUR_MAX_REACH 0.012
+#define MOTION_BLUR_HAND_DEPTH 1.2
 
 float depthAt(vec2 uv) {
     // First-hit depth is view-space z (negative in front of the camera); only its magnitude matters here.
@@ -65,11 +69,18 @@ void main() {
     outColor = vec4(centreColour, 1.0);
     return;
 #else
-    // Motion is in pixels. The blur reaches a bit further than the motion and never beyond 20 px.
+    // Motion is in pixels a frame; the strength is the share of the frame the shutter is open (0.5, a film camera's
+    // half shutter, by default: it was 1.55 frames, and any turn of the mouse smeared the whole picture). Never
+    // beyond a share of the picture's height, so the longest streak is the same at any resolution (it was 20
+    // pixels, twice as long on a 1080p picture as at 4K).
     vec2 motion = texture(postMotionVector, fragTexCoord).xy;
     float motionPixels = length(motion);
-    float radius = min(motionPixels * VPT_POST_MOTION_BLUR_STRENGTH * 1.15, 20.0);
-    if (radius < 0.25) {
+    float maxRadius = MOTION_BLUR_MAX_REACH * resolution.y;
+    float radius = min(motionPixels * VPT_POST_MOTION_BLUR_STRENGTH, maxRadius);
+    // Not the hand or what it holds (within arm's reach): a swing of the sword or the pickaxe blurred it in front of
+    // the player all through a fight. And not a pixel whose motion is no number at all (the frame after a teleport
+    // can divide by nothing), which went into the picture as it was.
+    if (!(motionPixels < 1.0e4) || radius < 0.25 || depthAt(fragTexCoord) < MOTION_BLUR_HAND_DEPTH) {
         outColor = vec4(centreColour, 1.0);
         return;
     }
@@ -78,7 +89,7 @@ void main() {
     float centreDepth = sampleConservativeDepth(fragTexCoord, texelSize);
 
     // The centre keeps more weight for short blurs so small motions stay crisp.
-    float centreWeight = mix(2.3, 1.2, clamp(radius / 20.0, 0.0, 1.0));
+    float centreWeight = mix(2.3, 1.2, clamp(radius / maxRadius, 0.0, 1.0));
     vec3 sum = centreColour * centreWeight;
     float weightSum = centreWeight;
 

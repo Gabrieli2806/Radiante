@@ -27,9 +27,9 @@
 
 // Mellow's 512x512 LUTs (a 64-level cube cut into 8 x 8 slices of blue): img/luts/vintage.png, mellow.png and
 // punchy.png, Mellow's LUT_FILE 8, 9 and 10.
-layout(set = 4, binding = 50) uniform sampler2D mellowLutVintage;
-layout(set = 4, binding = 51) uniform sampler2D mellowLutMellow;
-layout(set = 4, binding = 52) uniform sampler2D mellowLutPunchy;
+layout(set = 4, binding = 66) uniform sampler2D mellowLutVintage;
+layout(set = 4, binding = 67) uniform sampler2D mellowLutMellow;
+layout(set = 4, binding = 68) uniform sampler2D mellowLutPunchy;
 
 float mellowGradeLuminance(vec3 c) {
     return 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;

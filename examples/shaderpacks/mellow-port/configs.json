@@ -385,7 +385,7 @@
             "name": "mellow_cloud_noise",
             "type": "file",
             "path": "textures/mellow_cloud_noise.png",
-            "sampled_binding": 48,
+            "sampled_binding": 64,
             "filter": "linear",
             "address_mode": "repeat"
         },
@@ -398,7 +398,7 @@
             "width": 64,
             "height": 64,
             "depth": 64,
-            "sampled_binding": 49,
+            "sampled_binding": 65,
             "filter": "linear",
             "address_mode": "repeat"
         },
@@ -406,7 +406,7 @@
             "name": "mellow_lut_vintage",
             "type": "file",
             "path": "textures/mellow_lut_vintage.png",
-            "sampled_binding": 50,
+            "sampled_binding": 66,
             "filter": "linear",
             "address_mode": "clamp_to_edge"
         },
@@ -414,7 +414,7 @@
             "name": "mellow_lut_mellow",
             "type": "file",
             "path": "textures/mellow_lut_mellow.png",
-            "sampled_binding": 51,
+            "sampled_binding": 67,
             "filter": "linear",
             "address_mode": "clamp_to_edge"
         },
@@ -422,7 +422,7 @@
             "name": "mellow_lut_punchy",
             "type": "file",
             "path": "textures/mellow_lut_punchy.png",
-            "sampled_binding": 52,
+            "sampled_binding": 68,
             "filter": "linear",
             "address_mode": "clamp_to_edge"
         }

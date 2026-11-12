@@ -28,7 +28,7 @@ enum Tunable {
         Format.PERCENT),
     DOF_FOCUS_DISTANCE(null, "render_pipeline.module.ray_tracing.attribute.post_dof_focus_distance", 1.0, 1, 256, 12,
         Format.BLOCKS),
-    MOTION_BLUR_STRENGTH(null, "render_pipeline.module.ray_tracing.attribute.post_motion_blur_strength", 0.0135, 10,
+    MOTION_BLUR_STRENGTH(null, "render_pipeline.module.ray_tracing.attribute.post_motion_blur_strength", 0.005, 10,
         220, 100, Format.PERCENT),
     FSR_SHARPNESS(PipelineSettings.FSR_MODULE_NAME, "render_pipeline.module.fsr_upscaler.attribute.sharpness", 0.01, 0, 100,
         70, Format.PERCENT),

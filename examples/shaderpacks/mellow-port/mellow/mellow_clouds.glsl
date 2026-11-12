@@ -29,8 +29,8 @@
 
 // noisetex (img/cloud_noise+normal.png, 256 texels, linear, repeating) and colortex6 (img/worley_perlin.bin, a
 // 64^3 R8 volume), as Mellow's shaders.properties gives them.
-layout(set = 5, binding = 48) uniform sampler2D mellowNoiseTex;
-layout(set = 5, binding = 49) uniform sampler3D mellowWorleyTex;
+layout(set = 5, binding = 64) uniform sampler2D mellowNoiseTex;
+layout(set = 5, binding = 65) uniform sampler3D mellowWorleyTex;
 
 const float MELLOW_NOISE_RES = 256.0;
 

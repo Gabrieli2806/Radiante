@@ -15,7 +15,7 @@ quedarse en un blanco plano.
 | Control | Rango | Por defecto | Se aplica |
 |---|---|---|---|
 | Salida HDR | Sí / No | No | Tras reiniciar |
-| Brillo Máximo HDR | 400 – 4000 nits | 1000 | Al momento |
+| Brillo Máximo HDR | 200 – 4000 nits | 1000 | Al momento |
 | Blanco de Papel HDR | 80 – 400 nits | 200 | Al momento |
 
 - **Brillo Máximo:** lo más brillante que puede mostrar tu pantalla. Usa la especificación del monitor o la

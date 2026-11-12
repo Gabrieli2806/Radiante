@@ -138,7 +138,10 @@ void meterBedrock(float previous, bool fresh) {
     expData.avgLogLum = log2(max(0.75 / max(target, 1e-12) - 1e-6, 1e-12));
     float previousEV = log2(previous);
     float darkness = clamp(lightMeter.daylight.y, 0.05, 1.0);
-    float targetEV = clamp(log2(max(target, 1e-12)), BEDROCK_MIN_EV, BEDROCK_MAX_EV) + log2(darkness);
+    // The Nether (a negative daylight.w) may close the eye three stops further than Bedrock's limit: beside a sea
+    // of lava the light on the rock is past that limit, and held there the rock all around was burnt to one red.
+    float minEV = lightMeter.daylight.w < 0.0 ? BEDROCK_MIN_EV - 3.0 : BEDROCK_MIN_EV;
+    float targetEV = clamp(log2(max(target, 1e-12)), minEV, BEDROCK_MAX_EV) + log2(darkness);
     expData.exposure = exp2(fresh ? targetEV : mix(previousEV, targetEV, bedrockAlpha()));
 
     // The two other values the game keeps from the same reading, for world.rgen.

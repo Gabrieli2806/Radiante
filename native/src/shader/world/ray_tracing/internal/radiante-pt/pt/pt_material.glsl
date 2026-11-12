@@ -39,7 +39,8 @@ struct SampledSurface {
 void ptShapeLava(inout SampledSurface surface) {
     float exposure = 1.0;
     if (lightMeter.bedrockMeter.w == 1.0) {
-        exposure = exp2(clamp(lightMeter.bedrockMeter.x, -1.0, 6.0) + log2(clamp(lightMeter.daylight.y, 0.05, 1.0)));
+        float minEV = lightMeter.daylight.w < 0.0 ? -4.0 : -1.0; // As exposure.comp holds it.
+        exposure = exp2(clamp(lightMeter.bedrockMeter.x, minEV, 6.0) + log2(clamp(lightMeter.daylight.y, 0.05, 1.0)));
     }
     surface.mat.albedo *= LAVA_LIT_SHARE;
     surface.mat.f0 *= LAVA_LIT_SHARE;

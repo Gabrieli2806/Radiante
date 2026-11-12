@@ -268,7 +268,7 @@
   "options.radiante.hdr_calibration.tooltip": "通过引导测试为你的显示器设置 HDR 峰值亮度和 HDR 纸白亮度。下方的滑块是相同的设置，可手动调整。",
   "options.radiante.hdr_calibration.title": "HDR 校准",
   "options.radiante.hdr_calibration.next": "下一步",
-  "options.radiante.hdr_calibration.hint.0": "正对屏幕，提高数值，直到方块中的标记刚好消失。",
+  "options.radiante.hdr_calibration.hint.0": "正对屏幕，先降低数值直到方块中的标记出现，再提高数值，直到标记刚好消失。如果标记始终不消失，请在显示器上开启 HGIG（或关闭动态色调映射）。",
   "options.radiante.hdr_calibration.hint.1": "根据房间环境选择合适的亮度：阴影应清晰可辨，画面不应发白。",
   "options.radiante.hdr_calibration.hint.2": "检查结果：明亮区域应保留细节。如需更改请返回。",
   "options.radiante.hdr_calibration.values": "峰值：%s 尼特，纸白：%s 尼特",
