@@ -172,6 +172,64 @@ final class AdvancedOptions {
         return row(module, name, shortName, type, value, staged, null, null, () -> { });
     }
 
+    /** The most a channel of a vec3 attribute's sliders goes to, and their step. */
+    private static final double COLOUR_MAX = 4.0;
+    private static final double COLOUR_STEP = 0.05;
+
+    /**
+     * Three sliders for a {@code vec3} attribute, one a channel (red, green, blue), each 0 to 4 in steps of 0.05; a
+     * value over 4 keeps its place until its slider is moved. A pack's colours and tints (a water absorption, a sky
+     * tint) had no row at all and could only be changed in the pack's file. Empty when the value is not three
+     * numbers.
+     */
+    static List<OptionInstance<?>> colourRows(String module, String name, String shortName, String value,
+        Map<String, String> staged, Component description, Runnable changed) {
+        if (value == null) {
+            return List.of();
+        }
+        String[] parts = value.split(",");
+        if (parts.length != 3) {
+            return List.of();
+        }
+        double[] channels = new double[3];
+        try {
+            for (int i = 0; i < 3; i++) {
+                channels[i] = Double.parseDouble(parts[i].trim());
+                if (!Double.isFinite(channels[i])) {
+                    return List.of();
+                }
+            }
+        } catch (NumberFormatException notANumber) {
+            return List.of();
+        }
+        Component caption = caption(name);
+        String key = key(module, name);
+        int steps = (int) Math.round(COLOUR_MAX / COLOUR_STEP);
+        String[] letters = {"R", "G", "B"};
+        List<OptionInstance<?>> rows = new java.util.ArrayList<>();
+        for (int channel = 0; channel < 3; channel++) {
+            int index = channel;
+            int position = (int) Math.max(0, Math.min(steps, Math.round(channels[index] / COLOUR_STEP)));
+            double start = channels[index];
+            rows.add(new OptionInstance<Integer>(name + "." + letters[index],
+                tooltip(name, shortName, "0 – " + number(COLOUR_MAX), description),
+                (c, v) -> Component.empty().append(caption).append(" " + letters[index] + ": "
+                    + number(v == position ? start : v * COLOUR_STEP)),
+                new OptionInstance.IntRange(0, steps, false), position, v -> {
+                    // The other channels as they stand now: staged if another slider moved, else as loaded.
+                    String now = staged.getOrDefault(key, value);
+                    String[] current = now.split(",");
+                    if (current.length != 3) {
+                        current = value.split(",");
+                    }
+                    current[index] = number(v * COLOUR_STEP);
+                    staged.put(key, current[0].trim() + "," + current[1].trim() + "," + current[2].trim());
+                    changed.run();
+                }));
+        }
+        return rows;
+    }
+
     /**
      * A row for an attribute from its type. {@code step} (null for the default) is the slider's step for a range,
      * as a shader pack declares it; {@code description} (null for the translation of the name's

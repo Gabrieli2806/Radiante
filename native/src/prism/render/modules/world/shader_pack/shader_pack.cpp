@@ -57,6 +57,7 @@ bool ShaderPack::initialize(const BuildConfig &config,
     if (!ShaderPackLoader::addDebugViewDefinitions(shaderPack_.debugViews, debugView_, shaderAttributes_)) {
         radiante::err() << "[ShaderPack] no debug view named " << debugView_ << " in this pack" << std::endl;
     }
+    ShaderPackLoader::addResourceDefinitions(shaderPack_.textures, shaderPack_.buffers, shaderAttributes_);
 
     // What the runtime attributes start at in WorldUBO.packParams: the values this build was asked for.
     runtimeValues_.fill(glm::vec4(0.0f));

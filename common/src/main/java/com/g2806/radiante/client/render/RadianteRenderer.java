@@ -542,6 +542,7 @@ public final class RadianteRenderer {
 
         BiomeClimate.update(minecraft, cameraState.pos);
         WaterBody.update(minecraft, cameraState.pos);
+        PackPlayer.update(minecraft);
 
         TextureAtlas celestials = minecraft.getAtlasManager().getAtlasOrThrow(AtlasIds.CELESTIALS);
         int celestialsId = TextureTracker.idOf(VersionCompat.gpuTexture(celestials));
@@ -564,7 +565,8 @@ public final class RadianteRenderer {
             BiomeClimate.thunder(minecraft, levelRenderState.worldPartialTicks), BiomeClimate.biomeId(),
             BiomeClimate.previousBiomeId(), BiomeClimate.idBlend(),
             PackWeather.update(minecraft, levelRenderState.worldPartialTicks)
-                .setComponent(2, WaterBody.depth()).setComponent(3, WaterBody.width())));
+                .setComponent(2, WaterBody.depth()).setComponent(3, WaterBody.width()),
+            PackPlayer.state(), PackPlayer.motion()));
     }
 
     /**

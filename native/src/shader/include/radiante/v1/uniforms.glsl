@@ -207,6 +207,10 @@ struct RadianteSky {
     // blocks) and how far it runs across at eye level (1 for a 1 x 1 pool, at most 49).
     float waterBodyDepth;
     float waterBodyWidth;
+    // The player: x health, y the flash of a hit (1 as it lands, dying away), z food, w air, each 0 to 1.
+    vec4 playerState;
+    // x speed in blocks a second, y sprinting, z on the ground, w how hurt (1 - health); eased.
+    vec4 playerMotion;
 };
 
 #endif

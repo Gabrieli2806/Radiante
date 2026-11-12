@@ -85,3 +85,5 @@ render_pipeline.module.ray_tracing.attribute.aether_letterbox=Wide Screen
 aether.desc.aurora=Curtains of green and violet light over snowy biomes at night, which light the snow a little. 0 turns it off.
 aether.desc.grain=A fine grain that changes every frame, as film has. Higher is coarser to the eye.
 aether.desc.letterbox=Black bars above and below the picture, up to a cinema's 2.39:1 frame at 1. 0 is the whole screen.
+render_pipeline.module.ray_tracing.attribute.aether_vitals=Vitals
+aether.desc.vitals=The picture answers to the player: a red pulse from the edges when hit, and with little health left the colour drains and the corners close in. 0 turns it off.

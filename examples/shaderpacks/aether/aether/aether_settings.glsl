@@ -120,6 +120,9 @@
 #ifndef AETHER_LETTERBOX
 #    define AETHER_LETTERBOX 0.0
 #endif
+#ifndef AETHER_VITALS
+#    define AETHER_VITALS 0.6
+#endif
 
 // The pack's debug view (configs.json "debug_views", /radiante debug view aether_wetness): 1 while chosen.
 #ifndef AETHER_DEBUG_WETNESS
