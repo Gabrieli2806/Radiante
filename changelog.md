@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Shader packs, for those who write them:
+  - `radiante/v1/noise.glsl`, a public header of noise and colour helpers (hashes, value and fractal noise, Worley cells in two and three dimensions, a per-pixel, per-frame hash for dither and grain, luminance, saturation, sRGB to linear and back), so a pack need not carry its own.
+  - `radianteTime()` and `radianteFrame()` in `common/pack_world.glsl`: a clock in seconds that runs on through the days (the day's fraction starts over every twenty minutes, and every pack that animated by it had to hide that) and the frame count.
+  - `api_version: 1` is accepted: the `radiante/v1` headers ship, and a pack that said it used them was refused as made for a newer Radiante.
+  - A script that runs a pass its stage does not have is refused when the pack is loaded, with the names it does have, instead of failing while the first frame is drawn. Two resources on one binding number say where a pack's own go (64 to 119).
+  - `hookShadowSoftness()` is optional: `hooks/ray_origins.glsl` gained it after its two offsets, which made it a function every pack's file had to have. A file that has it says so with `#define RADIANTE_HOOK_SHADOW_SOFTNESS 1`; one without keeps Radiante PT's soft shadows. A pack that already had the function needs that line added for it to count. From now on a function added to an existing hook file is announced this way.
+  - `check_example_packs.py` finds bindings that clash with Radiante PT's or lie outside a pack's range, which compiling alone never showed.
+
+- The Aether example pack is 1.1: an aurora over snowy biomes at night (upright sheets of green fading to violet, with rays, that light the snow a little), film grain, and a wide-screen frame up to 2.39:1. It uses the new noise header and clock and declares `api_version: 1`.
+
 - The Nether no longer burns the rock around a sea of lava. The lift that gives lamps a little light by day (above) also took hold wherever the eye was closed for another reason: beside lava, in the Nether or in a cave, it multiplied lava's own light up to five times. It now works only by day and as far as the camera stands open to the sky. And the Nether's eye may close three stops further than before, where beside a wide sea it stopped at its limit and the rock all around went one red.
 
 - Bloom is off by default, and gentler when turned on: Bloom Intensity starts at 0.08 (was 0.15). Values already saved are kept.

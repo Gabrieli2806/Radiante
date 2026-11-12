@@ -72,6 +72,10 @@ void ptDeferShadowRay(uint slot, vec3 origin, vec3 direction, float rayLength, u
     // How soft the sun's and moon's shadows are (1 keeps radiante-pt's): the ray is turned from its jittered
     // direction towards the body's centre. Sharp shadows show a pack's moved shadow origins as solid squares; at
     // radiante-pt's softness the penumbra spreads over several texels and the steps blur away.
+    // hookShadowSoftness came after the two offsets, and a function a pack's file does not have is an error: it is
+    // called only where the pack says it has it (RADIANTE_HOOK_SHADOW_SOFTNESS), so a file written before it, or
+    // from a guide that named only the offsets, still compiles and keeps radiante-pt's softness.
+#ifdef RADIANTE_HOOK_SHADOW_SOFTNESS
     if (slot == PT_SHADOW_CELESTIAL && worldUBO.skyType == 1) {
         float softness = clamp(hookShadowSoftness(), 0.0, 1.0);
         if (softness < 1.0) {
@@ -80,6 +84,7 @@ void ptDeferShadowRay(uint slot, vec3 origin, vec3 direction, float rayLength, u
             direction = normalize(mix(body, direction, softness));
         }
     }
+#endif
 #endif
     g_shadowPending[slot] = true;
     g_shadowOrigin[slot] = origin;

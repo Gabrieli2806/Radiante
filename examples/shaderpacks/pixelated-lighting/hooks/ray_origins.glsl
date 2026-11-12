@@ -33,6 +33,8 @@ vec3 hookReflectionOffset() {
 #    define PIXEL_LIGHT_SHADOW_SOFTNESS 0.15
 #endif
 
+// Says that this file has hookShadowSoftness, which radiante-pt calls only then (hooks/ray_origins.glsl).
+#define RADIANTE_HOOK_SHADOW_SOFTNESS 1
 float hookShadowSoftness() {
     return int(PIXEL_LIGHT_SHADOWS) != 0 ? float(PIXEL_LIGHT_SHADOW_SOFTNESS) : 1.0;
 }

@@ -36,9 +36,10 @@ class ShaderPackManifestTest {
 
     @Test
     void newerApiVersionRefused() {
-        ShaderPackManifest.Problem problem = check("{\"api_version\": 1}", "1.1.0");
+        assertNull(check("{\"api_version\": 1}", "1.1.0"));
+        ShaderPackManifest.Problem problem = check("{\"api_version\": 2}", "1.1.0");
         assertEquals("screen.radiante.shader_packs.problem.api_version", problem.key());
-        assertEquals("1", problem.detail());
+        assertEquals("2", problem.detail());
         assertNull(check("{\"api_version\": \"zero\"}", "1.1.0"));
     }
 

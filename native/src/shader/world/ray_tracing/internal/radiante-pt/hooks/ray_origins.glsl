@@ -10,7 +10,9 @@
 // and with it everything below is compiled out. A pack's file leaves that define out and gives
 //   vec3 hookShadowOffset()      how far to move the shadow rays of the hit being shaded
 //   vec3 hookReflectionOffset()  how far to move its reflection rays
-//   float hookShadowSoftness()   how soft the sun's and moon's shadows are, 1 for radiante-pt's, 0 for hard ones
+//   float hookShadowSoftness()   how soft the sun's and moon's shadows are, 1 for radiante-pt's, 0 for hard ones.
+//                                Optional, and added after the two above: a file that has it says so with
+//                                #define RADIANTE_HOOK_SHADOW_SOFTNESS 1, and is only then asked for it
 // the offsets camera-relative from the shaded point (surface.worldPos as hookSurface leaves it), zero to keep it;
 // hookSurface, which runs first, can work them out and keep them in globals this file declares.
 //
