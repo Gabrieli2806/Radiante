@@ -11,6 +11,19 @@
 // The biome values are those at the camera, not at the point shaded, and they are eased over about two and a half
 // seconds, so an effect tied to them fades across a border instead of switching.
 
+// ---- Clocks
+//
+// For anything that moves on its own: drifting clouds, a flicker, scan lines. worldUBO.gameTime is the day's fraction
+// and starts over every twenty minutes, so every pack that animated by it had to hide that jump; these do not have it.
+// They need worldUBO, which every hook point and the post stage's hook declare.
+
+// Seconds of game time, running on through the days and standing still while the game is paused. It starts over
+// after six hours of play (a float of raw seconds would lose the precision a smooth motion needs), so use it through
+// fract(), sin() or a period that divides 21600.
+float radianteTime() { return worldUBO.windTime; }
+// The frames drawn so far: for a pattern that changes every frame (dither, a grain).
+uint radianteFrame() { return worldUBO.frameCounter; }
+
 // ---- Weather
 
 // Rain, 0..1 (Iris's rainStrength).

@@ -27,10 +27,49 @@ import sys
 import tempfile
 from pathlib import Path
 
+import json
+
 import check_shaders
 
 TOOLS = Path(__file__).resolve().parent
 EXAMPLES = TOOLS.parents[2] / "examples" / "shaderpacks"
+BASE_CONFIG = TOOLS.parent / "shader" / "world" / "ray_tracing" / "internal" / "radiante-pt" / "configs.json"
+# The binding numbers a pack's own textures and buffers go on (docs/dev/shader-packs.md); the rest are Radiante PT's.
+PACK_BINDINGS = range(64, 120)
+
+
+def bindings(config):
+    """Every runtime binding a configs.json claims, as (number, what claims it)."""
+    claimed = []
+    for texture in config.get("textures", []):
+        for key in ("sampled_binding", "storage_binding"):
+            if key in texture:
+                claimed.append((int(texture[key]), f"texture {texture.get('name', '?')} ({key})"))
+    for buffer in config.get("buffers", []):
+        if "binding" in buffer:
+            claimed.append((int(buffer["binding"]), f"buffer {buffer.get('name', '?')}"))
+    return claimed
+
+
+def binding_problems(pack):
+    """What the loader would refuse the pack for (two resources on one binding), and bindings outside its range.
+
+    Compiling does not find these: the shaders compile, and the pack then fails to load in the game. That is how the
+    Mellow port broke when Radiante PT took bindings 48 to 50, with this check green.
+    """
+    base = json.loads(BASE_CONFIG.read_text(encoding="utf-8"))
+    own = json.loads((pack / "configs.json").read_text(encoding="utf-8"))
+    owners = {}
+    for number, owner in bindings(base):
+        owners.setdefault(number, "Radiante PT's " + owner)
+    problems = []
+    for number, owner in bindings(own):
+        if number in owners:
+            problems.append(f"binding {number}: {owner} and {owners[number]}")
+        elif number not in PACK_BINDINGS:
+            problems.append(f"binding {number}: {owner} is outside {PACK_BINDINGS.start} to {PACK_BINDINGS.stop - 1}")
+        owners[number] = owner
+    return problems
 
 
 def main():
@@ -52,6 +91,9 @@ def main():
     failed = []
     with tempfile.TemporaryDirectory() as temp:
         def run(pack):
+            problems = binding_problems(pack)
+            if problems:
+                return pack.name, 1, "\n".join(problems) + "\nbindings clash"
             base = Path(temp) / f"{pack.name}-base"
             staged = Path(temp) / f"{pack.name}-staged"
             check_shaders.stage(base)

@@ -35,6 +35,9 @@
 #ifndef AETHER_NIGHT_GLOW
 #    define AETHER_NIGHT_GLOW 1.0
 #endif
+#ifndef AETHER_AURORA
+#    define AETHER_AURORA 0.8
+#endif
 
 // Clouds
 #ifndef AETHER_CLOUDS
@@ -110,6 +113,12 @@
 #endif
 #ifndef AETHER_ABERRATION
 #    define AETHER_ABERRATION 0.25
+#endif
+#ifndef AETHER_GRAIN
+#    define AETHER_GRAIN 0.2
+#endif
+#ifndef AETHER_LETTERBOX
+#    define AETHER_LETTERBOX 0.0
 #endif
 
 // The pack's debug view (configs.json "debug_views", /radiante debug view aether_wetness): 1 while chosen.

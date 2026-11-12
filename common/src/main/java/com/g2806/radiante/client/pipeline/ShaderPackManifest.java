@@ -21,10 +21,11 @@ public final class ShaderPackManifest {
     /** The major version of radiante-pt's pack interface (its hook points): {@code "extends": "radiante-pt@1"}. */
     public static final int BASE_MAJOR = 1;
     /**
-     * The newest {@code api_version} this Radiante offers. 0 is "built on Radiante PT's files" (every pack today);
-     * the versioned {@code radiante/v1} headers are phase 2 of the shader pack roadmap.
+     * The newest {@code api_version} this Radiante offers. 0 is "built on Radiante PT's files"; 1 is a pack that
+     * uses the versioned {@code radiante/v1} headers, which ship with the mod. A pack declaring 1 was refused as
+     * written for a newer Radiante while every example already used those headers under a declared 0.
      */
-    public static final int API_VERSION = 0;
+    public static final int API_VERSION = 1;
 
     /** Why a pack cannot be used: a translation key and its argument. */
     public record Problem(String key, String detail) {
