@@ -13,7 +13,7 @@
 // that.
 #include "aether/aether_common.glsl"
 
-layout(set = 5, binding = 56) uniform sampler2D aetherNoise;
+layout(set = 5, binding = 70) uniform sampler2D aetherNoise;
 
 vec4 aetherNoiseAt(vec2 uv) {
     return textureLod(aetherNoise, uv, 0.0);

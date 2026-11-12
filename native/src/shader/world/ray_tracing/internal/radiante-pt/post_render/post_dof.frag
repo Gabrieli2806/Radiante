@@ -101,6 +101,9 @@ void sortDepths(inout float depths[9], int count) {
     }
 }
 
+// Nearer than this is the hand and what it holds (blocks from the eye).
+#define DOF_HAND_DEPTH 1.5
+
 // Appends a depth unless it is sky (<= 0).
 void addValidDepth(inout float depths[9], inout int count, float depthValue) {
     if (depthValue <= 0.0) { return; }
@@ -155,14 +158,21 @@ float computeFocusDeadZone(float focusDistance, float focusRange) {
 float computeSignedCoC(float depthValue, float focusDistance) {
     float range = computeFocusRange(focusDistance);
     float deadZone = computeFocusDeadZone(focusDistance, range);
+    // The hand and what it holds stay sharp, whatever the focus: within arm's reach nothing is blurred. In first
+    // person they are always in front of the focal plane, and blurred they read as a smudge over the picture.
+    if (depthValue < DOF_HAND_DEPTH) { return 0.0; }
     float offset = depthValue - focusDistance;
     float amount = max(abs(offset) - deadZone, 0.0) / max(range - deadZone, 1e-3);
     return sign(offset) * clamp(amount, 0.0, 1.0);
 }
 
+// The most a pixel is blurred, in pixels: the setting is in pixels of a picture 1080 high, so the blur is the same
+// share of the picture at any resolution (at 4K it was half as strong as at 1080p). Set in main().
+float g_dofMaxRadius = VPT_POST_DOF_MAX_RADIUS;
+
 // Blur radius in pixels.
 float computeBlurRadius(float depthValue, float focusDistance) {
-    return abs(computeSignedCoC(depthValue, focusDistance)) * VPT_POST_DOF_MAX_RADIUS;
+    return abs(computeSignedCoC(depthValue, focusDistance)) * g_dofMaxRadius;
 }
 
 float gaussianWeight(float distancePixels, float sigma) {
@@ -211,6 +221,7 @@ bool autoFocusDistance(vec2 texelSize, out float focus) {
 void main() {
     vec2 resolution = vec2(textureSize(postDofInput, 0));
     vec2 texelSize = 1.0 / resolution;
+    g_dofMaxRadius = VPT_POST_DOF_MAX_RADIUS * (resolution.y / 1080.0);
     vec3 centreColour = texture(postDofInput, fragTexCoord).rgb;
 
 #if VPT_POST_ENABLE_DOF == 0
@@ -245,10 +256,13 @@ void main() {
     }
 
     float centreCoC = computeSignedCoC(centreDepth, focusDistance);
-    float blurAmount = clamp(blurRadius / max(VPT_POST_DOF_MAX_RADIUS, 1e-3), 0.0, 1.0);
+    float blurAmount = clamp(blurRadius / max(g_dofMaxRadius, 1e-3), 0.0, 1.0);
     float focusRange = computeFocusRange(focusDistance);
     int tapLimit = max(VPT_POST_DOF_SAMPLE_COUNT / 2, 4);
     int tapCount = int(clamp(ceil(blurRadius * 1.75), 1.0, float(tapLimit)));
+    // The taps are a pixel apart until there are no more of them, then spread out: a pixel apart always, the blur
+    // stopped growing at the tap limit and the strength setting did nothing past about 170%.
+    float tapSpacing = max(1.0, blurRadius * 1.75 / float(tapLimit));
     float sigma = max(blurRadius * 0.55, 0.85);
 
     // The centre tap is boosted for slight blur (keeps detail) and damped for strong blur (smoother bokeh).
@@ -257,7 +271,7 @@ void main() {
     float weightSum = centreWeight;
 
     for (int tap = 1; tap <= tapCount; ++tap) {
-        float distancePixels = float(tap);
+        float distancePixels = float(tap) * tapSpacing;
         float gaussian = gaussianWeight(distancePixels, sigma);
         vec2 stepUv = axis * (distancePixels / resolution);
 

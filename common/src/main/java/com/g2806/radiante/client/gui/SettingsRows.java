@@ -1125,7 +1125,7 @@ abstract class SettingsRows extends SettingsChoices {
         } else {
             addRows(toggle);
         }
-        addRows(nitsSlider("options.radiante.hdr_peak", 400, 4000, staged("hdrPeakNits", Options.hdrPeakNits),
+        addRows(nitsSlider("options.radiante.hdr_peak", 200, 4000, staged("hdrPeakNits", Options.hdrPeakNits),
                 value -> stage("hdrPeakNits", value)),
             nitsSlider("options.radiante.hdr_paper_white", 80, 400, staged("hdrPaperWhiteNits", Options.hdrPaperWhiteNits),
                 value -> stage("hdrPaperWhiteNits", value)));

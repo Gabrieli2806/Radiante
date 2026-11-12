@@ -138,9 +138,9 @@ public final class BedrockRtxValues {
             "fogHenyeyGreensteinG, 0.4 in Bedrock RTX"),
 
         // ---- bloom
-        new CompatParameter("bloom", TONE, A + "bloom_enable", TRUE, ParameterStatus.INFERRED,
-            "Bedrock RTX has a bloom stage; whether it is always on is not known"),
-        new CompatParameter("bloom", TONE, A + "bloom_intensity", "0.15", ParameterStatus.APPROXIMATE,
+        new CompatParameter("bloom", TONE, A + "bloom_enable", FALSE, ParameterStatus.INFERRED,
+            "Bedrock RTX has a bloom stage; off here until the halo is one the owner likes, a setting away"),
+        new CompatParameter("bloom", TONE, A + "bloom_intensity", "0.08", ParameterStatus.APPROXIMATE,
             "gBloomMultiplier is 0.01 on Bedrock's far brighter flames; set by eye so a torch has the same halo"),
         new CompatParameter("bloom", TONE, A + "bloom_scatter", "0.7", ParameterStatus.APPROXIMATE,
             "how much of the wider levels is carried back up; the filter shape is a placeholder"),
