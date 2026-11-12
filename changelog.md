@@ -9,7 +9,7 @@ All notable changes to this project are documented in this file.
   - The player's state: `radianteHealth()`, `radianteHurt()` (the flash of a hit), `radianteFood()`, `radianteAir()`, `radianteSpeed()`, `radianteSprinting()` and `radianteOnGround()` in `common/pack_world.glsl`.
   - A `vec3` setting shows in the pack's settings as three sliders, one a channel; it had no row at all.
 
-- Aether: Vitals, on those values (a red pulse from the edges when hit; with under a third of the health left the colour drains and the corners close in), and its noise image declared by name.
+- Aether: Vitals, on those values (a red pulse from the edges when hit; with under a third of the health left the colour drains and the corners close in; running out of air the edges close in dark blue, pulsing), Rush (at a sprint the edges of the picture streak outwards a little), the film grade's Shadow Tone and Highlight Tone as colours to set, and its noise image declared by name.
 
 - Shader packs, for those who write them:
   - `radiante/v1/noise.glsl`, a public header of noise and colour helpers (hashes, value and fractal noise, Worley cells in two and three dimensions, a per-pixel, per-frame hash for dither and grain, luminance, saturation, sRGB to linear and back), so a pack need not carry its own.
