@@ -13,6 +13,7 @@
 //   Vignette       the corners darken gently
 //   Film Grain     a fine grain that changes every frame, stronger in the shadows, as film's is
 //   Wide Screen    black bars above and below, up to a cinema's 2.39:1 frame
+//   Rush           at a sprint the edges of the picture streak outwards a little, as speed does to the eye
 //   Vitals         the picture answers to the player (common/pack_world.glsl's radianteHurt and radianteHealth): a
 //                  red pulse from the edges when hit, and with under a third of the health left the colour drains
 //                  and the corners close in
@@ -45,8 +46,8 @@ vec3 aetherStreak(vec2 uv) {
 
 vec3 aetherFilmGrade(vec3 c) {
     float luma = aetherLuma(c);
-    // Split toning: slightly teal shadows, warm highlights.
-    c *= mix(vec3(0.94, 1.0, 1.035), vec3(1.05, 1.0, 0.92), smoothstep(0.1, 0.75, luma));
+    // Split toning: slightly teal shadows, warm highlights by default (the Shadow Tone and Highlight Tone settings).
+    c *= mix(AETHER_SHADOW_TONE, AETHER_HIGHLIGHT_TONE, smoothstep(0.1, 0.75, luma));
     // A soft S curve: deeper mids, the highlights rolled off rather than clipped.
     c = clamp(c, 0.0, 1.0);
     c = mix(c, c * c * (3.0 - 2.0 * c), 0.22);
@@ -92,9 +93,29 @@ void hookPostGrade(inout vec3 color, vec2 uv) {
         color *= 1.0 - vignette * 0.55 * smoothstep(0.25, 1.0, corner) * corner;
     }
 
+    // Rush: the picture read a few times along the line from the centre, more towards the edges, by how much the
+    // player sprints (radianteSprinting, eased) and how fast they really go. Not under water, where the waver reads
+    // the picture its own way.
+    float rush = clamp(float(AETHER_RUSH), 0.0, 1.0) * radianteSprinting() * smoothstep(4.5, 7.0, radianteSpeed());
+    if (rush > 0.001 && skyUBO.cameraSubmersionType != 1u) {
+        vec2 fromCentre = uv - 0.5;
+        float reach = 0.035 * rush * dot(fromCentre, fromCentre) * 4.0;
+        vec3 sum = color;
+        for (int i = 1; i <= 4; i++) {
+            sum += texture(hookPostGradeInput, clamp(uv - fromCentre * reach * float(i), vec2(0.0), vec2(1.0))).rgb;
+        }
+        color = mix(color, sum / 5.0, smoothstep(0.1, 0.6, length(fromCentre)));
+    }
+
     float vitals = clamp(float(AETHER_VITALS), 0.0, 1.0);
     if (vitals > 0.0) {
         float corner = length(uv - 0.5) * 1.41421356;
+        // Running out of air: from a third of the breath down the edges close in, dark blue, pulsing faster.
+        float breathless = (1.0 - smoothstep(0.0, 0.33, radianteAir())) * vitals;
+        if (breathless > 0.0) {
+            float pulse = 0.75 + 0.25 * sin(radianteTime() * mix(3.0, 9.0, breathless));
+            color = mix(color, vec3(0.01, 0.03, 0.09), 0.7 * breathless * pulse * smoothstep(0.2, 1.0, corner));
+        }
         // Little health: 0 from a third of it up, 1 with none left.
         float faint = (1.0 - smoothstep(0.0, 0.33, radianteHealth())) * vitals;
         if (faint > 0.0) {
