@@ -123,6 +123,16 @@
 #ifndef AETHER_VITALS
 #    define AETHER_VITALS 0.6
 #endif
+#ifndef AETHER_RUSH
+#    define AETHER_RUSH 0.3
+#endif
+// The film grade's two tones, colours a player sets with three sliders each (vec3 settings; compiled in).
+#ifndef AETHER_SHADOW_TONE
+#    define AETHER_SHADOW_TONE vec3(0.94, 1.0, 1.035)
+#endif
+#ifndef AETHER_HIGHLIGHT_TONE
+#    define AETHER_HIGHLIGHT_TONE vec3(1.05, 1.0, 0.92)
+#endif
 
 // The pack's debug view (configs.json "debug_views", /radiante debug view aether_wetness): 1 while chosen.
 #ifndef AETHER_DEBUG_WETNESS
