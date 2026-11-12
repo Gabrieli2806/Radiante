@@ -87,15 +87,15 @@ attributeConfigs:
     value: "render_pipeline.true"
   - name: "render_pipeline.module.tone_mapping.attribute.bloom_intensity"
     type: "float_range:0.0-4.0"
-    value: "0.01"
+    value: "0.2"
     runtime: true
   - name: "render_pipeline.module.tone_mapping.attribute.bloom_scatter"
     type: "float_range:0.0-1.0"
-    value: "0.5"
+    value: "0.7"
     runtime: true
   - name: "render_pipeline.module.tone_mapping.attribute.bloom_threshold"
     type: "float_range:0.0-64.0"
-    value: "0.0"
+    value: "1.0"
     runtime: true
   - name: "render_pipeline.module.tone_mapping.attribute.bloom_weight_1"
     type: "float_range:0.0-4.0"
