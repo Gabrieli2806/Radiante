@@ -573,8 +573,13 @@ public final class EmissionTiles {
         int rowPixels = Math.max(1, ((SpriteContentsAccess) contents).radiante$mipWidth(0));
         int originX = Math.round(sprite.getU0() * atlasWidth);
         int originY = Math.round(sprite.getV0() * atlasHeight);
-        int cellWidth = Math.max(1, width / CELLS_PER_SIDE);
-        int cellHeight = Math.max(1, height / CELLS_PER_SIDE);
+        // Light From Glowing Pixels, here too: this is the path every light block takes while Bedrock's glow is cast
+        // (the default), and it laid out four cells a side whatever the option said, so the option changed nothing
+        // one could see. Finer cells, each shrunk to the texels that glow in it; not lava, a sheet lit all over.
+        boolean fine = com.g2806.radiante.client.option.Options.glowingPixelLight && !isLava(sprite);
+        int cellsPerSide = fine ? FINE_CELLS_PER_SIDE : CELLS_PER_SIDE;
+        int cellWidth = Math.max(1, width / cellsPerSide);
+        int cellHeight = Math.max(1, height / cellsPerSide);
         float boost = lightBoost(sprite);
 
         List<float[]> cells = new ArrayList<>();
@@ -586,6 +591,10 @@ public final class EmissionTiles {
                 float green = 0.0f;
                 float blue = 0.0f;
                 int texels = 0;
+                int minX = Integer.MAX_VALUE;
+                int minY = Integer.MAX_VALUE;
+                int maxX = -1;
+                int maxY = -1;
                 for (int y = cellY; y < Math.min(height, cellY + cellHeight); y++) {
                     for (int x = cellX; x < Math.min(width, cellX + cellWidth); x++) {
                         int index = (y * rowPixels + x) * 4;
@@ -605,6 +614,10 @@ public final class EmissionTiles {
                             continue;
                         }
                         emission += weight;
+                        minX = Math.min(minX, x);
+                        minY = Math.min(minY, y);
+                        maxX = Math.max(maxX, x);
+                        maxY = Math.max(maxY, y);
                         red += srgbToLinear(pixels.get(index) & 0xFF) * weight;
                         green += srgbToLinear(pixels.get(index + 1) & 0xFF) * weight;
                         blue += srgbToLinear(pixels.get(index + 2) & 0xFF) * weight;
@@ -613,10 +626,23 @@ public final class EmissionTiles {
                 if (emission <= 0.0f || texels == 0) {
                     continue;
                 }
-                float u0 = (originX + cellX) / (float) atlasWidth;
-                float v0 = (originY + cellY) / (float) atlasHeight;
-                float u1 = (originX + Math.min(width, cellX + cellWidth)) / (float) atlasWidth;
-                float v1 = (originY + Math.min(height, cellY + cellHeight)) / (float) atlasHeight;
+                int x0 = cellX;
+                int y0 = cellY;
+                int x1 = Math.min(width, cellX + cellWidth);
+                int y1 = Math.min(height, cellY + cellHeight);
+                if (fine) {
+                    // The patch the glowing texels cover, as strong over it as the cell's light was over the cell:
+                    // what the block casts in all stays the same, from where it glows.
+                    x0 = minX;
+                    y0 = minY;
+                    x1 = maxX + 1;
+                    y1 = maxY + 1;
+                    texels = (x1 - x0) * (y1 - y0);
+                }
+                float u0 = (originX + x0) / (float) atlasWidth;
+                float v0 = (originY + y0) / (float) atlasHeight;
+                float u1 = (originX + x1) / (float) atlasWidth;
+                float v1 = (originY + y1) / (float) atlasHeight;
                 // Lava lights its surroundings red-orange, with the cast of a sea of it held down (see LAVA_MER_CAST).
                 boolean lava = isLava(sprite);
                 // Its light a little yellower than its texture: by the texture's own deep red-orange every block a
