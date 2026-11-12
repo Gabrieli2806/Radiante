@@ -187,6 +187,8 @@ void tracePrimary(vec3 eyePos,
 
     bool surfaceDepthSampled = false;
     bool cameraPath = true;
+    // The view was turned back by a mirror somewhere on its way (see the player's mask below).
+    bool turnedBack = false;
     for (int step = 0; step < VPT_PRIMARY_TRACE_STEP_LIMIT; ++step) {
         resetMainRay(rayState, step);
         raySetCameraPath(rayState, cameraPath);
@@ -202,9 +204,10 @@ void tracePrimary(vec3 eyePos,
         // In first person the player's own model stays out of the view for as long as the view runs straight on.
         // Past a cloud's face, a pane or a raindrop it was looked for again, and whatever of it lay beyond showed:
         // rising into a cloud, with its underside between the eyes and the body, the body from within, black.
-        // Only a view turned back by a mirror shows the player.
-        if (isHand == 0 && step > 0 && worldUBO.isFirstPerson > 0 &&
-            dot(rayState.direction, orgDirection) > 0.9999) {
+        // Only a view turned back by a mirror shows the player. A view bent on its way through a surface (into
+        // water from above) is not turned back: standing in water and looking down, the player's own body showed
+        // under the surface.
+        if (isHand == 0 && step > 0 && worldUBO.isFirstPerson > 0 && !turnedBack) {
             mask &= ~PLAYER_MASK;
         }
 
@@ -224,6 +227,10 @@ void tracePrimary(vec3 eyePos,
             g_glassReflectionDirection = normalize(rayState.normal);
             g_glassReflectionWeight = rayState.directLightRadiance;
             g_glassReflectionMedium = uint(round(rayLoadAux(rayState).y));
+        }
+        if (rayIsPassThrough(rayState) && dot(rayState.normal, rayState.normal) > 0.5 &&
+            dot(tracedDirection, rayState.normal) * dot(rayState.direction, rayState.normal) < 0.0) {
+            turnedBack = true;
         }
         cameraPath = cameraPath && rayIsPassThrough(rayState);
         raySetCameraPath(rayState, false);

@@ -123,6 +123,8 @@ void traceSecondary(inout MainRay rayState,
     // mirror came out black.
     int extraBounces = 0;
     bool viewChain = false;
+    // The view chain has been off a mirror-like surface at least once, not only through see-through ones.
+    bool viewReflected = false;
     bool clearView = false;
     // Counted from the surface the camera first stops at: each glass face the view crossed on its way there is one
     // step of startBounce, and a wall seen through two blocks of glass had used up the whole budget before its first
@@ -141,6 +143,7 @@ void traceSecondary(inout MainRay rayState,
         // Still what the camera sees, off or through one mirror-like surface after another: a window, then the
         // water behind it. It ends at the first surface the ray scatters from.
         viewChain = (b == startBounce || viewChain) && leavingLobeType != 0u;
+        viewReflected = viewChain && (viewReflected || leavingLobeType == 1u);
         // The surface this ray leaves is one the camera sees clearly: the first hit, or one seen through water or
         // glass or in a smooth mirror (the floor of a pool, a wall in a mirror) - not one met by a glossy bounce off a
         // rough surface, which is light gathered for that surface (see the extra bounce below).
@@ -152,7 +155,9 @@ void traceSecondary(inout MainRay rayState,
         // In first person a mirror-like view (wet ground, a puddle, water, a window) shows the player, as it does in
         // third person: their body is in the scene only while First Person Shadow is on. Light gathered by rough
         // bounces still leaves it out, so the body seen from within does not darken what is around the camera.
-        if (viewChain && isHand == 0 && worldUBO.isFirstPerson > 0) { mask |= PLAYER_MASK; }
+        // Only a view that was reflected: one that only went through a surface (down into the water the player stands
+        // in) is still the player's own straight view, and showed their body under the surface.
+        if (viewChain && viewReflected && isHand == 0 && worldUBO.isFirstPerson > 0) { mask |= PLAYER_MASK; }
         // What such a ray ends in is seen, not gathered as light; see the miss shader and the water medium.
         if (viewChain) { rayState.pad0 = RAY_VIEW_BOUNCE_MARK; }
 

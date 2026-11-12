@@ -165,6 +165,19 @@ void RayTracingModule::updateSharcConfig(uint32_t frameIndex) {
     config.sceneScale = settings_.sharcSceneScale;
     config.radianceScale = 1000.0f;
     config.accumulationFrameNum = settings_.sharcAccumulationFrameNum;
+    // After the time is set the cache holds the light of the hour before, and at its usual pace gave it up over
+    // seconds: with /time set night by day, sand and other pale blocks stayed lit by a sun that was gone and faded
+    // slowly. For half a second each entry is averaged over a few frames only, so the old light is replaced as soon
+    // as the entry is met again; then the pace returns to the setting step by step.
+    constexpr uint32_t kFastFrames = 30;
+    constexpr uint32_t kFastAccumulation = 4;
+    const uint32_t sinceTimeSet = Renderer::instance().buffers()->framesSinceTimeSet();
+    if (sinceTimeSet < kFastFrames) {
+        config.accumulationFrameNum = std::min(config.accumulationFrameNum, kFastAccumulation);
+    } else if (sinceTimeSet - kFastFrames < settings_.sharcAccumulationFrameNum) {
+        config.accumulationFrameNum =
+            std::min(config.accumulationFrameNum, kFastAccumulation + (sinceTimeSet - kFastFrames));
+    }
     config.staleFrameNumMax = settings_.sharcStaleFrameNumMax;
     config.capacity = sharcCapacity;
     config.frameIndex = sharcFrameIndex_;

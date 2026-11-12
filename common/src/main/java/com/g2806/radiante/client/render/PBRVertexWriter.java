@@ -407,11 +407,19 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         return this;
     }
 
+    /** Asked about the middle of a quad, in the writer's own coordinates. */
+    @FunctionalInterface
+    public interface QuadPlace {
+        boolean test(float x, float y, float z);
+    }
+
     /**
      * Moves the quads written at full light (Minecraft's own mark of what glows: a flame, a spark, a drop of lava)
      * to the front, gives them this glow, and says how many vertices they are. The rest follow in the buffer.
+     * A quad at full light glows only where darker says the world's own light is less than full: smoke inside a
+     * campfire is at full light too, by the light of the place, and is no flame.
      */
-    public int bringGlowingQuadsFirst(float glow) {
+    public int bringGlowingQuadsFirst(float glow, QuadPlace darker) {
         long quadBytes = 4L * STRIDE;
         long spare = MemoryUtil.nmemAlloc(quadBytes);
         int glowing = 0;
@@ -422,6 +430,12 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
                     && MemoryUtil.memGetInt(at + OFF_LIGHT_UV) >= FULL_LIGHT
                     && MemoryUtil.memGetInt(at + OFF_LIGHT_UV + 4) >= FULL_LIGHT;
                 if (!full) {
+                    continue;
+                }
+                long opposite = at + 2L * STRIDE;
+                if (!darker.test((MemoryUtil.memGetFloat(at + OFF_POS) + MemoryUtil.memGetFloat(opposite + OFF_POS)) * 0.5f,
+                    (MemoryUtil.memGetFloat(at + OFF_POS + 4) + MemoryUtil.memGetFloat(opposite + OFF_POS + 4)) * 0.5f,
+                    (MemoryUtil.memGetFloat(at + OFF_POS + 8) + MemoryUtil.memGetFloat(opposite + OFF_POS + 8)) * 0.5f)) {
                     continue;
                 }
                 for (int corner = 0; corner < 4; corner++) {
