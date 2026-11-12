@@ -52,11 +52,13 @@ vec3 vptPointLightSample(VptPackedLight light, vec2 xi, vec3 scenePos) {
 
 // How a small flame's light falls off with the distance squared d2. Not the pure inverse square of an ideal point:
 // that makes the wall beside a torch burn white and the room a few blocks off nearly dark. This is flat close to the
-// flame and falls more slowly than the square far from it (to 1.09 / (4 + d^1.6), the same strength as the square at
-// three blocks), so the light is softer near and reaches further. Shared by the placed point lights and the held
-// one, so a torch lights alike in the hand and set down.
+// flame and falls a little more slowly than the square far from it (1.024 / (2 + d^1.8), the same strength as the
+// square at three blocks), so the light is softer near and reaches further. An earlier, flatter curve
+// (1.09 / (4 + d^1.6)) lit a whole wall almost evenly: the torch glowed, but the light did not seem to come from it.
+// With this one the wall has a pool of light around the flame. Shared by the placed point lights and the held one,
+// so a torch lights alike in the hand and set down.
 float vptFlameFalloff(float d2) {
-    return 1.09 / (4.0 + exp2(0.8 * log2(max(d2, 1e-4))));
+    return 1.024 / (2.0 + exp2(0.9 * log2(max(d2, 1e-4))));
 }
 
 // How a point light's strength falls off at scenePos.
