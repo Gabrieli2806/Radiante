@@ -56,8 +56,9 @@
             waterMediumSegmentBedrock(waterDistance >= INF_DISTANCE || VPT_MEDIUM_DISTANCE_CLAMP == 0 ?
                                           waterDistance : min(waterDistance, 50.0),
                                       VPT_WATER_DENSITY, vec3(0.0), orgDirection, waterTransmittance, waterScatter);
-            // Lit by the sky above: the camera's water under a roof or in a cave does not glow with it.
-            waterScatter *= mix(0.35, 1.0, volumetricSkyVisibility(eyePos, false));
+            // Lit by the sky above: the camera's water under a roof or in a cave does not glow with it. None of it:
+            // a third of the open sky's used to be kept there, and a pool in a sealed room glowed blue by itself.
+            waterScatter *= volumetricSkyVisibility(eyePos, false);
             waterScatter += waterGodRays(eyePos, orgDirection, waterDistance);
             float waterComposeTransmittance = clamp(volumetricLightLuminance(waterTransmittance), 0.0, 1.0);
             if (useTransparentSplit) {
