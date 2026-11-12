@@ -162,6 +162,9 @@ public final class EntityManager {
     static final CloudGeometry CLOUDS = new CloudGeometry();
     static final int NAME_TAG_ID_SALT = 0x6E616D65;
     static final int PARTICLES_ID = "radiante:particles".hashCode();
+    static final int SHADOW_PARTICLES_ID = "radiante:shadow_particles".hashCode();
+    /** The glow of a particle Minecraft draws at full light; see collectParticles. */
+    static final float PARTICLE_GLOW = Glow.ofLevel(12);
     static final PBRVertexWriter PARTICLE_WRITER = new PBRVertexWriter(4096);
     static final int HAND_ID = "radiante:hand".hashCode();
     static final int PLAYER_SHADOW_ID = "radiante:player_shadow".hashCode();
@@ -403,12 +406,18 @@ public final class EntityManager {
         }
     }
 
-    /** Particles arrive already positioned relative to the camera and facing it. */
+    /**
+     * Particles arrive already positioned relative to the camera and facing it. They go in as two objects. Those
+     * Minecraft draws at full light whatever is around them (flames, sparks, drops of lava, an end rod's glitter) glow:
+     * they are seen bright in the dark and the bounced light picks a little of it up, and they cast no shadow. The
+     * others (smoke, dust, falling leaves) are under the world's mask, so they cast the shadow of what they are.
+     */
     static void collectParticles(LevelRenderState levelRenderState, CameraRenderState cameraState) {
         COLLECTOR.reset();
         levelRenderState.particlesRenderState.submit(COLLECTOR, cameraState);
 
         List<PendingLayer> layers = new ArrayList<>();
+        List<PendingLayer> shadowLayers = new ArrayList<>();
         for (QuadParticleRenderState group : COLLECTOR.drainParticleGroups()) {
             for (SingleQuadParticle.Layer layer : group.layers()) {
                 int textureId = TextureTracker.idOf(layer.textureAtlasLocation());
@@ -432,15 +441,27 @@ public final class EntityManager {
                 // Cut out particles must not be traced as solid geometry; see RenderTypeInfo.geometryType. The
                 // no-reflect geometry type looks like the right home for billboards, but its hit group shades them
                 // black, so they stay ordinary transparent geometry until that is understood.
-                layers.add(new PendingLayer(NativeGeometry.GEOMETRY_TYPE_WORLD_TRANSPARENT, textureId,
-                    writer.vertexCount(), copyVertices(writer), "Entity"));
+                int glowing = writer.bringGlowingQuadsFirst(PARTICLE_GLOW);
+                if (glowing > 0) {
+                    layers.add(new PendingLayer(NativeGeometry.GEOMETRY_TYPE_WORLD_TRANSPARENT, textureId, glowing,
+                        copyVertices(writer, 0, glowing), "Entity"));
+                }
+                if (glowing < writer.vertexCount()) {
+                    shadowLayers.add(new PendingLayer(NativeGeometry.GEOMETRY_TYPE_WORLD_TRANSPARENT, textureId,
+                        writer.vertexCount() - glowing, copyVertices(writer, glowing, writer.vertexCount() - glowing),
+                        "Entity"));
+                }
             }
         }
 
+        Vec3 camera = cameraState.pos;
         if (!layers.isEmpty()) {
-            Vec3 camera = cameraState.pos;
             PENDING.add(new PendingEntity(PARTICLES_ID, camera.x(), camera.y(), camera.z(), RAY_TRACING_PARTICLE,
                 layers));
+        }
+        if (!shadowLayers.isEmpty()) {
+            PENDING.add(new PendingEntity(SHADOW_PARTICLES_ID, camera.x(), camera.y(), camera.z(), RAY_TRACING_WORLD,
+                shadowLayers));
         }
     }
 

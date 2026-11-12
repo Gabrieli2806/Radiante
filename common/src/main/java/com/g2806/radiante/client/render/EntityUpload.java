@@ -30,6 +30,12 @@ final class EntityUpload {
         return ARENA.append(writer.address(), size);
     }
 
+    /** A copy of some of the writer's vertices: count of them from first on. */
+    static long copyVertices(PBRVertexWriter writer, int first, int count) {
+        return ARENA.append(writer.address() + (long) first * PBRVertexWriter.STRIDE,
+            (long) count * PBRVertexWriter.STRIDE);
+    }
+
     /** A bump allocator for everything that lives for one frame and is then handed to the renderer. */
     static final class Arena {
 
