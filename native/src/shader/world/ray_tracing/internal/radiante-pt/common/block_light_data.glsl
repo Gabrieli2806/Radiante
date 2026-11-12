@@ -67,6 +67,51 @@ float vptPointLightFalloff(VptPackedLight light, vec3 scenePos) {
     return vptFlameFalloff(dot(toCentre, toCentre));
 }
 
+// The exposure the picture is shown at, as Radiante PT's meter tells it (exposure.comp), or a negative value where
+// that meter is not the one in use.
+float vptMeteredExposure() {
+    if (lightMeter.bedrockMeter.w != 1.0) { return -1.0; }
+    return exp2(clamp(lightMeter.bedrockMeter.x, -1.0, 6.0) + log2(clamp(lightMeter.daylight.y, 0.05, 1.0)));
+}
+
+// How much more a lamp's light counts while the eye is closed down for a brighter place. A torch's light is a
+// fixed amount, and the eye by day is closed some hundred times further than in a cave lit by that torch: by the
+// numbers alone a torch, a campfire or a lantern lit nothing at all by day, not even the shaded ground at its
+// foot, and looked switched off. The eye does not work by one number: next to a flame, in the shade, it still
+// tells the warm light apart. So the light is lifted by the square root of how far the eye is closed past
+// VPT_LIFT_EXPOSURE (the exposure of a room lit by lamps, where nothing is lifted), VPT_LIFT_MAX times at most:
+// under the sun it still drowns, in the shade it is a faint warm pool, and by night nothing changes.
+#ifndef VPT_LIFT_EXPOSURE
+#    define VPT_LIFT_EXPOSURE 12.0
+#endif
+#ifndef VPT_LIFT_MAX
+#    define VPT_LIFT_MAX 5.0
+#endif
+// Worked out once for each hit: every light a surface considers asks for it.
+float g_vptDayLift = -1.0;
+float vptDayLift() {
+    if (g_vptDayLift < 0.0) {
+        float exposure = vptMeteredExposure();
+        g_vptDayLift = exposure <= 0.0 ? 1.0 : clamp(sqrt(VPT_LIFT_EXPOSURE / exposure), 1.0, VPT_LIFT_MAX);
+    }
+    return g_vptDayLift;
+}
+
+// The least a glowing texel shows of its colour, as a share of white on the screen, for a texel that glows in
+// full (emission 1), and in proportion to the root of its emission below that (a Bedrock pack's emission is the
+// square of what its map holds). A flame is about as bright as a white wall in the sun: by day it is still a
+// flame. Without it the eye, closed for the sun, showed a torch, a campfire or a lantern by the daylight on its
+// texture alone, as a thing with no light in it. In the dark the glow is far over this and nothing changes.
+#ifndef VPT_GLOW_DISPLAY
+#    define VPT_GLOW_DISPLAY 0.9
+#endif
+float vptSeenGlowFloor(float emission) {
+    float exposure = vptMeteredExposure();
+    if (exposure <= 0.0 || emission <= 0.0) { return 0.0; }
+    return VPT_GLOW_DISPLAY * sqrt(min(emission, 1.0)) /
+           (exposure * VPT_BEDROCK_SEEN_EMISSION * max(worldUBO.emissionBrightness, 1e-3));
+}
+
 // The light of an exact light (radiance.w 1) on the scale of the others, which the shaders multiply by
 // VPT_INDIRECT_LIGHT_STRENGTH and the Emission Brightness setting: what its surface shows, which is its radiance
 // times VPT_BEDROCK_SEEN_EMISSION and the same setting (default.rchit).

@@ -100,9 +100,11 @@
 
 // The Nether's counterpart: how far the eye is held below what the meter would bring it to, so a cavern lit by lava
 // stays a dim cavern with a dark red haze. Lava is kept orange by holding down what it shows (NETHER_GLOW_SCALE,
-// pt_material.glsl), not by the eye: held as low as lava asked (0.15), torchlit rock was near black.
+// pt_material.glsl), not by the eye: held as low as lava asked (0.15), torchlit rock was near black. At 0.25 the
+// rock beside a sea of lava was still a few dark reds against one bright sheet; lava shows by its own rule
+// whatever the eye does (ptShapeLava), so the eye is opened to 0.35 for the rock alone.
 #ifndef NETHER_EXPOSURE_SCALE
-#    define NETHER_EXPOSURE_SCALE 0.25
+#    define NETHER_EXPOSURE_SCALE 0.35
 #endif
 
 // Radiante PT's picture by day, against what the meter would bring it to.

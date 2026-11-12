@@ -43,17 +43,19 @@ vec3 vptEmissiveColour(vec3 colour) {
 // RTX, where a glowing surface lights the world only through the rays that find it.
 #ifdef RADIANTE_HOOK_BLOCK_LIGHT_DEFAULT
 vec3 vptCastLight(vec4 radiance, float area) {
-    if (radiance.w > 1.5) { return radiance.rgb * vptPointLightScale(); }
-    if (radiance.w > 0.5) { return vptEmissiveColour(radiance.rgb) * vptExactLightScale(); }
+    float lift = vptDayLift();
+    if (radiance.w > 1.5) { return radiance.rgb * (vptPointLightScale() * lift); }
+    if (radiance.w > 0.5) { return vptEmissiveColour(radiance.rgb) * (vptExactLightScale() * lift); }
     float boost = clamp(sqrt(0.5 / max(area, 1e-4)), 1.0, 5.0);
-    return vptEmissiveColour(radiance.rgb) * boost;
+    return vptEmissiveColour(radiance.rgb) * (boost * lift);
 }
 #else
 vec3 vptBlockCastLight(vec4 radiance, float area) {
-    if (radiance.w > 1.5) { return radiance.rgb * vptPointLightScale(); }
-    if (radiance.w > 0.5) { return vptEmissiveColour(radiance.rgb) * vptExactLightScale(); }
+    float lift = vptDayLift();
+    if (radiance.w > 1.5) { return radiance.rgb * (vptPointLightScale() * lift); }
+    if (radiance.w > 0.5) { return vptEmissiveColour(radiance.rgb) * (vptExactLightScale() * lift); }
     float boost = clamp(sqrt(0.5 / max(area, 1e-4)), 1.0, 5.0);
-    return vptEmissiveColour(radiance.rgb) * boost;
+    return vptEmissiveColour(radiance.rgb) * (boost * lift);
 }
 
 // The light a block light casts, as a pack's hooks/block_light.glsl colours it (radiance.w is its kind).
@@ -136,6 +138,7 @@ vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, v
     float chosenDistance = 0.0;
     // A point light's light before the surface's response, to shade it fully once chosen (vptPointLightBrdf).
     vec3 chosenPointLight = vec3(-1.0);
+    float chosenRadius = 0.0;
 
     for (int i = 0; i < candidates; i++) {
         int slot;
@@ -176,6 +179,7 @@ vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, v
             chosenDir = dir;
             chosenDistance = lightDistance;
             chosenPointLight = pointLight ? vptCastLight(light.radiance, light.p0Area.w) * falloff : vec3(-1.0);
+            chosenRadius = pointLight ? light.normal.x : 0.0;
         }
     }
     if (chosenTarget <= 0.0) { return vec3(0.0); }
@@ -184,8 +188,11 @@ vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, v
     }
 
     vec3 origin = worldPos + geometricNormal * 0.0002;
-    // Stops just short of the light, so the light's own block does not shadow it.
-    float rayLength = max(chosenDistance - 0.02, 0.0002);
+    // Stops just short of the light, so the light's own block does not shadow it. A point light's ray stops a
+    // little further out than its sphere: a lantern's light is a sphere inside the lantern, whose frame and corners
+    // reach past it, and half the rays aimed at it ended in the lantern itself - set down it lit a room less than
+    // half as much as held in the hand, and less than a torch.
+    float rayLength = max(chosenDistance - 0.02 - 0.7 * chosenRadius, 0.0002);
     vec3 estimate = chosenContribution / chosenTarget * (weightSum / float(candidates));
     if (g_deferShadowRays) {
         ptDeferShadowRay(PT_SHADOW_BLOCK, origin, chosenDir, rayLength, WORLD_MASK | g_shadowPlayerMask, BLOCK_LIGHT_QUERY,
@@ -573,14 +580,18 @@ vec3 sampleOneHeldLight(uint slot, vec4 heldPos, vec4 heldColor, vec3 worldPos, 
 
     float fade = 1.0 - pow(lightDistance / reach, 4.0);
     fade *= fade;
+    // Lifted by day as the lights set down are (vptDayLift), so held and set down stay alike.
+    fade *= vptDayLift();
 #ifdef RADIANTE_HOOK_BLOCK_LIGHT_DEFAULT
-    vec3 contribution =
-        heldColor.rgb * mat.albedo * (diffuseWeight / PI) * cosSurface * fade * vptFlameFalloff(distance2);
+    // w 2: a block that lights by the glow of its faces (glowstone, a lamp), whose light falls off with the square of
+    // the distance as it does set down; w 1: a flame.
+    float heldFalloff = heldColor.w > 1.5 ? 1.0 / max(distance2, 0.25) : vptFlameFalloff(distance2);
+    vec3 contribution = heldColor.rgb * mat.albedo * (diffuseWeight / PI) * cosSurface * fade * heldFalloff;
 #else
     vec3 heldLight = heldColor.rgb;
     hookBlockLight(heldLight, RADIANTE_BLOCK_LIGHT_HELD); // a pack's colour for it (hooks/block_light.glsl)
-    vec3 contribution =
-        heldLight * mat.albedo * (diffuseWeight / PI) * cosSurface * fade * vptFlameFalloff(distance2);
+    float heldFalloff = heldColor.w > 1.5 ? 1.0 / max(distance2, 0.25) : vptFlameFalloff(distance2);
+    vec3 contribution = heldLight * mat.albedo * (diffuseWeight / PI) * cosSurface * fade * heldFalloff;
 #endif
     if (dot(contribution, vec3(1.0)) <= 1e-8) { return vec3(0.0); }
 

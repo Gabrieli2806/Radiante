@@ -565,6 +565,13 @@ void ptShadeDefault(bool viewMark) {
         // (sampleSurfaceState brings what no pack authored to it).
         emissionFactor = VPT_BEDROCK_SEEN_EMISSION;
         float seenEmission = currentSurface.mat.emission;
+        // What the camera sees glows at least as a flame does by day (vptSeenGlowFloor); lava has its own rule
+        // (ptShapeLava). Light gathered by a bounce is lifted by day as the sampled lights are (vptDayLift).
+        if (bounce == 0u || rayCameraPath(mainRay) || g_viewBounce) {
+            if (!radianteIsLava(packedData)) { seenEmission = max(seenEmission, vptSeenGlowFloor(seenEmission)); }
+        } else {
+            seenEmission *= vptDayLift();
+        }
         float blockEmissionWeight =
             (localBounce == 0 && bounce > 0u && vptBlockLightAlreadyCounted(g_hit.rayOrigin, currentSurface.worldPos)) ?
                 0.0 : 1.0;
