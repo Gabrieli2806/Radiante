@@ -28,9 +28,18 @@ bool initTransparent(MainRay rayState,
         if (dot(incident, normal) > 0.0) { normal = -normal; }
     }
     float fresnel = clamp(vptInterfaceFresnel(abs(dot(viewDir, normal)), eta), 0.0, 1.0);
+    // Water seen from inside it, and the sides of water, are looked straight through (see the water branch of
+    // pt_shade_default.glsl, which does the same for every later surface of the path): no circle of sky overhead
+    // with a mirror around it for a camera under water, and no wall sliding about behind a waterfall.
+    bool waterStraight = isWaterSurface && (branchAux.y > 1.5 || abs(normal.y) < 0.5);
+    if (waterStraight && branchAux.y > 1.5) {
+        // From inside, the little a surface would mirror is not worth a path of its own: one ray, the view.
+        if (isReflection) { return false; }
+        fresnel = 0.0;
+    }
 
     vec3 branchDirection = isReflection ? reflect(incident, normal) :
-                           (bedrockGlass ? incident : refract(incident, normal, eta));
+                           (bedrockGlass || waterStraight ? incident : refract(incident, normal, eta));
     if (dot(branchDirection, branchDirection) <= 1e-6) { return false; }
     branchDirection = normalize(branchDirection);
 

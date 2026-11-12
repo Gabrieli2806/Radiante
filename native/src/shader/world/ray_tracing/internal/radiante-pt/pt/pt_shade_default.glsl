@@ -650,10 +650,21 @@ void ptShadeDefault(bool viewMark) {
             if (dot(incident, waterNormal) > 0.0) { waterNormal = -waterNormal; }
             float fresnel = clamp(vptInterfaceFresnel(abs(dot(currentViewDir, waterNormal)), eta), 0.0, 1.0);
             vec3 refractionDir = refract(incident, waterNormal, eta);
-            // Seen from under the water, the surface is let through everywhere with a light cyan tint and little
-            // reflection, as in Bedrock RTX: physically only a circle overhead (Snell's window) shows the sky and
-            // the rest mirrors the water below, which read as a hole in a turquoise ceiling.
+            // Seen from under the water, the surface is let through everywhere and reflects little, as in Bedrock
+            // RTX. Refracted as physics has it, only a circle overhead (Snell's window) shows the sky and the rest
+            // mirrors the water below: a bright disc that followed the player about in a dark ceiling, and that
+            // snapped into being the moment the camera went under. The view goes straight on instead.
             bool fromBelow = dot(incident, waterUpNormal) > 0.0;
+            // The sides of water (a waterfall, a tank, a column of it) are thin sheets seen through: what is behind
+            // one shows where it is. Bent going in and again coming out of a block of water, the wall behind a
+            // waterfall slid and shrank as the camera moved, and a ray that met the far side at a slant turned back
+            // into the water and never came out, a dark stripe in the falling water. A slab with parallel sides
+            // sends light on the way it came, and that is what is traced.
+            bool sideFace = abs(currentSurface.geometricNormal.y) < 0.5;
+            if (fromBelow || sideFace) {
+                refractionDir = incident;
+                if (rayInWater(mainRay)) { fresnel = 0.0; }
+            }
             // The pack's water texture over the surface, seen from above: as far as a texel is opaque (the upper half
             // of its alpha, Bedrock's rule for every blended face) it is a lit surface of its own colour, untinted,
             // over what is seen through it. Bedrock RTX shows it so: a faint, pale pattern of the texture over every

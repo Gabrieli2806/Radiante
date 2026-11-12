@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Water, seen from under it: no more bright circle of sky overhead with a dark mirror around it (the circle appeared the moment the camera went under and followed the player). The surface is looked straight through from below, as Bedrock RTX shows it, and a view up at it traces one path where it traced two: under water the frame costs far less (the path tracer went from 20.7 ms to 5.8 ms a frame looking up from a pool, RTX 5070 at DLSS Quality).
+
+- Waterfalls, tanks and every other side of water are looked straight through. They bent the view going in and again coming out, so what was behind a waterfall slid and shrank as the camera moved, and a ray that met the far side at a slant never came out of the water.
+
+- Water glows less from outside (the light it scatters counts half as much seen through the surface as from inside it), and not at all in a room with no sky over it: a pool in a sealed room used to keep a third of the open sky's blue.
+
 - Less fog by default: Volumetric Fog Strength starts at 60% (was 100%), where the morning air no longer stands as a pale veil over everything. A value already saved is kept; Reset to Defaults gives the new one.
 
 - Aerial Perspective is off by default (0%, was 100%). It is a second haze over the distance, on top of the fog's; it is still there for those who want far terrain (Distant Horizons' too) to fade into the sky. Aerial Perspective Start is grey while it is off. A value already saved is kept.
