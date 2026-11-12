@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cctype>
 #include <fstream>
+#include <functional>
 #include <initializer_list>
 #include <sstream>
 #include <stdexcept>
@@ -1142,12 +1143,38 @@ PackConfig parseConfigFile(const fs::path &root, const std::string &language) {
     addDefaultCommands(pack.rayTracingExecution, Loader::Stage::RayTracing);
     addDefaultCommands(pack.postRenderExecution, Loader::Stage::PostRender);
 
+    // A script may only run passes its stage has. A name with a slip in it was found while drawing the first frame
+    // (an exception out of the frame, "unknown pass"), after the pack had passed its check and been switched to.
+    auto checkPassNames = [&](const Loader::ExecutionConfig &execution, Loader::Stage stage, const std::string &where) {
+        std::unordered_set<std::string> known;
+        for (const auto &pass : pack.passes) {
+            if (pass.stage == stage) known.insert(passName(pass));
+        }
+        std::function<void(const std::vector<Loader::ExecutionCommand> &)> walk =
+            [&](const std::vector<Loader::ExecutionCommand> &commands) {
+                for (const auto &command : commands) {
+                    if (command.type == Loader::ExecutionCommand::Type::Pass && !known.contains(command.passName)) {
+                        std::string names;
+                        for (const auto &name : known) names += (names.empty() ? "" : ", ") + name;
+                        fail(where + " runs a pass named " + command.passName + ", which this stage does not have (" +
+                             (names.empty() ? std::string("it has none") : "it has: " + names) + ")");
+                    }
+                    walk(command.thenCommands);
+                    walk(command.elseCommands);
+                }
+            };
+        walk(execution.commands);
+    };
+    checkPassNames(pack.rayTracingExecution, Loader::Stage::RayTracing, "root.execution");
+    checkPassNames(pack.postRenderExecution, Loader::Stage::PostRender, "root.execution_post");
+
     // The textures and buffers share one descriptor set.
     std::unordered_map<uint32_t, std::string> bindingOwners;
     auto claimBinding = [&](uint32_t binding, const std::string &owner) {
         const auto [existing, inserted] = bindingOwners.emplace(binding, owner);
         if (!inserted) {
-            fail("duplicate runtime binding " + std::to_string(binding) + ": " + existing->second + " and " + owner);
+            fail("duplicate runtime binding " + std::to_string(binding) + ": " + existing->second + " and " + owner +
+                 " (a pack that extends Radiante PT puts its own textures and buffers on 64 to 119)");
         }
     };
     for (const auto &texture : pack.textures) {

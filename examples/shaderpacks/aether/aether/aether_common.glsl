@@ -29,10 +29,11 @@ vec3 aetherSaturate(vec3 c, float amount) {
     return mix(vec3(aetherLuma(c)), c, amount);
 }
 
-// The pack's clock in seconds: the wind's, which is game time (it stops with the game) and runs six hours before it
-// starts over. worldUBO.gameTime is the day fraction and starts over every twenty minutes.
+// The pack's clock in seconds: radiante-pt's radianteTime() (common/pack_world.glsl), game time that stops with the
+// game and runs six hours before it starts over. worldUBO.gameTime is the day fraction and starts over every twenty
+// minutes.
 float aetherSeconds() {
-    return worldUBO.windTime;
+    return radianteTime();
 }
 
 // Henyey-Greenstein phase function, per steradian.

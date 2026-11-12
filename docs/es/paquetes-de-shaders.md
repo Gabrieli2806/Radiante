@@ -51,7 +51,7 @@ Radiante PT llama a una pequeña función en los sitios que un paquete suele que
 | Archivo | Función | Qué puedes hacer ahí |
 | --- | --- | --- |
 | `hooks/surface.glsl` | `hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce)` | Cambiar el color, la rugosidad, la normal o el brillo de una superficie tras leer sus texturas. `radianteIsLeaves(surfaceFlags)` y las demás pruebas de `radiante/v1/surface.glsl` dicen qué se golpeó. `hookTexelCentre(surface.uv, surface.worldPos)` da el centro del texel golpeado; mover `surface.worldPos` ahí y ajustar `g_hookViewDir` ilumina y refleja por texel (mira el paquete Pixelated Lighting) |
-| `hooks/ray_origins.glsl` | `vec3 hookShadowOffset()`, `vec3 hookReflectionOffset()`, `float hookShadowSoftness()` (las tres son obligatorias: 1 deja las sombras suaves del sol y la luna de radiante-pt, 0 las hace duras) | Mover de dónde salen los rayos de sombra y de reflejo de un impacto, aparte de dónde se ilumina: los rayos de sombra del sol, de las luces de bloque y de las luces en la mano (apuntando a la misma luz), el lóbulo de reflejo, el reflejo del agua y del cristal y los espejos (girados a la vista del punto movido; da a `material_state` `"depth": 4` en tus `textures`). Devuelve desplazamientos desde el impacto, calculados en `hookSurface`; cero deja los de Radiante PT. Mira Pixelated Lighting |
+| `hooks/ray_origins.glsl` | `vec3 hookShadowOffset()`, `vec3 hookReflectionOffset()` y, opcional, `float hookShadowSoftness()` (1 deja las sombras suaves del sol y la luna de radiante-pt, 0 las hace duras; el archivo que la tiene lo dice con `#define RADIANTE_HOOK_SHADOW_SOFTNESS 1`) | Mover de dónde salen los rayos de sombra y de reflejo de un impacto, aparte de dónde se ilumina: los rayos de sombra del sol, de las luces de bloque y de las luces en la mano (apuntando a la misma luz), el lóbulo de reflejo, el reflejo del agua y del cristal y los espejos (girados a la vista del punto movido; da a `material_state` `"depth": 4` en tus `textures`). Devuelve desplazamientos desde el impacto, calculados en `hookSurface`; cero deja los de Radiante PT. Mira Pixelated Lighting |
 | `hooks/rain_surface.glsl` | `vec3 hookRainPosition(vec3 worldPos)`, `float hookPuddleEdge(float puddle)` | Dónde se calculan los charcos y los anillos de las gotas de lluvia (relativo a la cámara; devuélvelo igual para dejar los de Radiante PT) y lo duro que es el borde de un charco. Mira Pixelated Lighting |
 | `hooks/direct_light.glsl` | `hookDirectLight(SampledSurface surface, vec3 viewDir, vec3 lightDir, float NoL, inout vec3 lightBRDF)` | Cambiar cómo iluminan el sol y la luna una superficie (bandas de cel, luz a través de las hojas cuando `NoL < 0`) |
 | `hooks/water.glsl` | `hookWaterAbsorption(inout vec3 extinction)` | Color del agua: lo rápido que se absorbe cada color |
@@ -86,6 +86,8 @@ todos los hooks, también en `post_grade.glsl`:
 
 | Función | Valor |
 | --- | --- |
+| `radianteTime()` | Segundos de tiempo de juego, que siguen de un día al siguiente y se detienen en pausa: el reloj para todo lo que se mueve solo (nubes, un parpadeo, líneas de barrido). `worldUBO.gameTime` vuelve a empezar cada veinte minutos; este solo tras seis horas de juego |
+| `radianteFrame()` | Los fotogramas dibujados hasta ahora, para un patrón que cambia en cada fotograma (un tramado, un grano) |
 | `radianteRain()`, `radianteThunder()` | Lluvia y tormenta, de 0 a 1 (`rainStrength` y `thunderStrength` de Iris) |
 | `radianteWaterDepth()`, `radianteWaterWidth()` | La masa de agua en la que está la cámara: la altura de la columna de agua y lo que se extiende a lo ancho, en bloques; 0 fuera del agua |
 | `radianteWetness()`, `radianteRainStoppedFor()` | La humedad del aire, la lluvia suavizada para que dure tras llover (`wetness` de Iris), y los segundos desde que paró la lluvia (0 mientras llueve), para lo que sigue a la lluvia durante minutos |
@@ -228,7 +230,14 @@ herramientas de `native/src/tools/`: los errores salen con archivo y línea, com
 
 Ayudas útiles: qué golpeó un rayo, con `#include <radiante/v1/surface.glsl>` (`radianteIsLeaves`, `radianteIsPlant`,
 `radianteIsWater`, `radianteIsGlass` y una para cada otro tipo de superficie), siempre la del Radiante en el que corre
-tu paquete; el sol, la luna y el clima en `worldUBO` y `skyUBO`. Un paquete con pases propios declara esos uniforms
+tu paquete; ruido y color con `#include <radiante/v1/noise.glsl>`, para que el paquete no lleve los suyos
+(`radianteHash`, `radianteNoise`, `radianteFbm`, `radianteWorley` en dos y tres dimensiones, un hash por píxel y por
+fotograma para tramado y grano, `radianteLuminance`, `radianteSaturate`, de sRGB a lineal y de vuelta); el sol, la
+luna y el clima en `worldUBO` y `skyUBO`.
+
+Las texturas y los buffers propios van en los números de enlace 64 a 119. Un paquete que extiende Radiante PT comparte
+esos números con él; Radiante PT se queda con los más bajos y del 120 en adelante, y dos recursos en el mismo número
+impiden que el paquete cargue. Un paquete con pases propios declara esos uniforms
 con `#include <radiante/v1/uniforms.glsl>`: `RadianteWorld` (la cámara, la niebla, las luces de las manos, el viento,
 sus ajustes en vivo) y `RadianteSky` (el sol y la luna, el clima, el bioma, el agua).
 

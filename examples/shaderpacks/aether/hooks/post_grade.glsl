@@ -11,10 +11,14 @@
 //   Film Grade     warm lifted highlights, slightly teal shadows, a soft S curve with a lifted toe, a little more life
 //                  in muted colours
 //   Vignette       the corners darken gently
+//   Film Grain     a fine grain that changes every frame, stronger in the shadows, as film's is
+//   Wide Screen    black bars above and below, up to a cinema's 2.39:1 frame
 // then a dither of half an 8-bit step against banding in the soft sky. All are live settings, read from the world
 // uniform while the pass runs (tested with if, never #if). The pass runs because configs.json sets
 // RADIANTE_HOOK_POST_GRADE; hooks/underwater.glsl runs in it first.
 #include "aether/aether_common.glsl"
+// Radiante's own noise (the public radiante/v1 header): the grain's per-pixel, per-frame hash.
+#include <radiante/v1/noise.glsl>
 
 // The bloom read along the picture's row on both sides, only what is well over white: a streak from the sun or a
 // lamp, nothing from the sky. Linear light, added to the picture.
@@ -85,9 +89,28 @@ void hookPostGrade(inout vec3 color, vec2 uv) {
         color *= 1.0 - vignette * 0.55 * smoothstep(0.25, 1.0, corner) * corner;
     }
 
-    vec2 pixel = uv * vec2(textureSize(hookPostGradeInput, 0));
+    vec2 size = vec2(textureSize(hookPostGradeInput, 0));
+    vec2 pixel = uv * size;
+
+    float grain = clamp(float(AETHER_GRAIN), 0.0, 1.0);
+    if (grain > 0.0) {
+        // Two hashes for a grain with a soft middle rather than flat noise; less of it in the highlights.
+        float a = radianteHash(uvec2(pixel), radianteFrame());
+        float b = radianteHash(uvec2(pixel) + uvec2(71u, 13u), radianteFrame());
+        color += (a + b - 1.0) * (0.05 * grain) * (1.0 - 0.6 * aetherLuma(clamp(color, 0.0, 1.0)));
+    }
+
     float dither = fract(52.9829189 * fract(0.06711056 * pixel.x + 0.00583715 * pixel.y));
     color = clamp(color + (dither - 0.5) / 510.0, 0.0, 1.0);
+
+    float letterbox = clamp(float(AETHER_LETTERBOX), 0.0, 1.0);
+    if (letterbox > 0.0) {
+        // The frame goes from the screen's own shape (0) to 2.39:1 (1); on a screen already that wide, no bars.
+        float screen = size.x / max(size.y, 1.0);
+        float frame = max(mix(screen, 2.39, letterbox), screen);
+        float bar = 0.5 * (1.0 - screen / frame);
+        if (uv.y < bar || uv.y > 1.0 - bar) { color = vec3(0.0); }
+    }
 }
 
 #endif

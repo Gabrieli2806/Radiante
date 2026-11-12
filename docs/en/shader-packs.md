@@ -48,7 +48,7 @@ that does nothing in Radiante PT; put your own file at the same path:
 | File | Function | What you can do there |
 | --- | --- | --- |
 | `hooks/surface.glsl` | `hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce)` | Change a surface's colour, roughness, normal or glow after its textures are read. `radianteIsLeaves(surfaceFlags)` and the other tests in `radiante/v1/surface.glsl` say what was hit. `hookTexelCentre(surface.uv, surface.worldPos)` gives the centre of the texel hit; moving `surface.worldPos` there and setting `g_hookViewDir` lights and reflects per texel (see the Pixelated Lighting pack) |
-| `hooks/ray_origins.glsl` | `vec3 hookShadowOffset()`, `vec3 hookReflectionOffset()`, `float hookShadowSoftness()` (all three are required: 1 keeps radiante-pt's soft sun and moon shadows, 0 makes them hard) | Move where a hit's shadow rays and reflection rays start, apart from where it is lit: the sun's, block lights' and held lights' shadow rays (still aimed at the same light), the reflection lobe, water's and glass's reflection and mirrors (turned to the view of the moved point; give `material_state` `"depth": 4` in your `textures`). Return offsets from the hit, set in `hookSurface`; zero keeps Radiante PT's. See Pixelated Lighting |
+| `hooks/ray_origins.glsl` | `vec3 hookShadowOffset()`, `vec3 hookReflectionOffset()`, and optionally `float hookShadowSoftness()` (1 keeps radiante-pt's soft sun and moon shadows, 0 makes them hard; a file that has it says so with `#define RADIANTE_HOOK_SHADOW_SOFTNESS 1`) | Move where a hit's shadow rays and reflection rays start, apart from where it is lit: the sun's, block lights' and held lights' shadow rays (still aimed at the same light), the reflection lobe, water's and glass's reflection and mirrors (turned to the view of the moved point; give `material_state` `"depth": 4` in your `textures`). Return offsets from the hit, set in `hookSurface`; zero keeps Radiante PT's. See Pixelated Lighting |
 | `hooks/rain_surface.glsl` | `vec3 hookRainPosition(vec3 worldPos)`, `float hookPuddleEdge(float puddle)` | Where rain's puddles and drop rings are looked up (camera-relative; return it unchanged to keep Radiante PT's) and how hard a puddle's rim is. See Pixelated Lighting |
 | `hooks/direct_light.glsl` | `hookDirectLight(SampledSurface surface, vec3 viewDir, vec3 lightDir, float NoL, inout vec3 lightBRDF)` | Change how the sun and moon light a surface (cel bands, light through leaves when `NoL < 0`) |
 | `hooks/water.glsl` | `hookWaterAbsorption(inout vec3 extinction)` | Water colour: how fast each colour is absorbed |
@@ -83,6 +83,8 @@ every hook including `post_grade.glsl`:
 
 | Function | Value |
 | --- | --- |
+| `radianteTime()` | Seconds of game time, running on through the days and standing still while paused: the clock for anything that moves on its own (clouds, a flicker, scan lines). `worldUBO.gameTime` starts over every twenty minutes; this one only after six hours of play |
+| `radianteFrame()` | The frames drawn so far, for a pattern that changes every frame (a dither, a grain) |
 | `radianteRain()`, `radianteThunder()` | Rain and thunder, 0 to 1 (Iris's `rainStrength`, `thunderStrength`) |
 | `radianteWaterDepth()`, `radianteWaterWidth()` | The body of water the camera is in: the water column's height and how far the water runs across, in blocks; 0 out of water |
 | `radianteWetness()`, `radianteRainStoppedFor()` | The air's wetness, the rain smoothed so it lingers after rain (Iris's `wetness`), and seconds since the rain stopped (0 while it rains), for what follows rain for minutes |
@@ -220,7 +222,14 @@ in `native/src/tools/`: errors show with file and line, as they do under the lis
 
 Useful helpers: what a ray hit, from `#include <radiante/v1/surface.glsl>` (`radianteIsLeaves`, `radianteIsPlant`,
 `radianteIsWater`, `radianteIsGlass` and one for every other kind of surface), always the one of the Radiante your
-pack runs on; the sun, moon and weather in `worldUBO` and `skyUBO`. A pack with passes of its own declares those
+pack runs on; noise and colour from `#include <radiante/v1/noise.glsl>`, so a pack need not carry its own
+(`radianteHash`, `radianteNoise`, `radianteFbm`, `radianteWorley` in two and three dimensions, a per-pixel,
+per-frame hash for dither and grain, `radianteLuminance`, `radianteSaturate`, sRGB to linear and back); the sun, moon
+and weather in `worldUBO` and `skyUBO`.
+
+Textures and buffers of your own go on binding numbers 64 to 119. A pack that extends Radiante PT shares those
+numbers with it; Radiante PT keeps the lower ones and 120 up, and two resources on one number stop the pack from
+loading. A pack with passes of its own declares those
 uniforms with `#include <radiante/v1/uniforms.glsl>`: `RadianteWorld` (the camera, the fog, the hands' lights, the
 wind, its live settings) and `RadianteSky` (the sun and the moon, the weather, the biome, the water).
 
