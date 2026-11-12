@@ -45,14 +45,14 @@ float waterMediumBounceDensity(uint bounce) {
     return 1.0; // Bedrock applies the medium's extinction (observed) without an above-water density multiplier.
 }
 
+// How much of the light the water scatters shows from outside it, against from inside (WATER_AMBIENT_FROM_OUTSIDE).
+// Under water the scattered light is what one sees by: it fills the view. From outside it lies over what is seen
+// through the surface, and at its full strength a pool looked lit from within, a blue glow with nothing to cause it.
+const float WATER_AMBIENT_FROM_OUTSIDE = 0.5;
+
 float waterMediumBounceAmbient(uint bounce) {
     if (skyUBO.cameraSubmersionType == 1) { return VPT_WATER_AMBIENT; }
-    // Bedrock RTX's water glows with the light it scatters seen from above too: a deep pool is a lit blue down to
-    // its walls, where without it they were black behind the clear surface.
-    return VPT_WATER_AMBIENT;
-    // Seen from above, the water shows what is under it and nothing of its own: the scattered light is lit by the
-    // open sky whether or not the water is (an indoor pool glowed sky blue), and Bedrock's water is clear.
-    return bounce <= 1u ? 0.0 : 1.0;
+    return VPT_WATER_AMBIENT * WATER_AMBIENT_FROM_OUTSIDE;
 }
 
 bool waterMediumActive() {
