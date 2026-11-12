@@ -126,6 +126,9 @@ class DLSSModule : public WorldModule, public SharedObject<DLSSModule> {
     std::shared_ptr<DlssSR> dlssSR_;
     // Frames since the pipeline was built, counted up to the few that drop DLSS's history.
     uint32_t framesSinceBuild_ = 0;
+    // The camera's position the frame before, to drop the history after a teleport (see the reset in the frame).
+    glm::dvec3 lastCamera_{0.0};
+    bool lastCameraKnown_ = false;
 
     // First-hit depth, motion vectors, normal/roughness: the order the passes run in.
     std::array<std::shared_ptr<gpu::ComputePipeline>, 3> upscalePipelines_;
