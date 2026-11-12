@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Light From Glowing Pixels does what it says with the default settings. It changed the cells a light block casts from only on the path used without Bedrock's glow; with it (the default) every block kept four cells a side whatever the option said, which is why nobody could see a difference. Finer cells, each shrunk to the texels that glow in it, on both paths now; the light a block casts in all is the same. The difference is small by design: where the light starts on the block, seen within a block or two of it.
+
 - Shader packs, more for those who write them:
   - Textures by name. A texture that leaves its binding out of `configs.json` gets one of the pack's own, and the shader names it by a define (`RADIANTE_TEXTURE_<NAME>`, with `RADIANTE_PACK_SET_RAY_TRACING` or `RADIANTE_PACK_SET_POST` for the set), so a pack holds no number a later Radiante could take. Numbers written by hand work as before.
   - The player's state: `radianteHealth()`, `radianteHurt()` (the flash of a hit), `radianteFood()`, `radianteAir()`, `radianteSpeed()`, `radianteSprinting()` and `radianteOnGround()` in `common/pack_world.glsl`.
