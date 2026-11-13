@@ -314,6 +314,7 @@ void ptShadeDefault(bool viewMark) {
         }
         hasFftWaterSurface = useRealisticWaterSurface && isWaterMaterial && abs(planeGeoNormal.y) > 0.75;
 
+        if (ptTorchHaloPassThrough(textureID, textureUV, colorLayerValue, albedoEmission)) { return; }
         if (ptRainPassThrough(textureID, textureUV, colorLayerValue, dPduWorld, dPdvWorld)) { return; }
 
 
