@@ -201,6 +201,8 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      issues: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
@@ -208,12 +210,16 @@ jobs:
           name: radiante-${{ needs.version.outputs.tag }}
           path: dist
       - name: Release notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # The section of changelog.md for this version, when there is one.
           awk -v v="${{ needs.version.outputs.mod }}" '
             /^## / { if (found) exit; if (index($0, "[" v "]")) { found = 1; next } }
             found { print }' changelog.md > notes.md || true
           test -s notes.md || echo "Radiante ${{ needs.version.outputs.mod }}" > notes.md
+          # Who reported, helped with or wrote what went into it (dev/release/credits.py).
+          python3 dev/release/credits.py "${{ github.repository }}" "${{ needs.version.outputs.mod }}" >> notes.md || true
       - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.version.outputs.tag }}
@@ -257,6 +263,7 @@ jobs:
             /^## / { if (found) exit; if (index($0, "[" v "]")) { found = 1; next } }
             found { print }' changelog.md > notes.md || true
           test -s notes.md || echo "Radiante ${{ needs.version.outputs.mod }}" > notes.md
+          GITHUB_TOKEN="${{ secrets.GITHUB_TOKEN }}" python3 dev/release/credits.py --plain "${{ github.repository }}"             "${{ needs.version.outputs.mod }}" >> notes.md || true
       # A branch that builds only some loaders (the port to a snapshot is Fabric only) skips the others.
       - id: jar
         run: |
