@@ -98,6 +98,14 @@ public final class RainExposure {
      */
     private static final int[] heights = new int[SIZE * SIZE];
     private static final float[] exposedAt = new float[SIZE * SIZE];
+    /**
+     * Per column: how hot its top was last read (0..3), and when it became hot (System.nanoTime), 0 once it has been
+     * hot long enough. A campfire lit in the rain dries the ground round it a step at a time, HEAT_STEP_SECONDS each,
+     * instead of at once; one already there when the chunk comes in is hot from the start.
+     */
+    private static final byte[] heatTarget = new byte[SIZE * SIZE];
+    private static final long[] heatSince = new long[SIZE * SIZE];
+    private static final float HEAT_STEP_SECONDS = 15.0f;
     /** Tiles whose chunk was not loaded when they were read: read again every frame until it is. */
     private static final boolean[] missing = new boolean[TILES * TILES];
     private static int nearRefresh;
@@ -298,7 +306,23 @@ public final class RainExposure {
                     // 128 where the column's top is leaves (the rain drips through to the ground below), 255 where
                     // it is anything else.
                     boolean leaves = chunk.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) < y;
-                    int heat = rains ? heatOf(chunk, pos.set(tileX[slot] * 16 + x, y, tileZ[slot] * 16 + z)) : 0;
+                    int target = rains ? heatOf(chunk, pos.set(tileX[slot] * 16 + x, y, tileZ[slot] * 16 + z)) : 0;
+                    long now = System.nanoTime();
+                    if (target > heatTarget[column] && before != Integer.MIN_VALUE) {
+                        heatSince[column] = now;
+                    } else if (target == 0 || before == Integer.MIN_VALUE) {
+                        heatSince[column] = 0L;
+                    }
+                    heatTarget[column] = (byte) target;
+                    int heat = target;
+                    if (heatSince[column] != 0L) {
+                        int steps = (int) ((now - heatSince[column]) * 1e-9f / HEAT_STEP_SECONDS);
+                        if (steps >= target) {
+                            heatSince[column] = 0L;
+                        } else {
+                            heat = steps;
+                        }
+                    }
                     pixels.put(offset + 2, (byte) (rains ? (leaves ? 128 : 252) | heat : 0));
                     float stamp = exposedAt[column];
                     pixels.put(offset + 3, (byte) (Float.isNaN(stamp) ? 255

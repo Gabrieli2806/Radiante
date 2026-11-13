@@ -35,6 +35,9 @@ int vptColumnHeat(ivec4 data) { return data.b > 0 ? (data.b & 3) : 0; }
 // most of the columns round it, falling off over a block and a half. The ground by a campfire stays drier through a
 // storm and dries first after it.
 const float HEAT_DRYING = 0.85;
+const float RAIN_PIXELS_PER_BLOCK = 16.0;
+float vptRainHash(vec2 cell);
+float vptRainValueNoise(vec2 p);
 float vptHeatDryness(ivec2 column, uint textureId, vec2 withinColumn) {
     float dry = 0.0;
     for (int dz = -1; dz <= 1; dz++) {
@@ -46,7 +49,15 @@ float vptHeatDryness(ivec2 column, uint textureId, vec2 withinColumn) {
             dry = max(dry, (float(heat) / 3.0) * (1.0 - smoothstep(0.0, reach, length(away))));
         }
     }
-    return dry * HEAT_DRYING;
+    if (dry <= 0.0) { return 0.0; }
+    // A ragged edge, not a rounded square: the drying is held against a noise fixed to the world, two scales of it
+    // (blotches of a few blocks and single pixels), and with Pixel Rain stepped from pixel to pixel, so the dry ground
+    // round a campfire frays out into the wet as a drying patch does.
+    vec2 world = vec2(column) + withinColumn;
+    vec2 pixel = VPT_RAIN_PIXELS != 0 ? (floor(world * RAIN_PIXELS_PER_BLOCK) + 0.5) / RAIN_PIXELS_PER_BLOCK : world;
+    float n = 0.65 * vptRainValueNoise(pixel * 1.3) + 0.35 * vptRainHash(floor(pixel * RAIN_PIXELS_PER_BLOCK));
+    float edge = VPT_RAIN_PIXELS != 0 ? step(n, dry * 1.25) : smoothstep(n - 0.15, n + 0.15, dry * 1.25);
+    return max(edge * HEAT_DRYING, dry * dry * HEAT_DRYING);
 }
 
 bool vptRainColumnBlocks(ivec4 data, int surfaceBlockY) {
@@ -73,7 +84,6 @@ const float BIOME_BLEND_STEP = 4.0;
 #ifndef VPT_RAIN_PIXELS
 #    define VPT_RAIN_PIXELS 1
 #endif
-const float RAIN_PIXELS_PER_BLOCK = 16.0;
 
 /** How much of the rain falls here, 0..1, from the biomes of the columns around: a wet area fades out over a few
  *  blocks into a desert or a snowy biome instead of stopping at the biome's edge. */
