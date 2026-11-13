@@ -841,6 +841,7 @@ abstract class SettingsRows extends SettingsChoices {
             OptionInstance.createBoolean("options.radiante.rain_wetness",
                 tooltip("options.radiante.rain_wetness"), staged("rainWetness", Options.rainWetness),
                 value -> stage("rainWetness", value)),
+            packToggle(RtAttributes.RAIN_PIXELS_ATTRIBUTE, "options.radiante.rain_pixels"),
             tunable(Tunable.RAIN_WETNESS, false), tunable(Tunable.RAIN_WET_WALLS, false),
             tunable(Tunable.PUDDLES, false), tunable(Tunable.RAIN_WET_UP_TIME, false),
             tunable(Tunable.RAIN_DRYING_TIME, false), tunable(Tunable.LIGHTNING_FLASH, false),

@@ -1,10 +1,10 @@
 {
     "radiante": {
         "display_name": "Aether",
-        "version": "1.1.0",
+        "version": "1.2.0",
         "author": "G2806",
         "license": "GPL-3.0",
-        "description": "A cinematic, gently fantastic look on Radiante's path-traced light: a painted sky with golden and blue hours, a round sun with a corona, soft silver-lined clouds and their drifting shadows, coloured stars and a milky way that lights the night, golden haze for god rays, puddles after rain, turquoise water, candle-warm torches, a quiet End sky, an aurora over the snow and a filmic grade with glow, a soft anamorphic streak, film grain and an optional wide-screen frame.",
+        "description": "A cinematic, gently fantastic look on Radiante's path-traced light: a painted sky with golden and blue hours, a round sun with a corona, soft silver-lined clouds and their drifting shadows, coloured stars and a milky way that lights the night, golden haze for god rays, puddles and rainbows after rain, turquoise water, candle-warm torches, a quiet End sky, an aurora over the snow and a filmic grade with glow, a soft anamorphic streak, film grain and an optional wide-screen frame.",
         "icon": "pack.png",
         "api_version": 1,
         "extends": "radiante-pt@1",
@@ -135,6 +135,18 @@
             "order": 23,
             "step": 0.1,
             "description": "aether.desc.aurora",
+            "performance_impact": "low"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_rainbow",
+            "type": "float_range:0.0-2.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "AETHER_RAINBOW",
+            "group": "aether.group.sky",
+            "order": 16,
+            "step": 0.1,
+            "description": "aether.desc.rainbow",
             "performance_impact": "low"
         },
         {

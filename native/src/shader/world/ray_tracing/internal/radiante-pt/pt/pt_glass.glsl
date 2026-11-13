@@ -161,10 +161,13 @@ bool ptSplashPassThrough(uint textureID, vec2 textureUV, vec4 colorLayerValue, v
     vec3 incident = normalize(g_hit.rayDir);
     vec3 outgoing = incident;
     if (rayBounce(mainRay) == 0u || rayCameraPath(mainRay)) {
-        float du = sampleTexture(textures[nonuniformEXT(textureID)], textureUV + vec2(texel.x, 0.0), 1.0, false).a -
-                   sampleTexture(textures[nonuniformEXT(textureID)], textureUV - vec2(texel.x, 0.0), 1.0, false).a;
-        float dv = sampleTexture(textures[nonuniformEXT(textureID)], textureUV + vec2(0.0, texel.y), 1.0, false).a -
-                   sampleTexture(textures[nonuniformEXT(textureID)], textureUV - vec2(0.0, texel.y), 1.0, false).a;
+        // With Pixel Rain the slope is read at the centre of the texel hit, so each pixel of the drop is a flat facet
+        // that bends the view one way: the world behind a splash breaks up into pixels, as the splash itself is drawn.
+        vec2 at = VPT_RAIN_PIXELS != 0 ? (floor(textureUV / texel) + 0.5) * texel : textureUV;
+        float du = sampleTexture(textures[nonuniformEXT(textureID)], at + vec2(texel.x, 0.0), 1.0, false).a -
+                   sampleTexture(textures[nonuniformEXT(textureID)], at - vec2(texel.x, 0.0), 1.0, false).a;
+        float dv = sampleTexture(textures[nonuniformEXT(textureID)], at + vec2(0.0, texel.y), 1.0, false).a -
+                   sampleTexture(textures[nonuniformEXT(textureID)], at - vec2(0.0, texel.y), 1.0, false).a;
         vec3 tangentU = normalizeF(dPduWorld, vec3(1.0, 0.0, 0.0));
         vec3 tangentV = normalizeF(dPdvWorld, vec3(0.0, 1.0, 0.0));
         // Towards the middle of the drop, as a convex lens draws the view in.

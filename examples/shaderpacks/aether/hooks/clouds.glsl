@@ -19,6 +19,7 @@
 // faint under the moon.
 #include "aether/aether_sky.glsl"
 #include "aether/aether_cloud_shape.glsl"
+#include "aether/aether_rainbow.glsl"
 
 struct AetherCloudLight {
     vec3 lightDir;
@@ -95,9 +96,9 @@ vec4 hookCloudLayer(vec3 direction) {
     bool seen = aetherSeen();
     vec4 cumulus = aetherCumulus(direction, light, offsets, seen);
     vec4 cirrus = seen ? aetherCirrus(direction, light, offsets) : vec4(0.0, 0.0, 0.0, 1.0);
-    return vec4(cumulus.rgb + cumulus.a * cirrus.rgb, cumulus.a * cirrus.a);
+    return vec4(cumulus.rgb + cumulus.a * cirrus.rgb + aetherRainbowOverSky(direction), cumulus.a * cirrus.a);
 #else
-    return vec4(0.0, 0.0, 0.0, 1.0);
+    return vec4(aetherRainbowOverSky(direction), 1.0);
 #endif
 }
 

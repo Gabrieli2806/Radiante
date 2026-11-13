@@ -385,6 +385,8 @@
   "options.radiante.restart.quit": "立即关闭游戏",
   "options.radiante.restart.later": "稍后",
   "options.radiante.rain_wetness": "雨天地面湿润",
+  "options.radiante.rain_pixels": "像素雨",
+  "options.radiante.rain_pixels.tooltip": "水坑、雨滴在水坑和水面上激起的涟漪、潮湿的表面和雨水溅起的水花，都以十六分之一方块大小的像素绘制，边缘清晰，与 Minecraft 绘制纹理的方式一致。关闭：平滑的圆形。",
   "options.radiante.rain_wetness.tooltip": "下雨时露天的表面会变暗并反光，雨停后慢慢变干。",
   "options.radiante.wind": "风",
   "options.radiante.wind.tooltip": "你附近的树叶、草、花、藤蔓和水生植物会随风摇摆，下雨和雷暴时摆得更厉害。阴影和反射会随之移动。切换时会重新加载世界。",
