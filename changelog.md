@@ -4,7 +4,9 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
-- Redstone ore glows faintly at rest and flares up when touched: lit, it looks brighter and casts a red light on the ground round it, as vanilla's light level 9 does. Both states glowed and cast alike before.
+- Wet walls run with water from the top of the wall down across its blocks, instead of each block showing the same short runs from its own top. A block taken away in the rain leaves a dry patch whose edges the wet ground round it creeps into raggedly until it is gone, not a clean dry square; ground covered by a block put down in the rain dries over a minute instead of at once.
+
+- Redstone ore glows faintly at rest and flares up when touched: lit, it looks brighter and casts a red light on the ground round it, as vanilla's light level 9 does. Both states glowed and cast alike before, and the light came out nearly white from the white hearts of its glowing texels.
 
 - Rain's edges fray like a drying patch instead of stopping at a straight line: under the edge of a roof or a canopy the blown-in rain wets the ground in a ragged fringe of wet pixels and the standing water creeps in a little the same way, and across a biome's edge the wet ground frays out into the dry.
 
