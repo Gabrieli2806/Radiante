@@ -149,6 +149,10 @@ void main() {
     if ((shadowRay.pad0 == SKY_VISIBILITY_QUERY || shadowRay.pad0 == HAND_CLEARANCE_QUERY) && radianteIsWater(flags)) {
         ignoreIntersectionEXT;
     }
+    // A drop of a splash of water (rain on a particle): clear, it casts no shadow of its own.
+    if (radianteIsSplash(flags)) {
+        ignoreIntersectionEXT;
+    }
     uint albedoID = m0.textureID;
     uint alphaMode = getAlphaMode(flags);
     bool textured = hasTexture(flags);

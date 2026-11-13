@@ -314,7 +314,7 @@ void ptShadeDefault(bool viewMark) {
         }
         hasFftWaterSurface = useRealisticWaterSurface && isWaterMaterial && abs(planeGeoNormal.y) > 0.75;
 
-        if (ptRainPassThrough(textureID, textureUV, colorLayerValue)) { return; }
+        if (ptRainPassThrough(textureID, textureUV, colorLayerValue, dPduWorld, dPdvWorld)) { return; }
 
 
         if (ptBedrockGlassHit(textureID, textureUV, textureMap, colorLayerValue, colorLayer, windingNormal,
