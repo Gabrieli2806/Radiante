@@ -188,15 +188,15 @@ bool rayFavourCurrent(MainRay ray) { return (ray.stateBits & rayFavourCurrentBit
 const uint RAY_VIEW_BOUNCE_MARK = 1u;
 
 // The pack controls a source's visible glow, also through mirrors and glass. Per-source tints affect illumination
-// gathered for surfaces and the radiance cache, independently of how the source looks to the camera. A tint without
-// a colour (a block's state casting a share of its light: redstone ore, dim at rest and bright when touched) shows
-// in its glow too, by the square root of its strength, so the ore looks as much brighter as it lights the room.
+// gathered for surfaces and the radiance cache, independently of how the source looks to the camera, except for its
+// strength: a tint whose strongest channel is not 1 (a block's state casting a share of its light: redstone ore, dim
+// at rest and bright when touched) shows in the glow by the square root of that strength, never its colour, so the
+// ore looks as much brighter as it lights the room.
 vec3 rayEmissionTint(MainRay ray, vec3 tint, bool viewBounce) {
     bool visible = !rayCacheUpdate(ray) && (rayBounce(ray) == 0u || rayCameraPath(ray) || viewBounce);
     if (!visible) { return tint; }
     float strength = max(tint.r, max(tint.g, tint.b));
-    bool grey = strength > 0.0 && min(tint.r, min(tint.g, tint.b)) > 0.98 * strength;
-    return grey && abs(strength - 1.0) > 0.01 ? vec3(clamp(sqrt(strength), 0.4, 1.8)) : vec3(1.0);
+    return strength > 0.0 && abs(strength - 1.0) > 0.01 ? vec3(clamp(sqrt(strength), 0.4, 1.8)) : vec3(1.0);
 }
 
 // Minecraft stores textures and tints for display (sRGB), not as reflectance. Lit as stored, everything looked
