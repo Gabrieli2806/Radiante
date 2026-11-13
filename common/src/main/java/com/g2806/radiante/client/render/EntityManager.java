@@ -166,6 +166,12 @@ public final class EntityManager {
     /** The glow of a particle Minecraft draws at full light; see collectParticles. */
     static final float PARTICLE_GLOW = Glow.ofLevel(12);
     static final PBRVertexWriter PARTICLE_WRITER = new PBRVertexWriter(4096);
+    /** The particle sprites of a splash of water (rain landing, a fish, a boat's wake): drawn as drops that refract. */
+    static final net.minecraft.resources.Identifier[] SPLASH_SPRITES = {
+        net.minecraft.resources.Identifier.withDefaultNamespace("splash_0"),
+        net.minecraft.resources.Identifier.withDefaultNamespace("splash_1"),
+        net.minecraft.resources.Identifier.withDefaultNamespace("splash_2"),
+        net.minecraft.resources.Identifier.withDefaultNamespace("splash_3")};
     static final int HAND_ID = "radiante:hand".hashCode();
     static final int PLAYER_SHADOW_ID = "radiante:player_shadow".hashCode();
     static final int WEATHER_ID = "radiante:weather".hashCode();
@@ -421,6 +427,27 @@ public final class EntityManager {
 
         List<PendingLayer> layers = new ArrayList<>();
         List<PendingLayer> shadowLayers = new ArrayList<>();
+        // The sprites of the water drops rain throws up when it lands (and every other splash of water): where they
+        // lie in the particle atlas this frame, a resource pack may have moved them.
+        net.minecraft.client.renderer.texture.TextureAtlas particleAtlas =
+            Minecraft.getInstance().getAtlasManager().getAtlasOrThrow(net.minecraft.data.AtlasIds.PARTICLES);
+        net.minecraft.resources.Identifier splashAtlas = particleAtlas.location();
+        float[] splashRects = new float[SPLASH_SPRITES.length * 4];
+        int found = 0;
+        for (net.minecraft.resources.Identifier name : SPLASH_SPRITES) {
+            net.minecraft.client.renderer.texture.TextureAtlasSprite sprite = particleAtlas.getSprite(name);
+            if (sprite == null || sprite.contents().name().equals(
+                net.minecraft.client.renderer.texture.MissingTextureAtlasSprite.getLocation())) {
+                continue;
+            }
+            splashRects[found++] = sprite.getU0();
+            splashRects[found++] = sprite.getV0();
+            splashRects[found++] = sprite.getU1();
+            splashRects[found++] = sprite.getV1();
+        }
+        if (found == 0) {
+            splashRects = null;
+        }
         Vec3 eye = cameraState.pos;
         net.minecraft.client.multiplayer.ClientLevel level = Minecraft.getInstance().level;
         for (QuadParticleRenderState group : COLLECTOR.drainParticleGroups()) {
@@ -442,6 +469,9 @@ public final class EntityManager {
                 writer.finish();
                 if (writer.vertexCount() == 0 || writer.vertexCount() % 4 != 0) {
                     continue;
+                }
+                if (splashRects != null && layer.textureAtlasLocation().equals(splashAtlas)) {
+                    writer.markRainQuads(splashRects);
                 }
                 // Cut out particles must not be traced as solid geometry; see RenderTypeInfo.geometryType. The
                 // no-reflect geometry type looks like the right home for billboards, but its hit group shades them
