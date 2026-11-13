@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Rain's edges fray like a drying patch instead of stopping at a straight line: under the edge of a roof or a canopy the blown-in rain wets the ground in a ragged fringe of wet pixels and the standing water creeps in a little the same way, and across a biome's edge the wet ground frays out into the dry.
+
 - Water in the rain keeps the storm's grey. Its glow was lit by the clear blue sky above the clouds while everything else took the overcast, and with the eye opened for the dark it shone an electric blue.
 
 - DLSS Ray Reconstruction takes each frame's rain as it is: the streaks fall past a still background, whose motion the pixel carried, so with the camera still the rain was drawn as long straight lines.
