@@ -93,3 +93,5 @@ render_pipeline.module.ray_tracing.attribute.aether_shadow_tone=Tono de Sombras
 aether.desc.shadow_tone=El color que el gradeo da a las sombras (rojo, verde, azul; 1 deja el canal como está).
 render_pipeline.module.ray_tracing.attribute.aether_highlight_tone=Tono de Luces
 aether.desc.highlight_tone=El color que el gradeo da a las luces altas (rojo, verde, azul; 1 deja el canal como está).
+render_pipeline.module.ray_tracing.attribute.aether_rainbow=Arcoíris
+aether.desc.rainbow=Un arcoíris frente al sol cuando empieza la lluvia y durante un minuto después de que pare, y de noche un pálido arcoíris lunar frente a la luna; uno de cada cinco, más o menos, es doble. 0 los apaga.

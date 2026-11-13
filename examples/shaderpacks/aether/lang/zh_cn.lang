@@ -93,3 +93,5 @@ render_pipeline.module.ray_tracing.attribute.aether_shadow_tone=暗部色调
 aether.desc.shadow_tone=胶片调色赋予暗部的颜色（红、绿、蓝；1 表示该通道不变）。
 render_pipeline.module.ray_tracing.attribute.aether_highlight_tone=亮部色调
 aether.desc.highlight_tone=胶片调色赋予亮部的颜色（红、绿、蓝；1 表示该通道不变）。
+render_pipeline.module.ray_tracing.attribute.aether_rainbow=彩虹
+aether.desc.rainbow=雨开始时和雨停后约一分钟内，在太阳对面出现彩虹；夜晚在月亮对面出现淡淡的月虹；大约五次中有一次是双彩虹。0 为关闭。
