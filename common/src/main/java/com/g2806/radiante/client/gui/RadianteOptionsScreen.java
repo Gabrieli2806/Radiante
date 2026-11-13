@@ -339,9 +339,20 @@ public class RadianteOptionsScreen extends SettingsRows {
         boolean bedrockCurve = (TONE + "method.bedrock_provisional").equals(method);
         boolean whitePoint = method != null && (method.endsWith(".reinhard_white_point")
             || method.endsWith(".aces_white_point") || method.endsWith(".uncharted2"));
+        // The Bedrock curve's shadow half lies above the line where nothing is brightened (each bin's slope is at most
+        // one, and the highlights already end there), so with Max Brightening at 0 it is that line, whatever its range
+        // or least slope.
+        boolean curveMayBrighten = parseFloat(advancedValue(Pipeline.TONE_MAPPING_MODULE_NAME,
+            TONE + "curve_max_exposure_increase")) > 0.0f;
         return switch (name) {
-            case "min_exposure" -> autoExposure && bedrockMeter ? overriddenBy(METERING_MODE) : null;
+            case "min_exposure", "max_exposure", "exposure_up_speed", "exposure_down_speed", "exposure_adaptation" ->
+                !autoExposure ? needs(TONE + "enable_auto_exposure") : bedrockMeter ? overriddenBy(METERING_MODE) : null;
             case "manual_exposure" -> autoExposure && bedrockMeter ? overriddenBy(METERING_MODE) : null;
+            case "curve_dynamic_range", "curve_shadow_min_slope" -> !bedrockCurve ? overriddenBy(O + "tone_method")
+                : curveMayBrighten ? null
+                : Component.translatable("options.radiante.blocked.needs_above_zero",
+                    Component.translatable(TONE + "curve_max_exposure_increase"));
+            case "curve_shift", "curve_max_exposure_increase" -> bedrockCurve ? null : overriddenBy(O + "tone_method");
             case "low_percent", "high_percent", "log2_luminance_min", "log2_luminance_max" ->
                 !autoExposure ? needs(TONE + "enable_auto_exposure")
                     : histogram ? null : needsValue(METERING_MODE, METERING_MODE + ".global");
@@ -353,6 +364,18 @@ public class RadianteOptionsScreen extends SettingsRows {
             case "exposure_metering_mode" -> autoExposure ? null : needs(TONE + "enable_auto_exposure");
             default -> null;
         };
+    }
+
+    /** A setting's stored number, or 0 when it is missing or not one. */
+    private static float parseFloat(String value) {
+        if (value == null) {
+            return 0.0f;
+        }
+        try {
+            return Float.parseFloat(value.trim());
+        } catch (NumberFormatException e) {
+            return 0.0f;
+        }
     }
 
     private static Component needs(String otherKey) {
