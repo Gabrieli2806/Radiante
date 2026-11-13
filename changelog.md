@@ -44,7 +44,9 @@ All notable changes to this project are documented in this file.
   - A block broken in the rain leaves the block under it dry, and it soaks and gathers water over the Wet-Up Time as the rest did; broken after the rain, it stays dry. The sides of the hole soak the same way. It used to be wet at once, or dry for a few seconds and then wet all at once.
   - Chunks that load a moment after the ground round them is read no longer show dry for seconds and then turn wet all at once, which in a walk looked like the wet ground changing at every chunk crossed. Blocks broken or put down near the camera show within a fraction of a second.
 
-- The redstone wall torch has its red halo, as the standing one does. Vanilla's wall torch model paints its halo with a corner texel of the torch texture that Bedrock textures (Vanilla RTX) leave clear; it is drawn with an edge texel of the ring now.
+- The redstone torch's halo is a smooth, see-through red glow round its head, the same in every frame. It was met by rays at random (three in ten), which showed as a speckle of red dots the denoiser smeared about. The redstone wall torch has its halo too: vanilla's wall torch model paints it with a corner texel of the torch texture that Bedrock textures (Vanilla RTX) leave clear, so it had none; it is drawn with an edge texel of the ring now. The halo casts no shadow.
+
+- Heat keeps the rain off: the ground round fire, lava, magma, a lit campfire, furnace, blast furnace or smoker stays drier in the rain and dries first after it, over about a block and a half; round a torch, a lantern or a lit candle standing on it, over about a block.
 
 - Aether 1.2: rainbows. A rainbow opposite the sun as the rain starts and for about a minute after it stops, in front of the clouds and seen in puddles and water; at night a pale moonbow opposite the moon; about one rain in five gives a double bow, its second arc's colours the other way round. Rainbows setting, 0 to 2.
 
