@@ -48,6 +48,20 @@ void ptShapeLava(inout SampledSurface surface) {
                                             max(worldUBO.emissionBrightness, 1e-3));
 }
 
+/**
+ * A shading normal leaned towards the viewer as far as it takes for the mirror reflection of the view in it to stay
+ * out of the face (geometricNormal, facing the viewer): halfway between the viewer and that reflection turned up to
+ * just over the face, which keeps the side the normal leans to. A normal steeper than 45 degrees off a face seen
+ * straight on reflected into the block itself, and a smooth metal's bevels came out as black lines.
+ */
+vec3 keepReflectionOutOfFace(vec3 normal, vec3 geometricNormal, vec3 viewDir) {
+    vec3 mirrored = reflect(-viewDir, normal);
+    float above = dot(mirrored, geometricNormal);
+    if (above >= 0.05) { return normal; }
+    mirrored = normalizeF(mirrored - geometricNormal * (above - 0.05), geometricNormal);
+    return normalizeF(viewDir + mirrored, geometricNormal);
+}
+
 vec3 applyNormalMapToBasis(vec3 matNormal,
                            vec3 tangent,
                            vec3 bitangent,
@@ -176,7 +190,9 @@ bool bedrockHeightMapNormal(int map,
     normal = normalizeF(side * (tangent * local.x + bitangent * local.y) + viewNormal * local.z, viewNormal);
     // A band's slope leans the normal up to about 76 degrees off the face. Seen along the face, the bands on the far
     // side of every groove then faced away from the camera and drew a black line each, down the whole of a quartz
-    // pillar. The normal is kept turned at least a little towards the viewer, as the normal maps are.
+    // pillar; seen straight on, a band steeper than 45 degrees reflected into the block itself, and every plate of an
+    // iron block was ringed in black (keepReflectionOutOfFace).
+    normal = keepReflectionOutOfFace(normal, viewNormal, viewDir);
     float facing = dot(normal, viewDir);
     if (facing < 0.15) { normal = normalizeF(normal + viewDir * (0.15 - facing), viewNormal); }
     return true;
@@ -400,6 +416,10 @@ void sampleSurfaceState(bool useTexture,
         bitangent = normalizeF(cross(geometricNormal, tangent), dPdvWorld);
         tangent = normalizeF(cross(bitangent, geometricNormal), tangent);
         shadingNormal = applyNormalMapToBasis(mat.normal, tangent, bitangent, geometricNormal, viewDir);
+        // A pack's normal map leans as steeply as a height map's bevels (Vanilla RTX Opus's iron block).
+        shadingNormal = keepReflectionOutOfFace(shadingNormal,
+                                                dot(geometricNormal, viewDir) < 0.0 ? -geometricNormal : geometricNormal,
+                                                viewDir);
     }
     // A Bedrock pack's height map, shaded as Bedrock RTX shades one, in place of the smooth normal map the converter
     // made from it.

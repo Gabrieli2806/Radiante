@@ -140,7 +140,7 @@ public final class EntityPbr {
                         pixels.putInt((y * width + x) * 4, PbrAtlases.toRgba(image.getPixel(x, y)));
                     }
                 }
-                return PbrAtlases.upload(textureIdFor(mapId), pixels, width, height, 1);
+                return PbrAtlases.upload(textureIdFor(mapId), pixels, width, height, 1, 0, PbrAtlases.MIPS_POINT);
             } finally {
                 MemoryUtil.memFree(pixels);
             }
@@ -186,11 +186,11 @@ public final class EntityPbr {
         int specular = -1;
         int normal = -1;
         if (anySpecular) {
-            specular = stitchAtlas(resources, sprites, atlasId, "_s", 0, width, height, mipLevels);
+            specular = stitchAtlas(resources, sprites, atlasId, "_s", 0, width, height, mipLevels, albedoId);
         }
         if (anyNormal) {
             normal = stitchAtlas(resources, sprites, atlasId, "_n", PbrAtlases.NORMAL_DEFAULT, width, height,
-                mipLevels);
+                mipLevels, albedoId);
         }
         ATLAS_MAPS.put(atlasId, new Maps(albedoId, specular, normal));
         if (Options.debugLogging) {
@@ -200,7 +200,7 @@ public final class EntityPbr {
     }
 
     private static int stitchAtlas(ResourceManager resources, Map<Identifier, TextureAtlasSprite> sprites,
-        Identifier atlasId, String suffix, int neutral, int width, int height, int mipLevels) {
+        Identifier atlasId, String suffix, int neutral, int width, int height, int mipLevels, int albedoId) {
         ByteBuffer target = PbrAtlases.fill(width, height, neutral);
         try {
             for (Map.Entry<Identifier, TextureAtlasSprite> entry : sprites.entrySet()) {
@@ -210,7 +210,10 @@ public final class EntityPbr {
             }
             Identifier mapId = Identifier.fromNamespaceAndPath(atlasId.getNamespace(),
                 "radiante_atlas_" + atlasId.getPath() + suffix);
-            return PbrAtlases.upload(textureIdFor(mapId), target, width, height, mipLevels);
+            // At the colours' traced detail (TracedTextureDetail).
+            return PbrAtlases.upload(textureIdFor(mapId), target, width, height, mipLevels,
+                TracedTextureDetail.droppedFor(albedoId),
+                suffix.equals("_n") ? PbrAtlases.MIPS_NORMAL : PbrAtlases.MIPS_SPECULAR);
         } finally {
             MemoryUtil.memFree(target);
         }

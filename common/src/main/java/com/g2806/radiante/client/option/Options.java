@@ -39,6 +39,11 @@ public class Options {
      */
     public static volatile boolean glowingPixelLight = false;
     public static volatile boolean unlitBlockLight = true;
+    /**
+     * Texture Detail: how much of the atlases' detail the ray tracer keeps (TracedTextureDetail): automatic, full,
+     * half or a quarter a side. Automatic keeps it all unless a high resolution pack would fill the video memory.
+     */
+    public static volatile int tracedTextureDetail = 0;
     /** How far from the camera glowing dropped items and item frames still cast light, in blocks. */
     public static volatile int entityLightReach = 64;
     /**
@@ -264,6 +269,7 @@ public class Options {
         bool("collectChunkEmission", () -> collectChunkEmission, v -> setCollectChunkEmission(v, false)),
         bool("glowingPixelLight", () -> glowingPixelLight, v -> glowingPixelLight = v),
         bool("unlitBlockLight", () -> unlitBlockLight, v -> unlitBlockLight = v),
+        number("tracedTextureDetail", () -> tracedTextureDetail, v -> tracedTextureDetail = Math.max(0, Math.min(v, 3))),
         number("entityLightReach", () -> entityLightReach, v -> setEntityLightReach(v, false)),
         bool("debugLogging", () -> debugLogging, v -> setDebugLogging(v, false)),
         bool("advancedSettings", () -> advancedSettings, v -> advancedSettings = v),

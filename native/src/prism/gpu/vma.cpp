@@ -15,6 +15,7 @@ VMA::VMA(std::shared_ptr<Instance> instance,
          std::shared_ptr<Device> device) {
     VmaAllocatorCreateInfo info{};
     info.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
+    if (device->isMemoryBudgetEnabled()) info.flags |= VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
     info.physicalDevice = physicalDevice->vkPhysicalDevice();
     info.device = device->vkDevice();
     info.instance = instance->vkInstance();

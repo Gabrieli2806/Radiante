@@ -135,6 +135,20 @@ public final class TextureTracker {
             VulkanConst.toVk(texture.getFormat()));
     }
 
+    /**
+     * Gives a tracked texture a new image without its first {@code droppedLevels} mip levels (TracedTextureDetail),
+     * before it is filled. Returns its id, 0 for an untracked texture.
+     */
+    public static synchronized int prepareDetail(GpuTexture texture, int droppedLevels) {
+        Integer id = IDS.get(texture);
+        if (id == null) {
+            return 0;
+        }
+        TextureProxy.prepareImage(id, texture.getMipLevels(), texture.getWidth(0), texture.getHeight(0),
+            VulkanConst.toVk(texture.getFormat()), droppedLevels);
+        return id;
+    }
+
     public static synchronized void onClosed(GpuTexture texture) {
         Integer id = IDS.remove(texture);
         if (id != null) {

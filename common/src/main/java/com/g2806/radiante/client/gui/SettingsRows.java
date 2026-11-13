@@ -338,6 +338,19 @@ abstract class SettingsRows extends SettingsChoices {
             });
     }
 
+    /** Texture Detail: how much of a high resolution pack's detail the ray tracer keeps (TracedTextureDetail). */
+    private OptionInstance<Integer> textureDetailOption() {
+        return new OptionInstance<>("options.radiante.texture_detail", tooltip("options.radiante.texture_detail"),
+            (caption, value) -> Component.translatable(switch (value) {
+                case 1 -> "options.radiante.texture_detail.full";
+                case 2 -> "options.radiante.texture_detail.half";
+                case 3 -> "options.radiante.texture_detail.quarter";
+                default -> "options.radiante.texture_detail.auto";
+            }),
+            new OptionInstance.Enum<>(List.of(0, 1, 2, 3), Codec.intRange(0, 3)),
+            staged("tracedTextureDetail", Options.tracedTextureDetail), value -> stage("tracedTextureDetail", value));
+    }
+
     // The one option that only takes effect after a restart; kept to mark it on the list.
     OptionInstance<?> hdrToggle;
 
@@ -987,7 +1000,7 @@ abstract class SettingsRows extends SettingsChoices {
             packToggle(RtAttributes.BEDROCK_ONE_BOUNCE_ATTRIBUTE, "options.radiante.bedrock_one_bounce"),
             packToggle(RtAttributes.TRANSPARENT_CHECKERBOARD_ATTRIBUTE, "options.radiante.transparent_checkerboard"),
             parallax, packToggle(RtAttributes.BEDROCK_MATERIALS_ATTRIBUTE, "options.radiante.bedrock_materials"),
-            fogSamples,
+            textureDetailOption(), fogSamples,
             OptionInstance.createBoolean("options.radiante.chunk_building_auto",
                 OptionInstance.cachedConstantTooltip(Component.translatable("options.radiante.chunk_building_auto.tooltip",
                     Runtime.getRuntime().availableProcessors(), Options.autoChunkBuilding()[0],

@@ -457,9 +457,11 @@ public final class DevAutomation {
         } else if (action.startsWith("fps=")) {
             // Frames drawn in the last second, for comparing settings from a fixed camera.
             // The GPU's own time per pass (timestamps) as well, which does not move with what the CPU is doing.
-            RadianteClient.LOGGER.info("[dev] fps {} {} presented {} gpu {}", action.substring(4), minecraft.getFps(),
-                com.g2806.radiante.client.render.FrameGeneration.presentedFrameRate(),
-                com.g2806.radiante.client.pipeline.Pipeline.gpuStats());
+            // And the renderer's video memory, for what a setting or a resource pack costs there.
+            RadianteClient.LOGGER.info("[dev] fps {} {} presented {} gpu {} vram {} MB", action.substring(4),
+                minecraft.getFps(), com.g2806.radiante.client.render.FrameGeneration.presentedFrameRate(),
+                com.g2806.radiante.client.pipeline.Pipeline.gpuStats(),
+                com.g2806.radiante.client.pipeline.Pipeline.sceneStats()[2]);
         } else if (action.startsWith("rainmv=")) {
             com.g2806.radiante.client.render.EntityWeather.rainMotion = Boolean.parseBoolean(action.substring(7));
         } else if (action.startsWith("hold=") || action.startsWith("release=")) {

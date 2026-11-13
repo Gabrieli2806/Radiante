@@ -29,7 +29,10 @@ class Textures : public SharedObject<Textures> {
     // Gives an allocated id a new image, cleared to transparent black unless the next flush copies into it. Copies
     // still queued for the image it replaces are dropped: they were sized for that one. An image of the same size,
     // format and mip count is kept (cleared the same way), so its descriptor is not rewritten under frames in flight.
-    void initializeTexture(uint32_t id, uint32_t mipLevels, uint32_t width, uint32_t height, VkFormat format);
+    // droppedLevels leaves out the texture's finest levels: the image is made at the size of the first one kept, and
+    // uploads go on addressing the full texture's levels, those into a dropped one being left out.
+    void initializeTexture(uint32_t id, uint32_t mipLevels, uint32_t width, uint32_t height, VkFormat format,
+                           uint32_t droppedLevels = 0);
     void setSamplingMode(uint32_t id, VkFilter samplingMode, VkSamplerMipmapMode mipmapMode);
     // Queues the copy of a width x height block of texels, read at (srcOffsetX, srcOffsetY) from rows of srcRowPixels
     // texels at srcPointer (srcSizeInBytes long), to (dstOffsetX, dstOffsetY) of mip level `level`. A copy that would
@@ -71,6 +74,7 @@ class Textures : public SharedObject<Textures> {
         bool queued = false; // listed in queued_
         bool fresh = false;  // listed in fresh_
         bool clear = false;  // kept by initializeTexture: the next flush clears it unless it copies into it
+        uint32_t droppedLevels = 0; // the full texture's levels left out of the image (initializeTexture)
     };
 
     struct StagingBlock {

@@ -17,11 +17,11 @@ JNIEXPORT jint JNICALL Java_com_g2806_radiante_client_proxy_vulkan_TextureProxy_
 
 /*
  * Class:     com_g2806_radiante_client_proxy_vulkan_TextureProxy
- * Method:    prepareImage
- * Signature: (IIIII)V
+ * Method:    prepareImageNative
+ * Signature: (IIIIII)V
  */
-JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_TextureProxy_prepareImage
-  (JNIEnv *, jclass, jint, jint, jint, jint, jint);
+JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_TextureProxy_prepareImageNative
+  (JNIEnv *, jclass, jint, jint, jint, jint, jint, jint);
 
 /*
  * Class:     com_g2806_radiante_client_proxy_vulkan_TextureProxy

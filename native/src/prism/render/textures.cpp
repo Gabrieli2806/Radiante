@@ -100,10 +100,17 @@ uint32_t Textures::allocateTexture() {
     return static_cast<uint32_t>(entries_.size() - 1);
 }
 
-void Textures::initializeTexture(uint32_t id, uint32_t mipLevels, uint32_t width, uint32_t height, VkFormat format) {
+void Textures::initializeTexture(uint32_t id, uint32_t mipLevels, uint32_t width, uint32_t height, VkFormat format,
+                                 uint32_t droppedLevels) {
     auto framework = this->framework();
     std::scoped_lock lock(mutex_, framework->recreateMtx());
     Entry &entry = this->entry(id, "make an image for");
+    // At least one level is kept.
+    droppedLevels = std::min(droppedLevels, mipLevels > 0 ? mipLevels - 1 : 0u);
+    entry.droppedLevels = droppedLevels;
+    mipLevels -= droppedLevels;
+    width = std::max(1u, width >> droppedLevels);
+    height = std::max(1u, height >> droppedLevels);
 
     // An image of the same size, format and mip count is kept, and so is its descriptor: rewriting a bound descriptor
     // while frames that may sample it are in flight is what a resource reload or a resolution change used to crash
@@ -181,6 +188,9 @@ void Textures::queueUpload(uint8_t *srcPointer,
         return;
     }
     gpu::DeviceLocalImage &image = *entry.image;
+    // A level the image leaves out (initializeTexture): its coverage is the first kept level's, as the tracer sees it.
+    if (level < entry.droppedLevels) return;
+    level -= entry.droppedLevels;
     if (level >= image.mipLevels()) {
         texturesErr() << "Dropped an upload into texture " << dstId << " level " << level << ", which has "
                       << image.mipLevels() << " levels" << std::endl;

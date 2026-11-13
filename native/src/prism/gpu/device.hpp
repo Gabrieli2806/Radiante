@@ -32,6 +32,8 @@ class Device : public SharedObject<Device> {
     // VK_EXT_opacity_micromap with its micromap feature, and the deepest subdivision level it takes in both formats.
     bool isOpacityMicromapEnabled() const;
     uint32_t opacityMicromapMaxSubdivisionLevel() const;
+    // VK_EXT_memory_budget: the allocator reports the driver's budget (Pipeline.sceneStats).
+    bool isMemoryBudgetEnabled() const;
 
     // One VkPipelineCache for every pipeline the renderer builds, kept on disk between runs: a pipeline whose shaders
     // were compiled before is rebuilt from the driver's saved code. Made on first use from the file set with
