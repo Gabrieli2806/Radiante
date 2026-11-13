@@ -71,6 +71,7 @@ public final class EmissionTiles {
     private static int specularTextureId = -1;
     private static int specularWidth;
     private static int specularHeight;
+    private static int specularDropped;
     private static int specularAtlasId = -1;
     /**
      * An end portal frame has a light level of 1 in every state, so vanilla would light its frame whether an eye
@@ -1124,10 +1125,14 @@ public final class EmissionTiles {
             specularTextureId = TextureProxy.generateTextureId();
             specularWidth = 0;
         }
-        if (specularWidth != width || specularHeight != height) {
-            TextureProxy.prepareImage(specularTextureId, mipLevels, width, height, VersionCompat.vkFormatRgba8());
+        // At the colours' traced detail (TracedTextureDetail).
+        int dropped = TracedTextureDetail.droppedFor(atlasId);
+        if (specularWidth != width || specularHeight != height || specularDropped != dropped) {
+            TextureProxy.prepareImage(specularTextureId, mipLevels, width, height, VersionCompat.vkFormatRgba8(),
+                dropped);
             specularWidth = width;
             specularHeight = height;
+            specularDropped = dropped;
         }
 
         ByteBuffer current = level0;

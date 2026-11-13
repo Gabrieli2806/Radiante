@@ -27,13 +27,21 @@ public final class AtlasMirror {
         int atlasWidth = texture.getWidth(0);
         int atlasHeight = texture.getHeight(0);
 
+        // How much of its detail the tracer keeps (Texture Detail): the image is made again without the levels left
+        // out, and the uploads below into those are dropped on the way.
+        int dropped = TracedTextureDetail.choose(TextureTracker.idOf(texture), atlas.location().toString(),
+            atlasWidth, atlasHeight, Math.min(maxMipLevel + 1, texture.getMipLevels()), typicalSpriteWidth(sprites));
+        TextureTracker.prepareDetail(texture, dropped);
+
         // The block atlas's cut-out coverage is taken from the uploads below, for the opacity micromaps of leaves,
         // grass and the like. Animated sprites change from frame to frame and are left to the shaders.
         int coverageId = atlas.location().equals(TextureAtlas.LOCATION_BLOCKS)
             ? TextureTracker.idOf(texture) : 0;
         IntArrayList animated = new IntArrayList();
         if (coverageId != 0) {
-            TextureProxy.beginCutoutCoverage(coverageId, atlasWidth, atlasHeight);
+            // Taken at the detail traced, which the micromaps have to agree with.
+            TextureProxy.beginCutoutCoverage(coverageId, Math.max(1, atlasWidth >> dropped),
+                Math.max(1, atlasHeight >> dropped));
         }
 
         for (TextureAtlasSprite sprite : sprites) {
@@ -45,13 +53,13 @@ public final class AtlasMirror {
             ByteBuffer[] mips = ((SpriteContentsAccess) contents).radiante$mipImages();
             int levels = Math.min(maxMipLevel + 1, mips.length);
             if (coverageId != 0 && sprite.isAnimated()) {
-                animated.add(sprite.getX() + paddingX);
-                animated.add(sprite.getY() + paddingY);
-                animated.add(contents.width());
-                animated.add(contents.height());
+                animated.add((sprite.getX() + paddingX) >> dropped);
+                animated.add((sprite.getY() + paddingY) >> dropped);
+                animated.add(Math.max(1, contents.width() >> dropped));
+                animated.add(Math.max(1, contents.height() >> dropped));
             }
 
-            for (int level = 0; level < levels; level++) {
+            for (int level = dropped; level < levels; level++) {
                 ByteBuffer pixels = mips[level];
                 if (pixels == null) {
                     continue;
@@ -70,7 +78,7 @@ public final class AtlasMirror {
                 // it through. One texel of each edge is repeated outwards, which is as far as such a sample strays.
                 int levelWidth = Math.max(1, atlasWidth >> level);
                 int levelHeight = Math.max(1, atlasHeight >> level);
-                if (paddingY >> level > 0 || level == 0 && paddingY > 0) {
+                if (paddingY >> level > 0 || level == dropped && paddingY > 0) {
                     if (y > 0) {
                         TextureTracker.uploadRegion(texture, pixels, rowPixels, 0, 0, x, y - 1, width, 1,
                             level);
@@ -80,7 +88,7 @@ public final class AtlasMirror {
                             y + height, width, 1, level);
                     }
                 }
-                if (paddingX >> level > 0 || level == 0 && paddingX > 0) {
+                if (paddingX >> level > 0 || level == dropped && paddingX > 0) {
                     if (x > 0) {
                         TextureTracker.uploadRegion(texture, pixels, rowPixels, 0, 0, x - 1, y, 1, height,
                             level);
@@ -96,5 +104,20 @@ public final class AtlasMirror {
         if (coverageId != 0) {
             TextureProxy.finishCutoutCoverage(coverageId, animated.toIntArray());
         }
+    }
+
+    /** The sprite width most of an atlas's sprites have: its pack's pixels a block. */
+    static int typicalSpriteWidth(List<TextureAtlasSprite> sprites) {
+        java.util.Map<Integer, Integer> counts = new java.util.HashMap<>();
+        int typical = 16;
+        int most = 0;
+        for (TextureAtlasSprite sprite : sprites) {
+            int count = counts.merge(sprite.contents().width(), 1, Integer::sum);
+            if (count > most) {
+                most = count;
+                typical = sprite.contents().width();
+            }
+        }
+        return typical;
     }
 }

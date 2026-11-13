@@ -22,14 +22,14 @@ JNIEXPORT jint JNICALL Java_com_g2806_radiante_client_proxy_vulkan_TextureProxy_
     });
 }
 
-JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_TextureProxy_prepareImage(
-    JNIEnv *, jclass, jint id, jint maxLevel, jint width, jint height, jint format) {
+JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_TextureProxy_prepareImageNative(
+    JNIEnv *, jclass, jint id, jint maxLevel, jint width, jint height, jint format, jint droppedLevels) {
     jni::guard("[Radiante] prepareImage", [=] {
         auto textures = jni::textures();
         if (textures == nullptr) return;
         textures->initializeTexture(static_cast<uint32_t>(id), static_cast<uint32_t>(maxLevel),
                                     static_cast<uint32_t>(width), static_cast<uint32_t>(height),
-                                    static_cast<VkFormat>(format));
+                                    static_cast<VkFormat>(format), static_cast<uint32_t>(std::max(droppedLevels, 0)));
         // The image under this id is new: emitters found in the one it replaces no longer apply.
         if (auto emission = textures->emission()) emission->resetTexture(static_cast<uint32_t>(id));
     });

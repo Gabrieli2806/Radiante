@@ -14,9 +14,11 @@ namespace {
 using PBRVertex = gpu::VertexFormat::PBRVertex;
 using Vertex = gpu::Vertex;
 
-// The deepest level baked. A vanilla block face is 16 texels a side and needs level 4; level 6 keeps 64-texel packs
-// describable, and larger packs' triangles, whose micro-triangles straddle texels, keep the shader.
-constexpr uint32_t kMaxLevel = 6;
+// The deepest level baked. A vanilla block face is 16 texels a side and needs level 4; level 7 keeps 128-texel packs
+// describable (four kilobytes of states a distinct triangle), and larger packs' triangles, whose micro-triangles
+// straddle texels, keep the shader. At level 6 a 128-texel pack's leaves and grass all went to the any-hit shader,
+// which cost more than all the rest of the frame.
+constexpr uint32_t kMaxLevel = 7;
 // How far, in texels, a micro-triangle has to reach into a texel to count as covering it. Block faces put micro-
 // triangle edges exactly on texel edges, give or take the rounding of their texture coordinates.
 constexpr double kOverlapEpsilon = 1.0e-3;

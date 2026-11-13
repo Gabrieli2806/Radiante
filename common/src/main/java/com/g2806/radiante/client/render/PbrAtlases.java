@@ -139,9 +139,13 @@ public final class PbrAtlases {
                 return 0;
             }
 
-            specularTextureId = upload(specularTextureId, specular, width, height, mipLevels);
-            normalTextureId = upload(normalTextureId, normal, width, height, mipLevels);
-            if (hasRawMer) { rawMerTextureId = upload(rawMerTextureId, rawMer, width, height, mipLevels); }
+            // At the colours' traced detail (TracedTextureDetail).
+            int dropped = TracedTextureDetail.droppedFor(albedoTextureId);
+            specularTextureId = upload(specularTextureId, specular, width, height, mipLevels, dropped, MIPS_SPECULAR);
+            normalTextureId = upload(normalTextureId, normal, width, height, mipLevels, dropped, MIPS_NORMAL);
+            if (hasRawMer) {
+                rawMerTextureId = upload(rawMerTextureId, rawMer, width, height, mipLevels, dropped, MIPS_POINT);
+            }
         } finally {
             if (ownsSpecular) {
                 MemoryUtil.memFree(specular);
@@ -330,6 +334,69 @@ public final class PbrAtlases {
             | (sum[3] + half) / count;
     }
 
+    /**
+     * Four LabPBR normal texels (RGBA in memory order) as one: the mean direction, renormalised, and the mean
+     * ambient occlusion and height. One texel of the four, as the levels were made before, left a distant wall of a
+     * fine normal map glittering with whichever edge normals happened to be picked, and the coarser levels the
+     * tracer reads away from the camera aliased worse the finer the pack.
+     */
+    static int averageNormal(int[] four) {
+        // NORMAL_DEFAULT (red and green 0) marks a texture without a normal map: kept as it is, not averaged in.
+        for (int texel : four) {
+            if ((texel & 0xFFFF) == 0) {
+                return four[0];
+            }
+        }
+        if (four[0] == four[1] && four[0] == four[2] && four[0] == four[3]) {
+            return four[0];
+        }
+        double nx = 0;
+        double ny = 0;
+        double nz = 0;
+        int ao = 0;
+        int height = 0;
+        for (int texel : four) {
+            double x = (texel & 0xFF) / 127.5 - 1.0;
+            double y = (texel >> 8 & 0xFF) / 127.5 - 1.0;
+            nx += x;
+            ny += y;
+            nz += Math.sqrt(Math.max(0.0, 1.0 - x * x - y * y));
+            ao += texel >> 16 & 0xFF;
+            height += texel >>> 24;
+        }
+        double length = Math.sqrt(nx * nx + ny * ny + nz * nz);
+        if (length > 1e-6) {
+            nx /= length;
+            ny /= length;
+        }
+        int red = (int) Math.round(Math.max(0, Math.min(255, (nx + 1.0) * 127.5)));
+        int green = (int) Math.round(Math.max(0, Math.min(255, (ny + 1.0) * 127.5)));
+        return (height + 2) / 4 << 24 | (ao + 2) / 4 << 16 | green << 8 | red;
+    }
+
+    /**
+     * Four LabPBR specular texels as one: the mean roughness (smoothness squared out and back), the strongest
+     * emission so a glowing speck stays lit from afar, and the reflectance or metal and the porosity of one texel,
+     * since those are codes as much as amounts (230 and up name a metal).
+     */
+    static int averageSpecular(int[] four, int picked) {
+        if (four[0] == four[1] && four[0] == four[2] && four[0] == four[3]) {
+            return picked;
+        }
+        double roughness = 0;
+        double emission = 0;
+        for (int texel : four) {
+            double rough = 1.0 - (texel & 0xFF) / 255.0;
+            roughness += rough * rough;
+            int alpha = texel >>> 24;
+            emission = Math.max(emission, alpha == 255 ? 0.0 : alpha / 254.0);
+        }
+        int smoothness = (int) Math.round((1.0 - Math.sqrt(roughness / 4.0)) * 255.0);
+        // No emission keeps the picked texel's 0 or 255: an all-zero texel is a texture without a specular map.
+        int alpha = emission <= 0.0 ? picked >>> 24 : (int) Math.round(emission * 254.0);
+        return alpha << 24 | (picked & 0x00FFFF00) | Math.max(0, Math.min(255, smoothness));
+    }
+
     /** NativeImage hands out ARGB, the atlas stores RGBA in memory order. */
     static int toRgba(int argb) {
         int alpha = (argb >>> 24) & 0xFF;
@@ -339,18 +406,25 @@ public final class PbrAtlases {
         return (alpha << 24) | (blue << 16) | (green << 8) | red;
     }
 
-    static int upload(int textureId, ByteBuffer level0, int width, int height, int mipLevels) {
+    /** How upload makes a map's mip levels: one texel of four, as a LabPBR specular map, as a normal map. */
+    static final int MIPS_POINT = 0;
+    static final int MIPS_SPECULAR = 1;
+    static final int MIPS_NORMAL = 2;
+
+    static int upload(int textureId, ByteBuffer level0, int width, int height, int mipLevels, int dropped, int mips) {
         if (textureId < 0) {
             textureId = TextureProxy.generateTextureId();
         }
-        TextureProxy.prepareImage(textureId, mipLevels, width, height, VersionCompat.vkFormatRgba8());
+        TextureProxy.prepareImage(textureId, mipLevels, width, height, VersionCompat.vkFormatRgba8(), dropped);
 
         ByteBuffer current = level0;
         int levelWidth = width;
         int levelHeight = height;
         for (int level = 0; level < mipLevels; level++) {
-            TextureProxy.queueUpload(MemoryUtil.memAddress(current), levelWidth * levelHeight * 4, levelWidth,
-                textureId, 0, 0, 0, 0, levelWidth, levelHeight, level);
+            if (level >= dropped) {
+                TextureProxy.queueUpload(MemoryUtil.memAddress(current), levelWidth * levelHeight * 4, levelWidth,
+                    textureId, 0, 0, 0, 0, levelWidth, levelHeight, level);
+            }
             if (level + 1 >= mipLevels) {
                 break;
             }
@@ -358,12 +432,21 @@ public final class PbrAtlases {
             int nextWidth = Math.max(1, levelWidth / 2);
             int nextHeight = Math.max(1, levelHeight / 2);
             ByteBuffer next = MemoryUtil.memAlloc(nextWidth * nextHeight * 4);
-            // Point sampling, because averaging normals or material flags of neighbouring texels is meaningless.
             for (int y = 0; y < nextHeight; y++) {
                 for (int x = 0; x < nextWidth; x++) {
                     int sourceX = Math.min(levelWidth - 1, x * 2);
                     int sourceY = Math.min(levelHeight - 1, y * 2);
-                    next.putInt((y * nextWidth + x) * 4, current.getInt((sourceY * levelWidth + sourceX) * 4));
+                    int texel = current.getInt((sourceY * levelWidth + sourceX) * 4);
+                    if (mips != MIPS_POINT) {
+                        int[] four = new int[4];
+                        for (int i = 0; i < 4; i++) {
+                            int sx = Math.min(levelWidth - 1, x * 2 + (i & 1));
+                            int sy = Math.min(levelHeight - 1, y * 2 + (i >> 1));
+                            four[i] = current.getInt((sy * levelWidth + sx) * 4);
+                        }
+                        texel = mips == MIPS_NORMAL ? averageNormal(four) : averageSpecular(four, texel);
+                    }
+                    next.putInt((y * nextWidth + x) * 4, texel);
                 }
             }
             if (current != level0) {

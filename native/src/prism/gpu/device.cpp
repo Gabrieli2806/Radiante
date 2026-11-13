@@ -42,6 +42,7 @@ struct CreatedDevice {
     bool opacityMicromap = false;
     uint32_t opacityMicromapMaxLevel = 0;
     bool xess = false;
+    bool memoryBudget = false;
 };
 
 CreatedDevice g_created;
@@ -501,6 +502,10 @@ VkResult Device::createMerged(VkPhysicalDevice physicalDeviceHandle,
     const bool micromapWanted = std::getenv("RADIANTE_NO_OMM") == nullptr;
     const bool micromapOffered = extensions.offered(VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME);
     if (micromapWanted && micromapOffered) extensions.request(VK_EXT_OPACITY_MICROMAP_EXTENSION_NAME);
+    // The driver's own budget of video memory for the game, other programs' use taken off; without it the allocator
+    // takes four fifths of the card's memory, and Automatic Texture Detail could not tell a card shared with a
+    // browser and a video from an idle one.
+    if (extensions.offered(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME)) extensions.request(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
     if (diagnostics::checkpointsRequested() && extensions.offered(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)) {
         extensions.request(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
     }
@@ -598,6 +603,7 @@ VkResult Device::createMerged(VkPhysicalDevice physicalDeviceHandle,
         .opacityMicromap = micromapEnabled,
         .opacityMicromapMaxLevel = micromapMaxLevel,
         .xess = xessCompatible,
+        .memoryBudget = extensions.enabled(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME),
     };
     deviceLog() << "created shared device with " << enabledExtensions.size() << " extensions (dlss=" << dlssCompatible
                 << ", dlss frame generation=" << dlssFrameGenerationCompatible
@@ -663,6 +669,10 @@ bool Device::isFsrFrameGenerationDeviceExtensionsCompatible() const {
 
 bool Device::isOpacityMicromapEnabled() const {
     return g_created.handle == device_ && g_created.opacityMicromap;
+}
+
+bool Device::isMemoryBudgetEnabled() const {
+    return g_created.handle == device_ && g_created.memoryBudget;
 }
 
 uint32_t Device::opacityMicromapMaxSubdivisionLevel() const {
