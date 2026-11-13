@@ -96,9 +96,9 @@
     },
     {
       "name": "clouds",
-      "what": "The same view with the volumetric clouds.",
-      "actions": ["pipe=clouds:2"],
-      "after": ["pipe=clouds:1"],
+      "what": "The same place with the volumetric clouds, looking up into them.",
+      "actions": ["pipe=clouds:2", "cmd=/tp @s ~ ~ ~ -90 -30"],
+      "after": ["pipe=clouds:1", "cmd=/tp @s ~ ~ ~ -90 -10"],
       "tests": [
         "volumetric_cloud_coverage",
         "volumetric_cloud_density",
@@ -227,8 +227,8 @@
     },
     {
       "name": "water",
-      "what": "The water room at noon.",
-      "actions": ["cmd=/time set 6000", "cmd=/radiante showcase 9", "cmd=/tp @s ^2 ^1.5 ^1.5"],
+      "what": "The water room at noon, under water.",
+      "actions": ["cmd=/time set 6000", "cmd=/radiante showcase 9", "cmd=/tp @s ^2 ^1.5 ^6", "cmd=/tp @s ~ ~ ~ ~ 20"],
       "tests": [
         "water_wave_strength",
         "water_density",
@@ -440,7 +440,7 @@
     {
       "name": "water_close",
       "what": "The water room from above the pool.",
-      "actions": ["cmd=/time set 6000", "cmd=/radiante showcase 9", "cmd=/tp @s ^2 ^1.5 ^1.5", "cmd=/tp @s ~ ~ ~ ~ 30"],
+      "actions": ["cmd=/time set 6000", "cmd=/radiante showcase 9", "cmd=/tp @s ^2 ^4 ^5", "cmd=/tp @s ~ ~ ~ ~ 45"],
       "tests": [
         {"attr": "water_clear_teal", "to": "1.0"},
         {"attr": "water_density", "to": "4.0"},
@@ -448,7 +448,7 @@
         {"attr": "water_scattering", "to": "64.0"},
         {"attr": "water_surface_mode", "to": "vanilla"},
         {"attr": "water_surface_mode", "to": "realistic", "name": "water_surface_mode_realistic"},
-        {"attr": "water_wave_strength", "to": "0.0"},
+        {"attr": "water_wave_strength", "to": "0.0", "expect": "none", "why": "only the Realistic surface has waves of its own"},
         {"attr": "transparent_checkerboard"},
         {"attr": "bedrock_fresnel"},
         {"attr": "bedrock_medium_clamp"}
