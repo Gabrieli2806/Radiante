@@ -170,14 +170,22 @@ public final class EmissionTiles {
     }
 
     /**
-     * The share of its light a state casts. Unlit redstone ore keeps a quarter, so touching it brightens the room
-     * instead of turning a light on from nothing.
+     * The share of its light a state casts (and, by its square root, how bright its glow looks: ray.glsl,
+     * rayEmissionTint). Redstone ore at rest glows faintly and casts a little (UNLIT_ORE_CAST); touched, it flares up
+     * and lights the room round it (LIT_ORE_CAST), as vanilla's light level 9 does. Both glowed and cast the same
+     * before, the lit one no brighter.
      */
     public static float castScale(BlockState state) {
-        return (state.is(net.minecraft.world.level.block.Blocks.REDSTONE_ORE)
-            || state.is(net.minecraft.world.level.block.Blocks.DEEPSLATE_REDSTONE_ORE))
-            && !state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.LIT) ? 0.25f : 1.0f;
+        if (!state.is(net.minecraft.world.level.block.Blocks.REDSTONE_ORE)
+            && !state.is(net.minecraft.world.level.block.Blocks.DEEPSLATE_REDSTONE_ORE)) {
+            return 1.0f;
+        }
+        return state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.LIT)
+            ? LIT_ORE_CAST : UNLIT_ORE_CAST;
     }
+
+    static final float UNLIT_ORE_CAST = 0.3f;
+    static final float LIT_ORE_CAST = 6.0f;
 
     /** Redstone ore's light level casts too little to notice touching it, so its light comes from its emissive map. */
     static boolean castsFromEmissiveMap(TextureAtlasSprite sprite) {
