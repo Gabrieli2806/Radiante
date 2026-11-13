@@ -104,6 +104,8 @@ public final class RainExposure {
      * instead of at once; one already there when the chunk comes in is hot from the start.
      */
     private static final byte[] heatTarget = new byte[SIZE * SIZE];
+    /** Per column: whether its last change lowered its top (a block taken away), which opens up new faces. */
+    private static final boolean[] lowered = new boolean[SIZE * SIZE];
     private static final long[] heatSince = new long[SIZE * SIZE];
     private static final float HEAT_STEP_SECONDS = 15.0f;
     /** Tiles whose chunk was not loaded when they were read: read again every frame until it is. */
@@ -293,6 +295,7 @@ public final class RainExposure {
                     if (before != Integer.MIN_VALUE && before != y) {
                         // A new top: dry, from now on the rain clock.
                         exposedAt[column] = clock;
+                        lowered[column] = y < before;
                     } else if (!Float.isNaN(exposedAt[column]) && (clock - exposedAt[column]) * CLOCK_UNIT > SOAKED) {
                         exposedAt[column] = Float.NaN;
                     }
@@ -323,7 +326,9 @@ public final class RainExposure {
                             heat = steps;
                         }
                     }
-                    pixels.put(offset + 2, (byte) (rains ? (leaves ? 128 : 252) | heat : 0));
+                    // Bit 2: the column's recent change lowered its top (see lowered), for the faces it opened.
+                    int down = lowered[column] && !Float.isNaN(exposedAt[column]) ? 4 : 0;
+                    pixels.put(offset + 2, (byte) (rains ? (leaves ? 128 : 248) | down | heat : 0));
                     float stamp = exposedAt[column];
                     pixels.put(offset + 3, (byte) (Float.isNaN(stamp) ? 255
                         : 1 + (int) (((long) Math.floor(stamp)) % STAMPS)));
