@@ -572,6 +572,24 @@ public final class DevAutomation {
                 RadianteClient.LOGGER.info("[dev] click {} on {}", action.substring(6),
                     minecraft.gui.screen().getClass().getSimpleName());
             }
+        } else if (action.startsWith("vopt=")) {
+            // vopt=accessor=value: a vanilla video option by its accessor on Options (ambientOcclusion, mipmapLevels,
+            // entityShadows...), set as its own button sets it, so its reload runs. Not saved.
+            String[] parts = action.substring(5).split("=", 2);
+            try {
+                @SuppressWarnings("unchecked")
+                net.minecraft.client.OptionInstance<Object> option = (net.minecraft.client.OptionInstance<Object>)
+                    net.minecraft.client.Options.class.getMethod(parts[0]).invoke(minecraft.options);
+                Object current = option.get();
+                Object value = current instanceof Boolean ? Boolean.parseBoolean(parts[1])
+                    : current instanceof Integer ? Integer.parseInt(parts[1])
+                    : current instanceof Double ? Double.parseDouble(parts[1])
+                    : current instanceof Enum<?> e ? Enum.valueOf(e.getDeclaringClass(), parts[1]) : parts[1];
+                option.set(value);
+                RadianteClient.LOGGER.info("[dev] vanilla option {} {} -> {}", parts[0], current, value);
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                RadianteClient.LOGGER.warn("[dev] vanilla option {} not set", action, e);
+            }
         } else if (action.startsWith("rd=")) {
             minecraft.options.renderDistance().set(Integer.parseInt(action.substring(3)));
             RadianteClient.LOGGER.info("[dev] render distance {}", action.substring(3));

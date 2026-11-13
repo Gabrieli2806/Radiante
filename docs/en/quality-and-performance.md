@@ -40,6 +40,22 @@ Measured on one scene, from DLSS Ultra Performance (~150 fps) or Balanced (~80 f
 
 Held Item Light and First Person Shadow cost nothing measurable.
 
+### Minecraft's own video settings
+
+With ray tracing on, these change neither the picture nor the frame time (measured 2026-11-12, both on and off, GPU
+time per pass the same within noise). Leave them as you like for when ray tracing is off:
+
+- **Smooth Lighting**: the traced light replaces it.
+- **Entity Shadows**: the round shadow under mobs is not drawn; they cast their own shadows.
+- **Mipmap Levels**, **Texture Filtering** and its anisotropy: the tracer picks each texture's detail by its own
+  measure of the pixel's size on the surface.
+- **Improved Transparency**: see-through blocks are traced in order anyway.
+- **Chunk Fade-In** and **Chunk Update priority**: the traced world builds its chunks with its own threads (see
+  Chunk Threads).
+- **Cutout Leaves**: leaves stay see-through either way.
+
+**Biome Blend** still applies: the grass, foliage and water colours come from Minecraft's own.
+
 ## Specific problems
 
 **Out of video memory:** lower **Chunk Batches** (Performance section) and the render distance. Distant Horizons'
