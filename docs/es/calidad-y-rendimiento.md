@@ -40,6 +40,23 @@ Medido en una escena, desde DLSS Ultra Performance (~150 fps) o Balanced (~80 fp
 
 La Luz del Objeto en Mano y la Sombra en Primera Persona no cuestan nada medible.
 
+### Las opciones de vídeo de Minecraft
+
+Con el trazado de rayos activo, estas no cambian ni la imagen ni el tiempo por fotograma (medido el 2026-11-12,
+activadas y desactivadas, el tiempo de GPU de cada pase igual dentro del ruido). Déjalas como prefieras para cuando el
+trazado esté apagado:
+
+- **Iluminación suave**: la luz trazada la sustituye.
+- **Sombras de entidades**: no se dibuja la sombra redonda bajo los mobs; proyectan sus propias sombras.
+- **Niveles de mipmap**, **Filtrado de texturas** y su anisotropía: el trazador elige el detalle de cada textura según
+  su propia medida del tamaño del píxel sobre la superficie.
+- **Transparencia mejorada**: los bloques transparentes se trazan en orden de todos modos.
+- **Aparición gradual de chunks** y **Prioridad de actualización de chunks**: el mundo trazado construye sus chunks con
+  sus propios hilos (ver Hilos de Chunks).
+- **Hojas recortadas**: las hojas siguen dejando ver a través en ambos casos.
+
+**Mezcla de biomas** sí se aplica: los colores de la hierba, el follaje y el agua son los de Minecraft.
+
 ## Problemas concretos
 
 **Falta memoria de vídeo:** baja **Lotes de Chunks** (sección Rendimiento) y la distancia de render. La distancia de

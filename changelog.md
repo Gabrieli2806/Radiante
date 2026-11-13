@@ -37,6 +37,8 @@ All notable changes to this project are documented in this file.
 
 - The splashes rain throws up where it lands (and every other splash of water: a fish, a boat's wake) are drops of water: seen through, the ground behind each bent a little as through a small lens, with a faint glint of the sky, as the old raster packs refracted the screen behind them. They were opaque pale specks, which on dark ground showed as grey dots, and cast shadows of their own; they cast none now.
 
+- Quality and Performance in the manual lists Minecraft's own video settings that do nothing with ray tracing on (Smooth Lighting, Entity Shadows, Mipmap Levels, Texture Filtering, Improved Transparency, Chunk Fade-In, Chunk Update priority, Cutout Leaves): measured on and off, neither the picture nor the GPU time per pass moved.
+
 - More of the Advanced exposure and tone curve settings grey out and say why when they do nothing as the others stand. Bedrock RTX's light meter (the default) keeps limits and a speed of its own, so Max Exposure, the exposure speeds and Exposure Adaptation do nothing under it, as Min Exposure already showed; with automatic exposure off none of them does. The Bedrock curve's Dynamic Range and Shadow Min Slope only change the picture with Max Brightening above 0 (its default, as in Bedrock, is 0: the curve then never lifts the shadows, whatever their shape), and the curve's settings do nothing under another tone mapping method. Found by the settings sweep.
 
 - Bloom is off by default, and gentler when turned on: Bloom Intensity starts at 0.08 (was 0.15). Values already saved are kept.
