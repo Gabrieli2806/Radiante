@@ -441,11 +441,29 @@ void sampleSurfaceState(bool useTexture,
         float topHeight = float(fract(worldUBO.cameraPos.y + double(worldPos.y)));
         bool fullTop = alphaMode == ALPHA_MODE_OPAQUE && (topHeight < 0.002 || topHeight > 0.998);
         // The ground darkens well before water stands on it: the wetness rises over a couple of minutes. Upright
-        // faces carry their share already (vptGroundRain); leaves and other cut-out faces take less.
+        // faces carry their share already (vptGroundRain); leaves, plants and other thin cut-out things take less. A
+        // mob's skin is cut out too, but takes the rain as a block does: it took the leaves' share before, and mobs
+        // out in a storm looked dry.
         bool upward = baseGeoNormal.y >= 0.5;
-        float faceShare = upward ? (fullTop ? 1.0 : (alphaMode == ALPHA_MODE_OPAQUE ? 0.5 : 0.3)) :
-                                   (alphaMode == ALPHA_MODE_OPAQUE ? 1.0 : 0.6);
-        float wetness = groundRain.y * sqrt(max(skyUBO.rainWetness.x, 0.0)) * faceShare;
+        bool foliage = radianteIsLeaves(g_hit.packedData) || radianteIsPlant(g_hit.packedData) ||
+                       radianteIsThin(g_hit.packedData);
+        bool solidFace = alphaMode == ALPHA_MODE_OPAQUE || (alphaMode == ALPHA_MODE_CUTOUT && !foliage);
+        float faceShare = upward ? (fullTop ? 1.0 : (solidFace ? 0.5 : 0.3)) : (solidFace ? 1.0 : 0.6);
+        float soak = sqrt(max(skyUBO.rainWetness.x, 0.0));
+        float wetness = groundRain.y * soak * faceShare;
+        if (wetness > 0.0 && VPT_RAIN_PIXELS != 0 && useTexture) {
+            // Pixel Rain: wet in the texture's own pixels (vptRainPixelWetness), so a mob's wet skin moves with it.
+            // A block's pattern also takes its place in the world, or every block of a kind would be wet alike.
+            vec2 texSize = vec2(textureSize(textures[nonuniformEXT(textureID)], 0));
+            ivec2 texel = ivec2(floor(uv * texSize));
+            float row = (uv.y - atlasUvMin.y) * texSize.y;
+            uint seed = 0u;
+            if (alphaMode == ALPHA_MODE_OPAQUE) {
+                ivec3 cell = ivec3(floor(worldUBO.cameraPos.xyz + dvec3(worldPos - baseGeoNormal * 0.01)));
+                seed = uint(cell.x * 73856093 ^ cell.y * 19349663 ^ cell.z * 83492791);
+            }
+            wetness = vptRainPixelWetness(wetness, texel, row, seed, !upward, soak);
+        }
         if (wetness > 0.0) {
             vptApplyGroundWetness(mat, wetness);
             shadingNormal = normalizeF(mix(shadingNormal, geometricNormal, wetness * 0.7), geometricNormal);

@@ -27,8 +27,16 @@ const float LEAF_DAMP = 0.3;
 const float BIOME_BLEND_STEP = 4.0;
 
 #ifndef VPT_RAIN_WET_WALLS
-#    define VPT_RAIN_WET_WALLS 0.5
+#    define VPT_RAIN_WET_WALLS 0.8
 #endif
+
+// Minecraft's look for the rain's marks (the Pixel Rain setting, on by default): puddles, the rings on them and on
+// water, and the wetness of every surface go on in pixels of a sixteenth of a block, the size of a block texture's,
+// with hard edges, as a texture painted for the game would show them.
+#ifndef VPT_RAIN_PIXELS
+#    define VPT_RAIN_PIXELS 1
+#endif
+const float RAIN_PIXELS_PER_BLOCK = 16.0;
 
 /** How much of the rain falls here, 0..1, from the biomes of the columns around: a wet area fades out over a few
  *  blocks into a desert or a snowy biome instead of stopping at the biome's edge. */
@@ -256,22 +264,49 @@ vec2 vptRainRippleSlope(vec3 position) {
     return slope * RIPPLE_SLOPE * rain;
 }
 
-/** Where the puddle and the rings are looked up for a hit at worldPos: a pack's point (hooks/rain_surface.glsl). */
+/** Where the puddle and the rings are looked up for a hit at worldPos: a pack's point (hooks/rain_surface.glsl), or
+ *  with Pixel Rain the centre of the sixteenth of a block it falls in, so each pixel is wholly puddle or dry ground
+ *  and the rings step from pixel to pixel. */
 vec3 vptRainSurfacePosition(vec3 worldPos) {
 #ifndef RADIANTE_HOOK_RAIN_SURFACE_DEFAULT
     return hookRainPosition(worldPos);
 #else
+    if (VPT_RAIN_PIXELS != 0) {
+        // worldPos is camera-relative: snapped in the world's grid, then handed back relative to the camera.
+        vec2 cameraFraction = vec2(mod(worldUBO.cameraPos.xz, dvec2(1.0)));
+        vec2 world = worldPos.xz + cameraFraction;
+        worldPos.xz = (floor(world * RAIN_PIXELS_PER_BLOCK) + 0.5) / RAIN_PIXELS_PER_BLOCK - cameraFraction;
+    }
     return worldPos;
 #endif
 }
 
-/** The puddle's cover, through a pack's rim (hooks/rain_surface.glsl). */
+/** The puddle's cover, through a pack's rim (hooks/rain_surface.glsl), or with Pixel Rain cut to a hard edge. */
 float vptRainPuddleEdge(float puddle) {
 #ifndef RADIANTE_HOOK_RAIN_SURFACE_DEFAULT
     return clamp(hookPuddleEdge(puddle), 0.0, 1.0);
 #else
-    return puddle;
+    return VPT_RAIN_PIXELS != 0 ? step(0.5, puddle) : puddle;
 #endif
+}
+
+/** Pixel Rain's wetness of one texel of the texture hit: the surface's wetness where the texel is wet, and less where
+ *  it is still drying (WET_PIXEL_DAMP of it). texel: the texel in the texture; row: how far down the face it is, in
+ *  texels; seed: what tells one block from the next. On an upward face texels get wet at random, more of them as the
+ *  rain soaks in (soak, 0..1). On an upright face the water runs down: in each column of texels the wet run starts at
+ *  the top and reaches further down the longer it rains, a different length in each column. */
+const float WET_PIXEL_DAMP = 0.35;
+float vptRainPixelWetness(float wetness, ivec2 texel, float row, uint seed, bool upright, float soak) {
+    if (wetness <= 0.0) { return 0.0; }
+    if (upright) {
+        float column = vptRainHash(vec2(float(texel.x) + float(seed & 0xFFFu) * 31.0, float(seed >> 12u)));
+        float reach = (0.25 + 0.75 * column) * RAIN_PIXELS_PER_BLOCK * (0.3 + 0.7 * soak);
+        // A drop or two caught lower down the column.
+        float speck = vptRainHash(vec2(texel) + vec2(float(seed & 0xFFFu), 911.0)) < 0.12 * soak ? 1.0 : 0.0;
+        return wetness * max(row < reach ? 1.0 : WET_PIXEL_DAMP, speck);
+    }
+    float h = vptRainHash(vec2(texel) + vec2(float(seed & 0xFFFu) * 17.0, float(seed >> 12u) * 5.0));
+    return wetness * (h < 0.35 + 0.65 * soak ? 1.0 : WET_PIXEL_DAMP);
 }
 
 /** The normal turned by the ripples (slope from vptRainRippleSlope), on an upward face. */

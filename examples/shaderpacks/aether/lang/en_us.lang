@@ -93,3 +93,5 @@ render_pipeline.module.ray_tracing.attribute.aether_shadow_tone=Shadow Tone
 aether.desc.shadow_tone=The colour the film grade gives the shadows (red, green, blue; 1 leaves a channel alone).
 render_pipeline.module.ray_tracing.attribute.aether_highlight_tone=Highlight Tone
 aether.desc.highlight_tone=The colour the film grade gives the highlights (red, green, blue; 1 leaves a channel alone).
+render_pipeline.module.ray_tracing.attribute.aether_rainbow=Rainbows
+aether.desc.rainbow=A rainbow opposite the sun as the rain starts and for a minute after it stops, a pale moonbow opposite the moon at night; about one in five is double. 0 turns them off.

@@ -563,9 +563,16 @@
         {
             "name": "render_pipeline.module.ray_tracing.attribute.rain_wet_walls",
             "type": "float_range:0.0-1.0",
-            "default_value": "0.5",
+            "default_value": "0.8",
             "runtime": true,
             "define": "VPT_RAIN_WET_WALLS"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.rain_pixels",
+            "type": "bool",
+            "default_value": "render_pipeline.true",
+            "runtime": true,
+            "define": "VPT_RAIN_PIXELS"
         },
         {
             "name": "render_pipeline.module.ray_tracing.attribute.lightning_flash",
