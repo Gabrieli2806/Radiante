@@ -433,6 +433,7 @@ void sampleSurfaceState(bool useTexture,
 
     // Rain soaks the ground under open sky: darker, glossy, and the bumps of the normal map drown.
     if (!useWaterMaterial && !isFftWaterSurface && !g_hitIsGlass && !isRainStreak) {
+        vec3 dryAlbedo = mat.albedo;
         vec2 groundRain = vptGroundRain(worldPos, baseGeoNormal);
         float open = groundRain.x;
         // Water stands only on the flat top of a full block: a slab, a stair's step, a path block. Elsewhere, and on
@@ -466,11 +467,11 @@ void sampleSurfaceState(bool useTexture,
                 ivec3 cell = ivec3(floor(worldUBO.cameraPos.xyz + dvec3(worldPos - baseGeoNormal * 0.01)));
                 seed = uint(cell.x * 73856093 ^ cell.y * 19349663 ^ cell.z * 83492791);
                 if (!upward) {
-                    // A wall of blocks: the runs of water go down the whole wall from its top, three blocks at the
-                    // most, one pixel column to the next, instead of each block showing the same short runs.
+                    // A wall of blocks: the runs of water go down the whole wall from its top, the longest down to
+                    // the ground as it goes on raining, instead of each block showing the same short runs.
                     vec3 place = vptWallRainPlace(worldPos, baseGeoNormal);
                     texel = ivec2(int(place.y), int(place.z));
-                    row = place.x / 3.0;
+                    row = place.x;
                     seed = uint(int(floor(dot(baseGeoNormal.xz, vec2(1.0, 2.0)) + 3.0)) * 2654435761);
                 }
             }
@@ -496,6 +497,10 @@ void sampleSurfaceState(bool useTexture,
                                                            geometricNormal),
                                                 vptRainRippleSlope(rainPos), puddle * PUDDLE_RIPPLES);
         }
+        // The denoiser's albedo guide darkens with the surface: left dry, the wetness counted as light, which the
+        // denoiser builds up over frames, so a wall coming into view (turning a corner) showed dry and then went wet.
+        vec3 wetRatio = clamp(mat.albedo / max(dryAlbedo, vec3(1e-4)), vec3(0.0), vec3(1.0));
+        albedoValue.rgb *= pow(wetRatio, vec3(1.0 / 2.2));
     } else if (useWaterMaterial && baseGeoNormal.y > 0.5 && skyUBO.rainGradient > 0.01) {
         // Rain rings on water under the open sky.
         float open = vptGroundOpen(worldPos, baseGeoNormal);

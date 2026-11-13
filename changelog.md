@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Wet walls: the runs of water spread over the wall's height and, as the rain goes on, the longest reach the ground. A block put against a wall in the rain leaves the wall above it as wet as it was (the whole strip over it went dry), and the wall it covers dries over a minute. A wall coming into view, turning a corner, shows wet at once: the wetness counted as light for the denoiser, which built it up over several frames.
+
 - Wet walls run with water from the top of the wall down across its blocks, instead of each block showing the same short runs from its own top. A block taken away in the rain leaves a dry patch whose edges the wet ground round it creeps into raggedly until it is gone, not a clean dry square; ground covered by a block put down in the rain dries over a minute instead of at once.
 
 - Redstone ore glows faintly at rest and flares up when touched: lit, it looks brighter and casts a red light on the ground round it, as vanilla's light level 9 does. Both states glowed and cast alike before, and the light came out nearly white from the white hearts of its glowing texels.
