@@ -143,10 +143,19 @@ vec2 vptGroundRain(vec3 position, vec3 outwardNormal) {
         ivec2 front = cameraCell.xz + ivec2(floor(relativePosition.xz + outwardNormal.xz * 0.5));
         int faceBlockY = cameraCell.y + int(floor(relativePosition.y));
         ivec4 frontData = vptRainColumn(front, textureId);
-        if (vptRainColumnBlocks(frontData, faceBlockY)) { return vec2(0.0); }
+        if (vptRainColumnBlocks(frontData, faceBlockY)) {
+            // Covered lately (a block put down in front of the wall in the rain): the wall under it dries over a
+            // minute or so of rain instead of at once.
+            float since = vptColumnSince(frontData);
+            float covered = since >= 0.0 && (frontData.b & 4) == 0 ? exp(-since * 1.5) : 0.0;
+            return vec2(0.0, clamp(VPT_RAIN_WET_WALLS, 0.0, 1.0) * fade * covered);
+        }
         // A face the column in front of it just opened up (the sides of a hole dug in the rain) soaks as that
         // column's top does.
-        g_vptColumnSoak = vptColumnSoak(frontData);
+        // Only a change that lowered the column in front (a hole dug) opens new faces: a block put down in front
+        // leaves the wall above it as wet as it was. Taking that soaking for every change, the whole strip of wall
+        // over a block put against it went dry at once.
+        g_vptColumnSoak = (frontData.b & 4) != 0 ? vptColumnSoak(frontData) : 1.0;
         float heatDry = vptHeatDryness(column, textureId, fract(relativePosition.xz));
         return vec2(0.0, clamp(VPT_RAIN_WET_WALLS, 0.0, 1.0) * fade * (1.0 - heatDry));
     }
@@ -406,7 +415,8 @@ const float WET_PIXEL_DAMP = 0.35;
 // A wall's place for Pixel Rain's runs of water, from the world rather than the texture: how far below the top of
 // the wall a point is, in pixels (a sixteenth of a block), and which column of pixels along the wall it is in, so the
 // water runs down a whole wall from its top, across the joins between its blocks, instead of starting again at the
-// top of each block. x: pixels from the top; y: the pixel column; z: the pixel row (for drops caught on the way).
+// top of each block. x: pixels from the top, over the wall's height in blocks (so 16 is its foot); y: the pixel
+// column; z: the pixel row (for drops caught on the way).
 vec3 vptWallRainPlace(vec3 position, vec3 outwardNormal) {
     uint textureId = vptRainTextureId();
     vec3 world = vec3(worldUBO.cameraPos.xyz - dvec3(floor(worldUBO.cameraPos.xyz))) + position;
@@ -416,9 +426,14 @@ vec3 vptWallRainPlace(vec3 position, vec3 outwardNormal) {
     ivec4 data = vptRainColumn(column, textureId);
     float top = float(data.r + 256 * data.g - 32768 + 1);
     float worldY = float(cameraCell.y) + world.y;
+    // The wall's height over the ground in front of it (six blocks at most): the runs are spread over it, so with the
+    // rain going on the longest of them reach the ground.
+    ivec4 front = vptRainColumn(cameraCell.xz + ivec2(floor(world.xz + outwardNormal.xz * 0.5)), textureId);
+    float ground = float(front.r + 256 * front.g - 32768 + 1);
+    float height = clamp(top - max(ground, top - 6.0), 1.0, 6.0);
     vec2 along = vec2(-outwardNormal.z, outwardNormal.x);
     vec2 absXZ = vec2(cameraCell.xz) + world.xz;
-    return vec3(max(top - worldY, 0.0) * RAIN_PIXELS_PER_BLOCK, floor(dot(absXZ, along) * RAIN_PIXELS_PER_BLOCK),
+    return vec3(max(top - worldY, 0.0) * RAIN_PIXELS_PER_BLOCK / height, floor(dot(absXZ, along) * RAIN_PIXELS_PER_BLOCK),
                 floor(worldY * RAIN_PIXELS_PER_BLOCK));
 }
 
