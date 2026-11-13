@@ -13,8 +13,8 @@ uint vptRainTextureId() { return uint(floor(skyUBO.rainWetness.y / 256.0)); }
 float vptRainClock() { return mod(skyUBO.rainWetness.y, 256.0); }
 
 // How far the top of the column last looked up has soaked, 0..1, against the ground around (set by vptGroundRain):
-// a top that changed a moment ago (a block broken off it in the rain) is dry and soaks over the Wet-Up Time, and one
-// that changed after the rain stays dry. Its alpha holds the rain clock when it changed; 255 is an old top.
+// a top that a block broken off it laid bare a moment ago is dry and soaks over the Wet-Up Time; a block put down
+// is as wet as the ground round it. Its alpha holds the rain clock when it changed; 255 is an old top.
 float g_vptColumnSoak = 1.0;
 const float RAIN_CLOCK_STEPS = 253.0;
 const float RAIN_CLOCK_UNIT = 0.025;
@@ -165,7 +165,10 @@ vec2 vptGroundRain(vec3 position, vec3 outwardNormal) {
     ivec4 center = vptRainColumn(column, textureId);
     vec2 withinColumn = fract(relativePosition.xz);
 
-    g_vptColumnSoak = vptColumnSoak(center);
+    // Only a top that a block taken away laid bare (RainExposure's bit 2) starts dry: it was covered until then. A
+    // block put down in the rain comes out as wet as the ground around, where it showed a dry top that soaked in.
+    bool laidBare = (center.b & 4) != 0;
+    g_vptColumnSoak = laidBare ? vptColumnSoak(center) : 1.0;
     if (vptRainColumnBlocks(center, surfaceBlockY)) {
         // A block put down on wet ground in the rain covers it: the ground under it dries over a minute or so of
         // rain on the clock, where it went dry at once. (The soaking of a new top is the new top's, not this.)
@@ -198,7 +201,7 @@ vec2 vptGroundRain(vec3 position, vec3 outwardNormal) {
     // A top that changed lately (a block taken away) is dry, but not as a clean square in the wet: the wet ground
     // round it reaches in from its edges in a ragged fringe that grows as it soaks (vptRainFray), the way the dry
     // patch round a fire frays out.
-    float since = vptColumnSince(center);
+    float since = laidBare ? vptColumnSince(center) : -1.0;
     if (since >= 0.0) {
         vec2 edge = min(withinColumn, vec2(1.0) - withinColumn);
         float fromEdge = min(edge.x, edge.y);
