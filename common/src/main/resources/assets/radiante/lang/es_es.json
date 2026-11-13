@@ -385,6 +385,8 @@
   "options.radiante.restart.quit": "Cerrar el juego ahora",
   "options.radiante.restart.later": "Más tarde",
   "options.radiante.rain_wetness": "Suelo Mojado con Lluvia",
+  "options.radiante.rain_pixels": "Lluvia en Píxeles",
+  "options.radiante.rain_pixels.tooltip": "Los charcos, los anillos que la lluvia deja en ellos y en el agua, las superficies mojadas y las salpicaduras dibujados en píxeles de un dieciseisavo de bloque, con bordes duros, como Minecraft dibuja sus texturas. Desactivada: formas suaves y redondas.",
   "options.radiante.rain_wetness.tooltip": "Las superficies a cielo abierto se oscurecen y brillan mientras llueve, y se secan poco a poco cuando para.",
   "options.radiante.wind": "Viento",
   "options.radiante.wind.tooltip": "Las hojas, la hierba, las flores, las enredaderas y las plantas acuáticas se mecen cerca de ti, más con lluvia y tormenta. Las sombras y los reflejos se mueven con ellas. Cambiarlo recarga el mundo.",

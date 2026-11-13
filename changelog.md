@@ -35,6 +35,12 @@ All notable changes to this project are documented in this file.
 
 - The Nether no longer burns the rock around a sea of lava. The lift that gives lamps a little light by day (above) also took hold wherever the eye was closed for another reason: beside lava, in the Nether or in a cave, it multiplied lava's own light up to five times. It now works only by day and as far as the camera stands open to the sky. And the Nether's eye may close three stops further than before, where beside a wide sea it stopped at its limit and the rock all around went one red.
 
+- Pixel Rain (Sky, Fog & Water, on by default): the rain's marks in Minecraft's own look. Puddles have hard edges in pixels a sixteenth of a block across, the rings rain makes on them and on water step from pixel to pixel, wet surfaces get wet pixel by pixel (on walls and mobs in runs down from the top of each column of texels, longer the longer it rains), and the splashes of rain bend the world behind them pixel by pixel. Off gives the smooth, round shapes of before.
+
+- Mobs get wet in the rain as walls do: their skins took the share of leaves before and looked dry in a storm. Wet Walls starts at 80% (was 50%), which shows the wet walls at a glance. Values already saved are kept.
+
+- Aether 1.2: rainbows. A rainbow opposite the sun as the rain starts and for about a minute after it stops, in front of the clouds and seen in puddles and water; at night a pale moonbow opposite the moon; about one rain in five gives a double bow, its second arc's colours the other way round. Rainbows setting, 0 to 2.
+
 - The splashes rain throws up where it lands (and every other splash of water: a fish, a boat's wake) are drops of water: seen through, the ground behind each bent a little as through a small lens, with a faint glint of the sky, as the old raster packs refracted the screen behind them. They were opaque pale specks, which on dark ground showed as grey dots, and cast shadows of their own; they cast none now.
 
 - Quality and Performance in the manual lists Minecraft's own video settings that do nothing with ray tracing on (Smooth Lighting, Entity Shadows, Mipmap Levels, Texture Filtering, Improved Transparency, Chunk Fade-In, Chunk Update priority, Cutout Leaves): measured on and off, neither the picture nor the GPU time per pass moved.

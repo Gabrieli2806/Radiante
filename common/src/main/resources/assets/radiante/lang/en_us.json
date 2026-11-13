@@ -385,6 +385,8 @@
   "options.radiante.restart.quit": "Close the game now",
   "options.radiante.restart.later": "Later",
   "options.radiante.rain_wetness": "Wet Ground in Rain",
+  "options.radiante.rain_pixels": "Pixel Rain",
+  "options.radiante.rain_pixels.tooltip": "Puddles, the rings rain makes on them and on water, wet surfaces and the splashes of rain drawn in pixels a sixteenth of a block across, with hard edges, as Minecraft draws its textures. Off: smooth, round shapes.",
   "options.radiante.rain_wetness.tooltip": "Surfaces under open sky turn darker and glossy while it rains, and dry slowly after it stops.",
   "options.radiante.wind": "Wind",
   "options.radiante.wind.tooltip": "Leaves, grass, flowers, vines and water plants sway near you, harder in rain and storms. Shadows and reflections move with them. Switching it reloads the world.",

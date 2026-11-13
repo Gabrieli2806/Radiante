@@ -60,6 +60,8 @@ public final class RtAttributes {
      * world: sections carry their wind codes only while it is on, so with it off nothing is moved and nothing is refit.
      */
     public static final String WIND_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.wind";
+    /** Pixel Rain: puddles, rain rings, wetness and splashes in pixels of a sixteenth of a block. */
+    public static final String RAIN_PIXELS_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.rain_pixels";
     /** How far the wind moves foliage, 1 as designed; live, without remeshing. */
     public static final String WIND_STRENGTH_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.wind_strength";
 
