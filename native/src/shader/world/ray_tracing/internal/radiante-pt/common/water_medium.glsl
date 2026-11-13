@@ -81,11 +81,20 @@ float waterBodyShallowness() {
     return 1.0 - smoothstep(VPT_WATER_BODY_SMALL, VPT_WATER_BODY_LARGE, size);
 }
 
+// The sky over the water as the rain leaves it: the grey of the storm (as the world's bounced light sees it,
+// bedrockFaceSkyLight), not the clear blue sky above the clouds. The water's glow took the clear sky's blue through
+// every storm while the world around it went grey, and with the eye opened for the dark it shone an electric blue.
+vec3 waterMediumSky(vec3 direction) {
+    vec3 sky = texture(skyFull, direction).rgb;
+    vec3 rainy = vec3(0.1) * smoothstep(-0.3, 0.3, celestialSunDirection().y);
+    return mix(sky, rainy, clamp(skyUBO.rainGradient, 0.0, 1.0));
+}
+
 // Light the water scatters towards the viewer: the sky above and the sun or moon, both taken as they reach the surface.
 // How deep the scattering happens is not known here, so light that has already crossed some water is not dimmed for it.
 vec3 waterMediumIncomingLight() {
-    vec3 zenith = texture(skyFull, vec3(0.0, 1.0, 0.0)).rgb;
-    vec3 horizon = texture(skyFull, normalize(vec3(0.7, 0.35, 0.6))).rgb;
+    vec3 zenith = waterMediumSky(vec3(0.0, 1.0, 0.0));
+    vec3 horizon = waterMediumSky(normalize(vec3(0.7, 0.35, 0.6)));
     // Isotropic phase: the sky fills about half the sphere, the sun is one direction of it.
     vec3 sky = (zenith + horizon) * 0.25;
     vec3 celestial = volumetricCloudPrimaryLightRadiance() * 0.0795775 * (1.0 - skyUBO.rainGradient * 0.65);
@@ -157,8 +166,8 @@ void waterMediumSegmentBedrock(float distance, float density, vec3 origin, vec3 
     float span = min(max(distance, 0.0), 4096.0);
     vec3 along = (vec3(1.0) - exp(-sigmaCombined * span)) / sigmaCombined;
     vec3 sigmaS = sigmaLight * clamp(skyUBO.waterAlbedo.rgb, vec3(0.0), vec3(1.0));
-    vec3 zenith = texture(skyFull, vec3(0.0, 1.0, 0.0)).rgb;
-    vec3 horizon = texture(skyFull, normalize(vec3(0.7, 0.35, 0.6))).rgb;
+    vec3 zenith = waterMediumSky(vec3(0.0, 1.0, 0.0));
+    vec3 horizon = waterMediumSky(normalize(vec3(0.7, 0.35, 0.6)));
     // The sky's light counts for less than an even phase gives it and the sun's for more: the sky's comes in at a
     // slant and much of it is turned back at the surface, and Bedrock's water glows a paler blue than the sky alone
     // would make it (matched side by side, as the gain).

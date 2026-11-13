@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Water in the rain keeps the storm's grey. Its glow was lit by the clear blue sky above the clouds while everything else took the overcast, and with the eye opened for the dark it shone an electric blue.
+
+- DLSS Ray Reconstruction takes each frame's rain as it is: the streaks fall past a still background, whose motion the pixel carried, so with the camera still the rain was drawn as long straight lines.
+
+- Rain: the dry ground round a campfire, furnace or other hot block has a ragged edge that frays into the wet, in pixels with Pixel Rain, instead of a rounded square, and a campfire lit in the rain dries it a step at a time over about 45 seconds instead of at once. Grass and earth take the rain into the soil: a little darker, never the slick grey of wet stone.
+
 ## [1.2.0] - 2026-11-13
 
 - The denoiser settings shown with FSR and XeSS (Settings > Performance > Denoiser) work. They were twenty-four of REBLUR's, a denoiser that has not run since RELAX replaced it, so none of them changed anything. They are now three of RELAX's, applied without a rebuild: History Frames (how long the light is averaged over, 30), Spatial Passes (how far the spatial filter reaches, 5; fewer is sharper and noisier) and Anti Firefly (on). Their defaults are RELAX's own, which a comparison at 2 to 6 passes and 8 to 60 frames did not beat.
