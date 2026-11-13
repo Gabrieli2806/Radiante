@@ -38,6 +38,20 @@ const float HEAT_DRYING = 0.85;
 const float RAIN_PIXELS_PER_BLOCK = 16.0;
 float vptRainHash(vec2 cell);
 float vptRainValueNoise(vec2 p);
+
+/** Where the rain's marks end, a ragged edge instead of a clean cut: amount (0..1, how far into the change a point
+ *  is) held against a noise fixed to the world, of two scales (blotches of a few blocks and single pixels), and with
+ *  Pixel Rain stepped from pixel to pixel. 1 where the mark is, 0 where it is not, soft-edged without Pixel Rain.
+ *  salt keeps the edges of different things (a roof, a fire, a biome) from fraying alike. */
+float vptRainFray(vec2 world, float amount, float salt) {
+    if (amount <= 0.0) { return 0.0; }
+    if (amount >= 1.0) { return 1.0; }
+    vec2 pixel = VPT_RAIN_PIXELS != 0 ? (floor(world * RAIN_PIXELS_PER_BLOCK) + 0.5) / RAIN_PIXELS_PER_BLOCK : world;
+    float n = 0.65 * vptRainValueNoise(pixel * 1.3 + salt) +
+              0.35 * vptRainHash(floor(pixel * RAIN_PIXELS_PER_BLOCK) + vec2(salt * 97.0, 0.0));
+    return VPT_RAIN_PIXELS != 0 ? step(n, amount) : smoothstep(n - 0.15, n + 0.15, amount);
+}
+
 float vptHeatDryness(ivec2 column, uint textureId, vec2 withinColumn) {
     float dry = 0.0;
     for (int dz = -1; dz <= 1; dz++) {
@@ -50,13 +64,9 @@ float vptHeatDryness(ivec2 column, uint textureId, vec2 withinColumn) {
         }
     }
     if (dry <= 0.0) { return 0.0; }
-    // A ragged edge, not a rounded square: the drying is held against a noise fixed to the world, two scales of it
-    // (blotches of a few blocks and single pixels), and with Pixel Rain stepped from pixel to pixel, so the dry ground
-    // round a campfire frays out into the wet as a drying patch does.
-    vec2 world = vec2(column) + withinColumn;
-    vec2 pixel = VPT_RAIN_PIXELS != 0 ? (floor(world * RAIN_PIXELS_PER_BLOCK) + 0.5) / RAIN_PIXELS_PER_BLOCK : world;
-    float n = 0.65 * vptRainValueNoise(pixel * 1.3) + 0.35 * vptRainHash(floor(pixel * RAIN_PIXELS_PER_BLOCK));
-    float edge = VPT_RAIN_PIXELS != 0 ? step(n, dry * 1.25) : smoothstep(n - 0.15, n + 0.15, dry * 1.25);
+    // A ragged edge, not a rounded square: the dry ground round a campfire frays out into the wet as a drying patch
+    // does (vptRainFray).
+    float edge = vptRainFray(vec2(column) + withinColumn, min(dry * 1.25, 1.0), 0.0);
     return max(edge * HEAT_DRYING, dry * dry * HEAT_DRYING);
 }
 
@@ -117,6 +127,9 @@ vec2 vptGroundRain(vec3 position, vec3 outwardNormal) {
     ivec2 column = cameraCell.xz + ivec2(floor(relativePosition.xz));
     float biome = vptRainBiome(column, textureId);
     if (biome <= 0.0) { return vec2(0.0); }
+    // Across a biome's edge the wet ground frays out into the dry instead of thinning evenly.
+    biome = vptRainFray(vec2(column) + fract(relativePosition.xz), biome, 7.7);
+    if (biome <= 0.0) { return vec2(0.0); }
     float fade = (1.0 - smoothstep(220.0, 238.0, max(abs(position.x), abs(position.z)))) * biome;
 
     if (outwardNormal.y < 0.5) {
@@ -150,9 +163,15 @@ vec2 vptGroundRain(vec3 position, vec3 outwardNormal) {
             }
         }
         float blownIn = 1.0 - smoothstep(0.0, SHELTER_REACH, nearest);
+        // Under the edge of a roof or a canopy the rain blown in wets the ground in a ragged fringe, wet pixels
+        // reaching in among dry ones, and the water standing outside creeps in a little the same way, instead of
+        // both stopping at a straight line under the eaves.
+        vec2 world = vec2(column) + withinColumn;
+        float fringe = vptRainFray(world, 1.0 - smoothstep(0.0, 0.9, nearest), 3.1);
+        float creep = vptRainFray(world, 1.0 - smoothstep(0.0, 0.45, nearest), 5.3);
         // A column whose top is leaves (RainExposure marks it): the rain drips through.
         float leaves = center.b > 0 && center.b < 200 ? LEAF_DAMP : 0.0;
-        return vec2(0.0, max(SHELTER_DAMP * blownIn * blownIn, leaves) * fade);
+        return vec2(creep, max(max(SHELTER_DAMP * blownIn * blownIn, 0.9 * fringe), leaves)) * fade;
     }
 
     // The top of its column: wholly open. It dried off towards a wall or a higher block beside it before, which
