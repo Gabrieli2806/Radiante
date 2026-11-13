@@ -449,7 +449,8 @@ void sampleSurfaceState(bool useTexture,
                        radianteIsThin(g_hit.packedData);
         bool solidFace = alphaMode == ALPHA_MODE_OPAQUE || (alphaMode == ALPHA_MODE_CUTOUT && !foliage);
         float faceShare = upward ? (fullTop ? 1.0 : (solidFace ? 0.5 : 0.3)) : (solidFace ? 1.0 : 0.6);
-        float soak = sqrt(max(skyUBO.rainWetness.x, 0.0));
+        // The ground's soaking, as far as this top has kept up with it (a block broken off it lately).
+        float soak = sqrt(max(min(skyUBO.rainWetness.x, g_vptColumnSoak), 0.0));
         float wetness = groundRain.y * soak * faceShare;
         if (wetness > 0.0 && VPT_RAIN_PIXELS != 0 && useTexture) {
             // Pixel Rain: wet in the texture's own pixels (vptRainPixelWetness), so a mob's wet skin moves with it.
@@ -465,7 +466,7 @@ void sampleSurfaceState(bool useTexture,
             wetness = vptRainPixelWetness(wetness, texel, row, seed, !upward, soak);
         }
         if (wetness > 0.0) {
-            vptApplyGroundWetness(mat, wetness);
+            vptApplyGroundWetness(mat, wetness, !upward);
             shadingNormal = normalizeF(mix(shadingNormal, geometricNormal, wetness * 0.7), geometricNormal);
         }
         // A film of standing water over it all while it rains, drying up in patches after (vptPuddle).
