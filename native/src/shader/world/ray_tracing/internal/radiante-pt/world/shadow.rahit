@@ -149,8 +149,9 @@ void main() {
     if ((shadowRay.pad0 == SKY_VISIBILITY_QUERY || shadowRay.pad0 == HAND_CLEARANCE_QUERY) && radianteIsWater(flags)) {
         ignoreIntersectionEXT;
     }
-    // A drop of a splash of water (rain on a particle): clear, it casts no shadow of its own.
-    if (radianteIsSplash(flags)) {
+    // A drop of a splash of water (rain on a particle): clear, it casts no shadow of its own. Nor does a redstone
+    // torch's halo, a glow of light round its head (written as a glow light kept at random).
+    if (radianteIsSplash(flags) || (isGlowLightSurface(flags) && getAlphaMode(flags) == ALPHA_MODE_STOCHASTIC)) {
         ignoreIntersectionEXT;
     }
     uint albedoID = m0.textureID;

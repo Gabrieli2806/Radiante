@@ -193,6 +193,32 @@ bool ptSplashPassThrough(uint textureID, vec2 textureUV, vec4 colorLayerValue, v
     return true;
 }
 
+// A redstone torch's halo met by any ray (the any-hit shader keeps every hit on it): its glow, as far as it covers
+// (its texel's alpha times the coverage the chunk builder gave it, BlockKinds.TORCH_HALO_ALPHA), added over what is
+// seen through it, which takes a little of its red. The same in every frame, where it was red dots kept at random.
+bool ptTorchHaloPassThrough(uint textureID, vec2 textureUV, vec4 colorLayerValue, float glow) {
+    if (!radianteIsGlowLight(g_hit.packedData) || getAlphaMode(g_hit.packedData) != ALPHA_MODE_STOCHASTIC) {
+        return false;
+    }
+    vec4 texel = sampleTexture(textures[nonuniformEXT(textureID)], textureUV, 0.0, false);
+    float coverage = clamp(texel.a * colorLayerValue.a, 0.0, 1.0);
+    vec3 colour = pow(max(texel.rgb * colorLayerValue.rgb, vec3(0.0)), vec3(2.2));
+    mainRay.radiance += mainRay.throughput * colour * (max(glow, 0.0) * coverage);
+    mainRay.throughput *= mix(vec3(1.0), colour, 0.5 * coverage);
+    mainRay.hitT = g_hit.hitT;
+    mainRay.coneWidth += mainRay.hitT * mainRay.coneSpread;
+    mainRay.origin = g_hit.rayOrigin + g_hit.rayDir * (g_hit.hitT + PASS_THROUGH_STEP);
+    ptClearReflectionRequest();
+    mainRay.hasPrevScenePos = 0u;
+    ptStoreMaterial(vec4(1.0), vec3(0.04), 1.0, 0.0, 1.0, 1.0, 0.0);
+    ptStoreAux(vec2(0.0));
+    raySetNoisy(mainRay, false);
+    raySetContinue(mainRay, true);
+    raySetPassThrough(mainRay, true);
+    raySetStop(mainRay, false);
+    return true;
+}
+
 bool ptRainPassThrough(uint textureID, vec2 textureUV, vec4 colorLayerValue, vec3 dPduWorld, vec3 dPdvWorld) {
     if (radianteIsSplash(g_hit.packedData)) {
         return ptSplashPassThrough(textureID, textureUV, colorLayerValue, dPduWorld, dPdvWorld);

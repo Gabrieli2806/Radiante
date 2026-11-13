@@ -129,6 +129,14 @@ void main() {
         if (alphaMode == ALPHA_MODE_DECAL) {
             alpha *= clamp(1.0 - 2.0 * dot(texel.rgb, vec3(0.2126, 0.7152, 0.0722)), 0.0, 1.0);
         }
+        // A redstone torch's halo (a see-through glow, the only surface written both as a glow light and kept at
+        // random): every ray meets it where its texel is there at all, and the hit shader lets the view through with
+        // the halo's glow on it (ptTorchHaloPassThrough). Kept at random by its coverage, it was a speckle of red
+        // dots that the denoiser smeared from frame to frame.
+        if (isGlowLightSurface(packedData) && alphaMode == ALPHA_MODE_STOCHASTIC) {
+            if (texel.a < 0.05) { ignoreIntersectionEXT; }
+            return;
+        }
     }
 
     // Glass is always kept as a hit, clear parts included (shaded as fully see-through glass, alpha 0): the hit shader

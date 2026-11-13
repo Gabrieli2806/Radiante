@@ -29,6 +29,10 @@ import org.lwjgl.system.MemoryUtil;
  * time constants of the ground's soaking, and stands still while it is dry, so the shader can tell how far the new
  * surface has soaked: {@code 1 - exp(-rain since)}, never more than the ground around it. Broken out in the rain, the
  * block under it shows dry and darkens over the Wet-Up Time; broken after the rain, it stays dry.
+ *
+ * <p>Blue's two low bits (where it rains) say how hot the column's top is: 3 for fire, lava, magma and a lit
+ * campfire, furnace, blast furnace or smoker, 2 for a torch or a lantern standing on it, 0 for nothing. The ground round
+ * such a block stays drier in the rain and dries sooner after (rain_wetness.glsl).
  */
 public final class RainExposure {
 
@@ -230,6 +234,37 @@ public final class RainExposure {
         }
     }
 
+    /** How hot the top of a column is (see the class comment): the block at pos, its top, or the one standing on it. */
+    private static int heatOf(LevelChunk chunk, BlockPos.MutableBlockPos pos) {
+        int heat = heatOf(chunk.getBlockState(pos));
+        return heat == 3 ? 3 : Math.max(heat, heatOf(chunk.getBlockState(pos.move(0, 1, 0))));
+    }
+
+    private static int heatOf(net.minecraft.world.level.block.state.BlockState state) {
+        if (state.isAir()) {
+            return 0;
+        }
+        boolean lit = !state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.LIT)
+            || state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.LIT);
+        if (state.is(net.minecraft.tags.BlockTags.FIRE) || state.is(net.minecraft.world.level.block.Blocks.LAVA)
+            || state.is(net.minecraft.world.level.block.Blocks.MAGMA_BLOCK)) {
+            return 3;
+        }
+        if ((state.is(net.minecraft.tags.BlockTags.CAMPFIRES) || state.is(net.minecraft.world.level.block.Blocks.FURNACE)
+            || state.is(net.minecraft.world.level.block.Blocks.BLAST_FURNACE)
+            || state.is(net.minecraft.world.level.block.Blocks.SMOKER)) && lit) {
+            return 3;
+        }
+        if (state.is(net.minecraft.world.level.block.Blocks.TORCH)
+            || state.is(net.minecraft.world.level.block.Blocks.SOUL_TORCH)
+            || state.is(net.minecraft.world.level.block.Blocks.LANTERN)
+            || state.is(net.minecraft.world.level.block.Blocks.SOUL_LANTERN)
+            || (state.is(net.minecraft.tags.BlockTags.CANDLES) && lit)) {
+            return 2;
+        }
+        return 0;
+    }
+
     private static void upload(ClientLevel world, int slot, ByteBuffer pixels, BlockPos.MutableBlockPos pos) {
         LevelChunk chunk = world.getChunkSource().getChunk(tileX[slot], tileZ[slot], ChunkStatus.FULL, false);
         chunks[slot] = chunk;
@@ -263,7 +298,8 @@ public final class RainExposure {
                     // 128 where the column's top is leaves (the rain drips through to the ground below), 255 where
                     // it is anything else.
                     boolean leaves = chunk.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) < y;
-                    pixels.put(offset + 2, (byte) (rains ? (leaves ? 128 : 255) : 0));
+                    int heat = rains ? heatOf(chunk, pos.set(tileX[slot] * 16 + x, y, tileZ[slot] * 16 + z)) : 0;
+                    pixels.put(offset + 2, (byte) (rains ? (leaves ? 128 : 252) | heat : 0));
                     float stamp = exposedAt[column];
                     pixels.put(offset + 3, (byte) (Float.isNaN(stamp) ? 255
                         : 1 + (int) (((long) Math.floor(stamp)) % STAMPS)));

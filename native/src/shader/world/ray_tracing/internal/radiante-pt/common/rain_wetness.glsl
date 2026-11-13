@@ -28,6 +28,27 @@ ivec4 vptRainColumn(ivec2 column, uint textureId) {
     return ivec4(round(texelFetch(textures[nonuniformEXT(textureId)], column & ivec2(511), 0) * 255.0));
 }
 
+// How hot the column's top is, 0..3 (RainExposure: fire, lava, a lit furnace or campfire 3, a torch or lantern on it 2).
+int vptColumnHeat(ivec4 data) { return data.b > 0 ? (data.b & 3) : 0; }
+
+// How much the heat of a fire, a lit furnace or campfire, lava or a torch beside keeps a face here dry, 0..1: the
+// most of the columns round it, falling off over a block and a half. The ground by a campfire stays drier through a
+// storm and dries first after it.
+const float HEAT_DRYING = 0.85;
+float vptHeatDryness(ivec2 column, uint textureId, vec2 withinColumn) {
+    float dry = 0.0;
+    for (int dz = -1; dz <= 1; dz++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            int heat = vptColumnHeat(vptRainColumn(column + ivec2(dx, dz), textureId));
+            if (heat == 0) { continue; }
+            vec2 away = max(abs(withinColumn - (vec2(dx, dz) + 0.5)) - 0.5, vec2(0.0));
+            float reach = heat == 3 ? 1.5 : 0.8;
+            dry = max(dry, (float(heat) / 3.0) * (1.0 - smoothstep(0.0, reach, length(away))));
+        }
+    }
+    return dry * HEAT_DRYING;
+}
+
 bool vptRainColumnBlocks(ivec4 data, int surfaceBlockY) {
     return data.a == 0 || (data.r + 256 * data.g - 32768) > surfaceBlockY;
 }
@@ -97,7 +118,8 @@ vec2 vptGroundRain(vec3 position, vec3 outwardNormal) {
         // A face the column in front of it just opened up (the sides of a hole dug in the rain) soaks as that
         // column's top does.
         g_vptColumnSoak = vptColumnSoak(frontData);
-        return vec2(0.0, clamp(VPT_RAIN_WET_WALLS, 0.0, 1.0) * fade);
+        float heatDry = vptHeatDryness(column, textureId, fract(relativePosition.xz));
+        return vec2(0.0, clamp(VPT_RAIN_WET_WALLS, 0.0, 1.0) * fade * (1.0 - heatDry));
     }
     fade *= smoothstep(0.5, 0.95, outwardNormal.y);
 
@@ -125,8 +147,8 @@ vec2 vptGroundRain(vec3 position, vec3 outwardNormal) {
 
     // The top of its column: wholly open. It dried off towards a wall or a higher block beside it before, which
     // left a dry band along every wall and step and a dry round patch in every inner corner while the water stood
-    // all around.
-    return vec2(fade);
+    // all around. Only heat beside it keeps it drier.
+    return vec2(fade * (1.0 - vptHeatDryness(column, textureId, withinColumn)));
 }
 
 float vptGroundOpen(vec3 position, vec3 outwardNormal) {
