@@ -4,7 +4,21 @@ public class TextureProxy {
 
     public synchronized static native int generateTextureId();
 
-    public synchronized static native void prepareImage(int id, int mipLevels, int width, int height, int format);
+    public static void prepareImage(int id, int mipLevels, int width, int height, int format) {
+        prepareImageNative(id, mipLevels, width, height, format, 0);
+    }
+
+    /**
+     * An image for a texture of the given size and mip count, kept without its first {@code droppedLevels} levels:
+     * uploads keep addressing the full texture's levels, and those into a dropped level are left out (see
+     * TracedTextureDetail). The tracer reads it by normalised coordinates, so only its detail changes.
+     */
+    public static void prepareImage(int id, int mipLevels, int width, int height, int format, int droppedLevels) {
+        prepareImageNative(id, mipLevels, width, height, format, droppedLevels);
+    }
+
+    private synchronized static native void prepareImageNative(int id, int mipLevels, int width, int height,
+        int format, int droppedLevels);
 
     public synchronized static native void setFilter(int id, int samplingMode, int mipmapMode);
 

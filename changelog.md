@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- High resolution resource packs: a new Texture Detail setting (Performance) sets how much of a pack's detail the ray tracer keeps, Automatic by default. Its copies of the textures took over a gigabyte of video memory with a 128 px pack, and once the card ran out every frame slowed down: 31 ms of GPU time against 4.4 with vanilla textures on a 12 GB card shared with other programs. Automatic keeps up to 128 px a block and halves the detail only when the copies would take more than a fifth of the video memory left to the game, which the renderer now asks the driver for; a 128 px pack halved costs what vanilla textures do. Menus and held items keep full detail. Leaves and grass of 128 px packs keep their opacity micromaps (they went to the slow any-hit shader past 64 px).
+
+- Bedrock RTX packs: the bevels of a height map no longer reflect into the block itself; every plate of an iron block and the frame of a gold block were ringed in black lines seen straight on. Steep normal maps (Vanilla RTX Opus) the same.
+
+- PBR packs: the coarser levels of the normal and specular maps the ray tracer reads away from the camera are averaged (normals by direction, roughness, the brightest glow) instead of taking one texel of four, so fine normal maps no longer glitter at a distance.
+
+- Bedrock RTX packs now give their materials to piston heads, bells and the block-breaking cracks.
+
 - A block put down in the rain comes out as wet as the ground round it, where its top showed dry and soaked in as a hole dug does. Only ground a block taken away lays bare starts dry.
 
 - Wet walls: the runs of water spread over the wall's height and, as the rain goes on, the longest reach the ground. A block put against a wall in the rain leaves the wall above it as wet as it was (the whole strip over it went dry), and the wall it covers dries over a minute. A wall coming into view, turning a corner, shows wet at once: the wetness counted as light for the denoiser, which built it up over several frames.

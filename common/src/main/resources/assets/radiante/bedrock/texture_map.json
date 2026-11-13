@@ -249,6 +249,18 @@
    "bedrock": "textures/blocks/beetroots_stage_3",
    "color": true
   },
+  "bell_bottom": {
+   "bedrock": "textures/blocks/bell_bottom",
+   "color": true
+  },
+  "bell_side": {
+   "bedrock": "textures/blocks/bell_side",
+   "color": true
+  },
+  "bell_top": {
+   "bedrock": "textures/blocks/bell_top",
+   "color": true
+  },
   "big_dripleaf_side": {
    "bedrock": "textures/blocks/big_dripleaf_side1",
    "color": true
@@ -1323,6 +1335,46 @@
   },
   "deepslate_top": {
    "bedrock": "textures/blocks/deepslate/deepslate_top",
+   "color": true
+  },
+  "destroy_stage_0": {
+   "bedrock": "textures/environment/destroy_stage_0",
+   "color": true
+  },
+  "destroy_stage_1": {
+   "bedrock": "textures/environment/destroy_stage_1",
+   "color": true
+  },
+  "destroy_stage_2": {
+   "bedrock": "textures/environment/destroy_stage_2",
+   "color": true
+  },
+  "destroy_stage_3": {
+   "bedrock": "textures/environment/destroy_stage_3",
+   "color": true
+  },
+  "destroy_stage_4": {
+   "bedrock": "textures/environment/destroy_stage_4",
+   "color": true
+  },
+  "destroy_stage_5": {
+   "bedrock": "textures/environment/destroy_stage_5",
+   "color": true
+  },
+  "destroy_stage_6": {
+   "bedrock": "textures/environment/destroy_stage_6",
+   "color": true
+  },
+  "destroy_stage_7": {
+   "bedrock": "textures/environment/destroy_stage_7",
+   "color": true
+  },
+  "destroy_stage_8": {
+   "bedrock": "textures/environment/destroy_stage_8",
+   "color": true
+  },
+  "destroy_stage_9": {
+   "bedrock": "textures/environment/destroy_stage_9",
    "color": true
   },
   "detector_rail": {
@@ -2643,6 +2695,14 @@
   },
   "piston_side": {
    "bedrock": "textures/blocks/piston_side",
+   "color": true
+  },
+  "piston_top": {
+   "bedrock": "textures/blocks/piston_top_normal",
+   "color": true
+  },
+  "piston_top_sticky": {
+   "bedrock": "textures/blocks/piston_top_sticky",
    "color": true
   },
   "pitcher_crop_bottom": {
