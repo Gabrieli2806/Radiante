@@ -176,6 +176,15 @@ final class BlockKinds {
     static final float TORCH_HALO_ALPHA = 0.3f;
     static final float TORCH_HALO_GLOW = Glow.ofLevel(4);
 
+    /**
+     * The texel of the torch's texture a wall torch's halo is drawn with, in sixteenths: the middle of the red ring's
+     * top edge. Vanilla's wall torch model paints every face of its halo with the ring's corner texel (6, 5), which a
+     * Bedrock texture leaves clear (Vanilla RTX's ring has no corners): there the wall torch had no halo at all while
+     * the standing one, painted with the edges, had it.
+     */
+    static final float WALL_TORCH_HALO_U = 7.5f / 16.0f;
+    static final float WALL_TORCH_HALO_V = 5.5f / 16.0f;
+
     static boolean isTorchHalo(net.minecraft.client.resources.model.geometry.BakedQuad quad) {
         float limit = 2.5f / 16.0f;
         return quad.position0().distance(quad.position1()) > limit

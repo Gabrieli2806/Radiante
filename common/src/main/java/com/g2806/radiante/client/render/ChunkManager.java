@@ -538,6 +538,11 @@ public final class ChunkManager {
                     .alphaMode(PBRVertexWriter.ALPHA_MODE_STOCHASTIC).albedoEmission(TORCH_HALO_GLOW).castLight(0.0f)
                     .alphaScale(TORCH_HALO_ALPHA);
                 halo.putBlockBakedQuad(x, y, z, quad, instance);
+                if (scratch.wallTorch) {
+                    net.minecraft.client.renderer.texture.TextureAtlasSprite sprite = quad.materialInfo().sprite();
+                    halo.setLastQuadUv(sprite.getU0() + (sprite.getU1() - sprite.getU0()) * WALL_TORCH_HALO_U,
+                        sprite.getV0() + (sprite.getV1() - sprite.getV0()) * WALL_TORCH_HALO_V);
+                }
                 halo.alphaScale(1.0f);
                 return;
             }
@@ -646,7 +651,8 @@ public final class ChunkManager {
 
             if (blockState.getRenderShape() == RenderShape.MODEL) {
                 scratch.dropInwardFaces = blockState.is(Blocks.POWDER_SNOW);
-                scratch.torchHalo = blockState.is(Blocks.REDSTONE_TORCH) || blockState.is(Blocks.REDSTONE_WALL_TORCH);
+                scratch.wallTorch = blockState.is(Blocks.REDSTONE_WALL_TORCH);
+                scratch.torchHalo = blockState.is(Blocks.REDSTONE_TORCH) || scratch.wallTorch;
                 scratch.collectPanel = blockState.is(BlockTags.DOORS) || blockState.is(BlockTags.TRAPDOORS);
                 scratch.panelQuads.clear();
                 java.util.Arrays.fill(scratch.faceSeen, false);
@@ -930,6 +936,8 @@ public final class ChunkManager {
         private boolean dropInwardFaces;
         /** The block being written is a redstone torch, whose halo is seen through; see BlockKinds.isTorchHalo. */
         private boolean torchHalo;
+        /** It is the wall torch, whose halo is painted with a texel a Bedrock texture leaves clear. */
+        private boolean wallTorch;
         /** Per face direction, whether this block has written one yet and the plane it lies on (see the quad output). */
         private final boolean[] faceSeen = new boolean[6];
         private final float[] facePlane = new float[6];

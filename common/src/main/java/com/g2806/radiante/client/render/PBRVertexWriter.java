@@ -418,6 +418,18 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
      * rain. On a particle (which is thin) the shaders read the pair as a drop of water: the splashes rain throws up,
      * seen through and bent like a small lens. Says how many quads it marked.
      */
+    /** Gives the last quad written one texture coordinate at all four corners: it shows that texel alone. */
+    public void setLastQuadUv(float u, float v) {
+        if (this.vertexCount < 4) {
+            return;
+        }
+        long first = this.address + (long) (this.vertexCount - 4) * STRIDE;
+        for (int corner = 0; corner < 4; corner++) {
+            MemoryUtil.memPutFloat(first + (long) corner * STRIDE + OFF_TEXTURE_UV, u);
+            MemoryUtil.memPutFloat(first + (long) corner * STRIDE + OFF_TEXTURE_UV + 4, v);
+        }
+    }
+
     public int markRainQuads(float[] rects) {
         int marked = 0;
         long quadBytes = 4L * STRIDE;

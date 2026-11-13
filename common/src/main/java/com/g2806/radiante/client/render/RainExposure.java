@@ -19,9 +19,16 @@ import org.lwjgl.system.MemoryUtil;
 /**
  * Where rain reaches the ground, for wet surfaces. A 512 by 512 texture
  * wraps around the camera, one texel per block column: the height of the column's top rain-blocking block (red and
- * green, offset by 32768), whether it rains there rather than snows (blue) and whether the column is known (alpha).
- * The shader wets upward faces that are the top of their column. Wetness itself follows the rain slowly, drying
- * well after it stops.
+ * green, offset by 32768), whether it rains there rather than snows (blue), and in alpha whether the column is known
+ * (0 not) and how long its top has been out in the rain. The shader wets upward faces that are the top of their
+ * column. Wetness itself follows the rain slowly, drying well after it stops.
+ *
+ * <p>A column whose top changes (a block broken off it, or one put on it) has a new, dry surface under the sky. Its
+ * alpha then holds the rain clock (below) at that moment, 1 to {@link #STAMPS}; 255 is a top that has been out long
+ * enough to be as wet as the rest. The rain clock counts the rain that has fallen, in steps of {@link #CLOCK_UNIT}
+ * time constants of the ground's soaking, and stands still while it is dry, so the shader can tell how far the new
+ * surface has soaked: {@code 1 - exp(-rain since)}, never more than the ground around it. Broken out in the rain, the
+ * block under it shows dry and darkens over the Wet-Up Time; broken after the rain, it stays dry.
  */
 public final class RainExposure {
 
@@ -74,6 +81,28 @@ public final class RainExposure {
     private static float wetness;
     private static long lastTime = System.nanoTime();
 
+    /** Rain clock steps a stamp can hold (1..STAMPS), and how much soaking one step is, in time constants. */
+    private static final int STAMPS = 253;
+    private static final float CLOCK_UNIT = 0.025f;
+    /** A stamp this much soaking old reads as the rest of the ground (alpha 255): exp(-5) is under 1 %. */
+    private static final float SOAKED = 5.0f;
+    /** The rain clock, in time constants of soaking; it only runs while it rains. */
+    private static double rainClock;
+    /**
+     * Per column (the texture's texel): the top's height last read, Integer.MIN_VALUE before it is known, and when it
+     * changed on the rain clock (in steps), NaN once it has been out long enough.
+     */
+    private static final int[] heights = new int[SIZE * SIZE];
+    private static final float[] exposedAt = new float[SIZE * SIZE];
+    /** Tiles whose chunk was not loaded when they were read: read again every frame until it is. */
+    private static final boolean[] missing = new boolean[TILES * TILES];
+    private static int nearRefresh;
+
+    static {
+        Arrays.fill(heights, Integer.MIN_VALUE);
+        Arrays.fill(exposedAt, Float.NaN);
+    }
+
     private RainExposure() {
     }
 
@@ -87,6 +116,10 @@ public final class RainExposure {
             centerX = Integer.MIN_VALUE;
             cleared = false;
             wetness = 0.0f;
+            rainClock = 0.0;
+            Arrays.fill(heights, Integer.MIN_VALUE);
+            Arrays.fill(exposedAt, Float.NaN);
+            Arrays.fill(missing, false);
         }
         long now = System.nanoTime();
         float dt = Math.min((now - lastTime) * 1e-9f, 0.1f);
@@ -103,6 +136,9 @@ public final class RainExposure {
             // the end of it.
             float seconds = rain > wetness ? WET_UP.seconds() / 3.0f : DRYING.seconds() / 7.0f;
             wetness += (rain - wetness) * (1.0f - (float) Math.exp(-dt / Math.max(seconds, 0.5f)));
+            if (rain > 0.2f) {
+                rainClock += dt / Math.max(WET_UP.seconds() / 3.0f, 0.5f);
+            }
             if (wetness < 0.0001f) {
                 wetness = 0.0f;
             }
@@ -143,6 +179,7 @@ public final class RainExposure {
                             tileX[slot] = x;
                             tileZ[slot] = z;
                             chunks[slot] = null;
+                            forgetTile(slot);
                             upload(world, slot, pixels, pos);
                         }
                     }
@@ -154,18 +191,68 @@ public final class RainExposure {
                     upload(world, slot, pixels, pos);
                 }
             }
+            // Chunks that were not loaded yet, every frame until they are. Read only by the round above, a chunk
+            // that came in a moment after its tile showed dry for seconds and then went wet all at once, which in a
+            // walk looked like the wet ground changing at every chunk crossed.
+            for (int slot = 0; slot < missing.length; slot++) {
+                if (missing[slot] && world.getChunkSource().getChunk(tileX[slot], tileZ[slot], ChunkStatus.FULL,
+                    false) != null) {
+                    upload(world, slot, pixels, pos);
+                }
+            }
+            // The tiles round the camera every few frames, so a block broken or put down nearby shows within a
+            // fraction of a second.
+            if (++nearRefresh >= 8) {
+                nearRefresh = 0;
+                for (int dz = -1; dz <= 1; dz++) {
+                    for (int dx = -1; dx <= 1; dx++) {
+                        int slot = ((cz + dz) & (TILES - 1)) * TILES + ((cx + dx) & (TILES - 1));
+                        if (tileX[slot] == cx + dx && tileZ[slot] == cz + dz) {
+                            upload(world, slot, pixels, pos);
+                        }
+                    }
+                }
+            }
         }
-        return new Vector4f(wetness, texture, 0.0f, 0.0f);
+        // y carries the rain clock too, under the texture's id: id * 256 + the clock in steps (0..STAMPS).
+        float clockSteps = (float) ((rainClock / CLOCK_UNIT) % STAMPS);
+        return new Vector4f(wetness, texture * 256.0f + clockSteps, 0.0f, 0.0f);
+    }
+
+    /** The tile's columns start over unknown: a tile that comes into the ring is not ground that just changed. */
+    private static void forgetTile(int slot) {
+        int baseX = (slot & (TILES - 1)) * 16;
+        int baseZ = (slot / TILES) * 16;
+        for (int z = 0; z < 16; z++) {
+            int row = (baseZ + z) * SIZE + baseX;
+            Arrays.fill(heights, row, row + 16, Integer.MIN_VALUE);
+            Arrays.fill(exposedAt, row, row + 16, Float.NaN);
+        }
     }
 
     private static void upload(ClientLevel world, int slot, ByteBuffer pixels, BlockPos.MutableBlockPos pos) {
         LevelChunk chunk = world.getChunkSource().getChunk(tileX[slot], tileZ[slot], ChunkStatus.FULL, false);
         chunks[slot] = chunk;
+        missing[slot] = chunk == null;
         MemoryUtil.memSet(MemoryUtil.memAddress(pixels), 0, pixels.capacity());
-        if (chunk != null) {
+        if (chunk == null) {
+            forgetTile(slot);
+        } else {
+            int baseX = (slot & (TILES - 1)) * 16;
+            int baseZ = (slot / TILES) * 16;
+            float clock = (float) (rainClock / CLOCK_UNIT);
             for (int z = 0; z < 16; z++) {
                 for (int x = 0; x < 16; x++) {
                     int y = chunk.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
+                    int column = (baseZ + z) * SIZE + baseX + x;
+                    int before = heights[column];
+                    heights[column] = y;
+                    if (before != Integer.MIN_VALUE && before != y) {
+                        // A new top: dry, from now on the rain clock.
+                        exposedAt[column] = clock;
+                    } else if (!Float.isNaN(exposedAt[column]) && (clock - exposedAt[column]) * CLOCK_UNIT > SOAKED) {
+                        exposedAt[column] = Float.NaN;
+                    }
                     pos.set(tileX[slot] * 16 + x, y + 1, tileZ[slot] * 16 + z);
                     int height = Math.clamp(y + 32768, 0, 65535);
                     int offset = (z * 16 + x) * 4;
@@ -177,7 +264,9 @@ public final class RainExposure {
                     // it is anything else.
                     boolean leaves = chunk.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) < y;
                     pixels.put(offset + 2, (byte) (rains ? (leaves ? 128 : 255) : 0));
-                    pixels.put(offset + 3, (byte) 255);
+                    float stamp = exposedAt[column];
+                    pixels.put(offset + 3, (byte) (Float.isNaN(stamp) ? 255
+                        : 1 + (int) (((long) Math.floor(stamp)) % STAMPS)));
                 }
             }
         }
