@@ -235,6 +235,10 @@ bool ptRainPassThrough(uint textureID, vec2 textureUV, vec4 colorLayerValue, vec
     mainRay.radiance += mainRay.throughput * around * glint;
     // Rain Opacity: how much of the view a streak takes away, a little blue-grey.
     mainRay.throughput *= mix(vec3(1.0), vec3(0.82, 0.90, 1.0), coverage * opacity);
+    // The streak falls past a still background: the pixel's motion is the ground's, so DLSS Ray Reconstruction
+    // carried the streak over its history and, with the camera still, drew the rain as long straight lines. The
+    // bias mask tells it to take this frame's colour here (main_paths.glsl).
+    if (coverage > 0.02 && (rayBounce(mainRay) == 0u || rayCameraPath(mainRay))) { raySetFavourCurrent(mainRay, true); }
     mainRay.hitT = g_hit.hitT;
     mainRay.coneWidth += mainRay.hitT * mainRay.coneSpread;
     mainRay.origin = g_hit.rayOrigin + g_hit.rayDir * (g_hit.hitT + PASS_THROUGH_STEP);

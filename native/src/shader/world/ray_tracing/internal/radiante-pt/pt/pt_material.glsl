@@ -451,7 +451,10 @@ void sampleSurfaceState(bool useTexture,
         float faceShare = upward ? (fullTop ? 1.0 : (solidFace ? 0.5 : 0.3)) : (solidFace ? 1.0 : 0.6);
         // The ground's soaking, as far as this top has kept up with it (a block broken off it lately).
         float soak = sqrt(max(min(skyUBO.rainWetness.x, g_vptColumnSoak), 0.0));
-        float wetness = groundRain.y * soak * faceShare;
+        // Grass and earth (tinted by the biome) take the rain into the soil and between the blades: a little darker,
+        // never the slick grey of wet stone.
+        bool tintedFace = any(lessThan(colorLayer, vec3(0.98)));
+        float wetness = groundRain.y * soak * faceShare * (tintedFace ? 0.45 : 1.0);
         if (wetness > 0.0 && VPT_RAIN_PIXELS != 0 && useTexture) {
             // Pixel Rain: wet in the texture's own pixels (vptRainPixelWetness), so a mob's wet skin moves with it.
             // A block's pattern also takes its place in the world, or every block of a kind would be wet alike.
