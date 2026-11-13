@@ -55,6 +55,8 @@ RADIANTE_DEV_PRESCRIPT="100:testworld=RadianteSmoke" RADIANTE_DEV_SCRIPT="400:qu
 - `opt=<field>=<value>` sets a Radiante option for the run. It goes through the option's own setter when it has one
   (`set<Field>(value, write)`), so options the renderer is told about (`collectChunkEmission`,
   `entityLightReach`) take effect.
+- `vopt=<accessor>=<value>` sets one of Minecraft's own options by its accessor on `Options` (`ambientOcclusion`,
+  `mipmapLevels`, `entityShadows`, `textureFiltering=ANISOTROPIC`...), as its button would. Not saved.
 - The other actions (`hud=`, `fov=`, `slot=`, `debug=`, `rejoin=`...) are listed in `DevAutomation.run`.
 
 ## Smoke test
