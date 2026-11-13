@@ -581,6 +581,7 @@
   "options.radiante.impact.none": "Ninguno",
   "options.radiante.blocked.needs": "Sin efecto ahora: activa primero %s.",
   "options.radiante.blocked.needs_value": "Sin efecto ahora: necesita %s en %s.",
+  "options.radiante.blocked.needs_above_zero": "Sin efecto ahora: necesita %s por encima de 0.",
   "options.radiante.blocked.overridden": "Sin efecto ahora: %s ocupa su lugar.",
   "options.radiante.blocked.ray_tracing": "Sin efecto mientras el Trazado de Rayos está apagado.",
   "options.radiante.affects": "También decide: %s",

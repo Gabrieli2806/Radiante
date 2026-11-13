@@ -582,6 +582,7 @@
   "options.radiante.blocked.bedrock_fog": "目前无效：Bedrock 的雾不使用它。在“高级”中关闭Bedrock 体积雾后生效。",
   "options.radiante.blocked.needs": "目前无效：请先开启 %s。",
   "options.radiante.blocked.needs_value": "目前无效：需要将 %s 设为 %s。",
+  "options.radiante.blocked.needs_above_zero": "目前无效：需要将 %s 设为大于 0。",
   "options.radiante.blocked.overridden": "目前无效：由 %s 取代。",
   "options.radiante.blocked.ray_tracing": "光线追踪关闭时无效。",
   "options.radiante.debug_logging.tooltip": "向游戏日志写入更多渲染器细节，便于报告问题。不改变画面。",

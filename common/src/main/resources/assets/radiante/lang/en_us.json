@@ -581,6 +581,7 @@
   "options.radiante.impact.none": "None",
   "options.radiante.blocked.needs": "No effect right now: turn on %s first.",
   "options.radiante.blocked.needs_value": "No effect right now: needs %s set to %s.",
+  "options.radiante.blocked.needs_above_zero": "No effect right now: needs %s above 0.",
   "options.radiante.blocked.overridden": "No effect right now: %s takes its place.",
   "options.radiante.blocked.ray_tracing": "No effect while Ray Tracing is off.",
   "options.radiante.affects": "Also decides: %s",
