@@ -18,6 +18,12 @@ float vptRainClock() { return mod(skyUBO.rainWetness.y, 256.0); }
 float g_vptColumnSoak = 1.0;
 const float RAIN_CLOCK_STEPS = 253.0;
 const float RAIN_CLOCK_UNIT = 0.025;
+// How long ago, in time constants of soaking on the rain clock, the column's top changed; -1 for an old top.
+float vptColumnSince(ivec4 data) {
+    if (data.a == 255 || data.a == 0) { return -1.0; }
+    return mod(vptRainClock() - float(data.a - 1) + RAIN_CLOCK_STEPS, RAIN_CLOCK_STEPS) * RAIN_CLOCK_UNIT;
+}
+
 float vptColumnSoak(ivec4 data) {
     if (data.a == 255 || data.a == 0) { return 1.0; }
     float since = mod(vptRainClock() - float(data.a - 1) + RAIN_CLOCK_STEPS, RAIN_CLOCK_STEPS);
@@ -152,6 +158,11 @@ vec2 vptGroundRain(vec3 position, vec3 outwardNormal) {
 
     g_vptColumnSoak = vptColumnSoak(center);
     if (vptRainColumnBlocks(center, surfaceBlockY)) {
+        // A block put down on wet ground in the rain covers it: the ground under it dries over a minute or so of
+        // rain on the clock, where it went dry at once. (The soaking of a new top is the new top's, not this.)
+        g_vptColumnSoak = 1.0;
+        float since = vptColumnSince(center);
+        float covered = since >= 0.0 ? exp(-since * 1.5) : 0.0;
         // Under cover: how near the closest open column is.
         float nearest = 1e3;
         for (int dz = -2; dz <= 2; dz++) {
@@ -171,7 +182,20 @@ vec2 vptGroundRain(vec3 position, vec3 outwardNormal) {
         float creep = vptRainFray(world, 1.0 - smoothstep(0.0, 0.45, nearest), 5.3);
         // A column whose top is leaves (RainExposure marks it): the rain drips through.
         float leaves = center.b > 0 && center.b < 200 ? LEAF_DAMP : 0.0;
-        return vec2(creep, max(max(SHELTER_DAMP * blownIn * blownIn, 0.9 * fringe), leaves)) * fade;
+        return vec2(max(creep, covered),
+                    max(max(max(SHELTER_DAMP * blownIn * blownIn, 0.9 * fringe), leaves), covered)) * fade;
+    }
+
+    // A top that changed lately (a block taken away) is dry, but not as a clean square in the wet: the wet ground
+    // round it reaches in from its edges in a ragged fringe that grows as it soaks (vptRainFray), the way the dry
+    // patch round a fire frays out.
+    float since = vptColumnSince(center);
+    if (since >= 0.0) {
+        vec2 edge = min(withinColumn, vec2(1.0) - withinColumn);
+        float fromEdge = min(edge.x, edge.y);
+        float reach = mix(0.3, 0.65, clamp(since, 0.0, 1.0));
+        float creep = vptRainFray(vec2(column) + withinColumn, 1.0 - smoothstep(0.0, reach, fromEdge), 11.3);
+        g_vptColumnSoak = max(g_vptColumnSoak, creep);
     }
 
     // The top of its column: wholly open. It dried off towards a wall or a higher block beside it before, which
@@ -379,6 +403,25 @@ float vptRainPuddleEdge(float puddle) {
  *  rain soaks in (soak, 0..1). On an upright face the water runs down: in each column of texels the wet run starts at
  *  the top and reaches further down the longer it rains, a different length in each column. */
 const float WET_PIXEL_DAMP = 0.35;
+// A wall's place for Pixel Rain's runs of water, from the world rather than the texture: how far below the top of
+// the wall a point is, in pixels (a sixteenth of a block), and which column of pixels along the wall it is in, so the
+// water runs down a whole wall from its top, across the joins between its blocks, instead of starting again at the
+// top of each block. x: pixels from the top; y: the pixel column; z: the pixel row (for drops caught on the way).
+vec3 vptWallRainPlace(vec3 position, vec3 outwardNormal) {
+    uint textureId = vptRainTextureId();
+    vec3 world = vec3(worldUBO.cameraPos.xyz - dvec3(floor(worldUBO.cameraPos.xyz))) + position;
+    ivec3 cameraCell = ivec3(floor(worldUBO.cameraPos.xyz));
+    vec2 inside = world.xz - outwardNormal.xz * 0.5;
+    ivec2 column = cameraCell.xz + ivec2(floor(inside));
+    ivec4 data = vptRainColumn(column, textureId);
+    float top = float(data.r + 256 * data.g - 32768 + 1);
+    float worldY = float(cameraCell.y) + world.y;
+    vec2 along = vec2(-outwardNormal.z, outwardNormal.x);
+    vec2 absXZ = vec2(cameraCell.xz) + world.xz;
+    return vec3(max(top - worldY, 0.0) * RAIN_PIXELS_PER_BLOCK, floor(dot(absXZ, along) * RAIN_PIXELS_PER_BLOCK),
+                floor(worldY * RAIN_PIXELS_PER_BLOCK));
+}
+
 float vptRainPixelWetness(float wetness, ivec2 texel, float row, uint seed, bool upright, float soak) {
     if (wetness <= 0.0) { return 0.0; }
     if (upright) {

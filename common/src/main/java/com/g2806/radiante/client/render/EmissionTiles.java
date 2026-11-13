@@ -184,6 +184,19 @@ public final class EmissionTiles {
             ? LIT_ORE_CAST : UNLIT_ORE_CAST;
     }
 
+    /**
+     * The colour of the light a state casts. Redstone ore's glowing texels have white hearts (Vanilla RTX's and
+     * vanilla's alike), and the light worked out from them came out nearly white; it is redstone's red.
+     */
+    public static com.g2806.radiante.client.option.EmissionColor castHue(BlockState state) {
+        return state.is(net.minecraft.world.level.block.Blocks.REDSTONE_ORE)
+            || state.is(net.minecraft.world.level.block.Blocks.DEEPSLATE_REDSTONE_ORE) ? REDSTONE_ORE_HUE
+            : com.g2806.radiante.client.option.EmissionColor.WHITE;
+    }
+
+    static final com.g2806.radiante.client.option.EmissionColor REDSTONE_ORE_HUE =
+        new com.g2806.radiante.client.option.EmissionColor(1.0f, 0.12f, 0.08f);
+
     static final float UNLIT_ORE_CAST = 0.3f;
     static final float LIT_ORE_CAST = 6.0f;
 

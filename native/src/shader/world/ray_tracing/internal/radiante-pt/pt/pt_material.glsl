@@ -465,6 +465,14 @@ void sampleSurfaceState(bool useTexture,
             if (alphaMode == ALPHA_MODE_OPAQUE) {
                 ivec3 cell = ivec3(floor(worldUBO.cameraPos.xyz + dvec3(worldPos - baseGeoNormal * 0.01)));
                 seed = uint(cell.x * 73856093 ^ cell.y * 19349663 ^ cell.z * 83492791);
+                if (!upward) {
+                    // A wall of blocks: the runs of water go down the whole wall from its top, three blocks at the
+                    // most, one pixel column to the next, instead of each block showing the same short runs.
+                    vec3 place = vptWallRainPlace(worldPos, baseGeoNormal);
+                    texel = ivec2(int(place.y), int(place.z));
+                    row = place.x / 3.0;
+                    seed = uint(int(floor(dot(baseGeoNormal.xz, vec2(1.0, 2.0)) + 3.0)) * 2654435761);
+                }
             }
             wetness = vptRainPixelWetness(wetness, texel, row, seed, !upward, soak);
         }

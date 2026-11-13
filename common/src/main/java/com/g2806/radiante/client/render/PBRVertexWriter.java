@@ -129,6 +129,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private boolean blend;
     private boolean unlit;
     private float castScale = 1.0f;
+    private com.g2806.radiante.client.option.EmissionColor castHue = com.g2806.radiante.client.option.EmissionColor.WHITE;
     private boolean lava;
     private boolean plant;
     private int windKind = WIND_NONE;
@@ -257,7 +258,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     public void putBlockBakedQuad(float x, float y, float z,
         net.minecraft.client.resources.model.geometry.BakedQuad quad, com.mojang.blaze3d.vertex.QuadInstance instance) {
         long previous = this.emissionTint;
-        this.emissionTint = BlockEmissionControls.color(quad.materialInfo().sprite().contents().name()).multiply(this.castScale).packed();
+        this.emissionTint = BlockEmissionControls.color(quad.materialInfo().sprite().contents().name()).multiply(this.castHue).multiply(this.castScale).packed();
         try {
             VertexConsumer.super.putBlockBakedQuad(x, y, z, quad, instance);
         } finally {
@@ -269,7 +270,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     public void putBakedQuad(com.mojang.blaze3d.vertex.PoseStack.Pose pose,
         net.minecraft.client.resources.model.geometry.BakedQuad quad, com.mojang.blaze3d.vertex.QuadInstance instance) {
         long previous = this.emissionTint;
-        this.emissionTint = BlockEmissionControls.color(quad.materialInfo().sprite().contents().name()).multiply(this.castScale).packed();
+        this.emissionTint = BlockEmissionControls.color(quad.materialInfo().sprite().contents().name()).multiply(this.castHue).multiply(this.castScale).packed();
         try {
             VertexConsumer.super.putBakedQuad(pose, quad, instance);
         } finally {
@@ -300,6 +301,12 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     /** Whether the vertices from here on are lava's surface (LAVA_SURFACE_BIT in the shaders). */
     public PBRVertexWriter lava(boolean lava) {
         this.lava = lava;
+        return this;
+    }
+
+    /** The colour of the light this block casts, over the player's tint (redstone ore: red, see EmissionTiles). */
+    public PBRVertexWriter castHue(com.g2806.radiante.client.option.EmissionColor castHue) {
+        this.castHue = castHue;
         return this;
     }
 
