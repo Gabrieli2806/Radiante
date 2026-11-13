@@ -414,6 +414,38 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     }
 
     /**
+     * Marks the quads whose texture lies in one of these atlas rectangles ({u0, v0, u1, v1} after one another) as
+     * rain. On a particle (which is thin) the shaders read the pair as a drop of water: the splashes rain throws up,
+     * seen through and bent like a small lens. Says how many quads it marked.
+     */
+    public int markRainQuads(float[] rects) {
+        int marked = 0;
+        long quadBytes = 4L * STRIDE;
+        for (int quad = 0; quad < this.vertexCount / 4; quad++) {
+            long at = this.address + quad * quadBytes;
+            float u = 0.0f;
+            float v = 0.0f;
+            for (int corner = 0; corner < 4; corner++) {
+                u += MemoryUtil.memGetFloat(at + (long) corner * STRIDE + OFF_TEXTURE_UV);
+                v += MemoryUtil.memGetFloat(at + (long) corner * STRIDE + OFF_TEXTURE_UV + 4);
+            }
+            u *= 0.25f;
+            v *= 0.25f;
+            for (int r = 0; r + 3 < rects.length; r += 4) {
+                if (u >= rects[r] && u <= rects[r + 2] && v >= rects[r + 1] && v <= rects[r + 3]) {
+                    for (int corner = 0; corner < 4; corner++) {
+                        long flags = at + (long) corner * STRIDE + OFF_ALPHA_MODE;
+                        MemoryUtil.memPutInt(flags, MemoryUtil.memGetInt(flags) | RAIN_FLAG);
+                    }
+                    marked++;
+                    break;
+                }
+            }
+        }
+        return marked;
+    }
+
+    /**
      * Moves the quads written at full light (Minecraft's own mark of what glows: a flame, a spark, a drop of lava)
      * to the front, gives them this glow, and says how many vertices they are. The rest follow in the buffer.
      * A quad at full light glows only where darker says the world's own light is less than full: smoke inside a

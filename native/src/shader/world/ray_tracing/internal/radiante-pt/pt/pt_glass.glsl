@@ -140,7 +140,60 @@ const float RAIN_STREAK_SKY = 0.35;
 // streak at random by its alpha), for what the pixel showed: its normal, depth and falling motion stood in for the
 // ground behind it, which smeared and sparkled through every storm, and each streak paid for sun and lamp shadow
 // rays. The glint is worked out from the sky over it, with no rays. Bounced rays never meet rain (prepareSecondaryBase).
-bool ptRainPassThrough(uint textureID, vec2 textureUV, vec4 colorLayerValue) {
+// How far a splash's drop bends the view through it, per unit of its alpha's slope across a texel.
+#ifndef VPT_SPLASH_REFRACTION
+#    define VPT_SPLASH_REFRACTION 0.3
+#endif
+// The share of the sky over it a drop sends to the eye: a sphere of water's reflectance, about 6 %. More, and on dark
+// ground every drop showed as a pale speck.
+const float SPLASH_GLINT = 0.06;
+
+// A drop of a splash of water (the particles rain throws up where it lands, a fish's, a boat's), marked by the
+// particle collector (radianteIsSplash): a small lens. The view goes on through it bent by the slope of its alpha, read a
+// level of detail down so that each drop of the sprite is a dome, and takes a little of the sky's light as a glint, as
+// the old raster packs refracted the screen behind a splash. Opaque white specks before; now the ground behind them
+// wobbles where they land. The camera's view only: any other ray goes straight through, and shadow rays never stop on
+// a drop (world/shadow.rahit).
+bool ptSplashPassThrough(uint textureID, vec2 textureUV, vec4 colorLayerValue, vec3 dPduWorld, vec3 dPdvWorld) {
+    vec2 texel = 1.0 / vec2(textureSize(textures[nonuniformEXT(textureID)], 0));
+    float coverage = clamp(sampleTexture(textures[nonuniformEXT(textureID)], textureUV, 0.0, false).a *
+                           colorLayerValue.a, 0.0, 1.0);
+    vec3 incident = normalize(g_hit.rayDir);
+    vec3 outgoing = incident;
+    if (rayBounce(mainRay) == 0u || rayCameraPath(mainRay)) {
+        float du = sampleTexture(textures[nonuniformEXT(textureID)], textureUV + vec2(texel.x, 0.0), 1.0, false).a -
+                   sampleTexture(textures[nonuniformEXT(textureID)], textureUV - vec2(texel.x, 0.0), 1.0, false).a;
+        float dv = sampleTexture(textures[nonuniformEXT(textureID)], textureUV + vec2(0.0, texel.y), 1.0, false).a -
+                   sampleTexture(textures[nonuniformEXT(textureID)], textureUV - vec2(0.0, texel.y), 1.0, false).a;
+        vec3 tangentU = normalizeF(dPduWorld, vec3(1.0, 0.0, 0.0));
+        vec3 tangentV = normalizeF(dPdvWorld, vec3(0.0, 1.0, 0.0));
+        // Towards the middle of the drop, as a convex lens draws the view in.
+        outgoing = normalize(incident + VPT_SPLASH_REFRACTION * 0.5 * (du * tangentU + dv * tangentV));
+    }
+    vec3 skyUp = texture(skyFull, vec3(0.0, 1.0, 0.0)).rgb;
+    vec3 overcast = vec3(0.1) * smoothstep(-0.3, 0.3, celestialSunDirection().y);
+    mainRay.radiance += mainRay.throughput * mix(skyUp, overcast, skyUBO.rainGradient) * SPLASH_GLINT * coverage;
+    mainRay.throughput *= mix(vec3(1.0), vec3(0.88, 0.94, 1.0), coverage);
+    mainRay.hitT = g_hit.hitT;
+    mainRay.coneWidth += mainRay.hitT * mainRay.coneSpread;
+    vec3 hit = g_hit.rayOrigin + incident * g_hit.hitT;
+    mainRay.origin = hit + outgoing * PASS_THROUGH_STEP;
+    mainRay.direction = outgoing;
+    ptClearReflectionRequest();
+    mainRay.hasPrevScenePos = 0u;
+    ptStoreMaterial(vec4(1.0), vec3(0.04), 1.0, 0.0, 1.0, 1.0, 0.0);
+    ptStoreAux(vec2(0.0));
+    raySetNoisy(mainRay, false);
+    raySetContinue(mainRay, true);
+    raySetPassThrough(mainRay, true);
+    raySetStop(mainRay, false);
+    return true;
+}
+
+bool ptRainPassThrough(uint textureID, vec2 textureUV, vec4 colorLayerValue, vec3 dPduWorld, vec3 dPdvWorld) {
+    if (radianteIsSplash(g_hit.packedData)) {
+        return ptSplashPassThrough(textureID, textureUV, colorLayerValue, dPduWorld, dPdvWorld);
+    }
     if (!radianteIsRain(g_hit.packedData)) { return false; }
     vec4 texel = sampleTexture(textures[nonuniformEXT(textureID)], textureUV, 0.0, false);
     float coverage = clamp(texel.a * colorLayerValue.a, 0.0, 1.0);

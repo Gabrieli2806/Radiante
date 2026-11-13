@@ -336,7 +336,7 @@ hashes them like the pack's own includes: a changed header recompiles the shader
 | `bindings.glsl` | Every built-in set/binding as named declarations |
 | `scene.glsl` | TLAS, instance and geometry lookup |
 | `vertex.glsl` | `radianteFetchTriangle(...)`: positions, normal, UVs, colour, light, surface flags, over both the full and the compact chunk layouts |
-| `surface.glsl` | What a ray hit, one function per surface flag: `radianteIsWater(surfaceFlags)`, lava, glass, pane and its open ends, leaves, plants, thin, frost, blend, layer, rain, held item and held light, unlit, glow light |
+| `surface.glsl` | What a ray hit, one function per surface flag: `radianteIsWater(surfaceFlags)`, lava, glass, pane and its open ends, leaves, plants, thin, frost, blend, layer, rain, a splash of water, held item and held light, unlit, glow light |
 | `uniforms.glsl` | `RadianteWorld` and `RadianteSky`: `WorldUBO` and `SkyUBO` under names of their own, for a pack that declares the uniform blocks itself; accessors (sun, moon and its phase, weather, wind, brightness, night vision) planned |
 | `noise.glsl` | Published. Pure functions, no uniform or texture: `radianteHash` (float, vec2, vec3, and pixel plus frame), `radianteHash2`, `radianteHash3`, `radianteNoise` and `radianteFbm` (2D, 3D), `radianteWorley` (2D, 3D), `radianteLuminance`, `radianteSaturate`, `radianteSrgbToLinear`, `radianteLinearToSrgb`. What a function returns for an input never changes within v1 |
 | `material.glsl` | `radianteSampleMaterial(...)`: albedo, normal, roughness, metal, emission, subsurface from LabPBR and converted Bedrock RTX packs |

@@ -68,7 +68,13 @@ bool radianteIsLayer(uint surfaceFlags) {
 
 // Rain and snow sheets.
 bool radianteIsRain(uint surfaceFlags) {
-    return (surfaceFlags & (1u << 18u)) != 0u;
+    return (surfaceFlags & (1u << 18u)) != 0u && (surfaceFlags & (1u << 27u)) == 0u;
+}
+
+// A drop of a splash of water: the particles rain throws up where it lands, a fish's, a boat's. Radiante PT sees
+// through it, bent as through a small lens.
+bool radianteIsSplash(uint surfaceFlags) {
+    return (surfaceFlags & (1u << 18u)) != 0u && (surfaceFlags & (1u << 27u)) != 0u;
 }
 
 // What the player holds, seen in first person.
