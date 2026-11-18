@@ -78,6 +78,9 @@ enum Tunable {
     // How wet walls and other upright faces open to the rain get, against the ground.
     RAIN_WET_WALLS(null, "render_pipeline.module.ray_tracing.attribute.rain_wet_walls", 0.01, 0, 100, 80,
         Format.PERCENT),
+    // How strongly frost and snow coat open surfaces during snowfall in cold biomes.
+    SNOW_FROST(null, "render_pipeline.module.ray_tracing.attribute.snow_frost_strength", 0.01, 0, 200, 100,
+        Format.PERCENT),
     // How brightly a lightning flash lights the world in a thunderstorm.
     LIGHTNING_FLASH(null, "render_pipeline.module.ray_tracing.attribute.lightning_flash", 0.01, 0, 200, 100,
         Format.PERCENT),

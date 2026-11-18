@@ -430,6 +430,7 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
         stage("blockLightSampling", true);
         stage("heldItemLight", true);
         stage("rainWetness", true);
+        stage("snowAccumulation", true);
         stage("blockOutline", false);
         stage("modOverlays", true);
         stage("textBackgrounds", true);
