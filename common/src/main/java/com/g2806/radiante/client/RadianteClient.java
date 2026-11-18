@@ -135,6 +135,11 @@ public final class RadianteClient {
         }
 
         com.g2806.radiante.client.photo.PhotoMode.checkWorld(minecraft);
+        if (com.g2806.radiante.client.gui.BeforeAfterPreview.hasSession()
+            && (!com.g2806.radiante.client.gui.BeforeAfterPreview.matchesLevel(minecraft.level)
+                || !RadianteRenderer.isRayTracingEnabled())) {
+            com.g2806.radiante.client.gui.BeforeAfterPreview.onSessionClose();
+        }
 
         while (RadianteKeys.OPEN_SETTINGS.consumeClick()) {
             if (minecraft.gui.screen() == null && !RadianteKeys.OPEN_SETTINGS.isUnbound()) {

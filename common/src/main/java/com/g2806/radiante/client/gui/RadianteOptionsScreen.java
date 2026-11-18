@@ -299,7 +299,19 @@ public class RadianteOptionsScreen extends SettingsRows {
         if (this.minecraft == null || this.minecraft.level == null || !RadianteRenderer.isRayTracingEnabled()) {
             return;
         }
+        BeforeAfterPreview.ensureSession(this.minecraft);
         double savedScroll = this.layout != null ? this.layout.scroll() : this.scroll;
+        if (!BeforeAfterPreview.hasBaseline()) {
+            BeforeAfterPreview.captureBeforeAndThen(() -> enterCompareAfterBaseline(savedScroll));
+            return;
+        }
+        enterCompareAfterBaseline(savedScroll);
+    }
+
+    private void enterCompareAfterBaseline(double savedScroll) {
+        if (this.minecraft == null || this.minecraft.level == null || !RadianteRenderer.isRayTracingEnabled()) {
+            return;
+        }
         applyAndOpen(() -> {
             BeforeAfterPreview.setActive(true);
             RadianteOptionsScreen fresh = new RadianteOptionsScreen(this.lastScreen, this.options);
