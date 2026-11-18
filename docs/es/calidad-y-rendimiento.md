@@ -5,7 +5,9 @@
 Cómo ganar FPS y qué ajusta cada nivel de calidad. Cada control de la sección Rendimiento, uno por uno, está en
 [opciones/rendimiento.md](opciones/rendimiento.md).
 
-## Empieza por el nivel de Calidad
+## Empieza con Optimizar para mi GPU o el nivel de Calidad
+
+Pulsa **Optimizar para mi GPU** en la barra lateral izquierda de los ajustes de Radiante (`F6`) dentro de un mundo: Radiante oculta el menú medio segundo para medir el tiempo real de pases en la GPU y el presupuesto de memoria de vídeo (`VK_EXT_memory_budget`) a la resolución actual de tu ventana, y deja preparados el mejor pipeline de escalado (DLSS con Reconstrucción de Rayos en tarjetas NVIDIA compatibles, XeSS en Intel Arc, FSR en el resto), el nivel de calidad, la distancia de renderizado, el detalle de texturas, NVIDIA Reflex y los hilos de chunks automáticos. Pulsa **Aplicar** (o **Aceptar**) para guardar el ajuste, o **Deshacer** para volver atrás. Si lo pulsas desde el menú principal antes de entrar a un mundo, estima según tu modelo de GPU, resolución y VRAM.
 
 El selector **Calidad**, arriba en la [sección Calidad](opciones/calidad-y-escalado.md), ajusta de una vez los
 controles que más cuestan, en combinaciones ya probadas:

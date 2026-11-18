@@ -86,6 +86,7 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
     /** Numeric pipeline settings, read once per screen; a setting the pipeline lacks has no entry. */
     java.util.EnumMap<Tunable, Integer> pendingTunables;
     PictureStyle.ToneMethod pendingToneMethod;
+    Component autoTuneNotice;
     boolean applied;
 
     /** Reset to Defaults was pressed: the stored pipeline and shader pack settings go too, on apply. */
@@ -186,6 +187,7 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
         this.pendingGpuTimings = previous.pendingGpuTimings;
         this.pendingTunables = previous.pendingTunables;
         this.pendingToneMethod = previous.pendingToneMethod;
+        this.autoTuneNotice = previous.autoTuneNotice;
     }
 
     /** While chunk building is automatic the pending values are the CPU's (Options.autoChunkBuilding). */
@@ -375,6 +377,50 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
         }
         if (this.pendingFogSamples != null) {
             this.pendingFogSamples = quality.fogSamples;
+        }
+    }
+
+    /** Stages the choices recommended by {@link AutoTune} so the player can review, apply or undo them. */
+    void applyAutoTune(AutoTune.Result result) {
+        this.shownPreset = null;
+        this.pendingPreset = result.preset() == Presets.RT_NRD_DLSS ? Presets.RT_DLSSRR : result.preset();
+        this.pendingRayReconstruction = result.rayReconstruction();
+        if (PipelineSettings.getShaderPackValue(RtAttributes.RAY_BOUNCES_ATTRIBUTE) != null) {
+            this.pendingBounces = result.quality().bounces;
+        }
+        if (PipelineSettings.supportsShaderPackToggle(RtAttributes.PARALLAX_ATTRIBUTE)) {
+            this.pendingParallax = result.quality().parallax;
+        }
+        if (PipelineSettings.getShaderPackValue(RtAttributes.VOLUMETRIC_SAMPLES_ATTRIBUTE) != null) {
+            this.pendingFogSamples = result.quality().fogSamples;
+        }
+        applyQuality(result.quality());
+        stage("renderDistance", result.renderDistance());
+        stage("tracedTextureDetail", result.tracedTextureDetail());
+        stage("outputResolution", OutputResolution.NATIVE.name());
+        this.pendingCollectEmission = true;
+        this.pendingChunkAuto = true;
+        syncChunkAuto();
+        this.pendingReflex = result.reflex();
+        if (PipelineSettings.supportsShaderPackToggle(RtAttributes.FROXEL_FOG_ATTRIBUTE)) {
+            this.pendingFroxelFog = Boolean.TRUE;
+        }
+        if (PipelineSettings.supportsShaderPackToggle(RtAttributes.CACHE_DEEP_BOUNCES_ATTRIBUTE)) {
+            this.pendingPackToggles.put(RtAttributes.CACHE_DEEP_BOUNCES_ATTRIBUTE, Boolean.TRUE);
+        }
+        if (PipelineSettings.supportsShaderPackToggle(RtAttributes.BEDROCK_ONE_BOUNCE_ATTRIBUTE)) {
+            this.pendingPackToggles.put(RtAttributes.BEDROCK_ONE_BOUNCE_ATTRIBUTE, Boolean.FALSE);
+        }
+        Component presetLabel = Component.translatable(result.preset().key);
+        Component qualityLabel = Component.translatable(result.quality().key);
+        if (result.liveMeasured()) {
+            this.autoTuneNotice = Component.translatable("options.radiante.optimize_gpu.done_live",
+                presetLabel, qualityLabel, String.format(java.util.Locale.ROOT, "%.1f", result.measuredGpuMs()),
+                String.format(java.util.Locale.ROOT, "%.1f", result.effectiveVramMb() / 1024.0));
+        } else {
+            this.autoTuneNotice = Component.translatable("options.radiante.optimize_gpu.done_estimate",
+                presetLabel, qualityLabel,
+                String.format(java.util.Locale.ROOT, "%.1f", result.effectiveVramMb() / 1024.0));
         }
     }
 
