@@ -35,6 +35,15 @@ Photo Mode has no key until you give it one: in Minecraft's **Options → Contro
 - **Exposure (`-4` to `+4 EV`)**: Adjusts tone-mapped brightness live **without resetting** your accumulated samples.
 - **Hands**: Hides or shows first-person hands and held items.
 
+## Cinematic panel
+
+The panel on the left:
+
+- **Frame**: the shape the photo is cut to: the screen, `16:9`, the cinema ratios `2.39:1` and `1.85:1`, `4:3`, `1:1` or `9:16` upright. Bars show what is left out, and the saved PNG and EXR are cut the same way.
+- **Guides**: composition lines over the frame (rule of thirds, golden ratio, centre with a safe area, diagonals). They are never in the saved photo.
+- **Lens**: steps through full-frame lenses (14, 24, 35, 50, 85, 135 mm) by setting the Field of View, which also shows its focal length.
+- **Time of Day** and **Weather** (singleplayer only): change the world's time and weather for golden hour, blue hour, night, rain or a storm. The world runs on for a moment so the sky and the rain follow, then the picture starts over.
+
 ## Saving PNG and HDR OpenEXR
 
 Captures are written to your game folder's `screenshots/` directory (`radiante_photo_<date>_<time>.png` / `.exr`):

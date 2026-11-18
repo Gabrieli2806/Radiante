@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.RadianteClient;
+import com.g2806.radiante.client.pipeline.ShaderPackLibrary;
 import com.g2806.radiante.client.render.RadianteRenderer;
 import com.g2806.radiante.compat.VersionCompat;
 import com.mojang.blaze3d.pipeline.RenderTarget;
@@ -39,9 +40,14 @@ public final class BeforeAfterPreview {
     private static boolean peeking;
     /** Before is the picture with ray tracing off (Radiante Off / On), not the settings as they were. */
     private static boolean beforeIsOff;
+    /** The shader pack the Before picture was taken with, to name the halves when the pack was changed since. */
+    private static String beforePack;
     /** Off / On capture in progress: ray tracing is off until the vanilla picture is taken (nanoTime deadline). */
     private static boolean offCapturePending;
     private static long offCaptureAt;
+    /** After an Off / On capture, until ray tracing has the world built again (nanoTime): the screen stays covered. */
+    private static long coverUntil;
+    private static final long ON_SETTLE_NANOS = 1_500_000_000L;
     /** How long the game's own renderer gets to build the world again before its picture is taken. */
     private static final long OFF_SETTLE_NANOS = 2_000_000_000L;
 
@@ -106,6 +112,7 @@ public final class BeforeAfterPreview {
             return;
         }
         RadianteClient.LOGGER.info("Before / After: taking the picture with ray tracing off");
+        ensureSession(mc);
         offCapturePending = true;
         offCaptureAt = System.nanoTime() + OFF_SETTLE_NANOS;
         RadianteClient.toggleRayTracing(mc);
@@ -145,6 +152,7 @@ public final class BeforeAfterPreview {
             return;
         }
         offCapturePending = false;
+        coverUntil = System.nanoTime() + ON_SETTLE_NANOS;
         Minecraft mc = Minecraft.getInstance();
         if (mc != null && !com.g2806.radiante.client.option.Options.rayTracingEnabled) {
             RadianteClient.toggleRayTracing(mc);
@@ -252,6 +260,8 @@ public final class BeforeAfterPreview {
         if (!sessionOpen) {
             afterBaselineCallback = null;
             image.close();
+            // Ray tracing comes back on whatever became of the picture: left off, the game stayed without it.
+            finishOffCapture();
             return;
         }
         Runnable callback = afterBaselineCallback;
@@ -272,6 +282,7 @@ public final class BeforeAfterPreview {
                 pending = null;
             }
             textureId = next;
+            beforePack = com.g2806.radiante.client.pipeline.PipelineShaderPack.shaderPackPath();
             texWidth = w;
             texHeight = h;
             if (previous != null) {
@@ -303,7 +314,12 @@ public final class BeforeAfterPreview {
     }
 
     private record TopBarRects(int backX, int backW, int resetX, int resetW, int setBeforeX, int setBeforeW,
-                               int offX, int offW, int barY) {
+                               int offX, int offW, int packX, int packW, int barY) {
+    }
+
+    private static Component packLabel() {
+        return Component.translatable("options.radiante.compare.pack",
+            packName(com.g2806.radiante.client.pipeline.PipelineShaderPack.shaderPackPath()));
     }
 
     private static TopBarRects topBar(Font font, int screenW) {
@@ -311,10 +327,53 @@ public final class BeforeAfterPreview {
         int resetW = font.width(Component.literal("50%")) + 14;
         int setBeforeW = font.width(Component.translatable("options.radiante.compare.set_before")) + 16;
         int offW = font.width(Component.translatable("options.radiante.compare.off_on")) + 16;
-        int totalW = backW + 4 + resetW + 4 + setBeforeW + 4 + offW;
-        int x = (screenW - totalW) / 2;
-        return new TopBarRects(x, backW, x + backW + 4, resetW, x + backW + 4 + resetW + 4, setBeforeW,
-            x + backW + 4 + resetW + 4 + setBeforeW + 4, offW, 10);
+        int packW = Math.min(font.width(packLabel()) + 16, 160);
+        int totalW = backW + 4 + resetW + 4 + setBeforeW + 4 + offW + 4 + packW;
+        int x = Math.max(4, (screenW - totalW) / 2);
+        int resetX = x + backW + 4;
+        int setBeforeX = resetX + resetW + 4;
+        int offX = setBeforeX + setBeforeW + 4;
+        int packX = offX + offW + 4;
+        return new TopBarRects(x, backW, resetX, resetW, setBeforeX, setBeforeW, offX, offW, packX, packW, 10);
+    }
+
+    /** A pack's name as the pack list shows it. */
+    private static String packName(String stored) {
+        ShaderPackLibrary.Entry entry = stored == null ? null : ShaderPackLibrary.entry(stored);
+        return entry != null && entry.displayName() != null ? entry.displayName() : String.valueOf(stored);
+    }
+
+    /**
+     * Switches the live picture (After) to the next pack that can run, keeping Before: one pack against another,
+     * or Radiante PT against a pack. The pack builds in the background as it does from the pack list.
+     */
+    private static void cyclePack() {
+        Minecraft mc = Minecraft.getInstance();
+        String current = com.g2806.radiante.client.pipeline.PipelineShaderPack.shaderPackPath();
+        java.util.List<ShaderPackLibrary.Entry> usable = new java.util.ArrayList<>();
+        for (ShaderPackLibrary.Entry entry : ShaderPackLibrary.scan()) {
+            if (entry.problem() == null
+                && !com.g2806.radiante.client.pipeline.PipelineShaderPack.shaderPackUnavailable(entry.path())) {
+                usable.add(entry);
+            }
+        }
+        if (usable.size() < 2) {
+            return;
+        }
+        int at = 0;
+        for (int i = 0; i < usable.size(); i++) {
+            if (ShaderPackLibrary.samePack(usable.get(i).path(), current)) {
+                at = i;
+                break;
+            }
+        }
+        ShaderPackLibrary.Entry next = usable.get((at + 1) % usable.size());
+        if (!com.g2806.radiante.client.pipeline.PipelineShaderPack.selectShaderPack(next.path())) {
+            return;
+        }
+        RadianteClient.LOGGER.info("Before / After: After now with shader pack {}", next.path());
+        ShaderPackTrial.begin(next.path(), next.displayName());
+        BackgroundRebuild.open(mc, mc.gui.screen(), true);
     }
 
     static void extract(GuiGraphicsExtractor g, Font font, int screenW, int screenH, int mouseX, int mouseY) {
@@ -332,7 +391,16 @@ public final class BeforeAfterPreview {
             g.disableScissor();
         }
 
-        if (offCapturePending) {
+        if (offCapturePending || System.nanoTime() < coverUntil) {
+            // The live world is the game without ray tracing for these two seconds: shown on the right, the halves
+            // looked swapped (Off on the right, On on the left) until the picture was taken. The screen is covered
+            // instead, with the picture from before.
+            if (hasBaseline()) {
+                VersionCompat.blit(g, textureId, 0, 0, 0.0f, 0.0f, screenW, screenH, texWidth, texHeight, texWidth,
+                    texHeight);
+            } else {
+                g.fill(0, 0, screenW, screenH, 0xFF0E1010);
+            }
             Component wait = Component.translatable("options.radiante.compare.capturing_off");
             int w = font.width(wait) + 24;
             g.fill((screenW - w) / 2, screenH / 2 - 12, (screenW + w) / 2, screenH / 2 + 12, 0xD0101413);
@@ -377,10 +445,14 @@ public final class BeforeAfterPreview {
 
         // What each side is: the settings before and after, or Radiante off and on.
         int margin = Math.max(8, screenW / 32);
-        Component beforeText = Component.translatable(beforeIsOff ? "options.radiante.compare.off"
-            : "options.radiante.compare.before").withStyle(ChatFormatting.BOLD);
-        Component afterText = Component.translatable(beforeIsOff ? "options.radiante.compare.on"
-            : "options.radiante.compare.after").withStyle(ChatFormatting.BOLD);
+        String livePack = com.g2806.radiante.client.pipeline.PipelineShaderPack.shaderPackPath();
+        boolean packsDiffer = !beforeIsOff && beforePack != null && !ShaderPackLibrary.samePack(beforePack, livePack);
+        Component beforeText = (beforeIsOff ? Component.translatable("options.radiante.compare.off")
+            : packsDiffer ? Component.literal(packName(beforePack))
+            : Component.translatable("options.radiante.compare.before")).copy().withStyle(ChatFormatting.BOLD);
+        Component afterText = (beforeIsOff ? Component.translatable("options.radiante.compare.on")
+            : packsDiffer ? Component.literal(packName(livePack))
+            : Component.translatable("options.radiante.compare.after")).copy().withStyle(ChatFormatting.BOLD);
         int beforeW = font.width(beforeText) + 14;
         int afterW = font.width(afterText) + 14;
         int badgeY = screenH - 28;
@@ -408,6 +480,7 @@ public final class BeforeAfterPreview {
             bar.barY(), bar.setBeforeW(), mouseX, mouseY, !beforeIsOff);
         drawPillButton(g, font, Component.translatable("options.radiante.compare.off_on"), bar.offX(), bar.barY(),
             bar.offW(), mouseX, mouseY, beforeIsOff);
+        drawPillButton(g, font, packLabel(), bar.packX(), bar.barY(), bar.packW(), mouseX, mouseY, packsDiffer);
 
         Component hint = Component.translatable("options.radiante.compare.hint");
         int hintW = font.width(hint) + 16;
@@ -424,7 +497,12 @@ public final class BeforeAfterPreview {
         boolean lit = hover || selected;
         g.fill(x, y, x + w, y + 18, lit ? Theme.PANEL_DARK : Theme.PANEL);
         g.outline(x, y, w, 18, lit ? Theme.ACCENT : 0x55FFFFFF);
-        g.centeredText(font, label, x + w / 2, y + 5, lit ? Theme.ACCENT : Theme.TEXT);
+        // A long pack name is cut to the pill instead of running over the next one.
+        Component shown = label;
+        if (font.width(label) > w - 8) {
+            shown = Component.literal(font.plainSubstrByWidth(label.getString(), w - 14) + "...");
+        }
+        g.centeredText(font, shown, x + w / 2, y + 5, lit ? Theme.ACCENT : Theme.TEXT);
     }
 
     static boolean mouseClicked(double mouseX, double mouseY, int button, Font font, int screenW,
@@ -432,7 +510,9 @@ public final class BeforeAfterPreview {
         if (offCapturePending) {
             return true;
         }
-        if (button != 0) {
+        // The left button's number differs between versions (0 up to 26.2, 1 from 26.3 on): the check took 0, and
+        // on 26.3 neither the buttons nor dragging the divider answered a click.
+        if (button != InputConstants.MOUSE_BUTTON_LEFT) {
             return false;
         }
         TopBarRects bar = topBar(font, screenW);
@@ -451,6 +531,10 @@ public final class BeforeAfterPreview {
             }
             if (mouseX >= bar.offX() && mouseX < bar.offX() + bar.offW()) {
                 requestOffBaseline();
+                return true;
+            }
+            if (mouseX >= bar.packX() && mouseX < bar.packX() + bar.packW()) {
+                cyclePack();
                 return true;
             }
         }

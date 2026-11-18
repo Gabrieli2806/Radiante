@@ -19,6 +19,9 @@ public final class PhotoProxy {
     /** The denoiser and upscaler run and their output is averaged (true), or the raw paths are (false). */
     public static native void setDenoise(boolean denoise);
 
+    /** The frame a saved photo is cut to, width over height; 0 keeps the whole picture. */
+    public static native void setCaptureAspect(float aspect);
+
     public static native int getTargetSamples();
 
     public static native int getSampleCount();

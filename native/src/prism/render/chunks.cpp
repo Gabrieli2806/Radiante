@@ -57,12 +57,21 @@ void Chunks::bumpGeometryVersion() {
 void Chunks::reset(uint32_t numChunks, uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ, int32_t bottomSectionCoord) {
     std::unique_lock<std::recursive_mutex> lock(mutex_);
 
-    // Rejoining a world or changing the render distance replaces every section without stalling the queues: batches
-    // still running on the GPU stay in retiredSchedulers_ until their own fences signal, and frames already handed to
+    // Rejoining a world, changing the render distance or turning ray tracing back on replaces every section. The
+    // builds still running on the GPU are finished and both queues drained first, as before the retirement without
+    // waits: leaving them to their fences, turning ray tracing off and on again (Before / After's Radiante Off / On)
+    // lost the device now and then. A reset is rare; the stall it costs is not felt. Frames already handed to
     // Minecraft keep the old sections alive through gpu::retire.
     for (const auto &retired : retiredSchedulers_) retired->discardResults();
-    retireScheduler(false);
-    pollRetiredSchedulers();
+    if (chunkBuildScheduler_ != nullptr) chunkBuildScheduler_->waitAllBatchesFinish();
+    chunkBuildScheduler_ = nullptr;
+    waitRetiredSchedulers();
+    if (auto device = Renderer::instance().framework()->device(); device != nullptr) {
+        gpu::diagnostics::onResult(vkQueueWaitIdle(device->mainVkQueue()), device->mainVkQueue(),
+                                   device->secondaryQueue());
+        gpu::diagnostics::onResult(vkQueueWaitIdle(device->secondaryQueue()), device->mainVkQueue(),
+                                   device->secondaryQueue());
+    }
     // The old slots point into occupied_, which is about to be replaced.
     for (const auto &slot : chunks_) {
         if (slot != nullptr) slot->occupiedFlag = nullptr;

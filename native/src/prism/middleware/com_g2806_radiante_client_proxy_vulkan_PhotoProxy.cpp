@@ -39,6 +39,11 @@ JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_PhotoProxy_se
     });
 }
 
+JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_PhotoProxy_setCaptureAspect(JNIEnv *, jclass,
+                                                                                               jfloat aspect) {
+    jni::guard("[Radiante] PhotoProxy.setCaptureAspect", [aspect] { PhotoMode::instance().setCaptureAspect(aspect); });
+}
+
 JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_PhotoProxy_setDenoise(JNIEnv *, jclass,
                                                                                          jboolean denoise) {
     jni::guard("[Radiante] PhotoProxy.setDenoise", [denoise] { PhotoMode::instance().setDenoise(denoise == JNI_TRUE); });

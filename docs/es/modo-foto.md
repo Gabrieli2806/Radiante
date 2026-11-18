@@ -35,6 +35,15 @@ El modo foto no tiene tecla hasta que le asignes una: en **Opciones → Controle
 - **Exposición (`-4` a `+4 EV`)**: Ajusta el brillo del mapeo de tonos al instante **sin reiniciar** las muestras ya acumuladas.
 - **Manos**: Oculta o muestra las manos y objetos en primera persona.
 
+## Panel cinematográfico
+
+El panel de la izquierda:
+
+- **Encuadre**: el formato al que se recorta la foto: la pantalla, `16:9`, los formatos de cine `2.39:1` y `1.85:1`, `4:3`, `1:1` o `9:16` vertical. Las barras muestran lo que queda fuera, y el PNG y el EXR guardados se recortan igual.
+- **Guías**: líneas de composición sobre el encuadre (tercios, proporción áurea, centro con zona segura, diagonales). Nunca salen en la foto guardada.
+- **Lente**: recorre objetivos full frame (14, 24, 35, 50, 85, 135 mm) ajustando el campo de visión, que también muestra su distancia focal.
+- **Hora del día** y **Clima** (solo un jugador): cambian la hora y el clima del mundo para la hora dorada, la hora azul, la noche, la lluvia o una tormenta. El mundo avanza un momento para que el cielo y la lluvia se actualicen, y luego la imagen empieza de nuevo.
+
 ## Guardar PNG y OpenEXR HDR
 
 Las capturas se guardan en la carpeta `screenshots/` del juego (`radiante_photo_<fecha>_<hora>.png` / `.exr`):
