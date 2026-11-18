@@ -116,6 +116,49 @@ void RayTracingModule::setAttributes(int attributeCount, std::vector<std::string
     Renderer::instance().buffers()->setUseJitter(settings_.jitter);
 }
 
+bool RayTracingModule::setRuntimeAttribute(const std::string &key, const std::string &value) {
+    if (key == kUseJitterAttribute) {
+        settings_.jitter = value == kTrue;
+        Renderer::instance().buffers()->setUseJitter(settings_.jitter);
+        return true;
+    }
+    if (key == kSharcDebugModeAttribute) {
+        settings_.sharcDebugMode = readSharcDebugMode(value);
+        return true;
+    }
+    if (key == kSharcSceneScaleAttribute) {
+        const auto scale = readFloat(value);
+        if (!scale.has_value()) return false;
+        settings_.sharcSceneScale = std::max(0.001f, *scale);
+        return true;
+    }
+    if (key == kSharcAccumulationAttribute) {
+        const auto frames = readFrameCount(value, 1);
+        if (!frames.has_value()) return false;
+        settings_.sharcAccumulationFrameNum = *frames;
+        return true;
+    }
+    if (key == kSharcStaleAttribute) {
+        const auto frames = readFrameCount(value, 8);
+        if (!frames.has_value()) return false;
+        settings_.sharcStaleFrameNumMax = *frames;
+        return true;
+    }
+    if (key == kSharcDownsampleAttribute) {
+        const auto factor = readFrameCount(value, 1);
+        if (!factor.has_value()) return false;
+        settings_.sharcUpdateDownsampleFactor = *factor;
+        return true;
+    }
+    return false;
+}
+
+void RayTracingModule::noteShaderPackRuntimeChange() {
+    if (auto found = globalVariables_.find("VPT_TRANS_LUT_READY"); found != globalVariables_.end()) {
+        found->second = "false";
+    }
+}
+
 ShaderPrewarm::Work RayTracingModule::preparePrewarm(const std::vector<std::string> &attributeKVs) {
     auto framework = framework_.lock();
     if (framework == nullptr || shaderPack_ == nullptr) return {};

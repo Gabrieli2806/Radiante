@@ -58,13 +58,15 @@ const mat4 VPT_SCALE_TRANSLATE = mat4(
 
 // Whether a bounce should see the volumetric clouds: transmission (lobe 2) always does, reflection (lobe 1) only
 // off a smooth enough surface, and any other lobe never.
-bool vptShouldCaptureIndirectVolumetricCloud(uint lobeType, float roughness) {
+bool vptShouldCaptureIndirectVolumetricCloudWithLimit(uint lobeType, float roughness, float maxRoughness) {
     bool isTransmission = lobeType == 2u;
     if (isTransmission) { return true; }
     bool isReflection = lobeType == 1u;
     if (!isReflection) { return false; }
-    float roughnessLimit = clamp(VPT_INDIRECT_VOLUMETRIC_CLOUD_REFLECTION_MAX_ROUGHNESS, 0.0, 1.0);
+    float roughnessLimit = clamp(maxRoughness, 0.0, 1.0);
     return roughness <= roughnessLimit;
 }
+#define vptShouldCaptureIndirectVolumetricCloud(lobeType, roughness) \
+    vptShouldCaptureIndirectVolumetricCloudWithLimit((lobeType), (roughness), float(VPT_INDIRECT_VOLUMETRIC_CLOUD_REFLECTION_MAX_ROUGHNESS))
 
 #endif
