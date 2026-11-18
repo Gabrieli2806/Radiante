@@ -102,4 +102,16 @@ public class RendererProxy {
     /** Chains this frame's present id into a VkPresentInfoKHR, by address. */
     public static native void reflexChainPresent(long presentInfo);
 
+    /** Resets the short-window GPU timestamp probe for Auto-Tune ("Optimize for my GPU"). */
+    public static native void resetGpuProbe();
+
+    /** Completed frames timed since {@link #resetGpuProbe()}. */
+    public static native int gpuProbeFrames();
+
+    /** Outlier-trimmed mean GPU world pass time in milliseconds since {@link #resetGpuProbe()}, or 0. */
+    public static native float gpuProbeMeanMs();
+
+    /** Total physical device-local video memory on the GPU in MB, or 0 before initialization. */
+    public static native long totalDeviceMemoryMb();
+
 }

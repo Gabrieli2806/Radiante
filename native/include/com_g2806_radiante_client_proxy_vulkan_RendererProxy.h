@@ -247,6 +247,38 @@ JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_RendererProxy
 JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_RendererProxy_reflexChainPresent
   (JNIEnv *, jclass, jlong);
 
+/*
+ * Class:     com_g2806_radiante_client_proxy_vulkan_RendererProxy
+ * Method:    resetGpuProbe
+ * Signature: ()V
+ */
+JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_RendererProxy_resetGpuProbe
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_g2806_radiante_client_proxy_vulkan_RendererProxy
+ * Method:    gpuProbeFrames
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_g2806_radiante_client_proxy_vulkan_RendererProxy_gpuProbeFrames
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_g2806_radiante_client_proxy_vulkan_RendererProxy
+ * Method:    gpuProbeMeanMs
+ * Signature: ()F
+ */
+JNIEXPORT jfloat JNICALL Java_com_g2806_radiante_client_proxy_vulkan_RendererProxy_gpuProbeMeanMs
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_g2806_radiante_client_proxy_vulkan_RendererProxy
+ * Method:    totalDeviceMemoryMb
+ * Signature: ()J
+ */
+JNIEXPORT jlong JNICALL Java_com_g2806_radiante_client_proxy_vulkan_RendererProxy_totalDeviceMemoryMb
+  (JNIEnv *, jclass);
+
 #ifdef __cplusplus
 }
 #endif

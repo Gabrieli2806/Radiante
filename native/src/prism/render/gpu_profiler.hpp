@@ -19,6 +19,12 @@ bool verbose();
 // The last averages, "13.14 ms (world 11.35, sharc_paths 0.32, DLSS 0.56)", or empty before the first.
 std::string summary();
 
+// Short-window GPU timing probe for "Optimize for my GPU": clears recorded probe samples, reports how many completed
+// frames were timed since resetProbe(), and computes their outlier-trimmed mean in milliseconds.
+void resetProbe();
+uint32_t probeFrameCount();
+double probeTrimmedMeanMs();
+
 // At the start of a frame's world commands: collects what this frame slot measured the last time it was used (that
 // frame has completed) and starts measuring anew.
 void beginFrame(VkDevice device, VkPhysicalDevice physicalDevice, VkCommandBuffer commandBuffer, uint32_t frameIndex);

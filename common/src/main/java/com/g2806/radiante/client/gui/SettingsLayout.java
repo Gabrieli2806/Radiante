@@ -91,8 +91,8 @@ final class SettingsLayout {
      * What the buttons do. {@code advanced} is whether the Advanced options show; the toggle flips it.
      * {@code shaderPacks} opens the shader pack list (null for no button).
      */
-    record Actions(Runnable reset, Runnable undo, Runnable apply, Runnable done, Extra extra, Runnable share,
-                   boolean advanced, Runnable toggleAdvanced, Runnable rebuild, Runnable shaderPacks,
+    record Actions(Runnable reset, Runnable optimizeGpu, Runnable undo, Runnable apply, Runnable done, Extra extra,
+                   Runnable share, boolean advanced, Runnable toggleAdvanced, Runnable rebuild, Runnable shaderPacks,
                    Runnable photoMode) {
     }
 
@@ -380,6 +380,17 @@ final class SettingsLayout {
             this.buttons.add(new FlatButton(photo.label(), photo.action(), true, photo.tooltip(),
                 this.width - margin - topRight - 4 - photoW, 13, photoW));
             topRight += photoW + 4;
+        }
+        if (this.actions.optimizeGpu() != null) {
+            int optW = this.sidebarW - 8;
+            Component optLabel = Component.translatable("options.radiante.optimize_gpu");
+            if (this.font.width(optLabel) > optW - 8) {
+                optLabel = Component.literal(this.font.plainSubstrByWidth(optLabel.getString(),
+                    Math.max(0, optW - 8 - this.font.width("…"))) + "…");
+            }
+            this.buttons.add(new FlatButton(optLabel, this.actions.optimizeGpu(), true,
+                Component.translatable("options.radiante.optimize_gpu.tooltip"),
+                this.sidebarX + 4, this.bottom - 20, optW));
         }
         this.search = new EditBox(this.font, this.sidebarX, 12, this.width - margin * 2 - topRight - 4, 18,
             Component.translatable("options.radiante.search"));

@@ -5,7 +5,9 @@
 How to get more FPS, and what each quality level sets. For every control of the Performance section one by one, see
 [settings/performance.md](settings/performance.md).
 
-## Start with the Quality level
+## Start with Optimize for my GPU or the Quality level
+
+Press **Optimize for my GPU** in the left sidebar of Radiante's settings (`F6`) while in a world: Radiante hides the menu for half a second to measure your GPU's real pass timestamps and `VK_EXT_memory_budget` video memory headroom at your current window resolution, then stages the best upscaler pipeline (DLSS Ray Reconstruction on supported NVIDIA cards, XeSS on Intel Arc, FSR elsewhere), quality tier, render distance, texture detail, NVIDIA Reflex and automatic chunk building. Press **Apply** (or **Done**) to keep the result, or **Undo** to revert. Running it from the title screen before joining a world estimates from your GPU model, resolution and VRAM budget instead.
 
 The **Quality** selector, at the top of the [Quality section](settings/quality-and-upscaling.md), sets the controls
 that cost the most at once, in combinations already tested:

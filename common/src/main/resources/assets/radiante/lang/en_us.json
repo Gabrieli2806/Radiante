@@ -858,5 +858,11 @@
   "gui.radiante.photo.controls_hint": "WASD / Space / Shift: fly · Drag: look · Click world: focus · Scroll: speed · H: UI",
   "gui.radiante.photo.saving_wait": "Accumulating for capture (%s / %s)...",
   "gui.radiante.photo.saved": "Saved %s",
-  "gui.radiante.photo.save_failed": "Save failed: %s"
+  "gui.radiante.photo.save_failed": "Save failed: %s",
+  "options.radiante.optimize_gpu": "Optimize GPU",
+  "options.radiante.optimize_gpu.tooltip": "Measures your GPU's live pass time and video memory budget (or estimates from hardware in the menus) and picks the best upscaler, quality level, render distance and texture detail. Press Apply to confirm or Undo to revert.",
+  "options.radiante.optimize_gpu.measuring": "Measuring GPU performance...",
+  "options.radiante.optimize_gpu.frames": "Frame %s / %s",
+  "options.radiante.optimize_gpu.done_live": "Optimized: %s · %s (%s ms GPU, %s GB VRAM)",
+  "options.radiante.optimize_gpu.done_estimate": "Optimized: %s · %s (%s GB VRAM)"
 }
