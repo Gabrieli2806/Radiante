@@ -328,5 +328,9 @@ void main() {
     if (pc.clampOutput != 0) {
         mapped = clamp(mapped, vec3(0.0), vec3(isHdr ? pow(hdrPeak, 1.0 / 2.2) : 1.0));
     }
+    // In SDR the output went to an 8-bit image, which held nothing over 1.0 whatever Clamp Output said. Now that it
+    // is a float image, values over 1.0 reached depth of field, motion blur and a pack's grade, and the grade's
+    // headroom restore boosted what the pack meant to darken.
+    if (!isHdr) { mapped = min(mapped, vec3(1.0)); }
     fragColor = vec4(mapped, 1.0);
 }

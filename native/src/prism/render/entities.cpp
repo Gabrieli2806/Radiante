@@ -516,6 +516,10 @@ void Entities::resetFrame() {
     // frames in flight and last frame's motion-vector references finish before a slot comes round again.
     (void) s.currentSlot(*framework);
     s.ringIndex = (s.ringIndex + 1) % s.persistentRing.size();
+    // No lights until this frame's build publishes its own: kept over frames that built no entities, the address
+    // pointed into an older slot that the ring hands out again while frames in flight still read it.
+    lightBufferAddress_ = 0;
+    lightCount_ = 0;
 
     const bool collectLights = Renderer::options.collectChunkEmission.load(std::memory_order_relaxed);
     if (collectLights && !s.lastCollectLights) {

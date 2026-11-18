@@ -504,6 +504,11 @@ vec2 vptSnowHeatMelt(ivec2 column, uint textureId, vec2 withinColumn) {
  *  y: rime frost reach (0..1), including windward walls, tree trunks and ground under leaves. */
 vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
     g_vptSnowSoak = 1.0;
+    // Nothing falling and the last snow long gone (as vptSnowCover reads it): every hit in a snowy biome on a clear
+    // day still paid for the biome, heat and neighbour lookups only to have the result thrown away.
+    if (skyUBO.rainGradient <= 0.2 && skyUBO.rainStoppedFor > max(VPT_RAIN_DRYING_TIME, 1.0) * 1.35) {
+        return vec2(0.0);
+    }
     uint textureId = vptRainTextureId();
     if (textureId == 0u || outwardNormal.y < -0.25) { return vec2(0.0); }
     if (max(abs(position.x), abs(position.z)) > 238.0) { return vec2(0.0); }

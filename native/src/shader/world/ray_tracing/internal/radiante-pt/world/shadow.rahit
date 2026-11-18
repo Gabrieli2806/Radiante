@@ -81,7 +81,7 @@ bool waterSurfaceLight(PositionVertex p0, PositionVertex p1, PositionVertex p2,
                        MaterialVertex m0, MaterialVertex m1, MaterialVertex m2,
                        vec3 biomeWaterColour, bool useRayDistance, out vec3 transmission) {
     transmission = vec3(1.0);
-    mat3 objectToWorld = mat3(gl_ObjectToWorld3x4EXT);
+    mat3 objectToWorld = mat3(gl_ObjectToWorldEXT);
     vec3 dPdu, dPdv;
     computedposduDv(p0.pos, p1.pos, p2.pos, m0.textureUV, m1.textureUV, m2.textureUV, dPdu, dPdv);
     vec3 dPduWorld = objectToWorld * dPdu;

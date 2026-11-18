@@ -133,16 +133,9 @@ void main() {
         if (shade > 0.0) {
             vec2 uv = (vec2(pixel) + 0.5) / vec2(imageSize(composed));
             vec3 hdrEncoded = params.scaled != 0 ? bilinear(worldOutput, uv) : texelFetch(worldOutput, pixel, 0).rgb;
-            vec3 prePost = params.scaled != 0 ? bilinear(toneMappedWorld, uv) : texelFetch(toneMappedWorld, pixel, 0).rgb;
-
-            // If a pack's custom post pass clamped an HDR highlight (> 1.0) right at 1.0, carry the tone-mapped
-            // highlight headroom through while keeping the pass's hue. Motion blur and DoF values above 1.0 pass
-            // straight through untouched.
-            float prePeak = largest(prePost);
-            float outPeak = largest(hdrEncoded);
-            if (prePeak > 1.0 && outPeak >= 0.994 && outPeak <= 1.002) {
-                hdrEncoded *= prePeak / max(outPeak, 1e-4);
-            }
+            // A pack's grade that clips at 1.0 has its headroom restored where it clips (post_hook_grade.frag). A
+            // second restore here, by comparing with the picture before the post passes, also fired where depth of
+            // field or motion blur happened to average a lamp down to about 1.0, and drew speckled halos.
 
             if (!any(isnan(hdrEncoded)) && !any(isinf(hdrEncoded))) {
                 float maxLinear = max(params.peak, 1.0);
