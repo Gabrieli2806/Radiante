@@ -872,5 +872,13 @@
   "options.radiante.optimize_gpu.measuring": "正在测量显卡性能...",
   "options.radiante.optimize_gpu.frames": "帧 %s / %s",
   "options.radiante.optimize_gpu.done_live": "已优化：%s · %s（%s ms GPU，%s GB 显存）",
-  "options.radiante.optimize_gpu.done_estimate": "已优化：%s · %s（%s GB 显存）"
+  "options.radiante.optimize_gpu.done_estimate": "已优化：%s · %s（%s GB 显存）",
+  "options.radiante.compare": "前后对比",
+  "options.radiante.compare.tooltip": "应用更改并将打开设置时的画面（左）与实时光线追踪画面（右）分屏对比。按住 Ctrl 可将当前画面重设为新的“修改前”基准。",
+  "options.radiante.compare.before": "修改前",
+  "options.radiante.compare.after": "修改后",
+  "options.radiante.compare.exit": "← 返回设置",
+  "options.radiante.compare.set_before": "重设基准",
+  "options.radiante.compare.set_before.tooltip": "将当前场景画面捕获为新的“修改前”对比基准。",
+  "options.radiante.compare.hint": "拖动分割线或按 左 / 右 方向键 · Esc 返回设置"
 }

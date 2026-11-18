@@ -63,7 +63,10 @@ public final class EntityHands {
             return false;
         }
         CameraRenderState cameraState = levelRenderState.cameraRenderState;
-        boolean hudAllowsHands = photo || !minecraft.gameRenderer.gameRenderState().guiRenderState.isHudHidden;
+        boolean compareAllowsHands = com.g2806.radiante.client.gui.BeforeAfterPreview.isActive()
+            && !com.g2806.radiante.client.gui.BeforeAfterPreview.wasHudHiddenBeforeCompare();
+        boolean hudAllowsHands = photo || compareAllowsHands
+            || !minecraft.gameRenderer.gameRenderState().guiRenderState.isHudHidden;
         return PlayerFrame.hasPlayer() && hudAllowsHands
             && minecraft.options.getCameraType().isFirstPerson() && !cameraState.entityRenderState.isSleeping
             && minecraft.gameMode != null && minecraft.gameMode.getPlayerMode() != GameType.SPECTATOR

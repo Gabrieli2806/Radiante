@@ -131,6 +131,7 @@ public abstract class GameRendererMixin {
             radiante$screenEffects(deltaTracker.getGameTimeDeltaPartialTick(false));
             radiante$debugCrosshair();
         }
+        com.g2806.radiante.client.gui.BeforeAfterPreview.onWorldFrameRendered(this.mainRenderTarget);
         com.g2806.radiante.client.DevAutomation.frameDrawn();
     }
 
