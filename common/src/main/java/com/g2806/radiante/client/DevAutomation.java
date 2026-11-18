@@ -675,21 +675,6 @@ public final class DevAutomation {
                 RadianteClient.LOGGER.info("[dev] click {} on {}", action.substring(6),
                     minecraft.gui.screen().getClass().getSimpleName());
             }
-        } else if (action.startsWith("rawclick=")) {
-            // rawclick=x,y: a left click at GUI coordinates through Minecraft's own mouse handler, as the window's
-            // input reaches it, not straight to the screen as click= does.
-            String[] xy = action.substring(9).split(",");
-            long handle = minecraft.getWindow().handle();
-            double scale = minecraft.getWindow().getGuiScale();
-            double px = Double.parseDouble(xy[0]) * scale;
-            double py = Double.parseDouble(xy[1]) * scale;
-            minecraft.mouseHandler.onMove(handle, px, py, 0.0, 0.0);
-            var info = new net.minecraft.client.input.MouseButtonInfo(
-                    com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0);
-            minecraft.mouseHandler.onButton(handle, info, 1);
-            minecraft.mouseHandler.onButton(handle, info, 0);
-            RadianteClient.LOGGER.info("[dev] raw click {} (scale {}) on {}", action.substring(9), scale,
-                minecraft.gui.screen() != null ? minecraft.gui.screen().getClass().getSimpleName() : "no screen");
         } else if (action.startsWith("vopt=")) {
             // vopt=accessor=value: a vanilla video option by its accessor on Options (ambientOcclusion, mipmapLevels,
             // entityShadows...), set as its own button sets it, so its reload runs. Not saved.
