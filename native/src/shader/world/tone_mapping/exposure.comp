@@ -1,4 +1,7 @@
 #version 460
+#extension GL_GOOGLE_include_directive : require
+
+#include "classic_tone_curves.glsl"
 
 // The exposure for this frame, eased from the last one towards what the selected meter reads. One invocation.
 //
@@ -22,7 +25,7 @@ layout(set = 0, binding = 2) buffer ExposureBuffer {
     float exposure;
     float avgLogLum;
     float padding0;
-    float padding1;
+    float padding1; // the classic curve's input at HDR_KNEE, for the tone mapping pass's HDR extension
 }
 expData;
 
@@ -259,6 +262,7 @@ void main() {
     // The Nether is flagged to the tone mapper (it holds the hue of what is brighter than white there): world.rgen
     // sends a negative daylight.w for it.
     expData.padding0 = lightMeter.daylight.w < 0.0 ? 1.0 : 0.0;
+    expData.padding1 = classicCurveKnee(pc.toneMappingMethod, pc.whitePoint);
     if (pc.exposureMeteringMode != 4) { lightMeter.bedrockMeter = vec4(0.0); }
 
     // Nothing carried over yet (the buffer is zeroed when the module is built) or not a usable value: start from the

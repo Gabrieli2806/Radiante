@@ -200,16 +200,25 @@ public class RadianteOptionsScreen extends SettingsRows {
                     // built before, it showed (and on leaving wrote back) the old frame generation, Reflex and the
                     // other values kept in Options, so a change had to be applied twice to stick.
                     double scroll = this.layout.scroll();
-                    applyAndOpen(() -> {
+                    Runnable apply = () -> applyAndOpen(() -> {
                         RadianteOptionsScreen fresh = new RadianteOptionsScreen(this.lastScreen, this.options);
                         fresh.scroll = scroll;
                         return fresh;
                     });
+                    // The first Apply in a traced world keeps the picture as it was for Compare: taken only when
+                    // Compare was opened, an Apply before it left Before showing the settings already applied.
+                    if (inTracedWorld && !BeforeAfterPreview.hasBaseline()) {
+                        BeforeAfterPreview.ensureSession(this.minecraft);
+                        BeforeAfterPreview.captureBeforeAndThen(apply);
+                    } else {
+                        apply.run();
+                    }
                 },
                 this::onClose, upscalerFooterButton(),
                 () -> {
                     // Leaving through Share must not apply what is only staged here.
                     this.applied = true;
+                    BeforeAfterPreview.onSessionClose();
                     Screen last = this.lastScreen;
                     this.minecraft.gui.setScreen(new ShareSettingsScreen(this,
                         () -> new RadianteOptionsScreen(last, this.options)));
@@ -226,6 +235,7 @@ public class RadianteOptionsScreen extends SettingsRows {
                     // As Share: what is only staged here is not applied by leaving for the pack list, and the
                     // settings screen comes back fresh, reading the settings of whichever pack is in use then.
                     this.applied = true;
+                    BeforeAfterPreview.onSessionClose();
                     Screen last = this.lastScreen;
                     this.minecraft.gui.setScreen(new ShaderPacksScreen(
                         () -> new RadianteOptionsScreen(last, this.options)));
@@ -233,6 +243,8 @@ public class RadianteOptionsScreen extends SettingsRows {
                 inTracedWorld
                     ? () -> {
                         this.applied = true;
+                        // Photo Mode moves the camera: the Before taken here would not match on coming back.
+                        BeforeAfterPreview.onSessionClose();
                         Screen last = this.lastScreen;
                         PhotoModeScreen.open(this.minecraft, new RadianteOptionsScreen(last, this.options));
                     }

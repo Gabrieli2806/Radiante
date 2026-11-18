@@ -23,6 +23,14 @@ final class RigidPartCache {
 
     static final String NAME_PREFIX = "rp:";
     private static final int UNUSED_FRAMES = 600;
+    /**
+     * Baked variants kept for one part. A tint or overlay that changes every frame (jeb_'s rainbow sheep, a creeper
+     * swelling) baked a new variant each frame, and up to 600 frames of them stayed, each found again by a scan of
+     * the list. Past this the one used longest ago goes.
+     */
+    private static final int MAX_VARIANTS_PER_PART = 16;
+    /** A variant used this recently may still be waiting to be uploaded, so it is never the one dropped. */
+    private static final int IN_FLIGHT_FRAMES = 3;
 
     private static final PoseStack IDENTITY_STACK = new PoseStack();
     private static final PBRVertexWriter BAKE_WRITER = new PBRVertexWriter(256);
@@ -286,6 +294,8 @@ final class RigidPartCache {
         if (bucket == null) {
             bucket = new Bucket();
             BUCKETS.put(new PartKey(part, COLLECTED_PARTS), bucket);
+        } else if (bucket.variants.size() >= MAX_VARIANTS_PER_PART) {
+            evictOldest(bucket);
         }
         if (vertexCount == 0 || vertexCount % 4 != 0) {
             Variant empty = new Variant(textureId, alphaMode, geometryType, groupName, useOverlay, needsNormals,
@@ -306,5 +316,18 @@ final class RigidPartCache {
             nameBuf, frame);
         bucket.variants.add(created);
         return created.pendingLayer;
+    }
+
+    private static void evictOldest(Bucket bucket) {
+        Variant oldest = null;
+        for (Variant variant : bucket.variants) {
+            if (frame - variant.lastUsed >= IN_FLIGHT_FRAMES && (oldest == null || variant.lastUsed < oldest.lastUsed)) {
+                oldest = variant;
+            }
+        }
+        if (oldest != null) {
+            oldest.free();
+            bucket.variants.remove(oldest);
+        }
     }
 }

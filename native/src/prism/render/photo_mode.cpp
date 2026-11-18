@@ -460,46 +460,54 @@ void PhotoMode::saveWorkerLoop() {
 
         int finalStatus = 2;
         std::u16string message;
-        const size_t pixelCount = static_cast<size_t>(job.width) * job.height;
+        // An exception leaving this thread would end the game (std::terminate): the buffers of an 8K picture, a path
+        // the file system refuses. It fails the capture instead.
+        try {
+            const size_t pixelCount = static_cast<size_t>(job.width) * job.height;
 
-        if (!job.pngPath.empty() && job.pngHalfRgba.size() == pixelCount * 4u) {
-            std::vector<uint8_t> rgba(pixelCount * 4u, 255);
-            // RenderPearl keeps its main render target bottom-up and flips vertically on present; flip here too so
-            // saved PNGs and EXRs have row 0 at the top of the frame.
-            for (uint32_t y = 0; y < job.height; y++) {
-                const uint32_t srcY = job.height - 1u - y;
-                for (uint32_t x = 0; x < job.width; x++) {
-                    const size_t srcIdx = (static_cast<size_t>(srcY) * job.width + x) * 4u;
-                    const size_t dstIdx = (static_cast<size_t>(y) * job.width + x) * 4u;
-                    rgba[dstIdx + 0u] = floatToByte(glm::unpackHalf1x16(job.pngHalfRgba[srcIdx + 0u]));
-                    rgba[dstIdx + 1u] = floatToByte(glm::unpackHalf1x16(job.pngHalfRgba[srcIdx + 1u]));
-                    rgba[dstIdx + 2u] = floatToByte(glm::unpackHalf1x16(job.pngHalfRgba[srcIdx + 2u]));
-                    rgba[dstIdx + 3u] = 255;
+            if (!job.pngPath.empty() && job.pngHalfRgba.size() == pixelCount * 4u) {
+                std::vector<uint8_t> rgba(pixelCount * 4u, 255);
+                // RenderPearl keeps its main render target bottom-up and flips vertically on present; flip here too so
+                // saved PNGs and EXRs have row 0 at the top of the frame.
+                for (uint32_t y = 0; y < job.height; y++) {
+                    const uint32_t srcY = job.height - 1u - y;
+                    for (uint32_t x = 0; x < job.width; x++) {
+                        const size_t srcIdx = (static_cast<size_t>(srcY) * job.width + x) * 4u;
+                        const size_t dstIdx = (static_cast<size_t>(y) * job.width + x) * 4u;
+                        rgba[dstIdx + 0u] = floatToByte(glm::unpackHalf1x16(job.pngHalfRgba[srcIdx + 0u]));
+                        rgba[dstIdx + 1u] = floatToByte(glm::unpackHalf1x16(job.pngHalfRgba[srcIdx + 1u]));
+                        rgba[dstIdx + 2u] = floatToByte(glm::unpackHalf1x16(job.pngHalfRgba[srcIdx + 2u]));
+                        rgba[dstIdx + 3u] = 255;
+                    }
+                }
+                const std::string err = exr_writer::writeRgbaPngFile(job.pngPath, job.width, job.height, rgba.data());
+                if (!err.empty()) {
+                    finalStatus = -1;
+                    message = u"could not write " + job.pngPath.filename().u16string();
+                } else {
+                    message = job.pngPath.filename().u16string();
+                    radiante::out() << "[PhotoMode] saved PNG " << pathToUtf8Log(job.pngPath) << " (" << job.width
+                                    << "x" << job.height << ", " << job.samples << " samples)" << std::endl;
                 }
             }
-            const std::string err = exr_writer::writeRgbaPngFile(job.pngPath, job.width, job.height, rgba.data());
-            if (!err.empty()) {
-                finalStatus = -1;
-                message = u"could not write " + job.pngPath.filename().u16string();
-            } else {
-                message = job.pngPath.filename().u16string();
-                radiante::out() << "[PhotoMode] saved PNG " << pathToUtf8Log(job.pngPath) << " (" << job.width << "x"
-                                << job.height << ", " << job.samples << " samples)" << std::endl;
-            }
-        }
 
-        if (finalStatus > 0 && !job.exrPath.empty() && job.exrFloatRgba.size() == pixelCount * 4u) {
-            const std::string err =
-                exr_writer::writeHalfRgbExrFile(job.exrPath, job.width, job.height, job.exrFloatRgba.data(), true);
-            if (!err.empty()) {
-                finalStatus = -1;
-                message = asciiToUtf16(err);
-            } else {
-                if (!message.empty()) message += u" + ";
-                message += job.exrPath.filename().u16string();
-                radiante::out() << "[PhotoMode] saved EXR " << pathToUtf8Log(job.exrPath) << " (" << job.width << "x"
-                                << job.height << ", " << job.samples << " samples)" << std::endl;
+            if (finalStatus > 0 && !job.exrPath.empty() && job.exrFloatRgba.size() == pixelCount * 4u) {
+                const std::string err =
+                    exr_writer::writeHalfRgbExrFile(job.exrPath, job.width, job.height, job.exrFloatRgba.data(), true);
+                if (!err.empty()) {
+                    finalStatus = -1;
+                    message = asciiToUtf16(err);
+                } else {
+                    if (!message.empty()) message += u" + ";
+                    message += job.exrPath.filename().u16string();
+                    radiante::out() << "[PhotoMode] saved EXR " << pathToUtf8Log(job.exrPath) << " (" << job.width
+                                    << "x" << job.height << ", " << job.samples << " samples)" << std::endl;
+                }
             }
+
+        } catch (const std::exception &e) {
+            finalStatus = -1;
+            message = asciiToUtf16(std::string("could not save the picture: ") + e.what());
         }
 
         std::scoped_lock lock(mutex_);
