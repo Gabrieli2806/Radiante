@@ -211,6 +211,12 @@ struct RadianteSky {
     vec4 playerState;
     // x speed in blocks a second, y sprinting, z on the ground, w how hurt (1 - health); eased.
     vec4 playerMotion;
+    // Interactive water and puddle ripples (bytes 384 to 911): x active count (0 to 16); pos xyz relative to the
+    // camera, w wave speed in blocks a second; data x age in seconds, y amplitude, z lifetime in seconds, w kind
+    // (0 water surface, 1 rain puddle).
+    vec4 waterRippleControl;
+    vec4 waterRipplePos[16];
+    vec4 waterRippleData[16];
 };
 
 #endif

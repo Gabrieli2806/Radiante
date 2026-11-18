@@ -51,6 +51,7 @@ Defaults are radiante-pt's, the Bedrock RTX look ([bedrock-rtx.md](../bedrock-rt
 | **Volumetric Fog Strength** | 0% – 400% | 60% | How thick the air that shows sunbeams and light shafts is. No effect on performance — only the sample count (in [Performance](performance.md)) does. |
 | **Fog Distance** | 48 – 192 blocks | 128 | How far volumetric fog and light shafts reach. |
 | **Water Waves** | 0% – 400% | 100% | How rough the water surface is. 0% is a flat, mirror-like surface. |
+| **Interactive Water Ripples** | 0% – 200% | 100% | Expanding ring trains and wakes from players, boats, mobs, items and projectiles entering or moving through water, plus footsteps and landings in rain puddles within 48 blocks. 0% turns them off. |
 | **Water Murkiness** | 0% – 400% | 100% | How quickly the view fades out underwater. Lower is clearer. 100% is Bedrock's full extinction. |
 | **Underwater Light Rays** | 0% – 400% | 100% | Shafts of sunlight through the water surface while underwater. |
 

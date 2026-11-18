@@ -21,7 +21,7 @@ public class BufferProxy {
     private static final int OFF_HAND_LIGHT_OFFSET = 704;
     /** Where WorldUBO.windTime starts; windStrength and windWeather follow it, ending at the off hand's light. */
     private static final int WIND_OFFSET = 692;
-    private static final int SKY_UBO_SIZE = 384;
+    private static final int SKY_UBO_SIZE = 912;
     private static final int TEXTURE_MAPPING_ENTRIES = 4096;
 
     private static native void updateWorldUniform(long ptr);
@@ -196,7 +196,8 @@ public class BufferProxy {
                              float biomeIdBlend,
                              Vector4fc packWeather,
                              Vector4fc playerState,
-                             Vector4fc playerMotion) {
+                             Vector4fc playerMotion,
+                             float[] waterRipples) {
     }
 
     public static void updateSkyUniform(SkyUniform uniform) {
@@ -309,7 +310,14 @@ public class BufferProxy {
             offset = putVec4(bb, offset, uniform.packWeather());
             // The player for shader packs (PackPlayer).
             offset = putVec4(bb, offset, uniform.playerState());
-            putVec4(bb, offset, uniform.playerMotion());
+            offset = putVec4(bb, offset, uniform.playerMotion());
+            float[] ripples = uniform.waterRipples();
+            if (ripples != null) {
+                int floats = Math.min(ripples.length, (SKY_UBO_SIZE - offset) / Float.BYTES);
+                for (int i = 0; i < floats; i++) {
+                    bb.putFloat(offset + i * Float.BYTES, ripples[i]);
+                }
+            }
 
             updateSkyUniform(addr);
         }

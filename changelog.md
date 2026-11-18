@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Interactive Water Ripples (`Sky & Water`, 100% by default): players, boats, mobs, items and projectiles entering, bobbing on or moving across water surfaces and rain puddles within 48 blocks emit radial dispersive wave packets that superpose into concentric splash rings and V-shaped wakes across all water surface modes and standing rain puddles, applying live without rebuilding the pipeline.
+
 - Adaptive Light Grid (`Lighting`, on by default): learns per two-block world cell which nearby block and entity lights actually deliver unoccluded light there (NEE-AT) and samples them from an unbiased defensive mixture with uniform exploration, cutting wasted occluded shadow rays and crawling grain in rooms and caves with dozens of lights while keeping sharp shadows and zero extra frame cost.
 
 - Articulated mobs and players reuse shared per-`ModelPart` bottom-level acceleration structures across every entity of the same kind and pose each limb with a 3×4 top-level instance transform instead of rewriting, uploading and rebuilding all entity vertices every frame (cutting CPU entity preparation from 2.74 ms to 0.60 ms and GPU acceleration-structure preparation from 0.55 ms to 0.33 ms in a 100-mob pen).

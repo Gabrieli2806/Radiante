@@ -23,6 +23,7 @@
 // PT takes about 60; 256 leaves a pack that extends it room for its own. 4 KB of the world uniform, well inside the
 // 16 KB every Vulkan device allows a uniform buffer.
 #define PRISM_PACK_PARAM_COUNT 256
+#define PRISM_WATER_RIPPLE_MAX 16
 
 #ifdef __cplusplus
 namespace gpu {
@@ -451,6 +452,14 @@ struct SkyUBO {
     T_VEC4 playerState;
     // x: speed in blocks a second, y: sprinting, z: on the ground, w: how hurt (1 - health); eased.
     T_VEC4 playerMotion;
+
+    // ---- Interactive water and puddle ripples (384..911), WaterRipples on the Java side.
+    // waterRippleControl.x: active ripple count (0..PRISM_WATER_RIPPLE_MAX), yzw: unused.
+    // waterRipplePos[i]: xyz position relative to the camera (blocks), w radial propagation speed (blocks/s).
+    // waterRippleData[i]: x age (s), y amplitude, z max lifetime (s), w kind (0 = water surface, 1 = ground puddle).
+    T_VEC4 waterRippleControl;
+    T_VEC4 waterRipplePos[PRISM_WATER_RIPPLE_MAX];
+    T_VEC4 waterRippleData[PRISM_WATER_RIPPLE_MAX];
 };
 
 // Per-texture lookup from an atlas texture to its PBR companions. specular, normal and rawMer are texture ids,

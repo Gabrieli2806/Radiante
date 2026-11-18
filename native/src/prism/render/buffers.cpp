@@ -20,6 +20,8 @@ static_assert(offsetof(gpu::Data::WorldUBO, offHandLightPos) == 704);
 static_assert(offsetof(gpu::Data::WorldUBO, packParams) == 736);
 static_assert(offsetof(gpu::Data::WorldUBO, entityLightPad) == offsetof(gpu::Data::WorldUBO, entityLightCount) + 12);
 static_assert(sizeof(gpu::Data::WorldUBO) == 736 + 16 * PRISM_PACK_PARAM_COUNT + 32);
+static_assert(offsetof(gpu::Data::SkyUBO, waterRippleControl) == 384);
+static_assert(sizeof(gpu::Data::SkyUBO) == 912);
 
 namespace {
 
