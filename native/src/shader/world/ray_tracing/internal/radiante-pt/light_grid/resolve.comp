@@ -1,0 +1,228 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_buffer_reference2 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+
+// Folds the shadowed block-light observations gathered during the world pass into each two-block world cell's top
+// seven lights, evicts lights whose chunk section was rebuilt or whose block was broken, and clears the feedback
+// buckets for the next frame.
+
+#include "common/shared.hpp"
+
+struct VptChunkLightData {
+    int x;
+    int y;
+    int z;
+    uint geometryCount;
+    uint lightCount;
+    uint lightNeighbours;
+    uint64_t lightBufferAddress;
+};
+
+struct VptPackedLight {
+    vec4 p0Area;
+    vec4 p1;
+    vec4 p2;
+    vec4 p3;
+    vec4 normal;
+    vec4 radiance;
+    vec4 sourceIDData;
+};
+
+layout(std430, set = 1, binding = 9) readonly buffer VptChunkPackedDataBuffer {
+    VptChunkLightData vptChunkLights[];
+};
+
+layout(std430, buffer_reference, buffer_reference_align = 16) readonly buffer VptPackedLightBuffer {
+    VptPackedLight lights[];
+};
+
+layout(set = 2, binding = 0) uniform WorldUniform {
+    WorldUBO worldUBO;
+};
+layout(set = 2, binding = 1) uniform LastWorldUniform {
+    WorldUBO lastWorldUBO;
+};
+layout(set = 2, binding = 2) uniform SkyUniform {
+    SkyUBO skyUBO;
+};
+
+const int VPT_ENTITY_LIGHT_SLOT = 1 << 30;
+
+bool vptValidLightSlot(int slot) {
+    if (slot == VPT_ENTITY_LIGHT_SLOT) { return true; }
+    ivec4 grid = worldUBO.chunkGridInfo;
+    return slot >= 0 && grid.x > 0 && grid.y > 0 && grid.z > 0 && slot < grid.x * grid.y * grid.z;
+}
+
+uint vptSlotLightCount(int slot) {
+    return slot == VPT_ENTITY_LIGHT_SLOT ? worldUBO.entityLightCount : vptChunkLights[slot].lightCount;
+}
+
+uint64_t vptSlotLightAddress(int slot) {
+    return slot == VPT_ENTITY_LIGHT_SLOT ?
+               packUint2x32(uvec2(worldUBO.entityLightAddressLo, worldUBO.entityLightAddressHi)) :
+               vptChunkLights[slot].lightBufferAddress;
+}
+
+bool vptHasEntityLights() {
+    return worldUBO.entityLightCount > 0u && (worldUBO.entityLightAddressLo | worldUBO.entityLightAddressHi) != 0u;
+}
+
+#define VPT_LIGHT_GRID_RESOLVE_PASS 1
+#include "common/light_grid.glsl"
+
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
+VptLightGridBucket emptyBucket() {
+    VptLightGridBucket b;
+    b.tag = 0u;
+    b.slot = -1;
+    b.index = 0u;
+    b.id = 0u;
+    b.count = 0u;
+    b.sumFixed = 0u;
+    b.pad0 = 0u;
+    b.pad1 = 0u;
+    return b;
+}
+
+void main() {
+    uint cellIdx = gl_GlobalInvocationID.x;
+    if (cellIdx >= VPT_LIGHT_GRID_CELL_COUNT) { return; }
+
+    uint feedbackBase = cellIdx * uint(VPT_LIGHT_GRID_BUCKETS);
+    uint cellBase = cellIdx * VPT_LIGHT_GRID_WORDS_PER_CELL;
+
+    if (worldUBO.blockLightSampling == 0u) {
+        for (uint b = 0u; b < uint(VPT_LIGHT_GRID_BUCKETS); b++) {
+            if (vptLightGridFeedback.buckets[feedbackBase + b].tag != 0u) {
+                vptLightGridFeedback.buckets[feedbackBase + b] = emptyBucket();
+            }
+        }
+        if (vptLightGridResolved.words[cellBase].w != 0u) {
+            vptLightGridResolved.words[cellBase] = uvec4(0u);
+        }
+        return;
+    }
+
+    ivec3 cameraCell = vptLightGridCameraCell(worldUBO.cameraPos.xyz);
+    ivec3 worldCell = vptLightGridCellOfIndex(cellIdx, cameraCell);
+    uvec4 header = vptLightGridResolved.words[cellBase];
+    float prevTotal = uintBitsToFloat(header.w);
+    bool hadEntries = prevTotal > 0.0 && !isnan(prevTotal) && !isinf(prevTotal);
+    bool wrapped = ivec3(header.xyz) != worldCell || skyUBO.biomeFogHeights.w > 0.5 ||
+                   worldUBO.skyType != lastWorldUBO.skyType;
+
+    int obsCount = 0;
+    int obsSlot[VPT_LIGHT_GRID_BUCKETS];
+    uint obsIndex[VPT_LIGHT_GRID_BUCKETS];
+    uint obsId[VPT_LIGHT_GRID_BUCKETS];
+    float obsValue[VPT_LIGHT_GRID_BUCKETS];
+
+    for (uint b = 0u; b < uint(VPT_LIGHT_GRID_BUCKETS); b++) {
+        VptLightGridBucket bucket = vptLightGridFeedback.buckets[feedbackBase + b];
+        if (bucket.tag == 0u) { continue; }
+        vptLightGridFeedback.buckets[feedbackBase + b] = emptyBucket();
+        if (bucket.tag == 0xFFFFFFFFu || bucket.count == 0u) { continue; }
+        if (!vptLightGridValidEntry(bucket.slot, bucket.index, bucket.id)) { continue; }
+        uint samples = min(bucket.count, VPT_LIGHT_GRID_MAX_BUCKET_SAMPLES);
+        float meanIncident = (float(bucket.sumFixed) / VPT_LIGHT_GRID_FIXED_SCALE) / float(samples);
+        obsSlot[obsCount] = bucket.slot;
+        obsIndex[obsCount] = bucket.index;
+        obsId[obsCount] = bucket.id;
+        obsValue[obsCount] = clamp(meanIncident, 0.0, 16.0);
+        obsCount++;
+    }
+
+    // Untouched empty cells neither read their entries nor write anything back.
+    if (!wrapped && obsCount == 0 && !hadEntries) { return; }
+
+    const int MAX_WORK = VPT_LIGHT_GRID_ENTRIES + VPT_LIGHT_GRID_BUCKETS;
+    int workCount = 0;
+    int workSlot[MAX_WORK];
+    uint workIndex[MAX_WORK];
+    uint workId[MAX_WORK];
+    float workWeight[MAX_WORK];
+    bool existingChanged = wrapped;
+
+    if (!wrapped && hadEntries) {
+        for (int k = 0; k < VPT_LIGHT_GRID_ENTRIES; k++) {
+            uvec4 entry = vptLightGridResolved.words[cellBase + 1u + uint(k)];
+            float w = uintBitsToFloat(entry.w);
+            if (!(w > 0.0) || isnan(w) || isinf(w)) { break; }
+            int eSlot = int(entry.x);
+            uint eIndex = entry.y;
+            uint eId = entry.z;
+            if (!vptLightGridValidEntry(eSlot, eIndex, eId)) {
+                existingChanged = true;
+                continue;
+            }
+            // Off-screen cells keep their learned lights ready for when the camera turns back; active cells fade
+            // unobserved entries gently so newly shadowed lights eventually yield to active ones.
+            float decayed = w * (obsCount > 0 ? 0.94 : 0.998);
+            if (decayed < 1e-6) {
+                existingChanged = true;
+                continue;
+            }
+            workSlot[workCount] = eSlot;
+            workIndex[workCount] = eIndex;
+            workId[workCount] = eId;
+            workWeight[workCount] = decayed;
+            workCount++;
+        }
+    }
+
+    if (obsCount == 0 && !existingChanged) {
+        // Off-screen cell whose lights are all still alive: update passive aging only every 16 frames to spare bandwidth.
+        if (((worldUBO.frameCounter + cellIdx) & 15u) != 0u) { return; }
+    }
+
+    for (int o = 0; o < obsCount; o++) {
+        int match = -1;
+        for (int w = 0; w < workCount; w++) {
+            if (workSlot[w] == obsSlot[o] && workIndex[w] == obsIndex[o]) {
+                match = w;
+                break;
+            }
+        }
+        if (match >= 0) {
+            workId[match] = obsId[o];
+            // Undo the unobserved decay above and blend toward this frame's shadowed incident mean; an occluded test
+            // (obsValue == 0) decays faster so newly blocked lights clear promptly.
+            float baseWeight = workWeight[match] / 0.94;
+            workWeight[match] = obsValue[o] > 0.0 ? mix(baseWeight, obsValue[o], 0.22) : baseWeight * 0.65;
+        } else if (obsValue[o] >= 1e-6) {
+            workSlot[workCount] = obsSlot[o];
+            workIndex[workCount] = obsIndex[o];
+            workId[workCount] = obsId[o];
+            workWeight[workCount] = obsValue[o];
+            workCount++;
+        }
+    }
+
+    // Select the top VPT_LIGHT_GRID_ENTRIES positive weights in descending order.
+    float totalWeight = 0.0;
+    int kept = 0;
+    for (int outIdx = 0; outIdx < VPT_LIGHT_GRID_ENTRIES; outIdx++) {
+        int best = -1;
+        float bestWeight = 1e-6;
+        for (int w = 0; w < workCount; w++) {
+            if (workWeight[w] > bestWeight) {
+                bestWeight = workWeight[w];
+                best = w;
+            }
+        }
+        if (best < 0) { break; }
+        vptLightGridResolved.words[cellBase + 1u + uint(kept)] =
+            uvec4(uint(workSlot[best]), workIndex[best], workId[best], floatBitsToUint(bestWeight));
+        totalWeight += bestWeight;
+        workWeight[best] = -1.0;
+        kept++;
+    }
+    for (int rem = kept; rem < VPT_LIGHT_GRID_ENTRIES; rem++) {
+        vptLightGridResolved.words[cellBase + 1u + uint(rem)] = uvec4(0u);
+    }
+    vptLightGridResolved.words[cellBase] =
+        uvec4(uint(worldCell.x), uint(worldCell.y), uint(worldCell.z), floatBitsToUint(totalWeight));
+}
