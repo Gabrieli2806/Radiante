@@ -49,6 +49,14 @@ JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_PhotoProxy_se
 
 /*
  * Class:     com_g2806_radiante_client_proxy_vulkan_PhotoProxy
+ * Method:    setCaptureAspect
+ * Signature: (F)V
+ */
+JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_PhotoProxy_setCaptureAspect
+  (JNIEnv *, jclass, jfloat);
+
+/*
+ * Class:     com_g2806_radiante_client_proxy_vulkan_PhotoProxy
  * Method:    getTargetSamples
  * Signature: ()I
  */

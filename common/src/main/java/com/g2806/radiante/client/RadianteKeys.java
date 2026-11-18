@@ -20,7 +20,11 @@ public final class RadianteKeys {
     public static final KeyMapping TOGGLE_RAY_TRACING =
         new KeyMapping("key.radiante.toggle_ray_tracing", InputConstants.UNKNOWN.getValue(), CATEGORY);
 
-    public static final KeyMapping[] ALL = {OPEN_SETTINGS, PHOTO_MODE, TOGGLE_RAY_TRACING};
+    // Unbound by default: opens Before / After straight from the game, to compare Radiante off and on or two packs.
+    public static final KeyMapping COMPARE =
+        new KeyMapping("key.radiante.compare", InputConstants.UNKNOWN.getValue(), CATEGORY);
+
+    public static final KeyMapping[] ALL = {OPEN_SETTINGS, PHOTO_MODE, TOGGLE_RAY_TRACING, COMPARE};
 
     private RadianteKeys() {
     }

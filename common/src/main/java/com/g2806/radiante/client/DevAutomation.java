@@ -668,12 +668,28 @@ public final class DevAutomation {
             String[] xy = action.substring(6).split(",");
             if (minecraft.gui.screen() != null) {
                 var event = new net.minecraft.client.input.MouseButtonEvent(Double.parseDouble(xy[0]),
-                    Double.parseDouble(xy[1]), new net.minecraft.client.input.MouseButtonInfo(0, 0));
+                    Double.parseDouble(xy[1]), new net.minecraft.client.input.MouseButtonInfo(
+                    com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0));
                 minecraft.gui.screen().mouseClicked(event, false);
                 minecraft.gui.screen().mouseReleased(event);
                 RadianteClient.LOGGER.info("[dev] click {} on {}", action.substring(6),
                     minecraft.gui.screen().getClass().getSimpleName());
             }
+        } else if (action.startsWith("rawclick=")) {
+            // rawclick=x,y: a left click at GUI coordinates through Minecraft's own mouse handler, as the window's
+            // input reaches it, not straight to the screen as click= does.
+            String[] xy = action.substring(9).split(",");
+            long handle = minecraft.getWindow().handle();
+            double scale = minecraft.getWindow().getGuiScale();
+            double px = Double.parseDouble(xy[0]) * scale;
+            double py = Double.parseDouble(xy[1]) * scale;
+            minecraft.mouseHandler.onMove(handle, px, py, 0.0, 0.0);
+            var info = new net.minecraft.client.input.MouseButtonInfo(
+                    com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0);
+            minecraft.mouseHandler.onButton(handle, info, 1);
+            minecraft.mouseHandler.onButton(handle, info, 0);
+            RadianteClient.LOGGER.info("[dev] raw click {} (scale {}) on {}", action.substring(9), scale,
+                minecraft.gui.screen() != null ? minecraft.gui.screen().getClass().getSimpleName() : "no screen");
         } else if (action.startsWith("vopt=")) {
             // vopt=accessor=value: a vanilla video option by its accessor on Options (ambientOcclusion, mipmapLevels,
             // entityShadows...), set as its own button sets it, so its reload runs. Not saved.
@@ -858,7 +874,8 @@ public final class DevAutomation {
         for (net.minecraft.client.gui.components.events.GuiEventListener child : parent.children()) {
             if (child instanceof net.minecraft.client.gui.components.AbstractButton button
                 && button.getMessage().getString().contains(text)) {
-                button.onPress(new net.minecraft.client.input.MouseButtonInfo(0, 0));
+                button.onPress(new net.minecraft.client.input.MouseButtonInfo(
+                    com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0));
                 RadianteClient.LOGGER.info("[dev] pressed {}", button.getMessage().getString());
                 return true;
             }
@@ -936,6 +953,24 @@ public final class DevAutomation {
             com.g2806.radiante.client.photo.PhotoMode.focusAtScreenPoint(minecraft, gx, gy, gw, gh);
             RadianteClient.LOGGER.info("[dev] photo focusclick {} -> focus={}", spec.substring(11),
                 com.g2806.radiante.client.photo.PhotoMode.focusDistance());
+            return;
+        }
+        if (spec.equals("frame") || spec.equals("guides") || spec.equals("lens") || spec.equals("weather")) {
+            switch (spec) {
+                case "frame" -> com.g2806.radiante.client.photo.PhotoCinema.cycleFrame();
+                case "guides" -> com.g2806.radiante.client.photo.PhotoCinema.cycleGuides();
+                case "lens" -> com.g2806.radiante.client.photo.PhotoCinema.nextLens();
+                default -> com.g2806.radiante.client.photo.PhotoCinema.cycleWeather(minecraft);
+            }
+            RadianteClient.LOGGER.info("[dev] photo {} -> frame {} guides {} fov {}", spec,
+                com.g2806.radiante.client.photo.PhotoCinema.frame().label(),
+                com.g2806.radiante.client.photo.PhotoCinema.guides(),
+                com.g2806.radiante.client.photo.PhotoMode.fovDegrees());
+            return;
+        }
+        if (spec.startsWith("time:")) {
+            com.g2806.radiante.client.photo.PhotoCinema.setDayTime(minecraft, Long.parseLong(spec.substring(5)));
+            RadianteClient.LOGGER.info("[dev] photo time {}", spec.substring(5));
             return;
         }
         if (spec.startsWith("save:")) {

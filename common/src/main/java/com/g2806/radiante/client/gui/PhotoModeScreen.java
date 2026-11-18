@@ -45,6 +45,11 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
     private int panelY;
     private int panelW;
     private int panelH;
+    // The Cinematic panel, on the left: framing and, in singleplayer, the time of day and the weather.
+    private int cinemaX;
+    private int cinemaY;
+    private int cinemaW;
+    private int cinemaH;
 
     private final List<SliderRow> sliders = new ArrayList<>();
     private final List<ButtonBox> buttons = new ArrayList<>();
@@ -80,7 +85,8 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
 
     @Override
     public boolean isPauseScreen() {
-        return true;
+        // Except for the moment the sky and the rain take to follow a change of time or weather (PhotoCinema).
+        return !PhotoMode.isFollowingSky();
     }
 
     @Override
@@ -153,7 +159,8 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
         addSlider("gui.radiante.photo.fov", "gui.radiante.photo.fov.tooltip", innerX, y, innerW,
             () -> (PhotoMode.fovDegrees() - 15.0f) / (120.0f - 15.0f),
             t -> PhotoMode.setFovDegrees(15.0f + t * (120.0f - 15.0f)),
-            () -> Component.literal(Math.round(PhotoMode.fovDegrees()) + "°"),
+            () -> Component.literal(Math.round(PhotoMode.fovDegrees()) + "° · "
+                + com.g2806.radiante.client.photo.PhotoCinema.focalLabel()),
             () -> true);
         y += ROW_H;
 
@@ -236,6 +243,123 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
         y += BUTTON_H + PAD;
 
         this.panelH = y - this.panelY;
+        initCinema(margin);
+    }
+
+    private void initCinema(int margin) {
+        this.cinemaW = this.panelW;
+        this.cinemaX = margin;
+        this.cinemaY = margin;
+        int innerX = this.cinemaX + PAD;
+        int innerW = this.cinemaW - PAD * 2;
+        int halfW = (innerW - 4) / 2;
+        int y = this.cinemaY + 18;
+        this.buttons.add(new ButtonBox(
+            () -> Component.translatable("gui.radiante.photo.frame",
+                Component.translatable(com.g2806.radiante.client.photo.PhotoCinema.frame().label())),
+            "gui.radiante.photo.frame.tooltip", innerX, y, innerW, BUTTON_H,
+            com.g2806.radiante.client.photo.PhotoCinema::cycleFrame, () -> true, false));
+        y += BUTTON_H + 4;
+        this.buttons.add(new ButtonBox(
+            () -> Component.translatable("gui.radiante.photo.guides." + com.g2806.radiante.client.photo.PhotoCinema
+                .guides().name().toLowerCase(java.util.Locale.ROOT)),
+            "gui.radiante.photo.guides.tooltip", innerX, y, halfW, BUTTON_H,
+            com.g2806.radiante.client.photo.PhotoCinema::cycleGuides, () -> true, false));
+        this.buttons.add(new ButtonBox(
+            () -> Component.translatable("gui.radiante.photo.lens",
+                com.g2806.radiante.client.photo.PhotoCinema.focalLabel()),
+            "gui.radiante.photo.lens.tooltip", innerX + halfW + 4, y, innerW - halfW - 4, BUTTON_H,
+            com.g2806.radiante.client.photo.PhotoCinema::nextLens, () -> true, false));
+        y += BUTTON_H + 4;
+        addSlider("gui.radiante.photo.time", "gui.radiante.photo.time.tooltip", innerX, y, innerW,
+            () -> Math.max(0L, com.g2806.radiante.client.photo.PhotoCinema.dayTime(this.minecraft)) / 24000.0f,
+            t -> {
+                // Only a change of a quarter of an hour or more: dragging sent a command a frame otherwise.
+                long ticks = Math.round(t * 24000.0) / 250L * 250L;
+                if (Math.abs(ticks - com.g2806.radiante.client.photo.PhotoCinema.dayTime(this.minecraft)) >= 250L) {
+                    com.g2806.radiante.client.photo.PhotoCinema.setDayTime(this.minecraft, ticks);
+                }
+            },
+            () -> Component.literal(com.g2806.radiante.client.photo.PhotoCinema.clock(
+                Math.max(0L, com.g2806.radiante.client.photo.PhotoCinema.dayTime(this.minecraft)))),
+            () -> this.minecraft != null && com.g2806.radiante.client.photo.PhotoCinema.ownsWorld(this.minecraft));
+        y += ROW_H + 2;
+        this.buttons.add(new ButtonBox(
+            () -> Component.translatable(com.g2806.radiante.client.photo.PhotoCinema.weatherKey(this.minecraft)),
+            "gui.radiante.photo.weather.tooltip", innerX, y, innerW, BUTTON_H,
+            () -> com.g2806.radiante.client.photo.PhotoCinema.cycleWeather(this.minecraft),
+            () -> this.minecraft != null && com.g2806.radiante.client.photo.PhotoCinema.ownsWorld(this.minecraft),
+            false));
+        y += BUTTON_H + PAD;
+        this.cinemaH = y - this.cinemaY;
+    }
+
+    /** The part of the screen inside the chosen frame (Photo Mode's Frame), as x, y, width, height. */
+    private int[] frameRect() {
+        float aspect = com.g2806.radiante.client.photo.PhotoCinema.frame().aspect();
+        float screen = (float) this.width / Math.max(1, this.height);
+        if (!(aspect > 0.0f) || Math.abs(aspect - screen) < 0.01f) {
+            return new int[] {0, 0, this.width, this.height};
+        }
+        if (aspect > screen) {
+            int h = Math.round(this.width / aspect);
+            return new int[] {0, (this.height - h) / 2, this.width, h};
+        }
+        int w = Math.round(this.height * aspect);
+        return new int[] {(this.width - w) / 2, 0, w, this.height};
+    }
+
+    /** The frame's bars, as the saved photo is cut, and the composition guides inside it. */
+    private void drawFrame(GuiGraphicsExtractor g, boolean guides) {
+        int[] r = frameRect();
+        int bar = 0xF0000000;
+        if (r[1] > 0) {
+            g.fill(0, 0, this.width, r[1], bar);
+            g.fill(0, r[1] + r[3], this.width, this.height, bar);
+        }
+        if (r[0] > 0) {
+            g.fill(0, 0, r[0], this.height, bar);
+            g.fill(r[0] + r[2], 0, this.width, this.height, bar);
+        }
+        if (!guides) {
+            return;
+        }
+        int line = 0x70FFFFFF;
+        int x = r[0];
+        int y = r[1];
+        int w = r[2];
+        int h = r[3];
+        switch (com.g2806.radiante.client.photo.PhotoCinema.guides()) {
+            case THIRDS -> {
+                g.fill(x + w / 3, y, x + w / 3 + 1, y + h, line);
+                g.fill(x + w * 2 / 3, y, x + w * 2 / 3 + 1, y + h, line);
+                g.fill(x, y + h / 3, x + w, y + h / 3 + 1, line);
+                g.fill(x, y + h * 2 / 3, x + w, y + h * 2 / 3 + 1, line);
+            }
+            case GOLDEN -> {
+                float phi = 0.382f;
+                g.fill(x + Math.round(w * phi), y, x + Math.round(w * phi) + 1, y + h, line);
+                g.fill(x + Math.round(w * (1 - phi)), y, x + Math.round(w * (1 - phi)) + 1, y + h, line);
+                g.fill(x, y + Math.round(h * phi), x + w, y + Math.round(h * phi) + 1, line);
+                g.fill(x, y + Math.round(h * (1 - phi)), x + w, y + Math.round(h * (1 - phi)) + 1, line);
+            }
+            case CENTER -> {
+                g.fill(x + w / 2 - 8, y + h / 2, x + w / 2 + 9, y + h / 2 + 1, line);
+                g.fill(x + w / 2, y + h / 2 - 8, x + w / 2 + 1, y + h / 2 + 9, line);
+                g.outline(x + w / 10, y + h / 10, w * 8 / 10, h * 8 / 10, 0x40FFFFFF);
+            }
+            case DIAGONALS -> {
+                int steps = Math.max(w, h);
+                for (int i = 0; i < steps; i += 2) {
+                    int px = x + i * w / steps;
+                    int py = y + i * h / steps;
+                    g.fill(px, py, px + 1, py + 1, line);
+                    g.fill(px, y + h - 1 - (py - y), px + 1, y + h - (py - y), line);
+                }
+            }
+            default -> {
+            }
+        }
     }
 
     private void addSlider(String labelKey, String tooltipKey, int x, int y, int w,
@@ -267,6 +391,7 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
     @Override
     protected void extractContents(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         PhotoMode.pollStatus();
+        drawFrame(g, !this.hudHidden);
         if (this.hudHidden) {
             if (PhotoMode.isCapturePending()) {
                 drawProgressPill(g);
@@ -276,6 +401,10 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
 
         g.fill(this.panelX, this.panelY, this.panelX + this.panelW, this.panelY + this.panelH, PANEL);
         g.outline(this.panelX, this.panelY, this.panelW, this.panelH, 0x40FFFFFF);
+        g.fill(this.cinemaX, this.cinemaY, this.cinemaX + this.cinemaW, this.cinemaY + this.cinemaH, PANEL);
+        g.outline(this.cinemaX, this.cinemaY, this.cinemaW, this.cinemaH, 0x40FFFFFF);
+        g.text(this.font, Component.translatable("gui.radiante.photo.cinematic").withStyle(ChatFormatting.BOLD),
+            this.cinemaX + PAD, this.cinemaY + 5, TEXT);
 
         int innerX = this.panelX + PAD;
         int innerW = this.panelW - PAD * 2;
@@ -386,7 +515,8 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
     }
 
     private boolean insidePanel(double x, double y) {
-        return !this.hudHidden && inside(x, y, this.panelX, this.panelY, this.panelW, this.panelH);
+        return !this.hudHidden && (inside(x, y, this.panelX, this.panelY, this.panelW, this.panelH)
+            || inside(x, y, this.cinemaX, this.cinemaY, this.cinemaW, this.cinemaH));
     }
 
     private static boolean inside(double mx, double my, int x, int y, int w, int h) {
@@ -414,7 +544,8 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
             return true;
         }
 
-        if (event.button() == 0 || event.button() == 1) {
+        if (event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT
+            || event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT) {
             this.viewportDragging = true;
             this.viewportMoved = false;
             this.pressX = mx;
@@ -450,7 +581,8 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
             return true;
         }
         if (this.viewportDragging) {
-            boolean clickedToFocus = !this.viewportMoved && event.button() == 0 && this.minecraft != null;
+            boolean clickedToFocus = !this.viewportMoved && event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT
+                && this.minecraft != null;
             this.viewportDragging = false;
             if (clickedToFocus) {
                 PhotoMode.focusAtScreenPoint(this.minecraft, event.x(), event.y(), this.width, this.height);

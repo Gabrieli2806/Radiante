@@ -156,6 +156,18 @@ public final class RadianteClient {
             }
         }
 
+        while (RadianteKeys.COMPARE.consumeClick()) {
+            if (minecraft.gui.screen() == null && !RadianteKeys.COMPARE.isUnbound()) {
+                if (RadianteRenderer.isRayTracingEnabled() && minecraft.level != null) {
+                    RadianteOptionsScreen settings = new RadianteOptionsScreen(null, minecraft.options);
+                    minecraft.gui.setScreen(settings);
+                    settings.openCompare();
+                } else {
+                    sendStatus(minecraft, "message.radiante.ray_tracing_unavailable");
+                }
+            }
+        }
+
         while (RadianteKeys.TOGGLE_RAY_TRACING.consumeClick()) {
             // Unbound by default, and an unbound key still gets "pressed": every mapping without a key shares the
             // unknown key, so a mod that clicks one of its own unbound mappings (ImmersiveMC does) clicked this one
@@ -193,6 +205,11 @@ public final class RadianteClient {
         }
         while (RadianteKeys.TOGGLE_RAY_TRACING.consumeClick()) {
             if (!RadianteKeys.TOGGLE_RAY_TRACING.isUnbound()) {
+                sendStatus(minecraft, "message.radiante.ray_tracing_unavailable");
+            }
+        }
+        while (RadianteKeys.COMPARE.consumeClick()) {
+            if (!RadianteKeys.COMPARE.isUnbound()) {
                 sendStatus(minecraft, "message.radiante.ray_tracing_unavailable");
             }
         }

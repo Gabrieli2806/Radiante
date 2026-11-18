@@ -40,6 +40,10 @@ class PhotoMode {
     void setExposureOverride(bool enabled, float exposureBias);
     bool exposureOverride(float &outBias) const;
     void setTargetSamples(uint32_t targetSamples);
+    // The frame a saved photo is cut to (Photo Mode's Frame: 2.39:1, 1:1...), width over height; 0 for the screen's.
+    void setCaptureAspect(float aspect) {
+        captureAspect_.store(aspect > 0.0f ? aspect : 0.0f, std::memory_order_relaxed);
+    }
     // Denoiser: the pipeline's own denoiser and upscaler run and their output is averaged (on by default), or the raw
     // paths are averaged for a reference picture. Takes effect with the pipeline rebuild it asks for.
     void setDenoise(bool denoise);
@@ -107,6 +111,8 @@ class PhotoMode {
         uint32_t width = 0;
         uint32_t height = 0;
         uint32_t samples = 0;
+        // Width over height of the frame the photo is cropped to; 0 keeps the whole picture.
+        float aspect = 0.0f;
         std::vector<uint16_t> pngHalfRgba;
         std::vector<float> exrFloatRgba;
     };
@@ -114,6 +120,7 @@ class PhotoMode {
     bool ensureResources(Framework &framework, uint32_t width, uint32_t height);
     bool checkSceneChangedAndUpdate();
     void enqueueSaveJob(SaveJob &&job);
+    static void cropToAspect(SaveJob &job);
     void saveWorkerLoop();
     void stopAndJoinSaveWorker();
 
@@ -123,6 +130,7 @@ class PhotoMode {
     std::atomic<uint32_t> targetSamples_{256};
     std::atomic<uint32_t> sampleCount_{0};
     std::atomic<bool> denoise_{true};
+    std::atomic<float> captureAspect_{0.0f};
     // Denoised accumulation: frames shown live after a reset before any is averaged, while the denoiser's own history
     // still holds the view before (DENOISED_WARMUP_FRAMES); and the count the last frame saw, to tell a reset.
     uint32_t warmupFrames_ = 0;
