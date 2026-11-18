@@ -205,14 +205,7 @@ public class RadianteOptionsScreen extends SettingsRows {
                         fresh.scroll = scroll;
                         return fresh;
                     });
-                    // The first Apply in a traced world keeps the picture as it was for Compare: taken only when
-                    // Compare was opened, an Apply before it left Before showing the settings already applied.
-                    if (inTracedWorld && !BeforeAfterPreview.hasBaseline()) {
-                        BeforeAfterPreview.ensureSession(this.minecraft);
-                        BeforeAfterPreview.captureBeforeAndThen(apply);
-                    } else {
-                        apply.run();
-                    }
+                    apply.run();
                 },
                 this::onClose, upscalerFooterButton(),
                 () -> {
@@ -243,7 +236,7 @@ public class RadianteOptionsScreen extends SettingsRows {
                 // Photo Mode opens from its own key binding (Controls), not from here.
                 null,
                 inTracedWorld ? this::openCompare : null,
-                inTracedWorld ? BeforeAfterPreview::requestRebaseline : null),
+                null),
             value -> this.scroll = value);
         this.layout.restartInfo(new SettingsLayout.RestartInfo() {
             @Override
@@ -306,10 +299,9 @@ public class RadianteOptionsScreen extends SettingsRows {
         }
         BeforeAfterPreview.ensureSession(this.minecraft);
         double savedScroll = this.layout != null ? this.layout.scroll() : this.scroll;
-        if (!BeforeAfterPreview.hasBaseline()) {
-            BeforeAfterPreview.captureBeforeAndThen(() -> enterCompareAfterBaseline(savedScroll));
-            return;
-        }
+        // Before is the game without Radiante (Radiante off on the left, on on the right), taken once the comparison
+        // is up; Set Before takes the live picture instead, and the Pack button changes the right side's pack.
+        BeforeAfterPreview.takeOffOnEnter();
         enterCompareAfterBaseline(savedScroll);
     }
 

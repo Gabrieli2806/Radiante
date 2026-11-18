@@ -40,6 +40,13 @@ public final class BeforeAfterPreview {
     private static boolean peeking;
     /** Before is the picture with ray tracing off (Radiante Off / On), not the settings as they were. */
     private static boolean beforeIsOff;
+    /** Set on entering Before / After: the Off picture is taken as soon as the comparison shows. */
+    private static boolean offOnEnter;
+
+    /** Before will be the game without Radiante, taken when the comparison opens. */
+    public static void takeOffOnEnter() {
+        offOnEnter = true;
+    }
     /** The shader pack the Before picture was taken with, to name the halves when the pack was changed since. */
     private static String beforePack;
     /** Off / On capture in progress: ray tracing is off until the vanilla picture is taken (nanoTime deadline). */
@@ -141,6 +148,7 @@ public final class BeforeAfterPreview {
         afterBaselineCallback = null;
         draggingSplit = false;
         peeking = false;
+        offOnEnter = false;
         capturedLevel = null;
         releaseTexture();
         finishOffCapture();
@@ -210,6 +218,13 @@ public final class BeforeAfterPreview {
      * {@code mainTarget}. Inert unless a baseline capture was requested.
      */
     public static void onWorldFrameRendered(RenderTarget mainTarget) {
+        // Entering Before / After: Before is the game without Radiante, taken once the comparison is on screen (the
+        // settings applied and their pipeline built), not in the middle of the build.
+        if (offOnEnter && active && !offCapturePending
+            && Minecraft.getInstance().gui.screen() instanceof RadianteOptionsScreen) {
+            offOnEnter = false;
+            requestOffBaseline();
+        }
         if (offCapturePending && !baselineRequested && System.nanoTime() >= offCaptureAt) {
             // The vanilla world has had its time: take it, then hand the world back to ray tracing.
             afterBaselineCallback = () -> {
@@ -325,15 +340,16 @@ public final class BeforeAfterPreview {
     private static TopBarRects topBar(Font font, int screenW) {
         int backW = font.width(Component.translatable("options.radiante.compare.exit")) + 16;
         int resetW = font.width(Component.literal("50%")) + 14;
-        int setBeforeW = font.width(Component.translatable("options.radiante.compare.set_before")) + 16;
-        int offW = font.width(Component.translatable("options.radiante.compare.off_on")) + 16;
+        // Before is always the game without Radiante, taken as the comparison opens: no Set Before any more.
+        int setBeforeW = 0;
+        int offW = 0;
         int packW = Math.min(font.width(packLabel()) + 16, 160);
-        int totalW = backW + 4 + resetW + 4 + setBeforeW + 4 + offW + 4 + packW;
+        int totalW = backW + 4 + resetW + 4 + packW;
         int x = Math.max(4, (screenW - totalW) / 2);
         int resetX = x + backW + 4;
         int setBeforeX = resetX + resetW + 4;
-        int offX = setBeforeX + setBeforeW + 4;
-        int packX = offX + offW + 4;
+        int offX = setBeforeX + setBeforeW;
+        int packX = setBeforeX;
         return new TopBarRects(x, backW, resetX, resetW, setBeforeX, setBeforeW, offX, offW, packX, packW, 10);
     }
 
@@ -450,7 +466,7 @@ public final class BeforeAfterPreview {
         Component beforeText = (beforeIsOff ? Component.translatable("options.radiante.compare.off")
             : packsDiffer ? Component.literal(packName(beforePack))
             : Component.translatable("options.radiante.compare.before")).copy().withStyle(ChatFormatting.BOLD);
-        Component afterText = (beforeIsOff ? Component.translatable("options.radiante.compare.on")
+        Component afterText = (beforeIsOff ? Component.literal(packName(livePack))
             : packsDiffer ? Component.literal(packName(livePack))
             : Component.translatable("options.radiante.compare.after")).copy().withStyle(ChatFormatting.BOLD);
         int beforeW = font.width(beforeText) + 14;
@@ -476,10 +492,6 @@ public final class BeforeAfterPreview {
             bar.backW(), mouseX, mouseY, false);
         drawPillButton(g, font, Component.literal("50%"), bar.resetX(), bar.barY(), bar.resetW(), mouseX, mouseY,
             false);
-        drawPillButton(g, font, Component.translatable("options.radiante.compare.set_before"), bar.setBeforeX(),
-            bar.barY(), bar.setBeforeW(), mouseX, mouseY, !beforeIsOff);
-        drawPillButton(g, font, Component.translatable("options.radiante.compare.off_on"), bar.offX(), bar.barY(),
-            bar.offW(), mouseX, mouseY, beforeIsOff);
         drawPillButton(g, font, packLabel(), bar.packX(), bar.barY(), bar.packW(), mouseX, mouseY, packsDiffer);
 
         Component hint = Component.translatable("options.radiante.compare.hint");
@@ -523,14 +535,6 @@ public final class BeforeAfterPreview {
             }
             if (mouseX >= bar.resetX() && mouseX < bar.resetX() + bar.resetW()) {
                 setSplitFraction(0.5f);
-                return true;
-            }
-            if (mouseX >= bar.setBeforeX() && mouseX < bar.setBeforeX() + bar.setBeforeW()) {
-                onRebaseline.run();
-                return true;
-            }
-            if (mouseX >= bar.offX() && mouseX < bar.offX() + bar.offW()) {
-                requestOffBaseline();
                 return true;
             }
             if (mouseX >= bar.packX() && mouseX < bar.packX() + bar.packW()) {

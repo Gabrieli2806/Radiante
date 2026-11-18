@@ -12,13 +12,13 @@ Se abren con `F6` dentro de un mundo, o desde Opciones → Ajustes de vídeo →
 - **Aplicar** aplica los cambios y deja la pantalla abierta; **Listo** aplica y cierra; **Deshacer** descarta lo
   cambiado desde el último Aplicar. Los cambios se compilan en segundo plano con un aviso de progreso arriba a la
   derecha.
-- **Antes / Después** (arriba, dentro de un mundo con trazado activo) aplica los cambios, oculta los paneles y el
-  desenfoque del menú, y divide la pantalla entre la imagen al abrir Ajustes (**ANTES**, izquierda) y el mundo trazado
-  en vivo (**DESPUÉS**, derecha), con un divisor que se arrastra, se mueve con la rueda o con Izquierda / Derecha
-  (Inicio / Fin para los bordes), y **50%** para centrarlo. Mantén **Espacio** para ver Antes en toda la pantalla.
-  Mantén **Ctrl** (o pulsa **Fijar Antes** en la vista dividida) para tomar una nueva referencia. **Radiante No / Sí**
-  toma Antes con el trazado de rayos apagado, para comparar el juego sin Radiante y con él (el trazado se apaga dos
-  segundos mientras se toma la imagen del juego). **Esc** o **← Ajustes** vuelve a la lista.
+- **Antes / Después** (arriba, dentro de un mundo con trazado activo, o con su propia tecla en Controles, sin asignar)
+  aplica los cambios, oculta los paneles y divide la pantalla: a la izquierda el juego sin Radiante (**RADIANTE NO**,
+  tomado al abrir la comparación: el trazado se apaga dos segundos mientras se toma), a la derecha el mundo trazado en
+  vivo, con el nombre de su shader pack. **Pack** cambia el shader pack del lado derecho, para ver Radiante PT o
+  cualquier pack instalado contra vanilla. El divisor se arrastra, se mueve con la rueda o con Izquierda / Derecha (Inicio / Fin para los
+  bordes), **50%** lo centra y manteniendo **Espacio** se ve el lado izquierdo en toda la pantalla. **Esc** o
+  **← Ajustes** vuelve.
 - **Buscar** encuentra un ajuste en cualquier sección por su nombre.
 - **Avanzado** (abajo) muestra los controles finos de cada sección en grupos plegables, y añade la sección
   Depuración.

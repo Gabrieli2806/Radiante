@@ -11,13 +11,12 @@ Open them with `F6` in a world, or from Options → Video Settings → Radiante 
 - **Sections** are on the left; the panel on the right describes the setting under the mouse.
 - **Apply** applies your changes and keeps the screen open; **Done** applies and closes; **Undo** drops what changed
   since the last Apply. Changes compile in the background with a progress popup at the top right.
-- **Before / After** (top bar, while in a traced world) applies your changes, hides the panels and menu blur, and
-  splits the screen between the picture from when Settings opened (**BEFORE**, left) and the live traced world
-  (**AFTER**, right), with a divider you drag, move with the mouse wheel or Left / Right (Home / End for the edges),
-  and **50%** to centre it. Hold **Space** to see Before on the whole screen. Hold **Ctrl** (or press **Set Before**
-  in the split view) to capture a fresh Before reference. **Radiante Off / On** takes Before with ray tracing off
-  instead, so the halves compare the game without Radiante and with it (ray tracing goes off for two seconds while
-  the game's own picture is taken). **Esc** or **← Settings** returns to the option list.
+- **Before / After** (top bar, while in a traced world, or its own key in Controls, unbound by default) applies your
+  changes, hides the panels and splits the screen: on the left the game without Radiante (**RADIANTE OFF**, taken as
+  the comparison opens: ray tracing goes off for two seconds while it is taken), on the right the live traced world,
+  named by its shader pack. **Pack** changes the right side's shader pack, to see Radiante PT or any installed pack
+  against vanilla. Drag the divider, move it with the mouse wheel or Left / Right (Home / End for the edges), **50%** centres
+  it, and holding **Space** shows the left side on the whole screen. **Esc** or **← Settings** returns.
 - **Search** finds a setting in any section by name.
 - **Advanced** (bottom) shows the fine-tuning controls of each section in folding groups, and adds the Debug section.
 - **Reset to Defaults** (bottom left) returns everything to a fresh install. Hold **Ctrl** to turn it into **Rebuild
