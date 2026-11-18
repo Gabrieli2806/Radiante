@@ -117,7 +117,8 @@ class BlasBuild : public SharedObject<BlasBuild> {
                                                                std::span<const std::shared_ptr<BlasBuild>>,
                                                                const std::shared_ptr<PhysicalDevice> &,
                                                                const std::shared_ptr<Device> &,
-                                                               const std::shared_ptr<VMA> &);
+                                                               const std::shared_ptr<VMA> &,
+                                                               std::shared_ptr<DeviceLocalBuffer> *);
     friend void recordBlasUpdates(const std::shared_ptr<CommandBuffer> &,
                                   std::span<const std::shared_ptr<BlasBuild>>,
                                   std::shared_ptr<DeviceLocalBuffer> &,
@@ -140,13 +141,14 @@ class BlasBuild : public SharedObject<BlasBuild> {
     std::shared_ptr<BLAS> target_;
 };
 
-// Records every placed build in one command with one scratch buffer. The scratch buffer is returned: hold it until
-// the command buffer has run, or drop it when that buffer belongs to the frame (it is then retired with the frame).
+// Records every placed build in one command with one scratch buffer. When `reusableScratch` is non-null, its buffer is
+// reused and grown only when too small; otherwise a fresh buffer is allocated and returned.
 [[nodiscard]] std::shared_ptr<DeviceLocalBuffer> recordBlasBuilds(const std::shared_ptr<CommandBuffer> &commandBuffer,
                                                                   std::span<const std::shared_ptr<BlasBuild>> builds,
                                                                   const std::shared_ptr<PhysicalDevice> &physicalDevice,
                                                                   const std::shared_ptr<Device> &device,
-                                                                  const std::shared_ptr<VMA> &vma);
+                                                                  const std::shared_ptr<VMA> &vma,
+                                                                  std::shared_ptr<DeviceLocalBuffer> *reusableScratch = nullptr);
 
 // Records an in-place update (a refit) of every structure, each built before with ALLOW_UPDATE from the same
 // geometry description, whose vertices have since moved. `scratch` is kept between calls and only replaced (the old
@@ -166,6 +168,11 @@ class BlasBatch : public SharedObject<BlasBatch> {
     std::shared_ptr<BlasBuild> add(VkBuildAccelerationStructureFlagsKHR flags);
     // Sizes every build and places them in one buffer; the structures come back in the order they were added.
     std::vector<std::shared_ptr<BLAS>> place(const std::shared_ptr<Device> &device, const std::shared_ptr<VMA> &vma);
+    // Same as place(), reusing `reusableStorage` and `reusableScratch` across frames and only growing them when needed.
+    std::vector<std::shared_ptr<BLAS>> placePersistent(const std::shared_ptr<Device> &device,
+                                                       const std::shared_ptr<VMA> &vma,
+                                                       std::shared_ptr<DeviceLocalBuffer> &reusableStorage,
+                                                       std::shared_ptr<DeviceLocalBuffer> *reusableScratch);
     void record(const std::shared_ptr<CommandBuffer> &commandBuffer,
                 const std::shared_ptr<PhysicalDevice> &physicalDevice,
                 const std::shared_ptr<Device> &device,
@@ -180,6 +187,7 @@ class BlasBatch : public SharedObject<BlasBatch> {
     std::vector<std::shared_ptr<BlasBuild>> builds_;
     std::shared_ptr<DeviceLocalBuffer> storage_;
     std::shared_ptr<DeviceLocalBuffer> scratch_;
+    std::shared_ptr<DeviceLocalBuffer> *persistentScratch_ = nullptr;
 };
 
 // The top-level structure of one frame slot, rebuilt each frame from the instances added since clear(). Its

@@ -202,8 +202,12 @@ materials into **one buffer per section**, so rebuilding a section frees exactly
 
 ### BLAS per entity
 
-Entities (`render/entities.*`) are packed per frame into shared index/position/material buffers and get their
-structures through a `gpu::BlasBatch` with `PREFER_FAST_TRACE`. Entities with a prebuilt structure skip the build.
+Dynamic entities (`render/entities.*`) are packed per frame into a persistent ring (`swapchain + 1` slots, so both
+frames in flight and last frame's motion-vector history stay untouched) of shared index, position, material, entity
+light, BLAS storage and BLAS scratch buffers that only grow (`BlasBatch::placePersistent`), paying no VMA buffer or
+staging allocation on steady frames. Entity lights are written straight into the current frame's `WorldUBO` when built,
+without a one-frame delay. Stationary block entities and vanilla clouds keep dedicated buffers and structures in the
+static cache.
 
 ### TLAS
 
