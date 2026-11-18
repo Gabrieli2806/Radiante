@@ -464,6 +464,16 @@ public final class DevAutomation {
             runPhotoAction(minecraft, action.substring(6));
             return;
         }
+        if (action.equals("autotune")) {
+            if (!(minecraft.gui.screen() instanceof com.g2806.radiante.client.gui.RadianteOptionsScreen)) {
+                minecraft.gui.setScreen(com.g2806.radiante.client.gui.RadianteOptionsScreen.create(null, minecraft.options));
+            }
+            if (minecraft.gui.screen() instanceof com.g2806.radiante.client.gui.RadianteOptionsScreen opts) {
+                opts.startOptimizeGpu();
+                RadianteClient.LOGGER.info("[dev] autotune started");
+            }
+            return;
+        }
         if (action.startsWith("shot=")) {
             String name = action.substring(5) + ".png";
             Screenshot.grab(minecraft.gameDirectory, name, minecraft.gameRenderer.mainRenderTarget(), 1,

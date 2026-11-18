@@ -10,6 +10,7 @@
 #include "prism/render/framegen/frame_generation.hpp"
 #include "prism/render/framegen/native_frame_generation.hpp"
 #include "prism/render/framegen/reflex.hpp"
+#include "prism/render/gpu_profiler.hpp"
 #include "prism/render/pipeline.hpp"
 #include "prism/render/render_framework.hpp"
 #include "prism/render/renderer.hpp"
@@ -306,6 +307,38 @@ JNIEXPORT jint JNICALL Java_com_g2806_radiante_client_proxy_vulkan_RendererProxy
     if (passes > 0) return 1000 + percent(Pipeline::rebuildPassesDone.load(), passes);
     const uint32_t shaders = Pipeline::rebuildShadersTotal.load();
     return shaders > 0 ? percent(Pipeline::rebuildShadersDone.load(), shaders) : 0;
+}
+
+JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_RendererProxy_resetGpuProbe(JNIEnv *, jclass) {
+    jni::guard("[Radiante] resetGpuProbe", [] { GpuProfiler::resetProbe(); });
+}
+
+JNIEXPORT jint JNICALL Java_com_g2806_radiante_client_proxy_vulkan_RendererProxy_gpuProbeFrames(JNIEnv *, jclass) {
+    return jni::guard("[Radiante] gpuProbeFrames", 0,
+                      [] { return static_cast<jint>(GpuProfiler::probeFrameCount()); });
+}
+
+JNIEXPORT jfloat JNICALL Java_com_g2806_radiante_client_proxy_vulkan_RendererProxy_gpuProbeMeanMs(JNIEnv *, jclass) {
+    return jni::guard("[Radiante] gpuProbeMeanMs", 0.0f,
+                      [] { return static_cast<jfloat>(GpuProfiler::probeTrimmedMeanMs()); });
+}
+
+JNIEXPORT jlong JNICALL Java_com_g2806_radiante_client_proxy_vulkan_RendererProxy_totalDeviceMemoryMb(JNIEnv *,
+                                                                                                      jclass) {
+    return jni::guard("[Radiante] totalDeviceMemoryMb", jlong{0}, [] {
+        auto framework = jni::framework();
+        if (framework == nullptr || framework->vma() == nullptr) return jlong{0};
+        const VkPhysicalDeviceMemoryProperties *memory = nullptr;
+        vmaGetMemoryProperties(framework->vma()->allocator(), &memory);
+        if (memory == nullptr) return jlong{0};
+        jlong totalMb = 0;
+        for (uint32_t heap = 0; heap < memory->memoryHeapCount; heap++) {
+            if ((memory->memoryHeaps[heap].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) != 0) {
+                totalMb += static_cast<jlong>(memory->memoryHeaps[heap].size >> 20);
+            }
+        }
+        return totalMb;
+    });
 }
 
 } // extern "C"

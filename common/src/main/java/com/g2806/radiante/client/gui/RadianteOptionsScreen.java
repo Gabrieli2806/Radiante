@@ -184,6 +184,7 @@ public class RadianteOptionsScreen extends SettingsRows {
                     resetToDefaults();
                     reopenWithSameChoices();
                 },
+                RadianteRenderer.isActive() ? this::startOptimizeGpu : null,
                 () -> {
                     // Undo: a fresh screen reads everything back from what is applied.
                     this.applied = true;
@@ -495,6 +496,31 @@ public class RadianteOptionsScreen extends SettingsRows {
         };
     }
 
+    /** Runs a live world GPU probe when in a traced world, or an immediate hardware/VRAM estimate from the menus. */
+    public void startOptimizeGpu() {
+        if (this.minecraft == null || !RadianteRenderer.isActive()) {
+            return;
+        }
+        if (this.minecraft.level != null && Options.rayTracingEnabled) {
+            this.applied = true;
+            RadianteOptionsScreen snapshot = new RadianteOptionsScreen(this);
+            this.minecraft.gui.setScreen(new AutoTuneScreen(
+                result -> {
+                    SettingsLayout.select(Category.QUALITY);
+                    snapshot.scroll = 0.0;
+                    snapshot.applyAutoTune(result);
+                    this.minecraft.gui.setScreen(new RadianteOptionsScreen(snapshot));
+                },
+                () -> this.minecraft.gui.setScreen(new RadianteOptionsScreen(snapshot))));
+        } else {
+            AutoTune.Result result = AutoTune.recommend(AutoTune.collectCurrentProbe(this.minecraft, 0.0f));
+            SettingsLayout.select(Category.QUALITY);
+            this.scroll = 0.0;
+            applyAutoTune(result);
+            reopenWithSameChoices();
+        }
+    }
+
     @Override
     protected void extractContents(net.minecraft.client.gui.GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
         if (this.layout != null) {
@@ -502,10 +528,22 @@ public class RadianteOptionsScreen extends SettingsRows {
         }
         // Which build this is, for bug reports: the mod's version and the Bedrock pack converter's. In the strip
         // over the search box, lined up with it (SettingsLayout's margin): along the bottom it ran over the buttons.
-        graphics.text(this.font, Component.translatable("options.radiante.version",
-                com.g2806.radiante.platform.RadiantePlatform.INSTANCE.modVersion(),
-                com.g2806.radiante.client.bedrock.BedrockPackConverter.converterVersion()),
-            Math.max(8, this.width / 24), 2, 0xFF808080);
+        int margin = Math.max(8, this.width / 24);
+        Component versionText = Component.translatable("options.radiante.version",
+            com.g2806.radiante.platform.RadiantePlatform.INSTANCE.modVersion(),
+            com.g2806.radiante.client.bedrock.BedrockPackConverter.converterVersion());
+        if (this.autoTuneNotice != null) {
+            int versionW = this.font.width(versionText);
+            int noticeW = this.font.width(this.autoTuneNotice);
+            if (versionW + 16 + noticeW <= this.width - margin * 2) {
+                graphics.text(this.font, versionText, margin, 2, 0xFF808080);
+                graphics.text(this.font, this.autoTuneNotice, this.width - margin - noticeW, 2, Theme.ACCENT);
+            } else {
+                graphics.text(this.font, this.autoTuneNotice, margin, 2, Theme.ACCENT);
+            }
+        } else {
+            graphics.text(this.font, versionText, margin, 2, 0xFF808080);
+        }
     }
 
     @Override

@@ -2,6 +2,7 @@
 
 #include "prism/gpu/diagnostics.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstdlib>
 #include <functional>
@@ -51,6 +52,10 @@ struct State {
     uint32_t reports = 0;
     // The last summary, for the F3 screen. Written and read on the render thread, like everything here.
     std::string summary;
+    static constexpr size_t PROBE_CAPACITY = 64;
+    std::array<double, PROBE_CAPACITY> probeSamples{};
+    size_t probeCount = 0;
+    size_t probeWrite = 0;
 };
 
 State &state() {
@@ -123,7 +128,13 @@ void collect(State &s, uint32_t slot) {
         }
         s.sums[id] += double(stamps[i] - stamps[i - 1]) * s.periodMs;
     }
-    s.totalMs += double(stamps[count - 1] - stamps[0]) * s.periodMs;
+    const double frameMs = double(stamps[count - 1] - stamps[0]) * s.periodMs;
+    s.totalMs += frameMs;
+    if (frameMs > 0.0 && frameMs < 2000.0) {
+        s.probeSamples[s.probeWrite] = frameMs;
+        s.probeWrite = (s.probeWrite + 1) % State::PROBE_CAPACITY;
+        if (s.probeCount < State::PROBE_CAPACITY) s.probeCount++;
+    }
     if (++s.frames >= REPORT_FRAMES) report(s);
 }
 
@@ -155,6 +166,31 @@ bool enabled() {
 
 std::string summary() {
     return state().summary;
+}
+
+void resetProbe() {
+    State &s = state();
+    s.probeCount = 0;
+    s.probeWrite = 0;
+}
+
+uint32_t probeFrameCount() {
+    return static_cast<uint32_t>(state().probeCount);
+}
+
+double probeTrimmedMeanMs() {
+    const State &s = state();
+    if (s.probeCount == 0) return 0.0;
+    std::vector<double> sorted(s.probeSamples.begin(), s.probeSamples.begin() + s.probeCount);
+    std::sort(sorted.begin(), sorted.end());
+    size_t trim = sorted.size() >= 8 ? sorted.size() / 8 : 0;
+    double sum = 0.0;
+    size_t kept = 0;
+    for (size_t i = trim; i + trim < sorted.size(); i++) {
+        sum += sorted[i];
+        kept++;
+    }
+    return kept > 0 ? (sum / static_cast<double>(kept)) : 0.0;
 }
 
 void beginFrame(VkDevice device, VkPhysicalDevice physicalDevice, VkCommandBuffer commandBuffer, uint32_t frameIndex) {

@@ -858,5 +858,11 @@
   "gui.radiante.photo.controls_hint": "WASD / 空格 / Shift：移动 · 拖动：视角 · 点击场景：对焦 · 滚轮：速度 · H：界面",
   "gui.radiante.photo.saving_wait": "正在累积采样以保存 (%s / %s)...",
   "gui.radiante.photo.saved": "已保存 %s",
-  "gui.radiante.photo.save_failed": "保存失败：%s"
+  "gui.radiante.photo.save_failed": "保存失败：%s",
+  "options.radiante.optimize_gpu": "显卡自动优化",
+  "options.radiante.optimize_gpu.tooltip": "测量当前显卡渲染耗时与可用显存预算（在菜单中则按硬件规格估算），自动选择最佳超分管线、画质等级、渲染距离与纹理细节。点击“应用”生效，或点击“撤销”恢复。",
+  "options.radiante.optimize_gpu.measuring": "正在测量显卡性能...",
+  "options.radiante.optimize_gpu.frames": "帧 %s / %s",
+  "options.radiante.optimize_gpu.done_live": "已优化：%s · %s（%s ms GPU，%s GB 显存）",
+  "options.radiante.optimize_gpu.done_estimate": "已优化：%s · %s（%s GB 显存）"
 }

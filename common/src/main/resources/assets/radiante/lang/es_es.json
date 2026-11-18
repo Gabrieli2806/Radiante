@@ -858,5 +858,11 @@
   "gui.radiante.photo.controls_hint": "WASD / Espacio / Shift: volar · Arrastrar: mirar · Clic mundo: enfocar · Rueda: vel. · H: IU",
   "gui.radiante.photo.saving_wait": "Acumulando para guardar (%s / %s)...",
   "gui.radiante.photo.saved": "Guardado %s",
-  "gui.radiante.photo.save_failed": "Error al guardar: %s"
+  "gui.radiante.photo.save_failed": "Error al guardar: %s",
+  "options.radiante.optimize_gpu": "Optimizar GPU",
+  "options.radiante.optimize_gpu.tooltip": "Mide el tiempo real de GPU y el presupuesto de memoria de vídeo (o lo estima desde los menús) y elige el mejor escalador, nivel de calidad, distancia de renderizado y detalle de texturas. Pulsa Aplicar para confirmar o Deshacer para revertir.",
+  "options.radiante.optimize_gpu.measuring": "Midiendo el rendimiento de la GPU...",
+  "options.radiante.optimize_gpu.frames": "Fotograma %s / %s",
+  "options.radiante.optimize_gpu.done_live": "Optimizado: %s · %s (%s ms GPU, %s GB VRAM)",
+  "options.radiante.optimize_gpu.done_estimate": "Optimizado: %s · %s (%s GB VRAM)"
 }

@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Optimize GPU button in the settings sidebar: runs a short hardware GPU timestamp probe in the world (or estimates from GPU model, resolution and VRAM budget in the menus), normalizes for the active settings' load so repeated runs do not oscillate, and stages the optimal upscaler pipeline, quality tier, render distance, texture detail, NVIDIA Reflex and automatic chunk building.
+
 - Photo Mode (`F9` or the Photo Mode button in the settings screen): pauses the scene on an unupscaled, denoiser-bypassed Monte Carlo reference pipeline with progressive 32-bit float accumulation, a camera-traced physical thin-lens model (aperture radius, click-to-focus focal plane, circular or polygonal iris blades and blade rotation), free-fly camera, field of view, camera roll, live exposure adjustment without discarding converged samples, and atomic PNG and 16-bit float linear HDR OpenEXR (`.exr`) export.
 
 - Depth of Field Auto-Focus, Seamless Glass Scope, Water Light Depth, Albedo Gamma, Indirect Cloud Reflection Max Roughness, the six physical atmosphere parameters (with the transmittance lookup table re-baked automatically) and the ray tracing module's jitter and SHaRC debug settings now apply live without rebuilding the pipeline.
