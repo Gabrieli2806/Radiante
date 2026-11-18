@@ -198,6 +198,11 @@ public final class RenderTypeInfo {
             return Glow.LIGHTNING;
         }
         if (this.name.contains("beacon_beam")) {
+            // ETF's bright-mode emissive overlay reuses RenderTypes.beaconBeam(emissive, true) with the entity's
+            // emissive texture instead of beacon_beam.png; give those overlays mob-eye emission rather than beam mode.
+            if (this.texture != null && !this.texture.getPath().contains("beacon_beam")) {
+                return Glow.MOB_EYES;
+            }
             // Negative: seen, not cast (transparent_only.rchit). Lit by every bounce that found it, the beam's
             // column lit the ground tens of blocks around however dim its glow was made.
             return -Glow.BEACON_BEAM;

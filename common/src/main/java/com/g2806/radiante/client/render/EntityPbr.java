@@ -52,6 +52,7 @@ public final class EntityPbr {
     /** GPU images are kept per map across reloads and filled again, since the renderer has no way to free one. */
     private static final Map<Identifier, Integer> MAP_TEXTURE_IDS = new HashMap<>();
     private static Object builtFor;
+    private static String emissiveSuffix = "_e";
 
     private EntityPbr() {
     }
@@ -77,6 +78,7 @@ public final class EntityPbr {
         ResourceManager resources = minecraft.getResourceManager();
         if (key != builtFor) {
             builtFor = key;
+            emissiveSuffix = com.g2806.radiante.client.compat.emfetf.EmfEtfCompat.readEmissiveSuffix(resources);
             STANDALONE.clear();
             ATLAS_MAPS.clear();
             ATLASES_PENDING.clear();
@@ -89,13 +91,14 @@ public final class EntityPbr {
         if (PENDING.isEmpty()) {
             return;
         }
+        boolean bakeEmissive = !com.g2806.radiante.client.compat.emfetf.EmfEtfCompat.isEtfInstalled();
         for (Identifier texture : List.copyOf(PENDING)) {
             PENDING.remove(texture);
             int albedoId = TextureTracker.idOf(texture);
             if (albedoId <= 0) {
                 continue;
             }
-            int specular = loadWhole(resources, texture, "_s");
+            int specular = loadStandaloneSpecular(resources, texture, bakeEmissive ? emissiveSuffix : null);
             int normal = loadWhole(resources, texture, "_n");
             STANDALONE.put(texture, specular < 0 && normal < 0 ? NONE : new Maps(albedoId, specular, normal));
         }
@@ -121,6 +124,64 @@ public final class EntityPbr {
         }
         if (maps.normal() >= 0) {
             mapping.putInt(entry + Integer.BYTES, maps.normal());
+        }
+    }
+
+    /** A standalone texture's specular map, folding in OptiFine/CEM {@code _e.png} emission when ETF is absent. */
+    private static int loadStandaloneSpecular(ResourceManager resources, Identifier texture, String emSuffix) {
+        Identifier specId = mapOf(texture, "_s");
+        Optional<Resource> specRes = resources.getResource(specId);
+        Optional<Resource> emRes = emSuffix == null ? Optional.empty() : resources.getResource(mapOf(texture, emSuffix));
+        if (specRes.isEmpty() && emRes.isEmpty()) {
+            return -1;
+        }
+        if (emRes.isEmpty()) {
+            return loadWhole(resources, texture, "_s");
+        }
+        NativeImage specImage = null;
+        NativeImage emImage = null;
+        try {
+            if (specRes.isPresent()) {
+                try (InputStream in = specRes.get().open()) {
+                    specImage = NativeImage.read(in);
+                }
+            }
+            try (InputStream in = emRes.get().open()) {
+                emImage = NativeImage.read(in);
+            }
+            int width = specImage != null ? Math.max(specImage.getWidth(), emImage.getWidth()) : emImage.getWidth();
+            int height = specImage != null ? Math.max(specImage.getHeight(), emImage.getHeight()) : emImage.getHeight();
+            ByteBuffer pixels = MemoryUtil.memAlloc(width * height * 4);
+            try {
+                for (int y = 0; y < height; y++) {
+                    for (int x = 0; x < width; x++) {
+                        int baseRgba = 0;
+                        if (specImage != null) {
+                            int sx = x * specImage.getWidth() / width;
+                            int sy = y * specImage.getHeight() / height;
+                            baseRgba = PbrAtlases.toRgba(specImage.getPixel(sx, sy));
+                        }
+                        int ex = x * emImage.getWidth() / width;
+                        int ey = y * emImage.getHeight() / height;
+                        int combined = com.g2806.radiante.client.compat.emfetf.EmfEtfCompat
+                            .applyEmissiveToLabPbrRgba(baseRgba, emImage.getPixel(ex, ey));
+                        pixels.putInt((y * width + x) * 4, combined);
+                    }
+                }
+                return PbrAtlases.upload(textureIdFor(specId), pixels, width, height, 1, 0, PbrAtlases.MIPS_POINT);
+            } finally {
+                MemoryUtil.memFree(pixels);
+            }
+        } catch (Exception e) {
+            RadianteRenderer.LOGGER.warn("Could not read PBR/emissive map for {}", texture, e);
+            return -1;
+        } finally {
+            if (specImage != null) {
+                specImage.close();
+            }
+            if (emImage != null) {
+                emImage.close();
+            }
         }
     }
 
@@ -168,16 +229,21 @@ public final class EntityPbr {
             return false;
         }
         // Most packs cover blocks only; an atlas nothing is authored for costs no memory at all.
+        boolean bakeEmissive = !com.g2806.radiante.client.compat.emfetf.EmfEtfCompat.isEtfInstalled();
         boolean anySpecular = false;
+        boolean anyEmissive = false;
         boolean anyNormal = false;
         for (Identifier spriteId : sprites.keySet()) {
-            if (PbrAtlases.isPackMap(sprites, spriteId)) {
+            if (PbrAtlases.isPackMap(sprites, spriteId, emissiveSuffix)) {
                 continue;
             }
             anySpecular |= resources.getResource(spriteMapOf(spriteId, "_s")).isPresent();
+            if (bakeEmissive) {
+                anyEmissive |= resources.getResource(spriteMapOf(spriteId, emissiveSuffix)).isPresent();
+            }
             anyNormal |= resources.getResource(spriteMapOf(spriteId, "_n")).isPresent();
         }
-        if (!anySpecular && !anyNormal) {
+        if (!anySpecular && !anyEmissive && !anyNormal) {
             return true;
         }
 
@@ -186,8 +252,9 @@ public final class EntityPbr {
         int mipLevels = VersionCompat.gpuTexture(atlas).getMipLevels();
         int specular = -1;
         int normal = -1;
-        if (anySpecular) {
-            specular = stitchAtlas(resources, sprites, atlasId, "_s", 0, width, height, mipLevels, albedoId);
+        if (anySpecular || anyEmissive) {
+            specular = stitchSpecularAtlas(resources, sprites, atlasId, anySpecular, anyEmissive ? emissiveSuffix : null,
+                width, height, mipLevels, albedoId);
         }
         if (anyNormal) {
             normal = stitchAtlas(resources, sprites, atlasId, "_n", PbrAtlases.NORMAL_DEFAULT, width, height,
@@ -198,6 +265,63 @@ public final class EntityPbr {
             RadianteRenderer.LOGGER.info("Stitched PBR maps for the {} atlas", atlasId);
         }
         return true;
+    }
+
+    private static int stitchSpecularAtlas(ResourceManager resources, Map<Identifier, TextureAtlasSprite> sprites,
+        Identifier atlasId, boolean anySpecular, String emSuffix, int width, int height, int mipLevels, int albedoId) {
+        ByteBuffer target = PbrAtlases.fill(width, height, 0);
+        try {
+            for (Map.Entry<Identifier, TextureAtlasSprite> entry : sprites.entrySet()) {
+                if (PbrAtlases.isPackMap(sprites, entry.getKey(), emissiveSuffix)) {
+                    continue;
+                }
+                if (anySpecular) {
+                    PbrAtlases.stitch(resources, entry.getKey(), entry.getValue(), "_s", target, width, height);
+                }
+                if (emSuffix != null) {
+                    stitchSpriteEmissive(resources, entry.getKey(), entry.getValue(), emSuffix, target, width, height);
+                }
+            }
+            Identifier mapId = Identifier.fromNamespaceAndPath(atlasId.getNamespace(),
+                "radiante_atlas_" + atlasId.getPath() + "_s");
+            return PbrAtlases.upload(textureIdFor(mapId), target, width, height, mipLevels,
+                TracedTextureDetail.droppedFor(albedoId), PbrAtlases.MIPS_SPECULAR);
+        } finally {
+            MemoryUtil.memFree(target);
+        }
+    }
+
+    private static void stitchSpriteEmissive(ResourceManager resources, Identifier spriteId, TextureAtlasSprite sprite,
+        String emSuffix, ByteBuffer target, int width, int height) {
+        Optional<Resource> res = resources.getResource(spriteMapOf(spriteId, emSuffix));
+        if (res.isEmpty()) {
+            return;
+        }
+        try (InputStream stream = res.get().open(); NativeImage image = NativeImage.read(stream)) {
+            int spriteWidth = sprite.contents().width();
+            int spriteHeight = sprite.contents().height();
+            int frameHeight = Math.min(image.getHeight(),
+                Math.max(1, image.getWidth() * spriteHeight / Math.max(1, spriteWidth)));
+            int originX = Math.round(sprite.getU0() * width);
+            int originY = Math.round(sprite.getV0() * height);
+            for (int y = 0; y < spriteHeight; y++) {
+                int sy = y * frameHeight / spriteHeight;
+                for (int x = 0; x < spriteWidth; x++) {
+                    int sx = x * image.getWidth() / spriteWidth;
+                    int tx = originX + x;
+                    int ty = originY + y;
+                    if (tx < 0 || ty < 0 || tx >= width || ty >= height) {
+                        continue;
+                    }
+                    int idx = (ty * width + tx) * 4;
+                    int existing = target.getInt(idx);
+                    target.putInt(idx, com.g2806.radiante.client.compat.emfetf.EmfEtfCompat
+                        .applyEmissiveToLabPbrRgba(existing, image.getPixel(sx, sy)));
+                }
+            }
+        } catch (Exception e) {
+            RadianteRenderer.LOGGER.warn("Could not read emissive sprite map for {}", spriteId, e);
+        }
     }
 
     private static int stitchAtlas(ResourceManager resources, Map<Identifier, TextureAtlasSprite> sprites,

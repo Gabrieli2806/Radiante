@@ -37,6 +37,7 @@
     "render.EntityRenderStateMixin",
     "render.EntityRendererMixin",
     "render.ModelPartAccessor",
+    "render.RenderTypeFeatureRendererMixin",
     "render.RenderTypeAccessors$RenderSetupAccessor",
     "render.RenderTypeAccessors$RenderTypeAccessor",
     "render.RenderTypeAccessors$TextureBindingAccessor",

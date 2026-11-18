@@ -170,12 +170,23 @@ public final class PbrAtlases {
      * pack ships, so no PBR pack worked at all. Vanilla has no texture named after another with these suffixes.
      */
     static boolean isPackMap(Map<Identifier, TextureAtlasSprite> sprites, Identifier spriteId) {
+        return isPackMap(sprites, spriteId, "_e");
+    }
+
+    static boolean isPackMap(Map<Identifier, TextureAtlasSprite> sprites, Identifier spriteId, String emissiveSuffix) {
         String path = spriteId.getPath();
-        if (!path.endsWith("_s") && !path.endsWith("_n")) {
+        int trim = 0;
+        if (path.endsWith("_s") || path.endsWith("_n")) {
+            trim = 2;
+        } else if (emissiveSuffix != null && !emissiveSuffix.isEmpty() && path.endsWith(emissiveSuffix)
+            && path.length() > emissiveSuffix.length()) {
+            trim = emissiveSuffix.length();
+        }
+        if (trim == 0) {
             return false;
         }
         Identifier base = Identifier.fromNamespaceAndPath(spriteId.getNamespace(),
-            path.substring(0, path.length() - 2));
+            path.substring(0, path.length() - trim));
         return sprites.containsKey(base);
     }
 
