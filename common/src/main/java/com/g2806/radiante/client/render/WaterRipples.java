@@ -39,7 +39,9 @@ public final class WaterRipples {
         double y;
         double z;
         float speed;
-        float spawnedAt;
+        // Seconds of game time, which in a world running for a year is past where a float steps by less than two
+        // seconds: a ripple's age came out negative or jumped, and it was dropped the frame after it was made.
+        double spawnedAt;
         float amplitude;
         float maxAge;
         float kind;
@@ -339,7 +341,7 @@ public final class WaterRipples {
         target.y = y;
         target.z = z;
         target.speed = speed;
-        target.spawnedAt = (float) nowSec;
+        target.spawnedAt = nowSec;
         target.amplitude = amplitude;
         target.maxAge = maxAge;
         target.kind = kind;

@@ -134,7 +134,7 @@ void main() {
 
     vec3 worldPos = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
     vec3 geoNormalObj = normalize(cross(p1.pos - p0.pos, p2.pos - p0.pos));
-    mat3 normalMatrix = transpose(mat3(gl_WorldToObject3x4EXT));
+    mat3 normalMatrix = transpose(mat3(gl_WorldToObjectEXT));
     vec3 normal = normalize(normalMatrix * geoNormalObj);
     if (dot(normal, -mainRay.direction) < 0.0) { normal = -normal; }
     float defaultF0 = 0.02;

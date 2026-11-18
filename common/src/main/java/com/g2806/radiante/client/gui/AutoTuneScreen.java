@@ -66,12 +66,14 @@ final class AutoTuneScreen extends VersionCompat.DrawnScreen {
 
         int collected = this.probeStarted ? RendererProxy.gpuProbeFrames() : 0;
         boolean timedOut = (Util.getMillis() - this.startMillis) >= MAX_DURATION_MS;
-        if (this.probeStarted && (collected >= TARGET_FRAMES || (timedOut && collected >= 4))) {
+        if (this.probeStarted && collected >= TARGET_FRAMES) {
             finish(RendererProxy.gpuProbeMeanMs());
             return;
         }
-        if (timedOut && !this.probeStarted) {
-            finish(0.0f);
+        if (timedOut) {
+            // Too few frames timed (GPU timestamps unavailable, or the game barely drawing): the hardware estimate
+            // stands in. It waited for four frames before, and with no timestamps the screen stayed up until Esc.
+            finish(this.probeStarted && collected >= 4 ? RendererProxy.gpuProbeMeanMs() : 0.0f);
             return;
         }
 

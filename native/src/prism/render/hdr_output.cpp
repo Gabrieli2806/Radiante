@@ -363,12 +363,15 @@ bool HdrOutput::compose(VkCommandBuffer commands,
                         float peakNits,
                         bool flipY,
                         bool debugView) {
-    setTarget(true, paperWhiteNits, peakNits);
     std::scoped_lock lock(mutex_);
+    // The tone mapping extends its highlights for HDR only while this composes them: had the set up failed and the
+    // picture fallen back to SDR, the HDR curve went on and the SDR screen showed its highlights clipped.
     if (!recordComposeDispatch(commands, minecraftImage, minecraftLayout, minecraftFormat, width, height,
                                paperWhiteNits, peakNits, flipY, debugView, /*consumeWorldFrame=*/true)) {
+        setTarget(false, paperWhiteNits, peakNits);
         return false;
     }
+    setTarget(true, paperWhiteNits, peakNits);
 
     const int32_t blitWidth = static_cast<int32_t>(std::min(width, swapchainWidth));
     const int32_t blitHeight = static_cast<int32_t>(std::min(height, swapchainHeight));
