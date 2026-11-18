@@ -309,6 +309,7 @@ public final class EntityManager {
             queued = false;
             EntityProxy.build();
         }
+        com.g2806.radiante.client.compat.emfetf.EmfEtfCompat.endFrame();
         DevProfiler.part(5);
     }
 
@@ -363,6 +364,7 @@ public final class EntityManager {
         try {
             // Built around the entity origin; the renderer places the instance at the entity position.
             minecraft.getEntityRenderDispatcher().submit(state, cameraState, 0.0, 0.0, 0.0, POSE_STACK, COLLECTOR);
+            COLLECTOR.flushDeferredModels();
         } catch (RuntimeException e) {
             return;
         }
@@ -393,6 +395,7 @@ public final class EntityManager {
             POSE_STACK.setIdentity();
             try {
                 minecraft.getEntityRenderDispatcher().submit(state, cameraState, 0.0, 0.0, 0.0, POSE_STACK, COLLECTOR);
+                COLLECTOR.flushDeferredModels();
             } catch (RuntimeException e) {
                 return;
             }

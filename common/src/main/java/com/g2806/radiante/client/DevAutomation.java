@@ -456,6 +456,13 @@ public final class DevAutomation {
             RadianteClient.LOGGER.info("[dev] hdrmode {}", com.g2806.radiante.client.hdr.HdrDisplay.devOverrideActive);
             return;
         }
+        if (action.startsWith("emfetf=")) {
+            com.g2806.radiante.client.compat.emfetf.EmfEtfCompat.devForcePipeline =
+                Boolean.parseBoolean(action.substring(7));
+            RadianteClient.LOGGER.info("[dev] emfetf forcePipeline={}",
+                com.g2806.radiante.client.compat.emfetf.EmfEtfCompat.devForcePipeline);
+            return;
+        }
         if (action.startsWith("hdrshot=")) {
             pendingHdrShot = action.substring(8);
             return;

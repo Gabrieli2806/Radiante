@@ -108,6 +108,14 @@ public class EntityCollector implements SubmitNodeCollector {
     private int used;
     /** How many times each model has been submitted for the current entity; see submitModel. */
     private final java.util.Map<Object, Integer> modelLayers = new java.util.IdentityHashMap<>();
+    private record DeferredModel<S>(ModelFeatureRenderer.Submit<S> submit, int layer, boolean hasUvMapping,
+                                    boolean waterMask, boolean nameTag,
+                                    ModelFeatureRenderer.@Nullable CrumblingOverlay crumblingOverlay,
+                                    net.minecraft.resources.@Nullable Identifier glintTexture) {
+    }
+    private final List<DeferredModel<?>> deferredModels = new ArrayList<>();
+    private final PoseStack deferredPoseStack = new PoseStack();
+    private boolean flushingDeferred;
     /** Blocks per layer: enough for the tracer to tell the surfaces apart, too little to see. */
     private static final float LAYER_OFFSET = 0.002f;
     /** How far a boat's water patch is raised above the water line, in blocks. */
@@ -157,6 +165,8 @@ public class EntityCollector implements SubmitNodeCollector {
     /** Drops the geometry of the previous entity, keeping the buffers for reuse. */
     public void reset() {
         this.modelLayers.clear();
+        this.deferredModels.clear();
+        this.flushingDeferred = false;
         this.writers.clear();
         this.baseLayers.clear();
         this.nameTagLayers.clear();
@@ -186,6 +196,7 @@ public class EntityCollector implements SubmitNodeCollector {
     }
 
     int rigidPartCount() {
+        flushDeferredModels();
         return this.rigidCount;
     }
 
@@ -220,6 +231,7 @@ public class EntityCollector implements SubmitNodeCollector {
 
     /** Uses the submitted model's centre, so the source follows its bobbing and rotation. */
     public void appendPointItemLight(net.minecraft.world.level.block.Block block) {
+        flushDeferredModels();
         PBRVertexWriter target = null;
         this.lightMinimum.set(Float.POSITIVE_INFINITY);
         this.lightMaximum.set(Float.NEGATIVE_INFINITY);
@@ -252,6 +264,7 @@ public class EntityCollector implements SubmitNodeCollector {
     }
 
     public Map<RenderType, PBRVertexWriter> layers() {
+        flushDeferredModels();
         return this.writers;
     }
 
@@ -260,6 +273,7 @@ public class EntityCollector implements SubmitNodeCollector {
     }
 
     public boolean isEmpty() {
+        flushDeferredModels();
         if (this.rigidCount > 0) {
             return false;
         }
@@ -365,54 +379,110 @@ public class EntityCollector implements SubmitNodeCollector {
         if (glintTexture != null) {
             // 26.2 port: the glint pass over a model already drawn glints that model's base vertices instead.
             this.glintedModelsThisFrame.add(model);
-            BaseLayer base = this.baseLayers.get(model);
-            if (base != null) {
-                base.writer().glintRange(base.start(), base.end(), TextureTracker.idOf(glintTexture));
-            }
+            ModelFeatureRenderer.Submit<S> glintSubmit = new ModelFeatureRenderer.Submit<>(renderType,
+                poseStack.last().copy(), model, state, lightCoords, overlayCoords, tintedColor, uvMapping, null);
+            this.deferredModels.add(new DeferredModel<>(glintSubmit, 0, false, false, this.collectingNameTag, null,
+                glintTexture));
             return;
         }
         // An outline colour means the glowing effect. Vanilla still draws the model, and draws the silhouette on
         // top from a post effect this renderer does not run; dropping the submission made a glowing mob or player
         // disappear instead. The outline comes from a separate copy of the entity; see EntityManager.collect.
-        // Every further submission of the same model for this entity is a layer on top of the first (armor trims,
-        // elytra trims, leather dye overlays, any mod's decorations): lift it a hair per layer so it is traced in
-        // front of the one below, as drawing order puts it in front in vanilla.
-        int layer = this.modelLayers.merge(model, 1, Integer::sum) - 1;
-        if (uvMapping == null && crumblingOverlay == null && !this.glintedModelsLastFrame.contains(model)
-            && !this.glintedModelsThisFrame.contains(model)
-            && trySubmitRigidModel(model, state, poseStack, renderType, layer, lightCoords, overlayCoords,
-                tintedColor)) {
+        // Every further submission of the same model (or same ModelPart via submitModelPart -> Model.Simple) for this
+        // entity is a layer on top of the first (armor trims, sleeves, leather dye overlays, ETF emissive passes):
+        // lift it a hair per layer so it is traced in front of the one below, as drawing order puts it in front.
+        Object layerKey = model instanceof Model.Simple ? model.root() : model;
+        int layer = this.modelLayers.merge(layerKey, 1, Integer::sum) - 1;
+        boolean waterMask = RenderTypeInfo.of(renderType).isWaterMask();
+        ModelFeatureRenderer.Submit<S> submit = new ModelFeatureRenderer.Submit<>(renderType, poseStack.last().copy(),
+            model, state, lightCoords, overlayCoords, tintedColor, uvMapping, null);
+        this.deferredModels.add(new DeferredModel<>(submit, layer, uvMapping != null, waterMask,
+            this.collectingNameTag, crumblingOverlay, null));
+    }
+
+    /**
+     * Evaluates every model submitted during the entity's {@code submit} pass, matching vanilla's deferred
+     * {@link ModelFeatureRenderer} order so animations applied on {@code LivingEntityRenderer.submit} (EMF, Punchy,
+     * armor pose copy, held-item arm transforms) are complete before vertex emission runs.
+     */
+    public void flushDeferredModels() {
+        if (this.flushingDeferred || this.deferredModels.isEmpty()) {
             return;
+        }
+        this.flushingDeferred = true;
+        try {
+            for (int i = 0; i < this.deferredModels.size(); i++) {
+                flushOneDeferred(this.deferredModels.get(i));
+            }
+        } finally {
+            this.deferredModels.clear();
+            this.flushingDeferred = false;
+        }
+    }
+
+    private <S> void flushOneDeferred(DeferredModel<S> entry) {
+        ModelFeatureRenderer.Submit<S> submit = entry.submit();
+        if (entry.glintTexture() != null) {
+            BaseLayer base = this.baseLayers.get(submit.model());
+            if (base != null) {
+                base.writer().glintRange(base.start(), base.end(), TextureTracker.idOf(entry.glintTexture()));
+            }
+            return;
+        }
+        boolean prevNameTag = this.collectingNameTag;
+        this.collectingNameTag = entry.nameTag();
+        try {
+            if (!entry.hasUvMapping() && entry.crumblingOverlay() == null
+                && !this.glintedModelsLastFrame.contains(submit.model())
+                && !this.glintedModelsThisFrame.contains(submit.model())
+                && !com.g2806.radiante.client.compat.emfetf.EmfEtfCompat.shouldUseFeaturePipeline(submit.model())) {
+                this.deferredPoseStack.setIdentity();
+                this.deferredPoseStack.last().set(submit.pose());
+                if (trySubmitRigidModel(submit.model(), submit.state(), this.deferredPoseStack, submit.renderType(),
+                    entry.layer(), submit.lightCoords(), submit.overlayCoords(), submit.tintedColor())) {
+                    return;
+                }
+            }
+            PBRVertexWriter baseWriter = this.writer(submit.renderType());
+            baseWriter.finish();
+            int start = baseWriter.vertexCount();
+            com.g2806.radiante.client.compat.emfetf.RadianteModelFeatureRenderer.INSTANCE.replay(
+                this, submit, entry.layer(), entry.waterMask());
+            baseWriter.finish();
+            this.baseLayers.putIfAbsent(submit.model(), new BaseLayer(baseWriter, start, baseWriter.vertexCount()));
+            if (entry.crumblingOverlay() != null) {
+                this.deferredPoseStack.setIdentity();
+                this.deferredPoseStack.last().set(submit.pose());
+                this.submitCrumblingOverlay(submit.model(), submit.state(), this.deferredPoseStack, submit.renderType(),
+                    submit.lightCoords(), submit.overlayCoords(), submit.tintedColor(), entry.crumblingOverlay());
+            }
+        } finally {
+            for (PBRVertexWriter w : this.writers.values()) {
+                w.layerOffset(0.0f);
+            }
+            this.collectingNameTag = prevNameTag;
+        }
+    }
+
+    /** Supplies the {@link VertexConsumer} for {@link com.g2806.radiante.client.compat.emfetf.RadianteModelFeatureRenderer}. */
+    public VertexConsumer featureVertexConsumer(RenderType renderType, int layer, boolean waterMask) {
+        if (this.collectingNameTag) {
+            this.nameTagLayers.add(renderType);
         }
         PBRVertexWriter writer = this.writer(renderType);
         writer.layerOffset(layer * LAYER_OFFSET);
-        VertexConsumer buffer = writer;
-        if (RenderTypeInfo.of(renderType).isWaterMask()) {
+        if (waterMask) {
             // A boat's water patch sits at the water line, level with the water surface around it. Rays have to
             // meet the patch before the water to know they are inside the boat (see world/water_mask.rchit), so
             // it is lifted a little; nothing of it is ever drawn.
-            buffer = new VertexConsumerWrapper(buffer) {
+            return new VertexConsumerWrapper(writer) {
                 @Override
                 public VertexConsumer addVertex(float x, float y, float z) {
                     return super.addVertex(x, y + WATER_MASK_LIFT, z);
                 }
             };
         }
-        if (uvMapping != null) {
-            buffer = uvMapping.wrap(buffer);
-        }
-
-        writer.finish();
-        int start = writer.vertexCount();
-        model.setupAnim(state);
-        model.renderToBuffer(poseStack, buffer, lightCoords, overlayCoords, tintedColor);
-        writer.layerOffset(0.0f);
-        writer.finish();
-        this.baseLayers.putIfAbsent(model, new BaseLayer(writer, start, writer.vertexCount()));
-        if (crumblingOverlay != null) {
-            this.submitCrumblingOverlay(model, state, poseStack, renderType, lightCoords, overlayCoords, tintedColor,
-                crumblingOverlay);
-        }
+        return writer;
     }
 
     private <S> boolean trySubmitRigidModel(Model<? super S> model, S state, PoseStack poseStack,

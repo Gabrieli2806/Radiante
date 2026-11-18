@@ -97,6 +97,7 @@ public final class EntityHands {
 
         try {
             PlayerFrame.submitHands(POSE_STACK, COLLECTOR);
+            COLLECTOR.flushDeferredModels();
         } catch (RuntimeException e) {
             return;
         }

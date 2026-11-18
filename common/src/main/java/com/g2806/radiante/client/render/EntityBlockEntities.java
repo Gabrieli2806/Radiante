@@ -237,6 +237,7 @@ public final class EntityBlockEntities {
 
         try {
             minecraft.getBlockEntityRenderDispatcher().submit(state, POSE_STACK, COLLECTOR, cameraState);
+            COLLECTOR.flushDeferredModels();
         } catch (RuntimeException e) {
             // Swallowing this silently once hid the reason a whole kind of block entity never appeared.
             if (DEBUG_FAILED_BLOCK_ENTITIES.add(state.getClass().getSimpleName())) {
