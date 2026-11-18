@@ -219,15 +219,20 @@ public final class EntityManager {
      * rebuilding it every frame.
      */
     record PendingEntity(int id, double x, double y, double z, int rayTracingFlag,
-        List<PendingLayer> layers, int prebuiltBlas) {
+        List<PendingLayer> layers, int prebuiltBlas, int localTransformIndex) {
+
+        PendingEntity(int id, double x, double y, double z, int rayTracingFlag, List<PendingLayer> layers,
+            int prebuiltBlas) {
+            this(id, x, y, z, rayTracingFlag, layers, prebuiltBlas, -1);
+        }
 
         PendingEntity(int id, double x, double y, double z, int rayTracingFlag, List<PendingLayer> layers) {
-            this(id, x, y, z, rayTracingFlag, layers, PREBUILT_BLAS_NONE);
+            this(id, x, y, z, rayTracingFlag, layers, PREBUILT_BLAS_NONE, -1);
         }
 
         PendingEntity(int id, double x, double y, double z, int rayTracingFlag, List<PendingLayer> layers,
             boolean cacheable) {
-            this(id, x, y, z, rayTracingFlag, layers, cacheable ? PREBUILT_BLAS_CACHEABLE : PREBUILT_BLAS_NONE);
+            this(id, x, y, z, rayTracingFlag, layers, cacheable ? PREBUILT_BLAS_CACHEABLE : PREBUILT_BLAS_NONE, -1);
         }
     }
 
@@ -236,6 +241,21 @@ public final class EntityManager {
     static final int PREBUILT_BLAS_CACHEABLE = -2;
     /** Cached by the content name the layers carry, and moved by position alone; see Entities::KEYED_BLAS. */
     static final int PREBUILT_BLAS_KEYED = -3;
+    /** Shared across every entity using the same ModelPart geometry, posed by a 3x4 local transform. */
+    static final int PREBUILT_BLAS_RIGID_SHARED = -4;
+
+    static float[] frameTransforms = new float[12 * 256];
+    static int frameTransformCount;
+
+    static int pushLocalTransform(float[] src) {
+        int index = frameTransformCount++;
+        int needed = frameTransformCount * 12;
+        if (needed > frameTransforms.length) {
+            frameTransforms = java.util.Arrays.copyOf(frameTransforms, Math.max(needed, frameTransforms.length * 2));
+        }
+        System.arraycopy(src, 0, frameTransforms, index * 12, 12);
+        return index;
+    }
 
     public static void render(Minecraft minecraft, LevelRenderState levelRenderState) {
         if (minecraft.level == null) {
@@ -244,6 +264,8 @@ public final class EntityManager {
 
         CameraRenderState cameraState = levelRenderState.cameraRenderState;
         PENDING.clear();
+        frameTransformCount = 0;
+        COLLECTOR.nextFrame();
         // Last frame's vertex copies were consumed by the upload below; the arena starts over.
         ARENA.reset();
         BlockEntityCache.beginFrame(minecraft.level);
@@ -302,6 +324,9 @@ public final class EntityManager {
         }
 
         COLLECTOR.reset();
+        if (!still) {
+            COLLECTOR.rigidInstancing(true);
+        }
         if (minecraft.player != null && ((EntityIdHolder) state).radiante$entityId() == minecraft.player.getId()) {
             configureHeldLights(minecraft, COLLECTOR, state);
         }
@@ -361,6 +386,9 @@ public final class EntityManager {
             // the entity painted in that colour goes under a mask of its own that only the outline rays in
             // world.rgen look for; they draw the rim wherever a pixel misses the copy but a neighbour hits it.
             COLLECTOR.reset();
+            if (!still) {
+                COLLECTOR.rigidInstancing(true);
+            }
             COLLECTOR.colorOverride(state.outlineColor & 0xFFFFFF | 0x010101);
             POSE_STACK.setIdentity();
             try {
@@ -638,6 +666,7 @@ public final class EntityManager {
             return;
         }
         COLLECTOR.reset();
+        COLLECTOR.rigidInstancing(true);
         configureHeldLights(minecraft, COLLECTOR, state);
         COLLECTOR.skipNameTags();
         POSE_STACK.setIdentity();
@@ -735,7 +764,19 @@ public final class EntityManager {
             boolean overlay = collector.isNameTagLayer(entry.getKey()) || info.groupName().startsWith("text");
             (overlay ? nameTagLayers : layers).add(layer);
         }
-        DevProfiler.count(layers.size() + nameTagLayers.size(), profiledVertices);
+        int rigidLayers = 0;
+        int rigidCount = collector.rigidPartCount();
+        for (int i = 0; i < rigidCount; i++) {
+            EntityCollector.RigidPartInstance part = collector.rigidPart(i);
+            if (part.layers.isEmpty()) {
+                continue;
+            }
+            rigidLayers += part.layers.size();
+            int transformIdx = pushLocalTransform(part.transform);
+            PENDING.add(new PendingEntity(id ^ part.partSalt, x, y, z, rayTracingFlag, List.copyOf(part.layers),
+                PREBUILT_BLAS_RIGID_SHARED, transformIdx));
+        }
+        DevProfiler.count(layers.size() + nameTagLayers.size() + rigidLayers, profiledVertices);
 
         if (!layers.isEmpty()) {
             PENDING.add(new PendingEntity(id, x, y, z, rayTracingFlag, layers, cacheable));

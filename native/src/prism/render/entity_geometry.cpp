@@ -112,7 +112,7 @@ class KeyHasher {
 } // namespace
 
 EntityInput readEntity(const EntitiesBuildTask &task, int entity, size_t firstGeometry) {
-    return {
+    EntityInput input{
         .hashCode = task.entityHashCodes[entity],
         .x = task.entityXs[entity],
         .y = task.entityYs[entity],
@@ -122,6 +122,13 @@ EntityInput readEntity(const EntitiesBuildTask &task, int entity, size_t firstGe
         .firstGeometry = firstGeometry,
         .geometryCount = std::max(task.entityGeometryCounts[entity], 0),
     };
+    if (task.entityHasLocalTransforms != nullptr && task.entityLocalTransforms != nullptr &&
+        task.entityHasLocalTransforms[entity] != 0) {
+        input.hasLocalTransform = true;
+        std::memcpy(&input.localTransform, task.entityLocalTransforms + static_cast<size_t>(entity) * 12,
+                    12 * sizeof(float));
+    }
+    return input;
 }
 
 size_t vertexCount(const EntitiesBuildTask &task, size_t geometry) {

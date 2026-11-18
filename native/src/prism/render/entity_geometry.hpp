@@ -23,6 +23,8 @@ struct EntityInput {
     int prebuiltBLAS;
     size_t firstGeometry;
     int geometryCount;
+    bool hasLocalTransform = false;
+    VkTransformMatrixKHR localTransform{};
 };
 
 EntityInput readEntity(const EntitiesBuildTask &task, int entity, size_t firstGeometry);

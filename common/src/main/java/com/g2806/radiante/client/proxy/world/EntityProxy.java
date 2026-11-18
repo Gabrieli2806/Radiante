@@ -13,6 +13,8 @@ public class EntityProxy {
         long entityRayTracingFlags,
         long entityPrebuiltBLASs,
         long entityLayerCounts,
+        long entityHasLocalTransforms,
+        long entityLocalTransforms,
         long geometryTypes,
         long geometryGroupNames,
         long geometryContentNames,
@@ -26,12 +28,12 @@ public class EntityProxy {
 
     public static void queue(float lineWidth, int coordinate, boolean normalOffset, int entityCount,
         long entityHashCodes, long entityPosXs, long entityPosYs, long entityPosZs, long entityRayTracingFlags,
-        long entityPrebuiltBLASs, long entityLayerCounts, long geometryTypes, long geometryGroupNames,
-        long geometryContentNames, long geometryTextures, long vertexFormats, long indexFormats, long vertexCounts,
-        long vertices) {
+        long entityPrebuiltBLASs, long entityLayerCounts, long entityHasLocalTransforms, long entityLocalTransforms,
+        long geometryTypes, long geometryGroupNames, long geometryContentNames, long geometryTextures,
+        long vertexFormats, long indexFormats, long vertexCounts, long vertices) {
         queueBuild(lineWidth, coordinate, normalOffset, entityCount, entityHashCodes, entityPosXs, entityPosYs,
-            entityPosZs, entityRayTracingFlags, entityPrebuiltBLASs, entityLayerCounts, geometryTypes,
-            geometryGroupNames, geometryContentNames, geometryTextures, vertexFormats, indexFormats, vertexCounts,
-            vertices);
+            entityPosZs, entityRayTracingFlags, entityPrebuiltBLASs, entityLayerCounts, entityHasLocalTransforms,
+            entityLocalTransforms, geometryTypes, geometryGroupNames, geometryContentNames, geometryTextures,
+            vertexFormats, indexFormats, vertexCounts, vertices);
     }
 }

@@ -9,9 +9,11 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import com.g2806.radiante.mixin.render.ModelPartAccessor;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.font.TextRenderable;
 import net.minecraft.client.model.Model;
+import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.renderer.OrderedSubmitNodeCollector;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.BlockQuadOutput;
@@ -73,6 +75,10 @@ public class EntityCollector implements SubmitNodeCollector {
     }
 
     private final java.util.Map<Object, BaseLayer> baseLayers = new java.util.IdentityHashMap<>();
+    private final java.util.Set<Object> glintedModelsThisFrame =
+        java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+    private final java.util.Set<Object> glintedModelsLastFrame =
+        java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
 
     /** Extra glow the current entity gives off whatever layer it is drawn with, such as a glow item frame. */
     private float entityEmission;
@@ -96,6 +102,9 @@ public class EntityCollector implements SubmitNodeCollector {
     private boolean collectingNameTag;
     /** Name tags are dropped: the player's own model in first person carries one when a mod forces it on. */
     private boolean skipNameTags;
+    private boolean rigidInstancing;
+    private final List<RigidPartInstance> rigidPool = new ArrayList<>();
+    private int rigidCount;
     private int used;
     /** How many times each model has been submitted for the current entity; see submitModel. */
     private final java.util.Map<Object, Integer> modelLayers = new java.util.IdentityHashMap<>();
@@ -104,6 +113,47 @@ public class EntityCollector implements SubmitNodeCollector {
     /** How far a boat's water patch is raised above the water line, in blocks. */
     private static final float WATER_MASK_LIFT = 0.06f;
 
+    static final class RigidPartInstance {
+        int partSalt;
+        final float[] transform = new float[12];
+        final List<EntityManager.PendingLayer> layers = new ArrayList<>(2);
+
+        void reset(int partSalt, float m00, float m10, float m20, float m30, float m01, float m11, float m21, float m31,
+                   float m02, float m12, float m22, float m32) {
+            this.partSalt = partSalt;
+            this.transform[0] = m00;
+            this.transform[1] = m10;
+            this.transform[2] = m20;
+            this.transform[3] = m30;
+            this.transform[4] = m01;
+            this.transform[5] = m11;
+            this.transform[6] = m21;
+            this.transform[7] = m31;
+            this.transform[8] = m02;
+            this.transform[9] = m12;
+            this.transform[10] = m22;
+            this.transform[11] = m32;
+            this.layers.clear();
+        }
+
+        boolean sameTransform(float m00, float m10, float m20, float m30, float m01, float m11, float m21, float m31,
+                              float m02, float m12, float m22, float m32) {
+            final float eps = 1.0e-6f;
+            return Math.abs(this.transform[0] - m00) <= eps
+                && Math.abs(this.transform[1] - m10) <= eps
+                && Math.abs(this.transform[2] - m20) <= eps
+                && Math.abs(this.transform[3] - m30) <= eps
+                && Math.abs(this.transform[4] - m01) <= eps
+                && Math.abs(this.transform[5] - m11) <= eps
+                && Math.abs(this.transform[6] - m21) <= eps
+                && Math.abs(this.transform[7] - m31) <= eps
+                && Math.abs(this.transform[8] - m02) <= eps
+                && Math.abs(this.transform[9] - m12) <= eps
+                && Math.abs(this.transform[10] - m22) <= eps
+                && Math.abs(this.transform[11] - m32) <= eps;
+        }
+    }
+
     /** Drops the geometry of the previous entity, keeping the buffers for reuse. */
     public void reset() {
         this.modelLayers.clear();
@@ -111,6 +161,8 @@ public class EntityCollector implements SubmitNodeCollector {
         this.baseLayers.clear();
         this.nameTagLayers.clear();
         this.used = 0;
+        this.rigidCount = 0;
+        this.rigidInstancing = false;
         this.entityEmission = 0.0f;
         this.colorOverride = 0;
         this.colorTint = 0xFFFFFF;
@@ -120,6 +172,25 @@ public class EntityCollector implements SubmitNodeCollector {
         this.rightHeldLight = false;
         this.groundPointLight = false;
         this.skipNameTags = false;
+    }
+
+    public void nextFrame() {
+        this.glintedModelsLastFrame.clear();
+        this.glintedModelsLastFrame.addAll(this.glintedModelsThisFrame);
+        this.glintedModelsThisFrame.clear();
+    }
+
+    /** Enables per-ModelPart cached BLAS instancing for articulated entities. */
+    public void rigidInstancing(boolean enabled) {
+        this.rigidInstancing = enabled;
+    }
+
+    int rigidPartCount() {
+        return this.rigidCount;
+    }
+
+    RigidPartInstance rigidPart(int index) {
+        return this.rigidPool.get(index);
     }
 
     /**
@@ -189,6 +260,9 @@ public class EntityCollector implements SubmitNodeCollector {
     }
 
     public boolean isEmpty() {
+        if (this.rigidCount > 0) {
+            return false;
+        }
         for (PBRVertexWriter writer : this.writers.values()) {
             if (writer.vertexCount() > 0) {
                 return false;
@@ -290,6 +364,7 @@ public class EntityCollector implements SubmitNodeCollector {
         net.minecraft.resources.Identifier glintTexture = glintPassTexture(renderType);
         if (glintTexture != null) {
             // 26.2 port: the glint pass over a model already drawn glints that model's base vertices instead.
+            this.glintedModelsThisFrame.add(model);
             BaseLayer base = this.baseLayers.get(model);
             if (base != null) {
                 base.writer().glintRange(base.start(), base.end(), TextureTracker.idOf(glintTexture));
@@ -299,11 +374,17 @@ public class EntityCollector implements SubmitNodeCollector {
         // An outline colour means the glowing effect. Vanilla still draws the model, and draws the silhouette on
         // top from a post effect this renderer does not run; dropping the submission made a glowing mob or player
         // disappear instead. The outline comes from a separate copy of the entity; see EntityManager.collect.
-        PBRVertexWriter writer = this.writer(renderType);
         // Every further submission of the same model for this entity is a layer on top of the first (armor trims,
         // elytra trims, leather dye overlays, any mod's decorations): lift it a hair per layer so it is traced in
         // front of the one below, as drawing order puts it in front in vanilla.
         int layer = this.modelLayers.merge(model, 1, Integer::sum) - 1;
+        if (uvMapping == null && crumblingOverlay == null && !this.glintedModelsLastFrame.contains(model)
+            && !this.glintedModelsThisFrame.contains(model)
+            && trySubmitRigidModel(model, state, poseStack, renderType, layer, lightCoords, overlayCoords,
+                tintedColor)) {
+            return;
+        }
+        PBRVertexWriter writer = this.writer(renderType);
         writer.layerOffset(layer * LAYER_OFFSET);
         VertexConsumer buffer = writer;
         if (RenderTypeInfo.of(renderType).isWaterMask()) {
@@ -332,6 +413,116 @@ public class EntityCollector implements SubmitNodeCollector {
             this.submitCrumblingOverlay(model, state, poseStack, renderType, lightCoords, overlayCoords, tintedColor,
                 crumblingOverlay);
         }
+    }
+
+    private <S> boolean trySubmitRigidModel(Model<? super S> model, S state, PoseStack poseStack,
+        RenderType renderType, int layer, int lightCoords, int overlayCoords, int tintedColor) {
+        if (!this.rigidInstancing || this.held || this.groundPointLight || this.collectingNameTag) {
+            return false;
+        }
+        RenderTypeInfo info = RenderTypeInfo.of(renderType);
+        if (info.isWaterMask() || info.isGlint() || info.uOffset() != 0.0f || info.vOffset() != 0.0f
+            || info.groupName().startsWith("text")) {
+            return false;
+        }
+        model.setupAnim(state);
+        float layerOffset = layer * LAYER_OFFSET;
+        float effectiveEmission = (info.emission() + this.entityEmission) * emissionScale();
+        walkRigidPart(model.root(), poseStack, renderType, info, layer, layerOffset, effectiveEmission,
+            lightCoords, overlayCoords, tintedColor);
+        return true;
+    }
+
+    private void walkRigidPart(ModelPart part, PoseStack poseStack, RenderType renderType, RenderTypeInfo info,
+        int layer, float layerOffset, float effectiveEmission, int lightCoords, int overlayCoords, int tintedColor) {
+        if (!part.visible) {
+            return;
+        }
+        ModelPartAccessor access = (ModelPartAccessor) (Object) part;
+        List<ModelPart.Cube> cubes = access.radiante$cubes();
+        Map<String, ModelPart> children = access.radiante$children();
+        if (cubes.isEmpty() && children.isEmpty()) {
+            return;
+        }
+        poseStack.pushPose();
+        part.translateAndRotate(poseStack);
+        if (!part.skipDraw && !cubes.isEmpty()) {
+            emitRigidCubes(part, cubes, poseStack.last(), renderType, info, layer, layerOffset, effectiveEmission,
+                lightCoords, overlayCoords, tintedColor);
+        }
+        for (ModelPart child : children.values()) {
+            walkRigidPart(child, poseStack, renderType, info, layer, layerOffset, effectiveEmission, lightCoords,
+                overlayCoords, tintedColor);
+        }
+        poseStack.popPose();
+    }
+
+    private void emitRigidCubes(ModelPart part, List<ModelPart.Cube> cubes, PoseStack.Pose pose,
+        RenderType renderType, RenderTypeInfo info, int layer, float layerOffset, float effectiveEmission,
+        int lightCoords, int overlayCoords, int tintedColor) {
+        Matrix4fc m = pose.pose();
+        float m00 = m.m00(), m10 = m.m10(), m20 = m.m20(), m30 = m.m30();
+        float m01 = m.m01(), m11 = m.m11(), m21 = m.m21(), m31 = m.m31();
+        float m02 = m.m02(), m12 = m.m12(), m22 = m.m22(), m32 = m.m32();
+        if (!Float.isFinite(m30) || !Float.isFinite(m31) || !Float.isFinite(m32)) {
+            return;
+        }
+        float det = m00 * (m11 * m22 - m21 * m12)
+            - m10 * (m01 * m22 - m21 * m02)
+            + m20 * (m01 * m12 - m11 * m02);
+        if (!Float.isFinite(det) || Math.abs(det) <= 1.0e-8f) {
+            return;
+        }
+        if (det < 0.0f) {
+            // Negative-determinant (mirrored) scale would invert gl_WorldToObject3x4EXT's normal transpose; expand on CPU.
+            PBRVertexWriter fallback = this.writer(renderType);
+            fallback.layerOffset(layerOffset);
+            for (int i = 0, n = cubes.size(); i < n; i++) {
+                cubes.get(i).compile(pose, fallback, lightCoords, overlayCoords, tintedColor);
+            }
+            fallback.layerOffset(0.0f);
+            return;
+        }
+
+        EntityManager.PendingLayer baked = RigidPartCache.getOrBake(part, cubes, info, layer, layerOffset,
+            effectiveEmission, overlayCoords, tintedColor, this.colorOverride, this.colorTint);
+        if (baked == null) {
+            return;
+        }
+
+        for (int i = 0; i < this.rigidCount; i++) {
+            RigidPartInstance existing = this.rigidPool.get(i);
+            if (existing.sameTransform(m00, m10, m20, m30, m01, m11, m21, m31, m02, m12, m22, m32)) {
+                existing.layers.add(baked);
+                return;
+            }
+        }
+
+        if (this.rigidCount == this.rigidPool.size()) {
+            this.rigidPool.add(new RigidPartInstance());
+        }
+        int salt = uniquePartSalt(part);
+        RigidPartInstance created = this.rigidPool.get(this.rigidCount++);
+        created.reset(salt, m00, m10, m20, m30, m01, m11, m21, m31, m02, m12, m22, m32);
+        created.layers.add(baked);
+    }
+
+    private int uniquePartSalt(ModelPart part) {
+        int salt = System.identityHashCode(part) * 0x9E3779B1 ^ 0x517CC1B7;
+        while (salt == 0 || salt == EntityManager.NAME_TAG_ID_SALT || salt == EntityManager.GLOW_OUTLINE_ID_SALT
+            || isSaltUsed(salt)) {
+            salt += 0x9E3779B9;
+        }
+        return salt;
+    }
+
+    private boolean isSaltUsed(int salt) {
+        for (int i = 0; i < this.rigidCount; i++) {
+            if (this.rigidPool.get(i).partSalt == salt) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private <S> void submitCrumblingOverlay(Model<? super S> model, S state, PoseStack poseStack,

@@ -38,6 +38,7 @@
     "render.EntityRenderStateMixin",
     "render.ItemInHandRendererAccessor",
     "render.EntityRendererMixin",
+    "render.ModelPartAccessor",
     "render.RenderTypeAccessors$RenderSetupAccessor",
     "render.RenderTypeAccessors$RenderTypeAccessor",
     "render.RenderTypeAccessors$TextureBindingAccessor",
