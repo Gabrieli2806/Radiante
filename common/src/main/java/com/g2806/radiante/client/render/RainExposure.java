@@ -111,6 +111,8 @@ public final class RainExposure {
     /** Tiles whose chunk was not loaded when they were read: read again every frame until it is. */
     private static final boolean[] missing = new boolean[TILES * TILES];
     private static int nearRefresh;
+    private static boolean lastRainEnabled = true;
+    private static boolean lastSnowEnabled = true;
 
     static {
         Arrays.fill(heights, Integer.MIN_VALUE);
@@ -138,9 +140,17 @@ public final class RainExposure {
         long now = System.nanoTime();
         float dt = Math.min((now - lastTime) * 1e-9f, 0.1f);
         lastTime = now;
-        if (!Options.rainWetness || world == null || !world.canHaveWeather()) {
+        boolean rainEnabled = Options.rainWetness;
+        boolean snowEnabled = Options.snowAccumulation;
+        if (!rainEnabled && !snowEnabled || world == null || !world.canHaveWeather()) {
             wetness = 0.0f;
             return new Vector4f(0.0f);
+        }
+        if (rainEnabled != lastRainEnabled || snowEnabled != lastSnowEnabled) {
+            lastRainEnabled = rainEnabled;
+            lastSnowEnabled = snowEnabled;
+            Arrays.fill(tileX, Integer.MIN_VALUE);
+            centerX = Integer.MIN_VALUE;
         }
         if (!minecraft.isPaused()) {
             float rain = world.getRainLevel(1.0f);
@@ -304,12 +314,14 @@ public final class RainExposure {
                     int offset = (z * 16 + x) * 4;
                     pixels.put(offset, (byte) height);
                     pixels.put(offset + 1, (byte) (height >>> 8));
-                    boolean rains = world.getBiome(pos).value().getPrecipitationAt(pos, world.getSeaLevel())
-                        == Biome.Precipitation.RAIN;
-                    // 128 where the column's top is leaves (the rain drips through to the ground below), 255 where
-                    // it is anything else.
+                    Biome.Precipitation precipitation =
+                        world.getBiome(pos).value().getPrecipitationAt(pos, world.getSeaLevel());
+                    boolean rains = Options.rainWetness && precipitation == Biome.Precipitation.RAIN;
+                    boolean snows = Options.snowAccumulation && precipitation == Biome.Precipitation.SNOW;
+                    // Rain: 128 under leaves (drips through), 248 open. Snow: 32 under leaves, 96 open.
                     boolean leaves = chunk.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z) < y;
-                    int target = rains ? heatOf(chunk, pos.set(tileX[slot] * 16 + x, y, tileZ[slot] * 16 + z)) : 0;
+                    int target = (rains || snows)
+                        ? heatOf(chunk, pos.set(tileX[slot] * 16 + x, y, tileZ[slot] * 16 + z)) : 0;
                     long now = System.nanoTime();
                     if (target > heatTarget[column] && before != Integer.MIN_VALUE) {
                         heatSince[column] = now;
@@ -328,7 +340,8 @@ public final class RainExposure {
                     }
                     // Bit 2: the column's recent change lowered its top (see lowered), for the faces it opened.
                     int down = lowered[column] && !Float.isNaN(exposedAt[column]) ? 4 : 0;
-                    pixels.put(offset + 2, (byte) (rains ? (leaves ? 128 : 248) | down | heat : 0));
+                    int kind = rains ? (leaves ? 128 : 248) : snows ? (leaves ? 32 : 96) : 0;
+                    pixels.put(offset + 2, (byte) (kind == 0 ? 0 : kind | down | heat));
                     float stamp = exposedAt[column];
                     pixels.put(offset + 3, (byte) (Float.isNaN(stamp) ? 255
                         : 1 + (int) (((long) Math.floor(stamp)) % STAMPS)));

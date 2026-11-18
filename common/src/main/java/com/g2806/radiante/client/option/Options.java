@@ -106,6 +106,8 @@ public class Options {
     public static volatile boolean heldItemLight = true;
     /** Ground under open sky turns darker and glossy while it rains, and dries slowly after. */
     public static volatile boolean rainWetness = true;
+    /** Surfaces under open sky gather frost and snow while it snows in cold biomes, and melt near heat sources. */
+    public static volatile boolean snowAccumulation = true;
     /** The outline around the block under the crosshair. */
     public static volatile boolean blockOutline = false;
     /**
@@ -284,6 +286,7 @@ public class Options {
         bool("firstPersonShadow", () -> firstPersonShadow, v -> firstPersonShadow = v),
         bool("heldItemLight", () -> heldItemLight, v -> heldItemLight = v),
         bool("rainWetness", () -> rainWetness, v -> rainWetness = v),
+        bool("snowAccumulation", () -> snowAccumulation, v -> snowAccumulation = v),
         bool("blockOutline", () -> blockOutline, v -> blockOutline = v),
         bool("modOverlays", () -> modOverlays, v -> modOverlays = v),
         bool("textBackgrounds", () -> textBackgrounds, v -> textBackgrounds = v),

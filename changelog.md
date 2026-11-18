@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Snow & Frost in Cold Biomes (`Sky & Water`): open surfaces in snowy biomes progressively gather rime frost and fresh snow patches (in 1/16th-block pixels with Pixel Rain on, or smooth drifts with it off), fray under roof eaves and across biome borders, melt in ragged rings around torches, lanterns, candles, campfires, furnaces and lava, and sublimate slowly after snowfall stops.
+
 - Changing render distance, rejoining a world, adjusting chunk build batch settings or toggling block-light collection no longer stalls the Vulkan queues on the render thread: in-flight chunk batches retire asynchronously once their own fences signal, each scheduler owns its command pool, and Distant Horizons LOD builder threads and split margin scale with CPU core count and horizontal flight speed.
 
 - Optimize GPU button in the settings sidebar: runs a short hardware GPU timestamp probe in the world (or estimates from GPU model, resolution and VRAM budget in the menus), normalizes for the active settings' load so repeated runs do not oscillate, and stages the optimal upscaler pipeline, quality tier, render distance, texture detail, NVIDIA Reflex and automatic chunk building.

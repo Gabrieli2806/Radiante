@@ -43,6 +43,7 @@ public final class SettingsCode {
 
     static {
         for (String key : new String[] {"biomeAmbiance", "firstPersonShadow", "heldItemLight", "rainWetness",
+            "snowAccumulation",
             Options.OLD_SUN_PATH_KEY, "moonFollowsSun", "vanillaCelestialOrientation", "blockLightSampling", "glowingPixelLight", "unlitBlockLight"}) {
             OPTIONS.put(key, null);
         }

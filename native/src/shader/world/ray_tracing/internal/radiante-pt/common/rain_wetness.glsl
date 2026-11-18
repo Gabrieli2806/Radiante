@@ -108,7 +108,7 @@ float vptRainBiome(ivec2 column, uint textureId) {
     for (int dz = -1; dz <= 1; dz++) {
         for (int dx = -1; dx <= 1; dx++) {
             ivec2 at = column + ivec2(dx, dz) * int(BIOME_BLEND_STEP);
-            rains += vptRainColumn(at, textureId).b > 0 ? 1.0 : 0.0;
+            rains += (vptRainColumn(at, textureId).b & 128) != 0 ? 1.0 : 0.0;
         }
     }
     return smoothstep(0.0, 1.0, rains / 9.0);
@@ -193,7 +193,7 @@ vec2 vptGroundRain(vec3 position, vec3 outwardNormal) {
         float fringe = vptRainFray(world, 1.0 - smoothstep(0.0, 0.9, nearest), 3.1);
         float creep = vptRainFray(world, 1.0 - smoothstep(0.0, 0.45, nearest), 5.3);
         // A column whose top is leaves (RainExposure marks it): the rain drips through.
-        float leaves = center.b > 0 && center.b < 200 ? LEAF_DAMP : 0.0;
+        float leaves = (center.b & 192) == 128 ? LEAF_DAMP : 0.0;
         return vec2(max(creep, covered),
                     max(max(max(SHELTER_DAMP * blownIn * blownIn, 0.9 * fringe), leaves), covered)) * fade;
     }
@@ -457,6 +457,169 @@ float vptRainPixelWetness(float wetness, ivec2 texel, float row, uint seed, bool
 vec3 vptApplyRainRipples(vec3 normal, vec2 slope, float strength) {
     if (strength <= 0.0 || dot(slope, slope) <= 0.0) { return normal; }
     return normalize(normal + vec3(-slope.x, 0.0, -slope.y) * strength);
+}
+
+// ---- Progressive snow and frost in cold biomes
+
+#ifndef VPT_SNOW_FROST_STRENGTH
+#    define VPT_SNOW_FROST_STRENGTH 1.0
+#endif
+
+float g_vptSnowSoak = 1.0;
+
+float vptSnowBiome(ivec2 column, uint textureId) {
+    float snows = 0.0;
+    for (int dz = -1; dz <= 1; dz++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            ivec2 at = column + ivec2(dx, dz) * int(BIOME_BLEND_STEP);
+            int b = vptRainColumn(at, textureId).b;
+            snows += (b & 160) == 32 ? 1.0 : 0.0;
+        }
+    }
+    return smoothstep(0.0, 1.0, snows / 9.0);
+}
+
+/** Heat melting around torches, lanterns, campfires, furnaces and lava: x melts the snow blanket, y melts the thinner
+ *  rime frost further out, both frayed with vptRainFray instead of stopping at a clean circle. */
+vec2 vptSnowHeatMelt(ivec2 column, uint textureId, vec2 withinColumn) {
+    float melt = 0.0;
+    for (int dz = -2; dz <= 2; dz++) {
+        for (int dx = -2; dx <= 2; dx++) {
+            int heat = vptColumnHeat(vptRainColumn(column + ivec2(dx, dz), textureId));
+            if (heat == 0) { continue; }
+            vec2 away = max(abs(withinColumn - (vec2(dx, dz) + 0.5)) - 0.5, vec2(0.0));
+            float reach = heat == 3 ? 2.2 : 1.25;
+            melt = max(melt, (float(heat) / 3.0) * (1.0 - smoothstep(0.0, reach, length(away))));
+        }
+    }
+    if (melt <= 0.0) { return vec2(0.0); }
+    vec2 world = vec2(column) + withinColumn;
+    float snowMelt = max(vptRainFray(world, min(melt * 1.35, 1.0), 19.1), melt * melt);
+    float frostMelt = max(vptRainFray(world, min(melt * 1.15, 1.0), 23.7), melt * melt * 0.9);
+    return clamp(vec2(snowMelt, frostMelt), vec2(0.0), vec2(1.0));
+}
+
+/** How snowfall and frost reach a surface in a snowy biome.
+ *  x: openness to falling snow (0..1) on upward faces, melted near heat sources and frayed under roof eaves.
+ *  y: rime frost reach (0..1), including windward walls, tree trunks and ground under leaves. */
+vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
+    g_vptSnowSoak = 1.0;
+    uint textureId = vptRainTextureId();
+    if (textureId == 0u || outwardNormal.y < -0.25) { return vec2(0.0); }
+    if (max(abs(position.x), abs(position.z)) > 238.0) { return vec2(0.0); }
+    ivec3 cameraCell = ivec3(floor(worldUBO.cameraPos.xyz));
+    vec3 relativePosition = position + vec3(worldUBO.cameraPos.xyz - dvec3(cameraCell));
+    ivec2 column = cameraCell.xz + ivec2(floor(relativePosition.xz));
+    float biome = vptSnowBiome(column, textureId);
+    if (biome <= 0.0) { return vec2(0.0); }
+    vec2 withinColumn = fract(relativePosition.xz);
+    biome = vptRainFray(vec2(column) + withinColumn, biome, 13.7);
+    if (biome <= 0.0) { return vec2(0.0); }
+    float fade = (1.0 - smoothstep(220.0, 238.0, max(abs(position.x), abs(position.z)))) * biome;
+
+    if (outwardNormal.y < 0.5) {
+        ivec2 front = cameraCell.xz + ivec2(floor(relativePosition.xz + outwardNormal.xz * 0.5));
+        int faceBlockY = cameraCell.y + int(floor(relativePosition.y));
+        ivec4 frontData = vptRainColumn(front, textureId);
+        if (vptRainColumnBlocks(frontData, faceBlockY)) {
+            float since = vptColumnSince(frontData);
+            float covered = since >= 0.0 && (frontData.b & 4) == 0 ? exp(-since * 1.5) : 0.0;
+            return vec2(0.0, 0.45 * fade * covered);
+        }
+        g_vptSnowSoak = (frontData.b & 4) != 0 ? vptColumnSoak(frontData) : 1.0;
+        vec2 melt = vptSnowHeatMelt(column, textureId, withinColumn);
+        return vec2(0.0, 0.45 * fade * (1.0 - melt.y));
+    }
+    fade *= smoothstep(0.5, 0.95, outwardNormal.y);
+
+    int surfaceBlockY = cameraCell.y + int(floor(relativePosition.y - 0.001));
+    ivec4 center = vptRainColumn(column, textureId);
+    bool laidBare = (center.b & 4) != 0;
+    g_vptSnowSoak = laidBare ? vptColumnSoak(center) : 1.0;
+
+    if (vptRainColumnBlocks(center, surfaceBlockY)) {
+        g_vptSnowSoak = 1.0;
+        float since = vptColumnSince(center);
+        float covered = since >= 0.0 ? exp(-since * 1.5) : 0.0;
+        float nearest = 1e3;
+        for (int dz = -2; dz <= 2; dz++) {
+            for (int dx = -2; dx <= 2; dx++) {
+                if (dx == 0 && dz == 0) { continue; }
+                if (vptRainColumnBlocks(vptRainColumn(column + ivec2(dx, dz), textureId), surfaceBlockY)) { continue; }
+                vec2 away = max(abs(withinColumn - (vec2(dx, dz) + 0.5)) - 0.5, vec2(0.0));
+                nearest = min(nearest, length(away));
+            }
+        }
+        vec2 world = vec2(column) + withinColumn;
+        float driftCreep = vptRainFray(world, 1.0 - smoothstep(0.0, 0.65, nearest), 15.3);
+        float frostFringe = vptRainFray(world, 1.0 - smoothstep(0.0, 1.4, nearest), 17.9);
+        bool underLeaves = (center.b & 224) == 32;
+        vec2 melt = vptSnowHeatMelt(column, textureId, withinColumn);
+        float snowOpen = max(max(driftCreep, underLeaves ? 0.22 : 0.0), covered) * (1.0 - melt.x);
+        float frostOpen = max(max(0.75 * frostFringe, underLeaves ? 0.40 : 0.0), covered) * (1.0 - melt.y);
+        return vec2(snowOpen, frostOpen) * fade;
+    }
+
+    float since = laidBare ? vptColumnSince(center) : -1.0;
+    if (since >= 0.0) {
+        vec2 edge = min(withinColumn, vec2(1.0) - withinColumn);
+        float fromEdge = min(edge.x, edge.y);
+        float reach = mix(0.28, 0.65, clamp(since, 0.0, 1.0));
+        float creep = vptRainFray(vec2(column) + withinColumn, 1.0 - smoothstep(0.0, reach, fromEdge), 29.3);
+        g_vptSnowSoak = max(g_vptSnowSoak, creep);
+    }
+
+    vec2 melt = vptSnowHeatMelt(column, textureId, withinColumn);
+    return vec2(fade * (1.0 - melt.x), fade * (1.0 - melt.y));
+}
+
+/** Progressive snow blanket (0..1) on upward faces: forms in patches that join into a soft blanket as snowfall
+ *  continues, and sublimates patch-by-patch over VPT_RAIN_DRYING_TIME after the storm clears. */
+float vptSnowCover(vec3 position, float open) {
+    float strength = clamp(VPT_SNOW_FROST_STRENGTH, 0.0, 2.0);
+    if (strength <= 0.0 || open <= 0.0) { return 0.0; }
+    bool snowing = skyUBO.rainGradient > 0.2;
+    float ground = max(skyUBO.rainWetness.x, 1e-4);
+    float soaked = min(ground, g_vptSnowSoak);
+    float dryingTime = max(VPT_RAIN_DRYING_TIME, 1.0) * 1.35;
+    if (!snowing && skyUBO.rainStoppedFor > dryingTime) { return 0.0; }
+    float spread = snowing ? smoothstep(0.08, 0.88, soaked) :
+                             (1.0 - smoothstep(dryingTime * 0.12, dryingTime, skyUBO.rainStoppedFor)) *
+                                 smoothstep(0.35, 0.90, soaked / ground);
+    spread = clamp(spread * min(strength, 1.35), 0.0, 1.0);
+    if (spread <= 0.0) { return 0.0; }
+    vec2 p = vptRainWorldXZ(position);
+    float n = 0.70 * vptRainValueNoise(p / 7.5 + 31.0) + 0.30 * vptRainValueNoise(p / 2.2 + 53.0);
+    float threshold = mix(0.88, 0.10, spread);
+    float cover = open * smoothstep(threshold, threshold + 0.08, n) * clamp(strength, 0.0, 1.5);
+    return clamp(VPT_RAIN_PIXELS != 0 ? step(0.45, cover) * min(strength, 1.0) : cover, 0.0, 1.0);
+}
+
+void vptApplySnowFrost(inout LabPBRMat material, vec3 worldPos, float frost, float snowCover, bool upward) {
+    if ((frost <= 0.0 && snowCover <= 0.0) || material.transmission > 0.0) { return; }
+    float selfCool = 1.0 - smoothstep(0.02, 0.15, material.emission);
+    frost *= selfCool;
+    snowCover *= selfCool;
+    if (frost <= 0.0 && snowCover <= 0.0) { return; }
+
+    const vec3 frostTint = vec3(0.86, 0.91, 0.97);
+    const vec3 snowAlbedo = vec3(0.90, 0.93, 0.97);
+
+    float rime = clamp(frost * (upward ? 0.38 : 0.28), 0.0, 0.65);
+    material.albedo = mix(material.albedo, max(material.albedo, frostTint), rime);
+    material.roughness = mix(material.roughness, 0.44, rime * 0.7);
+    material.f0 = mix(material.f0, max(material.f0, vec3(0.03)), rime);
+
+    if (snowCover > 0.0) {
+        vec2 crystalCell = floor(vptRainWorldXZ(worldPos) * RAIN_PIXELS_PER_BLOCK);
+        float glint = step(0.94, vptRainHash(crystalCell + vec2(41.0, 73.0)));
+        float coat = clamp(snowCover * 0.92, 0.0, 0.96);
+        material.albedo = mix(material.albedo, snowAlbedo, coat);
+        material.metallic *= (1.0 - coat);
+        float snowRough = mix(0.72, 0.18, glint * snowCover);
+        material.roughness = mix(material.roughness, snowRough, coat);
+        material.f0 = mix(material.f0, vec3(mix(0.028, 0.048, glint)), coat);
+    }
 }
 
 #endif
