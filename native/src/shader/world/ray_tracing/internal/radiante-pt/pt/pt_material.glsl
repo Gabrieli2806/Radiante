@@ -399,7 +399,9 @@ void sampleSurfaceState(bool useTexture,
                 vec3 faceUp = dot(baseGeoNormal, viewDir) < 0.0 ? -baseGeoNormal : baseGeoNormal;
                 shadingNormal = keepReflectionOutOfFace(
                     vptApplyInteractiveRippleNormal(shadingNormal, baseGeoNormal, interactiveSlope), faceUp, viewDir);
-                mat.roughness = clamp(mat.roughness + 0.008 * min(length(interactiveSlope), 1.5), 0.005, 0.045);
+                // A little rougher where the rings run, never smoother: capped at 0.045 it made a pack's rougher water
+                // glassy wherever something swam, the hyper-real sheen the rings should not have.
+                mat.roughness = mat.roughness + 0.008 * min(length(interactiveSlope), 1.5);
             }
         }
     }
@@ -540,19 +542,22 @@ void sampleSurfaceState(bool useTexture,
             float snowStrength = clamp(VPT_SNOW_FROST_STRENGTH, 0.0, 2.0);
             float frostSoak = sqrt(max(min(skyUBO.rainWetness.x, g_vptSnowSoak), 0.0));
             frost = groundSnow.y * frostSoak * faceShare * snowStrength;
-            if (frost > 0.0 && VPT_RAIN_PIXELS != 0 && useTexture) {
-                vec2 texSize = vec2(textureSize(textures[nonuniformEXT(textureID)], 0));
-                ivec2 texel = ivec2(floor(uv * texSize));
-                float row = (uv.y - atlasUvMin.y) * texSize.y;
-                uint seed = 0u;
-                if (alphaMode == ALPHA_MODE_OPAQUE) {
-                    ivec3 cell = ivec3(floor(worldUBO.cameraPos.xyz + dvec3(worldPos - baseGeoNormal * 0.01)));
-                    seed = uint(cell.x * 73856093 ^ cell.y * 19349663 ^ cell.z * 83492791);
-                }
-                frost = vptRainPixelWetness(frost, texel, row, seed ^ 0x5A39u, !upward, frostSoak);
+            // Rime settles as a soft film that thickens in broad patches, not texel by texel: the rain's pixel runs
+            // and specks, used for it before, sprinkled every wall and floor with white and dark pixels.
+            if (frost > 0.0) {
+                vec3 rimeAt = vec3(worldUBO.cameraPos.xyz) + worldPos;
+                if (VPT_RAIN_PIXELS != 0) { rimeAt = (floor(rimeAt * RAIN_PIXELS_PER_BLOCK) + 0.5) / RAIN_PIXELS_PER_BLOCK; }
+                float rimePatch = vptRainValueNoise(rimeAt.xz * 0.45 + rimeAt.y * 0.37 + 19.0);
+                frost *= 0.65 + 0.35 * smoothstep(0.2, 0.8, rimePatch);
             }
             float snowShare = upward ? (fullTop ? 1.0 : (solidFace ? 0.65 : 0.35)) : 0.0;
             snowCover = groundSnow.x > 0.0 && snowShare > 0.0 ? vptSnowCover(rainPos, groundSnow.x * snowShare) : 0.0;
+            // The grass overlay on a grass block's sides whitens with the rime into the snowy grass block's fringe,
+            // a step at a time as the snow builds, instead of taking the frost's film over its green.
+            if (tintedFace && !upward && radianteIsLayer(g_hit.packedData)) {
+                snowCover = max(snowCover, clamp(frost * 1.6, 0.0, 1.0));
+                frost = 0.0;
+            }
             if (frost > 0.0 || snowCover > 0.0) {
                 vptApplySnowFrost(mat, rainPos, frost, snowCover, upward);
                 shadingNormal = normalizeF(mix(shadingNormal, geometricNormal,
