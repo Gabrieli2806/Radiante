@@ -349,6 +349,8 @@
   "options.radiante.tunable.aerial_perspective_start.tooltip": "A qué distancia empieza la neblina lejana; lo más cercano no se nubla. Más alto deja más terreno cercano despejado.",
   "options.radiante.tunable.water_waves": "Olas del Agua",
   "options.radiante.tunable.water_waves.tooltip": "Qué tan agitada es la superficie del agua. 0% es plana como un espejo.",
+  "options.radiante.tunable.water_ripples": "Ondas Interactivas",
+  "options.radiante.tunable.water_ripples.tooltip": "Ondas y estelas que dejan jugadores, botes, mobs y objetos en el agua y en los charcos de lluvia. Más alto marca más los anillos; 0% las apaga.",
   "options.radiante.tunable.water_density": "Turbidez del Agua",
   "options.radiante.tunable.water_density.tooltip": "Qué tan rápido se desvanece la vista bajo el agua. Menos es más claro.",
   "options.radiante.tunable.water_god_rays": "Rayos de Luz Bajo el Agua",

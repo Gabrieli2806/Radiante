@@ -51,6 +51,7 @@ Los valores por defecto son los de radiante-pt, el aspecto Bedrock RTX ([bedrock
 | **Intensidad de Niebla Volumétrica** | 0% – 400% | 60% | Qué tan denso es el aire que muestra los rayos de sol y de luz. No afecta al rendimiento — solo el número de muestras (en [Rendimiento](rendimiento.md)) lo hace. |
 | **Distancia de Niebla** | 48 – 192 bloques | 128 | Hasta dónde llegan la niebla volumétrica y los rayos de luz. |
 | **Olas del Agua** | 0% – 400% | 100% | Qué tan agitada es la superficie del agua. 0% es plana como un espejo. |
+| **Ondas Interactivas** | 0% – 200% | 100% | Anillos concéntricos y estelas en V que dejan jugadores, botes, mobs, objetos y proyectiles al entrar o moverse por el agua, además de pisadas y caídas en los charcos de lluvia hasta 48 bloques. 0% las apaga. |
 | **Turbidez del Agua** | 0% – 400% | 100% | Qué tan rápido se desvanece la vista bajo el agua. Menos es más claro. 100% es la extinción completa de Bedrock. |
 | **Rayos de Luz Bajo el Agua** | 0% – 400% | 100% | Haces de sol que atraviesan la superficie cuando estás bajo el agua. |
 

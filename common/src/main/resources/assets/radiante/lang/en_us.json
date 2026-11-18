@@ -349,6 +349,8 @@
   "options.radiante.tunable.aerial_perspective_start.tooltip": "How far away the distance haze begins; nothing nearer is hazed. Higher keeps more of the land around you clear.",
   "options.radiante.tunable.water_waves": "Water Waves",
   "options.radiante.tunable.water_waves.tooltip": "How rough the water surface is. 0% is a flat, mirror-like surface.",
+  "options.radiante.tunable.water_ripples": "Interactive Water Ripples",
+  "options.radiante.tunable.water_ripples.tooltip": "Ripples and wakes from players, boats, mobs and items on water and rain puddles. Higher makes stronger rings; 0% turns them off.",
   "options.radiante.tunable.water_density": "Water Murkiness",
   "options.radiante.tunable.water_density.tooltip": "How quickly the water fades out with distance, from the inside. Lower is clearer.",
   "options.radiante.tunable.water_god_rays": "Underwater Light Rays",
