@@ -640,8 +640,10 @@ public final class DevAutomation {
                 RadianteClient.LOGGER.warn("[dev] vanilla option {} not set", action, e);
             }
         } else if (action.startsWith("rd=")) {
+            long startNs = System.nanoTime();
             minecraft.options.renderDistance().set(Integer.parseInt(action.substring(3)));
-            RadianteClient.LOGGER.info("[dev] render distance {}", action.substring(3));
+            RadianteClient.LOGGER.info("[dev] render distance {} ({} ms)", action.substring(3),
+                String.format(java.util.Locale.ROOT, "%.2f", (System.nanoTime() - startNs) / 1_000_000.0));
         } else if (action.startsWith("pipe=")) {
             // pipe=dlss:<index> | fog:<bool> | clouds:<index> - shader pack settings, applied at once (see
             // applyPipelineChange), for benchmarks.
@@ -694,13 +696,15 @@ public final class DevAutomation {
                 // Through the option's own setter where it has one (set<Field>(value, write)), which is what hands
                 // the value to the renderer; a plain field otherwise, read where it is used.
                 String setter = "set" + Character.toUpperCase(parts[0].charAt(0)) + parts[0].substring(1);
+                long startNs = System.nanoTime();
                 try {
                     com.g2806.radiante.client.option.Options.class.getMethod(setter, type, boolean.class)
                         .invoke(null, value, false);
                 } catch (NoSuchMethodException noSetter) {
                     field.set(null, value);
                 }
-                RadianteClient.LOGGER.info("[dev] option {} = {}", parts[0], value);
+                RadianteClient.LOGGER.info("[dev] option {} = {} ({} ms)", parts[0], value,
+                    String.format(java.util.Locale.ROOT, "%.2f", (System.nanoTime() - startNs) / 1_000_000.0));
             } catch (ReflectiveOperationException | RuntimeException e) {
                 RadianteClient.LOGGER.warn("[dev] option {} not set", action, e);
             }
