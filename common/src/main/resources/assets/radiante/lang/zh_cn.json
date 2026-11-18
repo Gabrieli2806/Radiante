@@ -896,7 +896,7 @@
   "options.radiante.optimize_gpu.done_live": "已优化：%s · %s（%s ms GPU，%s GB 显存）",
   "options.radiante.optimize_gpu.done_estimate": "已优化：%s · %s（%s GB 显存）",
   "options.radiante.compare": "前后对比",
-  "options.radiante.compare.tooltip": "应用更改并将打开设置时的画面（左）与实时光线追踪画面（右）分屏对比。按住 Ctrl 可将当前画面重设为新的“修改前”基准。",
+  "options.radiante.compare.tooltip": "应用更改并分屏：左侧为不含 Radiante 的游戏画面（打开时拍摄，光线追踪关闭两秒），右侧为实时光线追踪画面。“光影包”按钮切换右侧使用的光影包。",
   "options.radiante.compare.before": "修改前",
   "options.radiante.compare.after": "修改后",
   "options.radiante.compare.exit": "← 返回设置",
