@@ -101,8 +101,11 @@ public final class BeforeAfterPreview {
     public static void requestOffBaseline() {
         Minecraft mc = Minecraft.getInstance();
         if (offCapturePending || mc == null || mc.level == null || !RadianteRenderer.isRayTracingEnabled()) {
+            RadianteClient.LOGGER.info("Before / After: Radiante Off / On not started (pending {}, world {}, traced {})",
+                offCapturePending, mc != null && mc.level != null, RadianteRenderer.isRayTracingEnabled());
             return;
         }
+        RadianteClient.LOGGER.info("Before / After: taking the picture with ray tracing off");
         offCapturePending = true;
         offCaptureAt = System.nanoTime() + OFF_SETTLE_NANOS;
         RadianteClient.toggleRayTracing(mc);
