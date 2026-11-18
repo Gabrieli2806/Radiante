@@ -334,6 +334,9 @@ struct WorldUBO {
     // Native-only, appended so Java's prefix and the pack parameter offsets remain unchanged.
     // xy=min, zw=max in NDC; overwritten with this frame's HAND_MASK instance envelope during TLAS preparation.
     T_VEC4 handPrimaryBounds;
+    // Physical thin-lens camera (Photo Mode): x=aperture radius (blocks, 0=pinhole), y=focus distance (blocks),
+    // z=aperture blades (0=round, >=3=polygon), w=blade rotation (radians).
+    T_VEC4 cameraLens;
 };
 
 struct SkyUBO {

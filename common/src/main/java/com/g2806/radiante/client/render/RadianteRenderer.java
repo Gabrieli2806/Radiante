@@ -377,87 +377,111 @@ public final class RadianteRenderer {
 
         LEVEL_FRAMES.incrementAndGet();
         DevProfiler.begin();
-        PlayerProxy.setCameraPos(cameraState.pos.x(), cameraState.pos.y(), cameraState.pos.z());
-        lastCameraPos = cameraState.pos;
-        RendererProxy.shouldRenderWorld(true);
-
-        updateUniforms(minecraft, gameRenderer, levelRenderState);
-        DevProfiler.mark(0);
-        EntityPbr.update(minecraft);
-        BufferProxy.updateMapping();
-        DevProfiler.mark(1);
-
-        if (minecraft.level != null && minecraft.levelExtractor != null) {
-            SectionTrackerHolder.update(minecraft, cameraState.pos);
+        boolean photo = com.g2806.radiante.client.photo.PhotoMode.isActive();
+        Vec3 savedPos = cameraState.pos;
+        net.minecraft.core.BlockPos savedBlockPos = cameraState.blockPos;
+        Matrix4f savedViewRot = photo ? new Matrix4f(cameraState.viewRotationMatrix) : null;
+        Matrix4f savedProj = photo ? new Matrix4f(cameraState.projectionMatrix) : null;
+        if (photo) {
+            boolean allowKeys = minecraft.gui.screen() instanceof com.g2806.radiante.client.gui.PhotoModeScreen ps
+                && ps.allowsKeyboardMove();
+            com.g2806.radiante.client.photo.PhotoMode.stepFrame(minecraft, cameraState, allowKeys);
+            cameraState.pos = com.g2806.radiante.client.photo.PhotoMode.cameraPos();
+            cameraState.blockPos = net.minecraft.core.BlockPos.containing(cameraState.pos);
+            cameraState.viewRotationMatrix.set(com.g2806.radiante.client.photo.PhotoMode.viewRotationMatrix());
+            cameraState.projectionMatrix.set(com.g2806.radiante.client.photo.PhotoMode.projectionMatrix(
+                savedProj, mainTarget.width, mainTarget.height));
         }
-        com.g2806.radiante.client.compat.distanthorizons.DistantHorizonsCompat.update(minecraft, cameraState.pos);
-        DevProfiler.mark(2);
+        try {
+            PlayerProxy.setCameraPos(cameraState.pos.x(), cameraState.pos.y(), cameraState.pos.z());
+            lastCameraPos = cameraState.pos;
+            RendererProxy.shouldRenderWorld(true);
 
-        keepOcclusionGraphFed(minecraft, levelRenderState);
-        DevProfiler.mark(3);
+            updateUniforms(minecraft, gameRenderer, levelRenderState);
+            DevProfiler.mark(0);
+            EntityPbr.update(minecraft);
+            BufferProxy.updateMapping();
+            DevProfiler.mark(1);
 
-        BedrockPointLights.reloadPackLightsIfNeeded(minecraft);
-        TracedTextureDetail.reloadIfChanged(minecraft);
-        EmissionTiles.registerIfNeeded(minecraft);
-        BiomeAmbiance.reloadPackFogIfNeeded(minecraft);
-        ChunkManager.applyImportantUploads();
-        EntityManager.render(minecraft, levelRenderState);
-        DevProfiler.mark(4);
+            if (minecraft.level != null && minecraft.levelExtractor != null) {
+                SectionTrackerHolder.update(minecraft, cameraState.pos);
+            }
+            com.g2806.radiante.client.compat.distanthorizons.DistantHorizonsCompat.update(minecraft, cameraState.pos);
+            DevProfiler.mark(2);
 
-        // Vanilla's "loading terrain" screen waits for the section under the player to be compiled.
-        Runnable compiledCallback = levelRenderState.playerCompiledSectionCallback;
-        if (compiledCallback != null && ChunkManager.isSectionReady(cameraState.blockPos)) {
-            compiledCallback.run();
-        }
+            keepOcclusionGraphFed(minecraft, levelRenderState);
+            DevProfiler.mark(3);
 
-        GpuTexture depthTexture = withDepth ? mainTarget.getDepthTexture() : null;
-        if (depthTexture instanceof VulkanGpuTexture vulkanDepth) {
-            // How Minecraft's projection turns a view space z into clip z and w; the native side makes the depth
-            // Minecraft's passes compare against from the traced distance with it.
-            Matrix4f projection = cameraState.projectionMatrix;
-            RendererProxy.setOverlayDepthTarget(vulkanDepth.vkImage(), VulkanConst.toVk(depthTexture.getFormat()),
-                projection.m22(), projection.m32(), projection.m23(), projection.m33());
-        }
+            BedrockPointLights.reloadPackLightsIfNeeded(minecraft);
+            TracedTextureDetail.reloadIfChanged(minecraft);
+            EmissionTiles.registerIfNeeded(minecraft);
+            BiomeAmbiance.reloadPackFogIfNeeded(minecraft);
+            ChunkManager.applyImportantUploads();
+            EntityManager.render(minecraft, levelRenderState);
+            DevProfiler.mark(4);
 
-        long image = ((VulkanGpuTexture) colorTexture).vkImage();
-        int format = VulkanConst.toVk(colorTexture.getFormat());
-        // Vivecraft's extra views (handheld camera, telescopes, mirror) come between the eyes at sizes of their own;
-        // they are traced at the eyes' size and scaled, so the pipeline is not rebuilt each time they alternate.
-        int traceWidth = mainTarget.width;
-        int traceHeight = mainTarget.height;
-        boolean vr = com.g2806.radiante.client.compat.vivecraft.VivecraftCompat.isVrActive();
-        if (!vr) {
-            // A lower output resolution: the whole world pipeline runs at that size, and the native side upscales
-            // its picture into the window's target (FSR 1). Not in VR, where the eyes' targets are sized by the
-            // headset and the extra views already take the trace size from them.
-            int[] output = OutputResolution.byName(Options.outputResolution).outputSize(traceWidth, traceHeight,
-                Options.outputResolutionPercent);
-            traceWidth = output[0];
-            traceHeight = output[1];
-        }
-        outputWidth = traceWidth;
-        outputHeight = traceHeight;
-        windowWidth = mainTarget.width;
-        windowHeight = mainTarget.height;
-        if (vr) {
-            if (com.g2806.radiante.client.compat.vivecraft.VivecraftCompat.isEyePass() || eyeTraceWidth <= 0) {
-                eyeTraceWidth = traceWidth;
-                eyeTraceHeight = traceHeight;
-            } else {
-                traceWidth = eyeTraceWidth;
-                traceHeight = eyeTraceHeight;
+            // Vanilla's "loading terrain" screen waits for the section under the player to be compiled.
+            Runnable compiledCallback = levelRenderState.playerCompiledSectionCallback;
+            if (compiledCallback != null && ChunkManager.isSectionReady(cameraState.blockPos)) {
+                compiledCallback.run();
+            }
+
+            GpuTexture depthTexture = withDepth ? mainTarget.getDepthTexture() : null;
+            if (depthTexture instanceof VulkanGpuTexture vulkanDepth) {
+                // How Minecraft's projection turns a view space z into clip z and w; the native side makes the depth
+                // Minecraft's passes compare against from the traced distance with it.
+                Matrix4f projection = cameraState.projectionMatrix;
+                RendererProxy.setOverlayDepthTarget(vulkanDepth.vkImage(), VulkanConst.toVk(depthTexture.getFormat()),
+                    projection.m22(), projection.m32(), projection.m23(), projection.m33());
+            }
+
+            long image = ((VulkanGpuTexture) colorTexture).vkImage();
+            int format = VulkanConst.toVk(colorTexture.getFormat());
+            // Vivecraft's extra views (handheld camera, telescopes, mirror) come between the eyes at sizes of their own;
+            // they are traced at the eyes' size and scaled, so the pipeline is not rebuilt each time they alternate.
+            int traceWidth = mainTarget.width;
+            int traceHeight = mainTarget.height;
+            boolean vr = com.g2806.radiante.client.compat.vivecraft.VivecraftCompat.isVrActive();
+            if (!vr && !photo) {
+                // A lower output resolution: the whole world pipeline runs at that size, and the native side upscales
+                // its picture into the window's target (FSR 1). Not in VR, where the eyes' targets are sized by the
+                // headset and the extra views already take the trace size from them, and not in Photo Mode.
+                int[] output = OutputResolution.byName(Options.outputResolution).outputSize(traceWidth, traceHeight,
+                    Options.outputResolutionPercent);
+                traceWidth = output[0];
+                traceHeight = output[1];
+            }
+            outputWidth = traceWidth;
+            outputHeight = traceHeight;
+            windowWidth = mainTarget.width;
+            windowHeight = mainTarget.height;
+            if (vr) {
+                if (com.g2806.radiante.client.compat.vivecraft.VivecraftCompat.isEyePass() || eyeTraceWidth <= 0) {
+                    eyeTraceWidth = traceWidth;
+                    eyeTraceHeight = traceHeight;
+                } else {
+                    traceWidth = eyeTraceWidth;
+                    traceHeight = eyeTraceHeight;
+                }
+            }
+            com.g2806.radiante.client.hdr.HdrDisplay.syncTarget();
+            int count = RendererProxy.renderFrame(image, mainTarget.width, mainTarget.height, traceWidth, traceHeight,
+                format, commandBufferHandles);
+            DevProfiler.mark(5);
+            if (count <= 0) {
+                DevProfiler.endFrame();
+                return false;
+            }
+            pendingCommandBuffers = count;
+            return true;
+        } finally {
+            if (photo) {
+                cameraState.pos = savedPos;
+                cameraState.blockPos = savedBlockPos;
+                cameraState.viewRotationMatrix.set(savedViewRot);
+                cameraState.projectionMatrix.set(savedProj);
             }
         }
-        com.g2806.radiante.client.hdr.HdrDisplay.syncTarget();
-        int count = RendererProxy.renderFrame(image, mainTarget.width, mainTarget.height, traceWidth, traceHeight,
-            format, commandBufferHandles);
-        DevProfiler.mark(5);
-        if (count <= 0) {
-            DevProfiler.endFrame();
-            return false;
-        }
-        pendingCommandBuffers = count;
-        return true;
     }
 
     private static void updateUniforms(Minecraft minecraft, GameRenderer gameRenderer,
@@ -465,12 +489,15 @@ public final class RadianteRenderer {
         CameraRenderState cameraState = levelRenderState.cameraRenderState;
         FogData fog = cameraState.fogData;
 
+        boolean photo = com.g2806.radiante.client.photo.PhotoMode.isActive();
         Matrix4f view = toRendererView(cameraState.viewRotationMatrix);
         // Primary rays are generated from the effected view, which is the matrix meant to carry camera effects.
-        Matrix4f effectedView =
-            toRendererView(cameraShake(minecraft, cameraState).mul(cameraState.viewRotationMatrix));
+        Matrix4f effectedView = photo ? new Matrix4f(view)
+            : toRendererView(cameraShake(minecraft, cameraState).mul(cameraState.viewRotationMatrix));
         Matrix4f projection = new Matrix4f(cameraState.projectionMatrix);
-        applyScreenWarp(minecraft, levelRenderState, projection);
+        if (!photo) {
+            applyScreenWarp(minecraft, levelRenderState, projection);
+        }
 
         int skyType = skyTypeOf(levelRenderState.skyRenderState.skybox);
         // Environmental fog only applies inside water, lava or powder snow; elsewhere it is the
@@ -487,8 +514,15 @@ public final class RadianteRenderer {
             fogEnd = farReach;
         }
 
+        float currentDayFraction = dayFraction(levelRenderState);
+        float currentWindTime = windTime(levelRenderState);
+        if (photo) {
+            currentDayFraction = com.g2806.radiante.client.photo.PhotoMode.frozenDayFraction(currentDayFraction);
+            currentWindTime = com.g2806.radiante.client.photo.PhotoMode.frozenWindTime(currentWindTime);
+        }
+
         BufferProxy.updateWorldUniform(new BufferProxy.WorldUniform(view, effectedView, projection,
-            glintTextureMatrix(minecraft), dayFraction(levelRenderState),
+            glintTextureMatrix(minecraft), currentDayFraction,
             TextureTracker.idOf(gameRenderer.overlayTexture().getTextureView().texture()),
             cameraState.isFirstPerson, EntityHands.handsDrawn(minecraft, levelRenderState),
             fogStart, fogEnd, new Vector4f(fog.color), skyType,
@@ -503,8 +537,8 @@ public final class RadianteRenderer {
             heldLightColor(minecraft, net.minecraft.world.InteractionHand.OFF_HAND),
             Options.parallaxTransparentEdges, Options.dayBrightness / 100.0f, Options.nightBrightness / 100.0f,
             Options.emissionBrightness / 100.0f, false,
-            EntityWeather.rainFallPerFrame(levelRenderState), farReach, Options.heldLightBrightness / 100.0f,
-            windTime(levelRenderState), com.g2806.radiante.client.pipeline.PipelineSettings.windStrength(),
+            photo ? 0.0f : EntityWeather.rainFallPerFrame(levelRenderState), farReach, Options.heldLightBrightness / 100.0f,
+            currentWindTime, com.g2806.radiante.client.pipeline.PipelineSettings.windStrength(),
             windWeather(minecraft, levelRenderState.worldPartialTicks)));
 
         SkyRenderState sky = levelRenderState.skyRenderState;
@@ -747,7 +781,9 @@ public final class RadianteRenderer {
 
     /** Mirrors vanilla's armor glint texture animation, which the shaders sample the glint layer with. */
     private static Matrix4f glintTextureMatrix(Minecraft minecraft) {
-        long millis = (long) (net.minecraft.util.Util.getMillis() * minecraft.options.glintSpeed().get() * 8.0);
+        long baseMillis = com.g2806.radiante.client.photo.PhotoMode.isActive()
+            ? com.g2806.radiante.client.photo.PhotoMode.frozenMillis() : net.minecraft.util.Util.getMillis();
+        long millis = (long) (baseMillis * minecraft.options.glintSpeed().get() * 8.0);
         float u = (millis % 110000L) / 110000.0f;
         float v = (millis % 30000L) / 30000.0f;
         return glintMatrix.translation(-u, v, 0.0f).rotateZ((float) (Math.PI / 18)).scale(0.16f);

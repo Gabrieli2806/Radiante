@@ -89,6 +89,7 @@
 #include "util/random.glsl"
 #include "util/ray_cone.glsl"
 #include "util/ray.glsl"
+#include "util/thin_lens.glsl"
 #include "util/util.glsl"
 #include "common/constants.glsl"
 #include "common/homogeneous_medium.glsl"
@@ -220,8 +221,18 @@ void main() {
     viewNear /= viewNear.w;
 
     vec3 origin = vec3(worldUBO.cameraEffectedViewMatInv * vec4(0, 0, 0, 1));
-    const vec3 eyePos = origin;
     vec3 direction = normalize(vec3(worldUBO.cameraEffectedViewMatInv * vec4(viewNear.xyz, 0.0)));
+#if !(USE_SHARC && SHARC_UPDATE)
+    if (worldUBO.cameraLens.x > 1e-5) {
+        vec3 lensOriginView;
+        vec3 lensDirView;
+        sampleThinLensViewRay(viewNear.xyz, worldUBO.cameraLens, uvec2(pixel), worldUBO.seed, worldUBO.frameCounter,
+                              lensOriginView, lensDirView);
+        origin = vec3(worldUBO.cameraEffectedViewMatInv * vec4(lensOriginView, 1.0));
+        direction = normalize(vec3(worldUBO.cameraEffectedViewMatInv * vec4(lensDirView, 0.0)));
+    }
+#endif
+    const vec3 eyePos = origin;
     const vec3 orgDirection = direction;
 
     const uint rayFlags = VPT_RAY_FLAGS;

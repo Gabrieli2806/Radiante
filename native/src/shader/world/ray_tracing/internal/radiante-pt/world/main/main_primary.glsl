@@ -74,8 +74,16 @@
     // hand carry the same frustum; everything else keeps the world's.
     vec3 handDirection = orgDirection;
     if (worldUBO.handFovScale > 0.0 && abs(worldUBO.handFovScale - 1.0) > 1e-4) {
-        handDirection = normalize(vec3(worldUBO.cameraEffectedViewMatInv *
-                                       vec4(viewNear.xy * worldUBO.handFovScale, viewNear.z, 0.0)));
+        vec3 handViewNear = vec3(viewNear.xy * worldUBO.handFovScale, viewNear.z);
+        if (worldUBO.cameraLens.x > 1e-5) {
+            vec3 handLensOrigin;
+            vec3 handLensDir;
+            sampleThinLensViewRay(handViewNear, worldUBO.cameraLens, uvec2(pixel), worldUBO.seed, worldUBO.frameCounter,
+                                  handLensOrigin, handLensDir);
+            handDirection = normalize(vec3(worldUBO.cameraEffectedViewMatInv * vec4(handLensDir, 0.0)));
+        } else {
+            handDirection = normalize(vec3(worldUBO.cameraEffectedViewMatInv * vec4(handViewNear, 0.0)));
+        }
     }
 
     MainRay handRay;

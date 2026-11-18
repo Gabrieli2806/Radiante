@@ -133,9 +133,21 @@ public final class RadianteClient {
             }
         }
 
+        if (minecraft.level == null && com.g2806.radiante.client.photo.PhotoMode.isActive()) {
+            com.g2806.radiante.client.photo.PhotoMode.exit();
+        }
+
         while (RadianteKeys.OPEN_SETTINGS.consumeClick()) {
             if (minecraft.gui.screen() == null && !RadianteKeys.OPEN_SETTINGS.isUnbound()) {
                 minecraft.gui.setScreen(new RadianteOptionsScreen(null, minecraft.options));
+            }
+        }
+
+        while (RadianteKeys.PHOTO_MODE.consumeClick()) {
+            if (minecraft.gui.screen() == null && !RadianteKeys.PHOTO_MODE.isUnbound()) {
+                if (!com.g2806.radiante.client.gui.PhotoModeScreen.open(minecraft, null)) {
+                    sendStatus(minecraft, "message.radiante.ray_tracing_unavailable");
+                }
             }
         }
 
@@ -167,6 +179,11 @@ public final class RadianteClient {
         while (RadianteKeys.OPEN_SETTINGS.consumeClick()) {
             if (minecraft.gui.screen() == null && !RadianteKeys.OPEN_SETTINGS.isUnbound()) {
                 minecraft.gui.setScreen(RadianteOptionsScreen.create(null, minecraft.options));
+            }
+        }
+        while (RadianteKeys.PHOTO_MODE.consumeClick()) {
+            if (!RadianteKeys.PHOTO_MODE.isUnbound()) {
+                sendStatus(minecraft, "message.radiante.ray_tracing_unavailable");
             }
         }
         while (RadianteKeys.TOGGLE_RAY_TRACING.consumeClick()) {
