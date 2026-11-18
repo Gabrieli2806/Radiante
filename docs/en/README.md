@@ -16,6 +16,7 @@ work the same.
 | [Quality and performance](quality-and-performance.md) | Quality levels, what costs the most FPS, stutter and VRAM |
 | [Upscalers, frame generation and Reflex](upscalers.md) | FSR, DLSS and XeSS, installing them, frame generation, Reflex |
 | [HDR](hdr.md) | Turning HDR on and calibrating it |
+| [Photo Mode](photo-mode.md) | Progressive reference path tracing, physical thin-lens bokeh and PNG / HDR OpenEXR export |
 | [Bedrock RTX](bedrock-rtx.md) | Bedrock `.mcpack` packs and the Bedrock RTX look |
 | [Distant Horizons](distant-horizons.md) | Far terrain, traced (experimental) |
 | [Troubleshooting](troubleshooting.md) | Start-up screens, upscalers, HDR, Linux, slow or wrong picture |

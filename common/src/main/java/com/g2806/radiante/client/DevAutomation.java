@@ -460,6 +460,10 @@ public final class DevAutomation {
             pendingHdrShot = action.substring(8);
             return;
         }
+        if (action.startsWith("photo=")) {
+            runPhotoAction(minecraft, action.substring(6));
+            return;
+        }
         if (action.startsWith("shot=")) {
             String name = action.substring(5) + ".png";
             Screenshot.grab(minecraft.gameDirectory, name, minecraft.gameRenderer.mainRenderTarget(), 1,
@@ -797,6 +801,81 @@ public final class DevAutomation {
             }
         }
         return false;
+    }
+
+    private static void runPhotoAction(Minecraft minecraft, String spec) {
+        if (spec.equals("open")) {
+            boolean ok = com.g2806.radiante.client.gui.PhotoModeScreen.open(minecraft, null);
+            RadianteClient.LOGGER.info("[dev] photo open -> {}", ok);
+            return;
+        }
+        if (spec.equals("close")) {
+            com.g2806.radiante.client.photo.PhotoMode.exit();
+            if (minecraft.gui.screen() instanceof com.g2806.radiante.client.gui.PhotoModeScreen) {
+                minecraft.gui.setScreen(null);
+            }
+            RadianteClient.LOGGER.info("[dev] photo close");
+            return;
+        }
+        if (spec.startsWith("pose:")) {
+            String[] p = spec.substring(5).split(",");
+            com.g2806.radiante.client.photo.PhotoMode.setCameraPose(
+                Double.parseDouble(p[0]), Double.parseDouble(p[1]), Double.parseDouble(p[2]),
+                Float.parseFloat(p[3]), Float.parseFloat(p[4]), p.length > 5 ? Float.parseFloat(p[5]) : 0.0f);
+            RadianteClient.LOGGER.info("[dev] photo pose {}", spec.substring(5));
+            return;
+        }
+        if (spec.startsWith("lens:")) {
+            String[] p = spec.substring(5).split(",");
+            com.g2806.radiante.client.photo.PhotoMode.setApertureRadius(Float.parseFloat(p[0]));
+            com.g2806.radiante.client.photo.PhotoMode.setFocusDistance(Float.parseFloat(p[1]));
+            if (p.length > 2) com.g2806.radiante.client.photo.PhotoMode.setBlades(Integer.parseInt(p[2]));
+            if (p.length > 3) com.g2806.radiante.client.photo.PhotoMode.setBladeRotationDegrees(Float.parseFloat(p[3]));
+            RadianteClient.LOGGER.info("[dev] photo lens {}", spec.substring(5));
+            return;
+        }
+        if (spec.startsWith("fov:")) {
+            com.g2806.radiante.client.photo.PhotoMode.setFovDegrees(Float.parseFloat(spec.substring(4)));
+            RadianteClient.LOGGER.info("[dev] photo fov {}", spec.substring(4));
+            return;
+        }
+        if (spec.startsWith("exposure:")) {
+            com.g2806.radiante.client.photo.PhotoMode.setExposureBias(Float.parseFloat(spec.substring(9)));
+            RadianteClient.LOGGER.info("[dev] photo exposure {} (samples={})", spec.substring(9),
+                com.g2806.radiante.client.photo.PhotoMode.sampleCount());
+            return;
+        }
+        if (spec.startsWith("samples:")) {
+            com.g2806.radiante.client.photo.PhotoMode.setTargetSamples(Integer.parseInt(spec.substring(8)));
+            RadianteClient.LOGGER.info("[dev] photo target samples {}", spec.substring(8));
+            return;
+        }
+        if (spec.startsWith("focusclick:")) {
+            String[] xy = spec.substring(11).split(",");
+            int gw = minecraft.getWindow().getGuiScaledWidth();
+            int gh = minecraft.getWindow().getGuiScaledHeight();
+            double gx = Double.parseDouble(xy[0]) * gw;
+            double gy = Double.parseDouble(xy[1]) * gh;
+            com.g2806.radiante.client.photo.PhotoMode.focusAtScreenPoint(minecraft, gx, gy, gw, gh);
+            RadianteClient.LOGGER.info("[dev] photo focusclick {} -> focus={}", spec.substring(11),
+                com.g2806.radiante.client.photo.PhotoMode.focusDistance());
+            return;
+        }
+        if (spec.startsWith("save:")) {
+            String stem = spec.substring(5);
+            com.g2806.radiante.client.photo.PhotoMode.requestSaveNamed(minecraft, stem, true, true, true, false);
+            RadianteClient.LOGGER.info("[dev] photo save queued {}", stem);
+            return;
+        }
+        if (spec.equals("status")) {
+            com.g2806.radiante.client.photo.PhotoMode.pollStatus();
+            RadianteClient.LOGGER.info("[dev] photo status active={} samples={}/{} focus={} banner='{}'",
+                com.g2806.radiante.client.photo.PhotoMode.isActive(),
+                com.g2806.radiante.client.photo.PhotoMode.sampleCount(),
+                com.g2806.radiante.client.photo.PhotoMode.targetSamples(),
+                com.g2806.radiante.client.photo.PhotoMode.focusDistance(),
+                com.g2806.radiante.client.photo.PhotoMode.activeBannerText());
+        }
     }
 
     private static volatile long lastTickNanos;

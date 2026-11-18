@@ -16,6 +16,7 @@ Radiante es un mod de path tracing para Minecraft Java. Estas páginas describen
 | [Calidad y rendimiento](calidad-y-rendimiento.md) | Niveles de calidad, lo que más FPS cuesta, tirones y VRAM |
 | [Escaladores, generación de fotogramas y Reflex](escaladores.md) | FSR, DLSS y XeSS, cómo instalarlos, generación de fotogramas, Reflex |
 | [HDR](hdr.md) | Activar y calibrar HDR |
+| [Modo foto](modo-foto.md) | Trazado de referencia progresivo, bokeh con lente física y exportación PNG / OpenEXR HDR |
 | [Bedrock RTX](bedrock-rtx.md) | Packs `.mcpack` de Bedrock y el aspecto de Bedrock RTX |
 | [Distant Horizons](distant-horizons.md) | Terreno lejano, también trazado (experimental) |
 | [Solución de problemas](solucion-de-problemas.md) | Pantallas al arrancar, escaladores, HDR, Linux, imagen lenta o mal |

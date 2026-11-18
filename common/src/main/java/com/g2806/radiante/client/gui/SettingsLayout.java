@@ -92,7 +92,8 @@ final class SettingsLayout {
      * {@code shaderPacks} opens the shader pack list (null for no button).
      */
     record Actions(Runnable reset, Runnable undo, Runnable apply, Runnable done, Extra extra, Runnable share,
-                   boolean advanced, Runnable toggleAdvanced, Runnable rebuild, Runnable shaderPacks) {
+                   boolean advanced, Runnable toggleAdvanced, Runnable rebuild, Runnable shaderPacks,
+                   Runnable photoMode) {
     }
 
     /**
@@ -369,8 +370,16 @@ final class SettingsLayout {
                 this.actions.shaderPacks(), true);
             int packsW = this.font.width(packs.label()) + 16;
             this.buttons.add(new FlatButton(packs.label(), packs.action(), true, packs.tooltip(),
-                this.width - margin - shareW - 4 - packsW, 13, packsW));
+                this.width - margin - topRight - 4 - packsW, 13, packsW));
             topRight += packsW + 4;
+        }
+        if (this.actions.photoMode() != null) {
+            FlatButton photo = flat("options.radiante.photo_mode", "options.radiante.photo_mode.tooltip",
+                this.actions.photoMode(), true);
+            int photoW = this.font.width(photo.label()) + 16;
+            this.buttons.add(new FlatButton(photo.label(), photo.action(), true, photo.tooltip(),
+                this.width - margin - topRight - 4 - photoW, 13, photoW));
+            topRight += photoW + 4;
         }
         this.search = new EditBox(this.font, this.sidebarX, 12, this.width - margin * 2 - topRight - 4, 18,
             Component.translatable("options.radiante.search"));

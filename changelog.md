@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Photo Mode (`F9` or the Photo Mode button in the settings screen): pauses the scene on an unupscaled, denoiser-bypassed Monte Carlo reference pipeline with progressive 32-bit float accumulation, a camera-traced physical thin-lens model (aperture radius, click-to-focus focal plane, circular or polygonal iris blades and blade rotation), free-fly camera, field of view, camera roll, live exposure adjustment without discarding converged samples, and atomic PNG and 16-bit float linear HDR OpenEXR (`.exr`) export.
+
 - Depth of Field Auto-Focus, Seamless Glass Scope, Water Light Depth, Albedo Gamma, Indirect Cloud Reflection Max Roughness, the six physical atmosphere parameters (with the transmittance lookup table re-baked automatically) and the ray tracing module's jitter and SHaRC debug settings now apply live without rebuilding the pipeline.
 
 - Dynamic entities, their acceleration structures and their lights reuse a ring of persistent GPU buffers instead of allocating and retiring new ones every frame, and glowing entities light the frame they appear or are enabled in instead of a frame later.

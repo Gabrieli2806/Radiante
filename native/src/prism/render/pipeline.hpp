@@ -58,8 +58,12 @@ class WorldPipelineBlueprint : public SharedObject<WorldPipelineBlueprint> {
     void setAttributeValue(std::string_view moduleName, const std::string &key, const std::string &value);
     // The attributes of the first module named moduleName (name, value, name, value...); null without one.
     const std::vector<std::string> *attributesOf(std::string_view moduleName) const;
+    // Makes an unupscaled, denoiser-bypassed blueprint (RayTracing -> PhotoAccumulate -> ToneMapping -> PostRender)
+    // copying this blueprint's module settings while leaving the stored blueprint untouched.
+    bool makePhotoBlueprint(WorldPipelineBlueprint &out) const;
 
   private:
+    WorldPipelineBlueprint() = default;
     struct ModuleDesc {
         std::string name;
         std::vector<uint32_t> inputs;
@@ -98,6 +102,9 @@ class WorldPipeline : public SharedObject<WorldPipeline> {
     // pipeline has no such module or one of them takes the attribute only at a build.
     bool setRuntimeAttribute(std::string_view moduleName, const std::string &key, const std::string &value);
     void noteShaderPackRuntimeChange();
+    bool isPhotoMode() const {
+        return photoMode_;
+    }
 
     void bindTexture(std::shared_ptr<gpu::Sampler> sampler, std::shared_ptr<gpu::DeviceLocalImage> image, int index);
 
@@ -115,6 +122,7 @@ class WorldPipeline : public SharedObject<WorldPipeline> {
     std::vector<std::string> worldModuleNames_;
     std::vector<std::vector<std::shared_ptr<gpu::DeviceLocalImage>>> sharedImages_;
     std::shared_ptr<ShaderPack> shaderPack_;
+    bool photoMode_ = false;
 
     std::vector<std::shared_ptr<WorldPipelineContext>> contexts_;
 };

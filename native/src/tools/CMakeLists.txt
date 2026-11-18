@@ -15,6 +15,10 @@ target_include_directories(hand_primary_bounds_test PRIVATE ${PROJECT_SOURCE_DIR
 add_executable(held_light_history_test EXCLUDE_FROM_ALL held_light_history_test.cpp)
 target_include_directories(held_light_history_test PRIVATE ${PROJECT_SOURCE_DIR}/src ${GLM_INCLUDE_DIR})
 
+add_executable(exr_writer_test EXCLUDE_FROM_ALL exr_writer_test.cpp
+    ${PROJECT_SOURCE_DIR}/src/prism/render/exr_writer.cpp)
+target_include_directories(exr_writer_test PRIVATE ${PROJECT_SOURCE_DIR}/src ${GLM_INCLUDE_DIR})
+
 # The emission checks compile the renderer's emission code into themselves (it needs no device), so they take the
 # renderer's include paths and definitions but link none of it.
 foreach(emission_test emission_multiplier_test held_item_emission_test)
@@ -27,7 +31,7 @@ endforeach()
 
 # The offline checks as tests: build them with the native_tests target, then run ctest in the build folder
 # (ctest -C Release --output-on-failure). The CI does both.
-set(PRISM_NATIVE_TESTS hand_primary_bounds_test held_light_history_test emission_multiplier_test
+set(PRISM_NATIVE_TESTS hand_primary_bounds_test held_light_history_test exr_writer_test emission_multiplier_test
     held_item_emission_test)
 add_custom_target(native_tests DEPENDS shader_pack_stage ${PRISM_NATIVE_TESTS})
 foreach(native_test ${PRISM_NATIVE_TESTS})
