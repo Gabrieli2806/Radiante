@@ -345,6 +345,7 @@ abstract class SettingsRows extends SettingsUpscalerRows {
                     stage("blockLightSampling", value);
                     refreshQualityLater();
                 }),
+            packToggle(RtAttributes.ADAPTIVE_LIGHT_GRID_ATTRIBUTE, "options.radiante.adaptive_light_grid"),
             restirOption(), restirGiOption(),
             OptionInstance.createBoolean("options.radiante.glowing_pixel_light",
                 tooltip("options.radiante.glowing_pixel_light"),

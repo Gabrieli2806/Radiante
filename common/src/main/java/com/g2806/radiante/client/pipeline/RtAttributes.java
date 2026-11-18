@@ -18,6 +18,9 @@ public final class RtAttributes {
         "render_pipeline.module.ray_tracing.attribute.post_dof_auto_focus";
     public static final String DEPTH_OF_FIELD_ATTRIBUTE =
         "render_pipeline.module.ray_tracing.attribute.post_enable_dof";
+    /** Learned per-cell importance grid (NEE-AT) for block lights (needs block light sampling). */
+    public static final String ADAPTIVE_LIGHT_GRID_ATTRIBUTE =
+        "render_pipeline.module.ray_tracing.attribute.adaptive_light_grid";
     /** ReSTIR reuse of block light samples across frames and pixels (needs block light sampling). */
     public static final String RESTIR_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.restir";
     /** ReSTIR GI: the first diffuse bounce resampled across frames and neighbouring pixels. */

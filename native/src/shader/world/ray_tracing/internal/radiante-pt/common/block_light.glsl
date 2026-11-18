@@ -23,6 +23,7 @@
 #endif
 
 #include "common/block_light_data.glsl"
+#include "common/light_grid.glsl"
 
 // Bedrock compatibility: the colour of the light a block casts is a little desaturated (it has an emissive
 // desaturation setting; the amount is INFERRED by eye). Kept light: at a half, lava and fire looked white and a
@@ -129,6 +130,9 @@ vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, v
     // candidates reduce emitter-selection variance; normalization below preserves energy.
     if (!lean && g_viewBounce) { candidates = max(candidates, 16); }
 
+    VptLightGridCell gridCell = vptLoadLightGridCell(worldPos, geometricNormal);
+    VPT_FILTER_LIGHT_GRID_CELL(gridCell, slots, slotCount)
+
     vec3 diffuse = mat.albedo * (diffuseWeight / PI);
     vec3 cameraPos = vec3(worldUBO.cameraPos.xyz);
     float weightSum = 0.0;
@@ -139,14 +143,18 @@ vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, v
     // A point light's light before the surface's response, to shade it fully once chosen (vptPointLightBrdf).
     vec3 chosenPointLight = vec3(-1.0);
     float chosenRadius = 0.0;
+    int chosenSlot = -1;
+    uint chosenIndex = 0u;
+    uint chosenId = 0u;
+    float chosenIncident = 0.0;
 
     for (int i = 0; i < candidates; i++) {
         int slot;
         uint lightIndex;
-        float choices;
+        float pDiscrete;
         bool picked;
-        VPT_PICK_LIGHT(slots, slotCount, mainRay.seed, slot, lightIndex, choices, picked)
-        if (!picked) { continue; }
+        VPT_PICK_ADAPTIVE_LIGHT(gridCell, slots, slotCount, mainRay.seed, slot, lightIndex, pDiscrete, picked)
+        if (!picked || pDiscrete <= 0.0) { continue; }
         VptPackedLight light = VptPackedLightBuffer(vptSlotLightAddress(slot)).lights[lightIndex];
 
         float area = light.p0Area.w;
@@ -167,10 +175,12 @@ vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, v
         float falloff = (pointLight ? vptPointLightFalloff(light, worldPos) : cosLight / distance2) *
                         vptLightRangeFade(lightDistance);
 
-        vec3 contribution = vptCastLight(light.radiance, light.p0Area.w) * diffuse * (cosSurface * falloff);
+        vec3 castLight = vptCastLight(light.radiance, light.p0Area.w);
+        float geomTerm = cosSurface * falloff;
+        vec3 contribution = castLight * diffuse * geomTerm;
         float target = dot(contribution, vec3(0.2126, 0.7152, 0.0722));
         if (target <= 1e-10) { continue; }
-        float sourcePdf = 1.0 / (choices * area);
+        float sourcePdf = pDiscrete / area;
         float weight = target / sourcePdf;
         weightSum += weight;
         if (rand(mainRay.seed) * weightSum < weight) {
@@ -178,8 +188,12 @@ vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, v
             chosenContribution = contribution;
             chosenDir = dir;
             chosenDistance = lightDistance;
-            chosenPointLight = pointLight ? vptCastLight(light.radiance, light.p0Area.w) * falloff : vec3(-1.0);
+            chosenPointLight = pointLight ? castLight * falloff : vec3(-1.0);
             chosenRadius = pointLight ? light.normal.x : 0.0;
+            chosenSlot = slot;
+            chosenIndex = lightIndex;
+            chosenId = floatBitsToUint(light.sourceIDData.x);
+            chosenIncident = dot(castLight, vec3(0.2126, 0.7152, 0.0722)) * geomTerm * area;
         }
     }
     if (chosenTarget <= 0.0) { return vec3(0.0); }
@@ -187,6 +201,7 @@ vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, v
         chosenContribution = chosenPointLight * vptPointLightBrdf(mat, diffuseWeight, viewDir, shadingNormal, chosenDir);
     }
 
+    bool recordGrid = gridCell.cellIndex >= 0 && vptShouldRecordLightGrid(gl_LaunchIDEXT.xy);
     vec3 origin = worldPos + geometricNormal * 0.0002;
     // Stops just short of the light, so the light's own block does not shadow it. A point light's ray stops a
     // little further out than its sphere: a lantern's light is a sphere inside the lantern, whose frame and corners
@@ -197,6 +212,13 @@ vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, v
     if (g_deferShadowRays) {
         ptDeferShadowRay(PT_SHADOW_BLOCK, origin, chosenDir, rayLength, WORLD_MASK | g_shadowPlayerMask, BLOCK_LIGHT_QUERY,
                          VPT_INDIRECT_LIGHT_STRENGTH * worldUBO.emissionBrightness * estimate * mainRay.throughput);
+        if (recordGrid) {
+            g_shadowLightGridCell = gridCell.cellIndex;
+            g_shadowLightSlot = chosenSlot;
+            g_shadowLightIndex = chosenIndex;
+            g_shadowLightId = chosenId;
+            g_shadowLightIncident = chosenIncident;
+        }
         return vec3(0.0);
     }
 
@@ -208,6 +230,9 @@ vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, v
                 rayLength, 1);
     shadowRay.pad0 = 0u;
     vec3 visibility = shadowRay.radiance * shadowRay.throughput;
+    if (recordGrid) {
+        vptRecordLightGridFeedback(gridCell.cellIndex, chosenSlot, chosenIndex, chosenId, chosenIncident, visibility);
+    }
 
     return VPT_INDIRECT_LIGHT_STRENGTH * worldUBO.emissionBrightness * estimate * visibility * mainRay.throughput;
 }
@@ -414,20 +439,22 @@ vec3 sampleBlockLightRestir(vec3 worldPos, vec3 geometricNormal, vec3 shadingNor
     }
     vec3 diffuse = mat.albedo * (diffuseWeight / PI);
 
-    // 1. New candidates, as the plain sampler picks them.
+    // 1. New candidates, drawn from the adaptive light grid mixed defensively with the uniform slot list.
     VptReservoir r = vptEmptyReservoir();
     int slots[28];
     int slotCount = vptGatherLightSlots(worldPos, slots);
+    VptLightGridCell gridCell = vptLoadLightGridCell(worldPos, geometricNormal);
     if (slotCount > 0) {
+        VPT_FILTER_LIGHT_GRID_CELL(gridCell, slots, slotCount)
         for (int i = 0; i < VPT_RESTIR_CANDIDATES; i++) {
             int slot;
             uint lightIndex;
-            float choices;
+            float pDiscrete;
             bool picked;
-            VPT_PICK_LIGHT(slots, slotCount, mainRay.seed, slot, lightIndex, choices, picked)
+            VPT_PICK_ADAPTIVE_LIGHT(gridCell, slots, slotCount, mainRay.seed, slot, lightIndex, pDiscrete, picked)
             vec2 xi = vec2(rand(mainRay.seed), rand(mainRay.seed));
             r.M += 1.0;
-            if (!picked) { continue; }
+            if (!picked || pDiscrete <= 0.0) { continue; }
             vec3 point, lightNormal, radiance, contribution, dir;
             float distance, pointFalloff;
             uint lightId = floatBitsToUint(VptPackedLightBuffer(vptSlotLightAddress(slot)).lights[lightIndex].sourceIDData.x);
@@ -438,7 +465,7 @@ vec3 sampleBlockLightRestir(vec3 worldPos, vec3 geometricNormal, vec3 shadingNor
             float target = vptRestirTarget(worldPos, geometricNormal, shadingNormal, diffuse, point, lightNormal,
                                            radiance, pointFalloff, contribution, dir, distance);
             if (target <= 1e-10) { continue; }
-            float sourcePdf = 1.0 / (choices * area);
+            float sourcePdf = pDiscrete / area;
             float weight = target / sourcePdf;
             r.wSum += weight;
             if (rand(mainRay.seed) * r.wSum < weight) {
@@ -508,6 +535,14 @@ vec3 sampleBlockLightRestir(vec3 worldPos, vec3 geometricNormal, vec3 shadingNor
         float target = vptRestirTarget(worldPos, geometricNormal, shadingNormal, diffuse, chosenPoint, chosenNormal,
                                        chosenRadiance, chosenFalloff, chosenContribution, chosenDir, chosenDistance);
         if (target > 0.0) {
+            float area = VptPackedLightBuffer(vptSlotLightAddress(combined.slot)).lights[combined.index].p0Area.w;
+            float cosSurface = max(dot(chosenDir, shadingNormal), 0.0);
+            float cosLight = chosenFalloff >= 0.0 ? 1.0 : max(dot(chosenNormal, -chosenDir), 0.0);
+            float geomTerm = cosSurface *
+                             (chosenFalloff >= 0.0 ? chosenFalloff : cosLight / max(chosenDistance * chosenDistance, 1e-6)) *
+                             vptLightRangeFade(chosenDistance);
+            float chosenIncident = dot(chosenRadiance, vec3(0.2126, 0.7152, 0.0722)) * geomTerm * area;
+            bool recordGrid = gridCell.cellIndex >= 0 && vptShouldRecordLightGrid(gl_LaunchIDEXT.xy);
             if (chosenFalloff >= 0.0) {
                 chosenContribution = chosenRadiance * chosenFalloff *
                                      vptPointLightBrdf(mat, diffuseWeight, viewDir, shadingNormal, chosenDir);
@@ -522,6 +557,13 @@ vec3 sampleBlockLightRestir(vec3 worldPos, vec3 geometricNormal, vec3 shadingNor
                                      (chosenContribution * combined.W) * mainRay.throughput);
                 g_shadowRestirStored = true;
                 g_shadowRestirHalf = writeHalf;
+                if (recordGrid) {
+                    g_shadowLightGridCell = gridCell.cellIndex;
+                    g_shadowLightSlot = combined.slot;
+                    g_shadowLightIndex = combined.index;
+                    g_shadowLightId = combined.id;
+                    g_shadowLightIncident = chosenIncident;
+                }
                 vptRestirStore(pixel, writeHalf, combined, surfaceDistance, storeNormal);
                 return vec3(0.0);
             }
@@ -533,6 +575,10 @@ vec3 sampleBlockLightRestir(vec3 worldPos, vec3 geometricNormal, vec3 shadingNor
                         chosenDir, rayLength, 1);
             shadowRay.pad0 = 0u;
             vec3 visibility = shadowRay.radiance * shadowRay.throughput;
+            if (recordGrid) {
+                vptRecordLightGridFeedback(gridCell.cellIndex, combined.slot, combined.index, combined.id,
+                                           chosenIncident, visibility);
+            }
             if (dot(visibility, vec3(1.0)) <= 0.0) { combined.W = 0.0; }
             result = chosenContribution * combined.W * visibility;
         }
@@ -621,4 +667,5 @@ vec3 sampleHeldLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, La
                               geometricNormal, shadingNormal, mat);
 }
 
-#endif
+#endif // VPT_BLOCK_LIGHT_GLSL
+

@@ -305,8 +305,9 @@ public class RadianteOptionsScreen extends SettingsRows {
         java.util.Map.entry(O + "depth_of_field", List.of(T + "dof_strength", T + "dof_range", O + "dof_auto_focus",
             T + "dof_focus_distance")),
         java.util.Map.entry(O + "dof_auto_focus", List.of(T + "dof_focus_distance")),
-        java.util.Map.entry(O + "collect_chunk_emission", List.of(O + "block_light_sampling", O + "restir")),
-        java.util.Map.entry(O + "block_light_sampling", List.of(O + "restir")),
+        java.util.Map.entry(O + "collect_chunk_emission", List.of(O + "block_light_sampling",
+            O + "adaptive_light_grid", O + "restir")),
+        java.util.Map.entry(O + "block_light_sampling", List.of(O + "adaptive_light_grid", O + "restir")),
         java.util.Map.entry(O + "held_item_light", List.of(O + "held_light_brightness")),
         java.util.Map.entry(O + "snow_accumulation", List.of(T + "snow_frost")),
         java.util.Map.entry(O + "biome_ambiance", List.of(O + "biome_ambiance_strength")),
@@ -460,7 +461,7 @@ public class RadianteOptionsScreen extends SettingsRows {
             case "tunable.dof_focus_distance" -> !depthOfField ? needs(O + "depth_of_field")
                 : packToggleOn(RtAttributes.DOF_AUTO_FOCUS_ATTRIBUTE) ? overriddenBy(O + "dof_auto_focus") : null;
             case "block_light_sampling" -> this.pendingCollectEmission ? null : needs(O + "collect_chunk_emission");
-            case "restir" -> !this.pendingCollectEmission ? needs(O + "collect_chunk_emission")
+            case "adaptive_light_grid", "restir" -> !this.pendingCollectEmission ? needs(O + "collect_chunk_emission")
                 : blockLights ? null : needs(O + "block_light_sampling");
             case "held_light_brightness" ->
                 staged("heldItemLight", Options.heldItemLight) ? null : needs(O + "held_item_light");

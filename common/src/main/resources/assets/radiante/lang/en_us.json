@@ -417,6 +417,8 @@
   "options.radiante.frame_generation_backend.auto": "Auto",
   "options.radiante.frame_generation_backend.dlss": "DLSS",
   "options.radiante.frame_generation_backend.fsr": "FSR",
+  "options.radiante.adaptive_light_grid": "Adaptive Light Grid",
+  "options.radiante.adaptive_light_grid.tooltip": "Learns per world cell which block lights reach surfaces unshadowed and samples them more often. Less grain and crawling spots in rooms and caves with many lights, keeping sharp shadows and exact brightness. Needs Block Light Sampling.",
   "options.radiante.restir": "ReSTIR Block Lights",
   "options.radiante.restir.tooltip": "Reuses the block lights each pixel picked over time and across neighbouring pixels. Much less noise in rooms with many lights before denoising, but softer shadows where several lights meet, and a little slower. Needs Block Light Sampling.",
   "options.radiante.restir_gi": "ReSTIR Bounced Light",
