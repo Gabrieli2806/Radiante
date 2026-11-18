@@ -75,20 +75,23 @@ JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_PhotoProxy_se
 JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_PhotoProxy_requestCapture(
     JNIEnv *env, jclass, jstring pngPath, jstring exrPath, jboolean waitForTarget) {
     jni::guard("[Radiante] PhotoProxy.requestCapture", [&] {
-        std::string png = jni::utf8(env, pngPath).value_or(std::string());
-        std::string exr = jni::utf8(env, exrPath).value_or(std::string());
-        PhotoMode::instance().requestCapture(std::move(png), std::move(exr), jni::isTrue(waitForTarget));
+        const std::u16string png = jni::utf16(env, pngPath);
+        const std::u16string exr = jni::utf16(env, exrPath);
+        PhotoMode::instance().requestCapture(png.empty() ? std::filesystem::path{} : std::filesystem::path(png),
+                                             exr.empty() ? std::filesystem::path{} : std::filesystem::path(exr),
+                                             jni::isTrue(waitForTarget));
     });
 }
 
 JNIEXPORT jint JNICALL Java_com_g2806_radiante_client_proxy_vulkan_PhotoProxy_pollCaptureStatus(JNIEnv *env,
                                                                                                 jclass,
                                                                                                 jobjectArray outMessage) {
-    std::string message;
+    std::u16string message;
     const int status = jni::guard("[Radiante] PhotoProxy.pollCaptureStatus", 0,
                                   [&] { return PhotoMode::instance().pollCaptureStatus(message); });
     if (outMessage != nullptr && env->GetArrayLength(outMessage) > 0) {
-        jstring text = env->NewStringUTF(message.c_str());
+        jstring text = env->NewString(reinterpret_cast<const jchar *>(message.data()),
+                                      static_cast<jsize>(message.size()));
         env->SetObjectArrayElement(outMessage, 0, text);
         env->DeleteLocalRef(text);
     }

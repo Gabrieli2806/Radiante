@@ -14,20 +14,20 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.phys.Vec3;
 
 /**
  * Interactive Before / After split-screen preview for {@link RadianteOptionsScreen}.
  *
- * <p>Captures the un-blurred traced world right after level rendering when a settings session opens (before any menu
- * blur or widgets are drawn over {@code mainRenderTarget}), and lets the player compare that "Before" reference on the
- * left of a draggable divider against the live traced "After" world on the right.
+ * <p>Captures the un-blurred traced world on demand when entering Before / After (before staged changes are applied)
+ * or when explicitly pressing Set Before, without copying the screen during normal settings visits and without
+ * discarding the captured "Before" reference if the camera moves during the session.
  */
 public final class BeforeAfterPreview {
 
     private static boolean sessionOpen;
     private static boolean baselineRequested;
     private static int waitFrames;
+    private static Runnable afterBaselineCallback;
     private static boolean active;
     private static boolean hudOverridden;
     private static boolean hudWasHidden;
@@ -36,34 +36,56 @@ public final class BeforeAfterPreview {
 
     private static Identifier textureId;
     private static int generation;
+    private static int captureCount;
     private static int texWidth;
     private static int texHeight;
     private static Object capturedLevel;
-    private static Vec3 capturedPos = Vec3.ZERO;
 
     private BeforeAfterPreview() {
     }
 
-    /** Arms a fresh baseline capture when entering a new settings session (or after moving to another view). */
+    /** Opens or validates the settings session without copying the screen until Compare or Set Before is used. */
     public static void ensureSession(Minecraft minecraft) {
         if (minecraft == null || minecraft.level == null || !RadianteRenderer.isRayTracingEnabled()) {
             onSessionClose();
             return;
         }
-        Vec3 nowPos = RadianteRenderer.lastCameraPos();
-        boolean movedView = capturedLevel != minecraft.level || nowPos.distanceToSqr(capturedPos) > 1.0e-4;
-        if (!sessionOpen || textureId == null || movedView) {
-            sessionOpen = true;
-            capturedLevel = minecraft.level;
-            capturedPos = nowPos;
-            requestRebaseline();
+        if (sessionOpen && capturedLevel != null && capturedLevel != minecraft.level) {
+            releaseTexture();
+            baselineRequested = false;
+            afterBaselineCallback = null;
         }
+        sessionOpen = true;
+        capturedLevel = minecraft.level;
+    }
+
+    public static boolean hasSession() {
+        return sessionOpen;
+    }
+
+    public static boolean matchesLevel(Object level) {
+        return level != null && level == capturedLevel;
+    }
+
+    public static int captureCount() {
+        return captureCount;
     }
 
     /** Captures the current live world frame as the new "Before" reference on the next rendered frame. */
     public static void requestRebaseline() {
+        afterBaselineCallback = null;
         baselineRequested = true;
         waitFrames = 1;
+    }
+
+    /**
+     * Captures the current un-applied world frame as "Before" on the next rendered frame, then runs {@code onCaptured}
+     * on the client thread so staged changes apply only after the baseline is taken.
+     */
+    public static void captureBeforeAndThen(Runnable onCaptured) {
+        afterBaselineCallback = onCaptured;
+        baselineRequested = true;
+        waitFrames = 0;
     }
 
     /** Ends the settings session and frees the snapshot texture. */
@@ -71,6 +93,7 @@ public final class BeforeAfterPreview {
         setActive(false);
         sessionOpen = false;
         baselineRequested = false;
+        afterBaselineCallback = null;
         draggingSplit = false;
         capturedLevel = null;
         releaseTexture();
@@ -136,6 +159,7 @@ public final class BeforeAfterPreview {
             return;
         }
         baselineRequested = false;
+        captureCount++;
         try {
             Screenshot.takeScreenshot(mainTarget, image -> {
                 Minecraft mc = Minecraft.getInstance();
@@ -147,14 +171,22 @@ public final class BeforeAfterPreview {
             });
         } catch (RuntimeException e) {
             RadianteClient.LOGGER.warn("Could not capture Before/After baseline frame", e);
+            Runnable callback = afterBaselineCallback;
+            afterBaselineCallback = null;
+            if (callback != null) {
+                callback.run();
+            }
         }
     }
 
     private static void installBaseline(NativeImage image) {
         if (!sessionOpen) {
+            afterBaselineCallback = null;
             image.close();
             return;
         }
+        Runnable callback = afterBaselineCallback;
+        afterBaselineCallback = null;
         NativeImage pending = image;
         try {
             int w = pending.getWidth();
@@ -182,6 +214,9 @@ public final class BeforeAfterPreview {
             if (pending != null) {
                 pending.close();
             }
+        }
+        if (callback != null) {
+            callback.run();
         }
     }
 

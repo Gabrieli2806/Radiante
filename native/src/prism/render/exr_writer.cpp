@@ -2,6 +2,10 @@
 
 #include <glm/gtc/packing.hpp>
 
+#define STB_IMAGE_WRITE_STATIC
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -159,6 +163,50 @@ std::string writeHalfRgbExrFile(const std::filesystem::path &path,
         if (ec) {
             std::filesystem::remove(tempPath, ec);
             return "could not move temporary EXR file into place: " + ec.message();
+        }
+    }
+    return {};
+}
+
+std::string writeRgbaPngFile(const std::filesystem::path &path, uint32_t width, uint32_t height, const uint8_t *rgba) {
+    if (width == 0 || height == 0 || rgba == nullptr) return "empty PNG image";
+
+    std::error_code ec;
+    if (path.has_parent_path()) std::filesystem::create_directories(path.parent_path(), ec);
+
+    std::filesystem::path tempPath = path;
+    tempPath += ".tmp";
+    {
+        struct StreamSink {
+            std::ofstream stream;
+            bool ok = true;
+        } sink;
+        sink.stream.open(tempPath, std::ios::binary | std::ios::trunc);
+        if (!sink.stream) return "could not open temporary PNG file for writing";
+
+        auto writeChunk = [](void *context, void *data, int size) {
+            auto *target = static_cast<StreamSink *>(context);
+            if (!target->ok || size <= 0) return;
+            target->stream.write(static_cast<const char *>(data), static_cast<std::streamsize>(size));
+            if (!target->stream) target->ok = false;
+        };
+        const int encoded = stbi_write_png_to_func(writeChunk, &sink, static_cast<int>(width), static_cast<int>(height),
+                                                   4, rgba, static_cast<int>(width * 4));
+        sink.stream.flush();
+        if (encoded == 0 || !sink.ok || !sink.stream) {
+            sink.stream.close();
+            std::filesystem::remove(tempPath, ec);
+            return "failed to write PNG data";
+        }
+    }
+    std::filesystem::rename(tempPath, path, ec);
+    if (ec) {
+        std::filesystem::remove(path, ec);
+        ec.clear();
+        std::filesystem::rename(tempPath, path, ec);
+        if (ec) {
+            std::filesystem::remove(tempPath, ec);
+            return "could not move temporary PNG file into place: " + ec.message();
         }
     }
     return {};

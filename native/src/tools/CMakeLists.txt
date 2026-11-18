@@ -17,7 +17,7 @@ target_include_directories(held_light_history_test PRIVATE ${PROJECT_SOURCE_DIR}
 
 add_executable(exr_writer_test EXCLUDE_FROM_ALL exr_writer_test.cpp
     ${PROJECT_SOURCE_DIR}/src/prism/render/exr_writer.cpp)
-target_include_directories(exr_writer_test PRIVATE ${PROJECT_SOURCE_DIR}/src ${GLM_INCLUDE_DIR})
+target_include_directories(exr_writer_test PRIVATE ${PROJECT_SOURCE_DIR}/src ${GLM_INCLUDE_DIR} ${STB_INCLUDE_DIR})
 
 # The emission checks compile the renderer's emission code into themselves (it needs no device), so they take the
 # renderer's include paths and definitions but link none of it.

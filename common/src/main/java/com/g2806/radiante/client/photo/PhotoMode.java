@@ -1,9 +1,11 @@
 package com.g2806.radiante.client.photo;
 
 import com.g2806.radiante.client.RadianteClient;
+import com.g2806.radiante.client.gui.PhotoModeScreen;
 import com.g2806.radiante.client.pipeline.Pipeline;
 import com.g2806.radiante.client.pipeline.PipelineSettings;
 import com.g2806.radiante.client.proxy.vulkan.PhotoProxy;
+import com.g2806.radiante.client.render.ChunkManager;
 import com.g2806.radiante.client.render.RadianteRenderer;
 import com.g2806.radiante.compat.VersionCompat;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -42,6 +44,8 @@ public final class PhotoMode {
 
     private static volatile boolean active;
     private static boolean needsInitialSync;
+    private static Object activeLevel;
+    private static int activeChunkGeneration;
 
     private static Vec3 cameraPos = Vec3.ZERO;
     private static Vec3 initialPos = Vec3.ZERO;
@@ -68,6 +72,7 @@ public final class PhotoMode {
     private static long frozenMillis;
     private static float frozenDayFraction = -1.0f;
     private static float frozenWindTime = -1.0f;
+    private static float frozenSunAngle = Float.NaN;
 
     private static final String[] pollMessageSlot = new String[1];
     private static int lastCaptureStatus;
@@ -110,10 +115,13 @@ public final class PhotoMode {
         focusDistance = measureRayDistance(minecraft, cameraPos, forwardVector(yaw, pitch), 128.0);
 
         needsInitialSync = true;
+        activeLevel = minecraft.level;
+        activeChunkGeneration = ChunkManager.generation();
         lastStepNanos = System.nanoTime();
         frozenMillis = Util.getMillis();
         frozenDayFraction = -1.0f;
         frozenWindTime = -1.0f;
+        frozenSunAngle = Float.NaN;
         statusBanner = "";
         statusBannerUntilMillis = 0L;
         lastCaptureStatus = 0;
@@ -143,10 +151,49 @@ public final class PhotoMode {
             minecraft.gui.hud.toggle();
         }
         needsInitialSync = false;
+        activeLevel = null;
         frozenDayFraction = -1.0f;
         frozenWindTime = -1.0f;
+        frozenSunAngle = Float.NaN;
         statusBanner = "";
         PhotoProxy.setActive(false);
+    }
+
+    /** Exits when leaving a world, and restarts progressive accumulation when switching worlds or reloading chunks. */
+    public static void checkWorld(Minecraft minecraft) {
+        if (!active) {
+            return;
+        }
+        if (minecraft == null || minecraft.level == null || minecraft.player == null
+            || !RadianteRenderer.isRayTracingEnabled()) {
+            exit();
+            if (minecraft != null && minecraft.gui != null && minecraft.gui.screen() instanceof PhotoModeScreen) {
+                minecraft.gui.setScreen(null);
+            }
+            return;
+        }
+        if (minecraft.level != activeLevel) {
+            activeLevel = minecraft.level;
+            activeChunkGeneration = ChunkManager.generation();
+            cameraPos = minecraft.player.getEyePosition(1.0f);
+            initialPos = cameraPos;
+            yaw = minecraft.player.getYRot();
+            pitch = minecraft.player.getXRot();
+            initialYaw = yaw;
+            initialPitch = pitch;
+            needsInitialSync = true;
+            frozenMillis = Util.getMillis();
+            frozenDayFraction = -1.0f;
+            frozenWindTime = -1.0f;
+            frozenSunAngle = Float.NaN;
+            PhotoProxy.resetAccumulation();
+            return;
+        }
+        int generation = ChunkManager.generation();
+        if (generation != activeChunkGeneration) {
+            activeChunkGeneration = generation;
+            PhotoProxy.resetAccumulation();
+        }
     }
 
     /** Resets camera pose, FOV, roll, lens and exposure back to how Photo Mode opened. */
@@ -176,6 +223,7 @@ public final class PhotoMode {
      * advances smooth free-fly WASD / Space / Shift movement while keys are held.
      */
     public static void stepFrame(Minecraft minecraft, CameraRenderState cameraState, boolean allowKeyboardMove) {
+        checkWorld(minecraft);
         if (!active) {
             return;
         }
@@ -489,6 +537,13 @@ public final class PhotoMode {
             frozenWindTime = liveWindTime;
         }
         return frozenWindTime;
+    }
+
+    public static float frozenSunAngle(float liveSunAngle) {
+        if (Float.isNaN(frozenSunAngle)) {
+            frozenSunAngle = liveSunAngle;
+        }
+        return frozenSunAngle;
     }
 
     private static void pushLens() {
