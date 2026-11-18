@@ -27,9 +27,15 @@ public final class FrameGeneration {
     private FrameGeneration() {
     }
 
-    /** True while frames are being generated. Off with HDR output, which presents its own way. */
+    /**
+     * True while frames are being generated. Off with HDR output, which presents its own way, and while ray tracing
+     * is off: the game's own picture has none of the motion and depth frame generation works from, and turning ray
+     * tracing back on with frame generation still running lost the device (Before / After's Radiante Off / On, the
+     * toggle key).
+     */
     public static boolean isActive() {
-        return active && !HdrDisplay.isActive() && !com.g2806.radiante.client.photo.PhotoMode.isActive();
+        return active && !HdrDisplay.isActive() && !com.g2806.radiante.client.photo.PhotoMode.isActive()
+            && com.g2806.radiante.client.option.Options.rayTracingEnabled;
     }
 
     /** How many frames this GPU can generate per rendered one; 0 when it cannot. */

@@ -8,7 +8,7 @@ All notable changes to this project are documented in this file.
 
 - Before / After: clicks work on 26.3 and 26.4, whose left mouse button is numbered 1 (the divider could only be moved with the wheel, and no button answered). A Pack button changes the live picture's shader pack while Before stays, to compare packs. While Radiante Off / On takes its picture the screen stays covered, where the halves showed swapped for two seconds. A Before / After key binding (Controls, unbound by default) opens the comparison from the game.
 
-- Turning ray tracing off and on again (the key, Before / After's Radiante Off / On) waits for the chunk builds on the GPU again before the world is rebuilt; left to their fences it lost the device now and then.
+- Turning ray tracing back on with frame generation on lost the device and closed the game (the toggle key, Before / After's Radiante Off / On). Frame generation now pauses while ray tracing is off, since the game's own picture has none of the motion it works from, and comes back with it.
 
 - Photo Mode has a Denoiser switch, on by default: the game's denoiser cleans each frame and Photo Mode averages them, clean in a few dozen samples, where averaging the raw paths (Off, the reference picture) still showed the noise at 256. Photo Mode now opens from its own key binding in Controls, unbound by default, instead of from the settings screen.
 
