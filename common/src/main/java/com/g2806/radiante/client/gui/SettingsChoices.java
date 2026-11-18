@@ -489,7 +489,7 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
         this.pendingSeamlessScope = null;
         this.pendingPackToggles.clear();
         for (String attribute : List.of(RtAttributes.CACHE_DEEP_BOUNCES_ATTRIBUTE,
-            RtAttributes.BEDROCK_MATERIALS_ATTRIBUTE)) {
+            RtAttributes.BEDROCK_MATERIALS_ATTRIBUTE, RtAttributes.ADAPTIVE_LIGHT_GRID_ATTRIBUTE)) {
             if (PipelineSettings.supportsShaderPackToggle(attribute)) {
                 this.pendingPackToggles.put(attribute, Boolean.TRUE);
             }

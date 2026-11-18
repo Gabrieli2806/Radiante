@@ -45,6 +45,12 @@ vec3 g_shadowScale[PT_SHADOW_SLOTS];
 // (sampleBlockLightRestir keeps none for an occluded light).
 bool g_shadowRestirStored = false;
 uint g_shadowRestirHalf = 0u;
+// Adaptive light grid feedback for PT_SHADOW_BLOCK, recorded once the deferred shadow ray resolves visibility.
+int g_shadowLightGridCell = -1;
+int g_shadowLightSlot = -1;
+uint g_shadowLightIndex = 0u;
+uint g_shadowLightId = 0u;
+float g_shadowLightIncident = 0.0;
 // The deferred light also goes into the direct light the ray generation reads (mainRay.directLightRadiance), unless
 // the shading replaced that after sampling it (water does).
 bool g_deferredToDirect = false;

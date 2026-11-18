@@ -417,6 +417,8 @@
   "options.radiante.frame_generation_backend.auto": "Auto",
   "options.radiante.frame_generation_backend.dlss": "DLSS",
   "options.radiante.frame_generation_backend.fsr": "FSR",
+  "options.radiante.adaptive_light_grid": "Cuadrícula Adaptativa de Luces",
+  "options.radiante.adaptive_light_grid.tooltip": "Aprende en cada celda del mundo qué luces de bloque llegan sin quedar ocultas y las muestrea más a menudo. Menos grano y motas móviles en salas y cuevas con muchas luces, manteniendo sombras nítidas y el mismo brillo. Requiere Muestreo de Luz de Bloques.",
   "options.radiante.restir": "ReSTIR para Luces de Bloque",
   "options.radiante.restir.tooltip": "Reutiliza las luces de bloque que eligió cada píxel a lo largo del tiempo y entre píxeles vecinos. Mucho menos ruido en salas con muchas luces antes del filtro, pero sombras más suaves donde coinciden varias luces, y algo más lento. Requiere Muestreo de Luz de Bloques.",
   "options.radiante.restir_gi": "ReSTIR para Luz Rebotada",

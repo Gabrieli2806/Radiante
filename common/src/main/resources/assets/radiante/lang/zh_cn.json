@@ -417,6 +417,8 @@
   "options.radiante.frame_generation_backend.auto": "自动",
   "options.radiante.frame_generation_backend.dlss": "DLSS",
   "options.radiante.frame_generation_backend.fsr": "FSR",
+  "options.radiante.adaptive_light_grid": "自适应光源网格",
+  "options.radiante.adaptive_light_grid.tooltip": "按世界网格学习哪些方块光源能真正照到表面并优先采样。减少多光源房间与洞穴中的噪点和游走光斑，同时保持清晰阴影与一致亮度。需要方块光源采样。",
   "options.radiante.restir": "ReSTIR 方块光源",
   "options.radiante.restir.tooltip": "随时间并在相邻像素间复用每个像素选中的方块光源。多灯房间降噪前的噪点大幅减少，但多个光源交汇处的阴影会变柔和，且稍慢。需要方块光源采样。",
   "options.radiante.restir_gi": "ReSTIR 反弹光",

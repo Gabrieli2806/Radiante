@@ -153,6 +153,13 @@
             }
         },
         {
+            "name": "render_pipeline.module.ray_tracing.attribute.adaptive_light_grid",
+            "type": "bool",
+            "default_value": "render_pipeline.true",
+            "runtime": true,
+            "define": "VPT_ADAPTIVE_LIGHT_GRID"
+        },
+        {
             "name": "render_pipeline.module.ray_tracing.attribute.restir",
             "type": "bool",
             "default_value": "render_pipeline.false",
@@ -1188,6 +1195,22 @@
             "storage_binding": 122
         }
     ],
+    "buffers": [
+        {
+            "name": "light_grid_resolved",
+            "type": "intermediate",
+            "shared": true,
+            "size": "16777216",
+            "binding": 51
+        },
+        {
+            "name": "light_grid_feedback",
+            "type": "intermediate",
+            "shared": true,
+            "size": "16777216",
+            "binding": 52
+        }
+    ],
     "execution": {
         "global_variables": [
             {
@@ -1241,6 +1264,17 @@
             },
             {
                 "pass": "world"
+            },
+            {
+                "if_else": {
+                    "condition": "VPT_ADAPTIVE_LIGHT_GRID != 0",
+                    "then": [
+                        {
+                            "pass": "light_grid_resolve"
+                        }
+                    ],
+                    "else": []
+                }
             },
             {
                 "if_else": {
@@ -1507,6 +1541,9 @@
                     "fog_sun_near",
                     "fog_block_near",
                     "fog_sun_far"
+                ],
+                "buffers": [
+                    "light_grid_resolved"
                 ]
             },
             "outputs": {
@@ -1536,6 +1573,9 @@
                     "fog_block_far",
                     "fog_march_record",
                     "out:fog_transmission"
+                ],
+                "buffers": [
+                    "light_grid_feedback"
                 ]
             },
             "definitions": {
@@ -1661,6 +1701,25 @@
                     "shader": "world/world_no_volumetric.rmiss"
                 }
             ]
+        },
+        {
+            "type": "compute",
+            "name": "light_grid_resolve",
+            "inputs": {
+                "buffers": [
+                    "light_grid_feedback"
+                ]
+            },
+            "outputs": {
+                "buffers": [
+                    "light_grid_resolved",
+                    "light_grid_feedback"
+                ]
+            },
+            "compute": "light_grid/resolve.comp",
+            "gx": "2048",
+            "gy": "1",
+            "gz": "1"
         },
         {
             "type": "compute",

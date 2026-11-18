@@ -278,6 +278,11 @@ vec3 ptTraceDeferredShadowRay(uint slot) {
         return clamp(dot(shadowRay.radiance, vec3(0.2126, 0.7152, 0.0722)), 0.0, 1.0) * g_shadowScale[slot];
     }
     vec3 visibility = shadowRay.radiance * shadowRay.throughput;
+    if (slot == PT_SHADOW_BLOCK && g_shadowLightSlot >= 0) {
+        vptRecordLightGridFeedback(g_shadowLightGridCell, g_shadowLightSlot, g_shadowLightIndex, g_shadowLightId,
+                                   g_shadowLightIncident, visibility);
+        g_shadowLightSlot = -1;
+    }
 #if VPT_RESTIR != 0
     if (slot == PT_SHADOW_BLOCK && g_shadowRestirStored) {
         g_shadowRestirStored = false;
