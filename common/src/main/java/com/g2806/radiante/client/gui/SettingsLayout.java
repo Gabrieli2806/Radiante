@@ -88,7 +88,7 @@ final class SettingsLayout {
      */
     record Actions(Runnable reset, Runnable optimizeGpu, Runnable undo, Runnable apply, Runnable done, Extra extra,
                    Runnable share, boolean advanced, Runnable toggleAdvanced, Runnable rebuild, Runnable shaderPacks,
-                   Runnable photoMode) {
+                   Runnable photoMode, Runnable compare, Runnable rebaseline) {
     }
 
     /**
@@ -342,6 +342,19 @@ final class SettingsLayout {
                 this.width - margin - topRight - 4 - photoW, 13, photoW));
             topRight += photoW + 4;
         }
+        if (this.actions.compare() != null) {
+            FlatButton compare = flat("options.radiante.compare", "options.radiante.compare.tooltip",
+                this.actions.compare(), true);
+            Component ctrlLabel = Component.translatable("options.radiante.compare.set_before");
+            int compareW = Math.max(this.font.width(compare.label()),
+                this.actions.rebaseline() != null ? this.font.width(ctrlLabel) : 0) + 16;
+            this.buttons.add(new FlatButton(compare.label(), compare.action(), true, compare.tooltip(),
+                this.width - margin - topRight - 4 - compareW, 13, compareW,
+                this.actions.rebaseline() != null ? ctrlLabel : null, this.actions.rebaseline(),
+                this.actions.rebaseline() != null
+                    ? Component.translatable("options.radiante.compare.set_before.tooltip") : null));
+            topRight += compareW + 4;
+        }
         if (this.actions.optimizeGpu() != null) {
             int optW = this.sidebarW - 8;
             Component optLabel = Component.translatable("options.radiante.optimize_gpu");
@@ -353,7 +366,8 @@ final class SettingsLayout {
                 Component.translatable("options.radiante.optimize_gpu.tooltip"),
                 this.sidebarX + 4, this.bottom - 20, optW));
         }
-        this.search = new EditBox(this.font, this.sidebarX, 12, this.width - margin * 2 - topRight - 4, 18,
+        this.search = new EditBox(this.font, this.sidebarX, 12,
+            Math.max(80, this.width - margin * 2 - topRight - 4), 18,
             Component.translatable("options.radiante.search"));
         this.search.setHint(Component.translatable("options.radiante.search").withStyle(ChatFormatting.DARK_GRAY));
         this.search.setValue(initialSearch);

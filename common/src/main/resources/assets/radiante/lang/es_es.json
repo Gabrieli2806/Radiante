@@ -872,5 +872,13 @@
   "options.radiante.optimize_gpu.measuring": "Midiendo el rendimiento de la GPU...",
   "options.radiante.optimize_gpu.frames": "Fotograma %s / %s",
   "options.radiante.optimize_gpu.done_live": "Optimizado: %s · %s (%s ms GPU, %s GB VRAM)",
-  "options.radiante.optimize_gpu.done_estimate": "Optimizado: %s · %s (%s GB VRAM)"
+  "options.radiante.optimize_gpu.done_estimate": "Optimizado: %s · %s (%s GB VRAM)",
+  "options.radiante.compare": "Antes / Después",
+  "options.radiante.compare.tooltip": "Aplica tus cambios y compara la imagen al abrir Ajustes (izquierda) con el mundo trazado en vivo (derecha). Mantén Ctrl para fijar una nueva referencia Antes.",
+  "options.radiante.compare.before": "ANTES",
+  "options.radiante.compare.after": "DESPUÉS",
+  "options.radiante.compare.exit": "← Ajustes",
+  "options.radiante.compare.set_before": "Fijar Antes",
+  "options.radiante.compare.set_before.tooltip": "Guarda la vista actual del mundo como nueva referencia Antes.",
+  "options.radiante.compare.hint": "Arrastra el divisor o Izquierda / Derecha · Esc vuelve a ajustes"
 }

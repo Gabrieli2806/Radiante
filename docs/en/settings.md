@@ -11,6 +11,10 @@ Open them with `F6` in a world, or from Options → Video Settings → Radiante 
 - **Sections** are on the left; the panel on the right describes the setting under the mouse.
 - **Apply** applies your changes and keeps the screen open; **Done** applies and closes; **Undo** drops what changed
   since the last Apply. Changes compile in the background with a progress popup at the top right.
+- **Before / After** (top bar, while in a traced world) applies your changes, hides the panels and menu blur, and
+  splits the screen between the picture from when Settings opened (**BEFORE**, left) and the live traced world
+  (**AFTER**, right), with a draggable divider (or Left / Right keys). Hold **Ctrl** (or press **Set Before** in the
+  split view) to capture a fresh Before reference; **Esc** or **← Settings** returns to the option list.
 - **Search** finds a setting in any section by name.
 - **Advanced** (bottom) shows the fine-tuning controls of each section in folding groups, and adds the Debug section.
 - **Reset to Defaults** (bottom left) returns everything to a fresh install. Hold **Ctrl** to turn it into **Rebuild

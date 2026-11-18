@@ -177,6 +177,9 @@ public class RadianteOptionsScreen extends SettingsRows {
 
     @Override
     protected void init() {
+        BeforeAfterPreview.ensureSession(this.minecraft);
+        boolean inTracedWorld = this.minecraft != null && this.minecraft.level != null
+            && RadianteRenderer.isRayTracingEnabled();
         buildPage();
         this.layout = new SettingsLayout(this.font, this.width, this.height, this.sections,
             new SettingsLayout.Actions(
@@ -227,13 +230,15 @@ public class RadianteOptionsScreen extends SettingsRows {
                     this.minecraft.gui.setScreen(new ShaderPacksScreen(
                         () -> new RadianteOptionsScreen(last, this.options)));
                 },
-                this.minecraft != null && this.minecraft.level != null && RadianteRenderer.isRayTracingEnabled()
+                inTracedWorld
                     ? () -> {
                         this.applied = true;
                         Screen last = this.lastScreen;
                         PhotoModeScreen.open(this.minecraft, new RadianteOptionsScreen(last, this.options));
                     }
-                    : null),
+                    : null,
+                inTracedWorld ? this::openCompare : null,
+                inTracedWorld ? BeforeAfterPreview::requestRebaseline : null),
             value -> this.scroll = value);
         this.layout.restartInfo(new SettingsLayout.RestartInfo() {
             @Override
@@ -284,7 +289,40 @@ public class RadianteOptionsScreen extends SettingsRows {
         net.minecraft.client.gui.components.EditBox searchField = this.layout.init(this.scroll, this.search);
         // The list goes in ahead of the search field: a controller mod's first focus lands on the options.
         addWidget(this.layout.focusTarget());
-        addRenderableWidget(searchField);
+        if (!BeforeAfterPreview.isActive()) {
+            addRenderableWidget(searchField);
+        }
+    }
+
+    /** Applies any staged changes and enters the full-screen Before / After split comparison view. */
+    public void openCompare() {
+        if (this.minecraft == null || this.minecraft.level == null || !RadianteRenderer.isRayTracingEnabled()) {
+            return;
+        }
+        double savedScroll = this.layout != null ? this.layout.scroll() : this.scroll;
+        applyAndOpen(() -> {
+            BeforeAfterPreview.setActive(true);
+            RadianteOptionsScreen fresh = new RadianteOptionsScreen(this.lastScreen, this.options);
+            fresh.scroll = savedScroll;
+            return fresh;
+        });
+    }
+
+    /** Leaves the Before / After split comparison view back to the settings list, keeping the Before baseline. */
+    public void exitCompare() {
+        if (!BeforeAfterPreview.isActive()) {
+            return;
+        }
+        BeforeAfterPreview.setActive(false);
+        reopenWithSameChoices();
+    }
+
+    /** Development: stages a numeric tunable step directly on the open settings screen, as moving its slider would. */
+    public void stageTunable(String name, int step) {
+        if (this.pendingTunables == null) {
+            this.pendingTunables = new java.util.EnumMap<>(Tunable.class);
+        }
+        this.pendingTunables.put(Tunable.valueOf(name), step);
     }
 
     /** For a controller integration (SettingsControls). */
@@ -526,7 +564,17 @@ public class RadianteOptionsScreen extends SettingsRows {
     }
 
     @Override
+    protected boolean extractOwnBackground(net.minecraft.client.gui.GuiGraphicsExtractor graphics) {
+        // In Before/After comparison mode, skip Minecraft's menu blur and tint so the live After world is sharp.
+        return BeforeAfterPreview.isActive();
+    }
+
+    @Override
     protected void extractContents(net.minecraft.client.gui.GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
+        if (BeforeAfterPreview.isActive()) {
+            BeforeAfterPreview.extract(graphics, this.font, this.width, this.height, mouseX, mouseY);
+            return;
+        }
         if (this.layout != null) {
             this.layout.extract(graphics, mouseX, mouseY);
         }
@@ -554,6 +602,10 @@ public class RadianteOptionsScreen extends SettingsRows {
     public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
         this.mouseHeld = true;
         this.refreshKey = -1;
+        if (BeforeAfterPreview.isActive()) {
+            return BeforeAfterPreview.mouseClicked(event.x(), event.y(), event.button(), this.font, this.width,
+                this::exitCompare, BeforeAfterPreview::requestRebaseline);
+        }
         if (super.mouseClicked(event, doubleClick)) {
             return true;
         }
@@ -562,6 +614,9 @@ public class RadianteOptionsScreen extends SettingsRows {
 
     @Override
     public boolean mouseDragged(net.minecraft.client.input.MouseButtonEvent event, double dragX, double dragY) {
+        if (BeforeAfterPreview.isActive()) {
+            return BeforeAfterPreview.mouseDragged(event.x(), this.width);
+        }
         if (this.layout != null && this.layout.mouseDragged(event.x())) {
             return true;
         }
@@ -571,6 +626,10 @@ public class RadianteOptionsScreen extends SettingsRows {
     @Override
     public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent event) {
         this.mouseHeld = false;
+        if (BeforeAfterPreview.isActive()) {
+            BeforeAfterPreview.mouseReleased();
+            return true;
+        }
         if (this.layout != null) {
             this.layout.mouseReleased();
         }
@@ -584,6 +643,9 @@ public class RadianteOptionsScreen extends SettingsRows {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (BeforeAfterPreview.isActive()) {
+            return true;
+        }
         if (this.layout != null && this.layout.scrollBy(mouseX, mouseY, scrollY)) {
             return true;
         }
@@ -592,6 +654,7 @@ public class RadianteOptionsScreen extends SettingsRows {
 
     @Override
     public void onClose() {
+        BeforeAfterPreview.onSessionClose();
         applyAndOpen(this.lastScreen);
     }
 
@@ -614,6 +677,9 @@ public class RadianteOptionsScreen extends SettingsRows {
 
     @Override
     public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
+        if (BeforeAfterPreview.isActive()) {
+            return BeforeAfterPreview.keyPressed(event, this::exitCompare);
+        }
         if (this.layout != null && !this.layout.searchFocused() && this.layout.keyPressed(event)) {
             // The list holds the screen's focus while the keys work in it, so the screen's own navigation (and a
             // controller mod's) goes on from there.
