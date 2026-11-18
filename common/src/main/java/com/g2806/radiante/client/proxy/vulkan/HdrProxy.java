@@ -18,6 +18,20 @@ public final class HdrProxy {
         float paperWhiteNits, float peakNits, boolean flipY, boolean debugView);
 
     /**
+     * Tells the tone mapper whether the window presents in HDR and at what peak/paper-white brightness, so the world
+     * pipeline extends highlights above paper white only while HDR output is active.
+     */
+    public static native void setTarget(boolean active, float paperWhiteNits, float peakNits);
+
+    /**
+     * Development: runs the HDR composition on Minecraft's presented image, logs the scRGB luminance statistics and
+     * writes a preview PNG to {@code path} so HDR changes can be verified on any display.
+     */
+    public static native void capturePreview(long commandBuffer, long minecraftImage, int minecraftLayout,
+        int minecraftFormat, int width, int height, float paperWhiteNits, float peakNits, boolean flipY,
+        boolean debugView, String path);
+
+    /**
      * The HDR calibration screen's pictures for the following compositions, in fractions of the image, top down:
      * mode 1 is the peak pattern in the first rectangle, mode 2 Minecraft's image with its highlights brought back in
      * both, and mode 0 ends it.

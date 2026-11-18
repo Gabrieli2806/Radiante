@@ -21,11 +21,20 @@ layout(location = 0) out vec4 outColor;
 
 void main() {
     vec4 color = texture(hookPostGradeInput, fragTexCoord);
-    vec3 graded = color.rgb;
+    vec3 inputColor = max(color.rgb, vec3(0.0));
+    vec3 graded = inputColor;
 #ifndef RADIANTE_HOOK_UNDERWATER_DEFAULT
     // The camera under water (skyUBO.cameraSubmersionType: 0 lava, 1 water, 2 powder snow, 3 none).
     if (skyUBO.cameraSubmersionType == 1u) { hookUnderwater(graded, fragTexCoord); }
 #endif
     hookPostGrade(graded, fragTexCoord);
+    // Packs work on 0..1 display colours and usually end with clamp(c, 0.0, 1.0). When HDR output is active and the
+    // input held headroom above paper white (> 1.0) that the hook clipped at 1.0, carry that headroom on scaled by
+    // the hook's 0..1 result so letterbox bars stay black, vignettes dim it and split toning tints it.
+    float inPeak = max(inputColor.r, max(inputColor.g, inputColor.b));
+    float outPeak = max(graded.r, max(graded.g, graded.b));
+    if (inPeak > 1.0 && outPeak <= 1.001) {
+        graded *= mix(1.0, inPeak, smoothstep(0.5, 1.0, outPeak));
+    }
     outColor = vec4(graded, color.a);
 }

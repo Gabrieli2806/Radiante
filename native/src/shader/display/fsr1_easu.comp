@@ -25,15 +25,15 @@ layout(push_constant) uniform EasuParams {
 } params;
 
 FfxFloat32x4 FsrEasuRF(FfxFloat32x2 p) {
-    return textureGather(inputColor, p, 0);
+    return clamp(textureGather(inputColor, p, 0), vec4(0.0), vec4(1.0));
 }
 
 FfxFloat32x4 FsrEasuGF(FfxFloat32x2 p) {
-    return textureGather(inputColor, p, 1);
+    return clamp(textureGather(inputColor, p, 1), vec4(0.0), vec4(1.0));
 }
 
 FfxFloat32x4 FsrEasuBF(FfxFloat32x2 p) {
-    return textureGather(inputColor, p, 2);
+    return clamp(textureGather(inputColor, p, 2), vec4(0.0), vec4(1.0));
 }
 
 #include "FidelityFX/gpu/fsr1/ffx_fsr1.h"
