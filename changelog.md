@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Articulated mobs and players reuse shared per-`ModelPart` bottom-level acceleration structures across every entity of the same kind and pose each limb with a 3×4 top-level instance transform instead of rewriting, uploading and rebuilding all entity vertices every frame (cutting CPU entity preparation from 2.74 ms to 0.60 ms and GPU acceleration-structure preparation from 0.55 ms to 0.33 ms in a 100-mob pen).
+
 - Snow & Frost in Cold Biomes (`Sky & Water`): open surfaces in snowy biomes progressively gather rime frost and fresh snow patches (in 1/16th-block pixels with Pixel Rain on, or smooth drifts with it off), fray under roof eaves and across biome borders, melt in ragged rings around torches, lanterns, candles, campfires, furnaces and lava, and sublimate slowly after snowfall stops.
 
 - Changing render distance, rejoining a world, adjusting chunk build batch settings or toggling block-light collection no longer stalls the Vulkan queues on the render thread: in-flight chunk batches retire asynchronously once their own fences signal, each scheduler owns its command pool, and Distant Horizons LOD builder threads and split margin scale with CPU core count and horizontal flight speed.

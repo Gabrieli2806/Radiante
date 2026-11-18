@@ -81,6 +81,7 @@ public final class EntityPbr {
             ATLAS_MAPS.clear();
             ATLASES_PENDING.clear();
             ATLASES_PENDING.addAll(ATLASES);
+            BlockEntityCache.invalidate();
         }
         if (!ATLASES_PENDING.isEmpty()) {
             ATLASES_PENDING.removeIf(atlasId -> buildAtlas(minecraft, resources, atlasId));

@@ -32,9 +32,11 @@ struct EntitiesBuildTask {
     double *entityYs;
     double *entityZs;
     int *entityRayTracingFlags;
-    // Negative: the structure is built here. CACHEABLE_BLAS and KEYED_BLAS allow it to be kept between frames.
+    // Negative: the structure is built here. CACHEABLE_BLAS, KEYED_BLAS and RIGID_SHARED_BLAS allow it to be kept between frames.
     int *entityPrebuiltBLASs;
     int *entityGeometryCounts;
+    const uint8_t *entityHasLocalTransforms;
+    const float *entityLocalTransforms;
     int *geometryTypes;
     // Hit group of each geometry; "Entity" where null.
     const char **geometryGroupNames;
@@ -55,6 +57,8 @@ struct Entity : public SharedObject<Entity> {
     int rayTracingFlag = 0;
     int prebuiltBLAS = -1;
     World::Coordinates coordinate = World::WORLD;
+    bool hasLocalTransform = false;
+    VkTransformMatrixKHR localTransform{};
 
     std::shared_ptr<gpu::BLAS> blas;
     // Where each geometry's indices, positions and materials start; the shaders read the geometry through these.
@@ -133,6 +137,8 @@ class Entities : public SharedObject<Entities> {
     // position alone: a match reuses the structure without reading the vertices at all, and only moves the instance.
     // For large meshes that drift but rarely change shape - the vanilla clouds.
     static constexpr int KEYED_BLAS = -3;
+    // Shared across every entity instance referencing the same named ModelPart geometry, posed by localTransform.
+    static constexpr int RIGID_SHARED_BLAS = -4;
     // Frames an entity may go unseen before its cached structure is dropped.
     static constexpr uint64_t STATIC_CACHE_EVICT_FRAMES = 120;
 

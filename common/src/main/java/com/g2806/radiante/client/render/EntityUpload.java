@@ -98,6 +98,9 @@ final class EntityUpload {
         if (name.startsWith(BlockEntityCache.NAME_PREFIX)) {
             return BlockEntityCache.nameAddress(name);
         }
+        if (name.startsWith(RigidPartCache.NAME_PREFIX)) {
+            return RigidPartCache.nameAddress(name);
+        }
         if (!name.equals(contentName)) {
             if (contentNameBuffer != null) {
                 MemoryUtil.memFree(contentNameBuffer);
@@ -114,13 +117,21 @@ final class EntityUpload {
      */
     static final class Scratch {
 
-        private static final int SLOTS = 15;
+        private static final int SLOTS = 17;
 
         private final long[] addresses = new long[SLOTS];
         private final long[] sizes = new long[SLOTS];
 
+        long bytes(int slot, int count) {
+            return reserve(slot, count);
+        }
+
         long ints(int slot, int count) {
             return reserve(slot, (long) count * Integer.BYTES);
+        }
+
+        long floats(int slot, int count) {
+            return reserve(slot, (long) count * Float.BYTES);
         }
 
         long longs(int slot, int count) {
@@ -182,6 +193,8 @@ final class EntityUpload {
         long indexFormats = SCRATCH.ints(12, layerCount);
         long vertexCounts = SCRATCH.ints(13, layerCount);
         long vertices = SCRATCH.longs(14, layerCount);
+        long hasLocalTransforms = SCRATCH.bytes(15, entityCount);
+        long localTransforms = SCRATCH.floats(16, entityCount * 12);
 
         try {
             int layerIndex = 0;
@@ -195,6 +208,17 @@ final class EntityUpload {
                 MemoryUtil.memPutInt(rayTracingFlags + (long) i * Integer.BYTES, entity.rayTracingFlag());
                 // A negative id means the renderer has to build the acceleration structure itself.
                 MemoryUtil.memPutInt(prebuiltBlas + (long) i * Integer.BYTES, entity.prebuiltBlas());
+                int transformIdx = entity.localTransformIndex();
+                if (transformIdx >= 0) {
+                    MemoryUtil.memPutByte(hasLocalTransforms + i, (byte) 1);
+                    long dst = localTransforms + (long) i * 12L * Float.BYTES;
+                    int srcBase = transformIdx * 12;
+                    for (int k = 0; k < 12; k++) {
+                        MemoryUtil.memPutFloat(dst + (long) k * Float.BYTES, frameTransforms[srcBase + k]);
+                    }
+                } else {
+                    MemoryUtil.memPutByte(hasLocalTransforms + i, (byte) 0);
+                }
 
                 for (PendingLayer layer : entity.layers()) {
                     MemoryUtil.memPutInt(geometryTypes + (long) layerIndex * Integer.BYTES, layer.geometryType());
@@ -215,11 +239,12 @@ final class EntityUpload {
             }
 
             EntityProxy.queue(0.0125f, coordinate, false, entityCount, hashCodes, posXs,
-                posYs, posZs, rayTracingFlags, prebuiltBlas, layerCounts, geometryTypes,
-                geometryGroupNames, geometryContentNames, geometryTextures, vertexFormats, indexFormats,
-                vertexCounts, vertices);
+                posYs, posZs, rayTracingFlags, prebuiltBlas, layerCounts, hasLocalTransforms, localTransforms,
+                geometryTypes, geometryGroupNames, geometryContentNames, geometryTextures, vertexFormats,
+                indexFormats, vertexCounts, vertices);
         } finally {
             PENDING.clear();
+            frameTransformCount = 0;
         }
     }
 }

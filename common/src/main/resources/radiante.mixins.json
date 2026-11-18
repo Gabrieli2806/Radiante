@@ -36,6 +36,7 @@
     "gui.VideoSettingsScreenMixin",
     "render.EntityRenderStateMixin",
     "render.EntityRendererMixin",
+    "render.ModelPartAccessor",
     "render.RenderTypeAccessors$RenderSetupAccessor",
     "render.RenderTypeAccessors$RenderTypeAccessor",
     "render.RenderTypeAccessors$TextureBindingAccessor",
