@@ -58,10 +58,9 @@ void Chunks::reset(uint32_t numChunks, uint32_t sizeX, uint32_t sizeY, uint32_t 
     std::unique_lock<std::recursive_mutex> lock(mutex_);
 
     // Rejoining a world, changing the render distance or turning ray tracing back on replaces every section. The
-    // builds still running on the GPU are finished and both queues drained first, as before the retirement without
-    // waits: leaving them to their fences, turning ray tracing off and on again (Before / After's Radiante Off / On)
-    // lost the device now and then. A reset is rare; the stall it costs is not felt. Frames already handed to
-    // Minecraft keep the old sections alive through gpu::retire.
+    // builds still running on the GPU are finished and both queues drained first: a reset is rare and the stall is
+    // not felt, while every structure the old grid's builds touch is certainly done with before it goes. Frames
+    // already handed to Minecraft keep the old sections alive through gpu::retire.
     for (const auto &retired : retiredSchedulers_) retired->discardResults();
     if (chunkBuildScheduler_ != nullptr) chunkBuildScheduler_->waitAllBatchesFinish();
     chunkBuildScheduler_ = nullptr;
