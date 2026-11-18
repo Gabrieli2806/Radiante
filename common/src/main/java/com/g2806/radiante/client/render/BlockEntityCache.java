@@ -68,9 +68,11 @@ final class BlockEntityCache {
     /** Texture ids and hit groups may have changed: everything is collected afresh. */
     static void invalidate() {
         dirty = true;
+        RigidPartCache.invalidate();
     }
 
     static void beginFrame(Object currentLevel) {
+        RigidPartCache.beginFrame(currentLevel);
         frame++;
         if (dirty || currentLevel != level) {
             dirty = false;

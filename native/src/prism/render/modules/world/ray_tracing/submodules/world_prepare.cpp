@@ -66,8 +66,17 @@ VkTransformMatrixKHR translation(float x, float y, float z) {
 // item) through the inverse view, and camera-shifted geometry at the camera's offset.
 VkTransformMatrixKHR entityTransform(const Entity &entity, const glm::dvec3 &camera, const gpu::Data::WorldUBO *ubo) {
     if (entity.coordinate == World::Coordinates::WORLD || ubo == nullptr) {
-        return translation(static_cast<float>(entity.x - camera.x), static_cast<float>(entity.y - camera.y),
-                           static_cast<float>(entity.z - camera.z));
+        const float tx = static_cast<float>(entity.x - camera.x);
+        const float ty = static_cast<float>(entity.y - camera.y);
+        const float tz = static_cast<float>(entity.z - camera.z);
+        if (entity.hasLocalTransform) {
+            VkTransformMatrixKHR out = entity.localTransform;
+            out.matrix[0][3] += tx;
+            out.matrix[1][3] += ty;
+            out.matrix[2][3] += tz;
+            return out;
+        }
+        return translation(tx, ty, tz);
     }
     if (entity.coordinate == World::Coordinates::CAMERA) {
         const glm::mat4 rows = glm::transpose(ubo->cameraViewMatInv);

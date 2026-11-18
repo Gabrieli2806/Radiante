@@ -192,6 +192,8 @@ std::shared_ptr<Entity> makeEntity(const EntityInput &input, World::Coordinates 
     entity->rayTracingFlag = input.rayTracingFlag;
     entity->prebuiltBLAS = prebuiltBLAS;
     entity->coordinate = coordinate;
+    entity->hasLocalTransform = input.hasLocalTransform;
+    entity->localTransform = input.localTransform;
 
     auto lists = std::make_shared<EntityLists>();
     const auto geometries = static_cast<size_t>(input.geometryCount);
@@ -210,6 +212,66 @@ std::shared_ptr<Entity> makeEntity(const EntityInput &input, World::Coordinates 
     entity->vertexCounts = {lists, &lists->vertexCounts};
     entity->indexCounts = {lists, &lists->indexCounts};
     return entity;
+}
+
+std::shared_ptr<Entity> cloneRigidInstance(const Entity &prototype, const EntityInput &input) {
+    auto clone = Entity::create();
+    clone->hashCode = input.hashCode;
+    clone->x = input.x;
+    clone->y = input.y;
+    clone->z = input.z;
+    clone->rayTracingFlag = input.rayTracingFlag;
+    clone->prebuiltBLAS = -1;
+    clone->coordinate = prototype.coordinate;
+    clone->hasLocalTransform = input.hasLocalTransform;
+    clone->localTransform = input.localTransform;
+    clone->blas = prototype.blas;
+    clone->indexBufferAddresses = prototype.indexBufferAddresses;
+    clone->positionBufferAddresses = prototype.positionBufferAddresses;
+    clone->materialBufferAddresses = prototype.materialBufferAddresses;
+    clone->indexBuffer = prototype.indexBuffer;
+    clone->positionBuffer = prototype.positionBuffer;
+    clone->materialBuffer = prototype.materialBuffer;
+    clone->geometryCount = prototype.geometryCount;
+    clone->geometryGroupNames = prototype.geometryGroupNames;
+    clone->geometryContentNames = prototype.geometryContentNames;
+    clone->vertexCounts = prototype.vertexCounts;
+    clone->indexCounts = prototype.indexCounts;
+    clone->lightInfos = prototype.lightInfos;
+    return clone;
+}
+
+glm::vec3 transformPoint3x4(const VkTransformMatrixKHR &m, const glm::vec3 &p) {
+    return {
+        m.matrix[0][0] * p.x + m.matrix[0][1] * p.y + m.matrix[0][2] * p.z + m.matrix[0][3],
+        m.matrix[1][0] * p.x + m.matrix[1][1] * p.y + m.matrix[1][2] * p.z + m.matrix[1][3],
+        m.matrix[2][0] * p.x + m.matrix[2][1] * p.y + m.matrix[2][2] * p.z + m.matrix[2][3],
+    };
+}
+
+LightInfo transformLightInfo(const LightInfo &light, const VkTransformMatrixKHR &m, int instanceHash) {
+    LightInfo out = light;
+    out.p0 = transformPoint3x4(m, light.p0);
+    out.p1 = transformPoint3x4(m, light.p1);
+    out.p2 = transformPoint3x4(m, light.p2);
+    out.p3 = transformPoint3x4(m, light.p3);
+    out.stableID ^= static_cast<uint64_t>(static_cast<uint32_t>(instanceHash)) * 0x9E3779B97F4A7C15ull;
+    const glm::vec3 c0(m.matrix[0][0], m.matrix[1][0], m.matrix[2][0]);
+    const glm::vec3 c1(m.matrix[0][1], m.matrix[1][1], m.matrix[2][1]);
+    const glm::vec3 c2(m.matrix[0][2], m.matrix[1][2], m.matrix[2][2]);
+    if (light.kind == 2.0f) {
+        const float det = std::abs(glm::dot(c0, glm::cross(c1, c2)));
+        out.normal.x = light.normal.x * std::cbrt(det);
+        return out;
+    }
+    const glm::vec3 cof0 = glm::cross(c1, c2);
+    const glm::vec3 cof1 = glm::cross(c2, c0);
+    const glm::vec3 cof2 = glm::cross(c0, c1);
+    const glm::vec3 n = cof0 * light.normal.x + cof1 * light.normal.y + cof2 * light.normal.z;
+    const float len = glm::length(n);
+    out.normal = len > 1e-8f ? (n / len) : light.normal;
+    out.area = 0.5f * glm::length(glm::cross(out.p1 - out.p0, out.p2 - out.p0));
+    return out;
 }
 
 // Textures::emission() makes the emission state on first use, under a lock. It is asked at most once per batch, and
@@ -318,7 +380,13 @@ struct Entities::State {
     struct LightCandidate {
         double distance2;
         const LightInfo *light;
+        int transformedIndex;
         glm::vec3 origin;
+    };
+
+    struct SharedRigidEntry {
+        uint64_t lastSeenFrame = 0;
+        std::shared_ptr<Entity> prototype;
     };
 
     // Per-frame buffers kept across frames (one more slot than swapchain images so motion-vector history from the
@@ -350,6 +418,7 @@ struct Entities::State {
     bool lastCollectLights = false;
 
     std::unordered_map<int, CacheEntry> staticCache;
+    std::unordered_map<uint64_t, SharedRigidEntry> rigidCache;
     uint64_t frameCounter = 0;
 
     // Working memory, reused.
@@ -358,6 +427,7 @@ struct Entities::State {
     std::vector<Entity *> awaitingStructure;
     std::unordered_map<uint32_t, Emission::TextureOccupancy> occupancy;
     std::vector<LightCandidate> lightCandidates;
+    std::vector<LightInfo> transformedLights;
     std::vector<PackedLightData> packedLights;
 
     PersistentSlot &currentSlot(Framework &framework) {
@@ -451,6 +521,7 @@ void Entities::resetFrame() {
     if (collectLights && !s.lastCollectLights) {
         // Entities cached while emission collection was off carry no light list; rebuild them once so their lights appear immediately.
         s.staticCache.clear();
+        s.rigidCache.clear();
     }
     s.lastCollectLights = collectLights;
 
@@ -469,6 +540,9 @@ void Entities::resetFrame() {
     std::erase_if(s.staticCache, [&](const auto &item) {
         return s.frameCounter - item.second.lastSeenFrame > STATIC_CACHE_EVICT_FRAMES;
     });
+    std::erase_if(s.rigidCache, [&](const auto &item) {
+        return s.frameCounter - item.second.lastSeenFrame > STATIC_CACHE_EVICT_FRAMES;
+    });
 }
 
 void Entities::queueBuild(const EntitiesBuildTask &task) {
@@ -484,6 +558,27 @@ void Entities::queueBuild(const EntitiesBuildTask &task) {
     for (int e = 0; e < task.entityCount; e++) {
         const EntityInput input = readEntity(task, e, firstGeometry);
         firstGeometry += static_cast<size_t>(input.geometryCount);
+
+        if (input.prebuiltBLAS == RIGID_SHARED_BLAS) {
+            const uint64_t contentKey = keyedContentKey(task, input);
+            if (auto found = s.rigidCache.find(contentKey);
+                found != s.rigidCache.end() && found->second.prototype != nullptr) {
+                found->second.lastSeenFrame = s.frameCounter;
+                s.reused.push_back(cloneRigidInstance(*found->second.prototype, input));
+                timer.entity(true);
+                continue;
+            }
+            s.single.clear();
+            std::shared_ptr<Entity> proto = s.gatherTraced(task, input, -1, s.single, emission);
+            if (proto == nullptr) continue;
+            if (auto build = s.buildCached(*proto); build.has_value()) {
+                s.rigidCache[contentKey] = {s.frameCounter, proto};
+                s.reused.push_back(cloneRigidInstance(*proto, input));
+                s.newStaticBuilds.push_back(std::move(*build));
+            }
+            timer.entity(false);
+            continue;
+        }
 
         // The static cache. A cacheable entity is cached only once its content has stayed the same for two frames
         // in a row, so geometry that animates every frame (a waving banner, a chest while it opens) never pays for
@@ -637,16 +732,29 @@ void Entities::buildLightBuffer() {
     const double reach = Renderer::options.entityLightReach;
     const double reach2 = reach * reach;
     auto &candidates = s.lightCandidates;
+    auto &transformed = s.transformedLights;
     candidates.clear();
+    transformed.clear();
     for (const auto &entity : s.entityBatch->entities) {
         if (entity == nullptr || entity->lightInfos == nullptr || entity->coordinate != World::WORLD) continue;
         const glm::dvec3 origin(entity->x, entity->y, entity->z);
         for (const LightInfo &light : *entity->lightInfos) {
+            if (entity->hasLocalTransform) {
+                const LightInfo local = transformLightInfo(light, entity->localTransform, entity->hashCode);
+                const glm::dvec3 center = origin + glm::dvec3((local.p0 + local.p1 + local.p2) / 3.0f);
+                const glm::dvec3 delta = center - cameraPos;
+                const double distance2 = glm::dot(delta, delta);
+                if (distance2 > reach2) continue;
+                const int idx = static_cast<int>(transformed.size());
+                transformed.push_back(local);
+                candidates.push_back({distance2, nullptr, idx, glm::vec3(origin)});
+                continue;
+            }
             const glm::dvec3 center = origin + glm::dvec3((light.p0 + light.p1 + light.p2) / 3.0f);
             const glm::dvec3 delta = center - cameraPos;
             const double distance2 = glm::dot(delta, delta);
             if (distance2 > reach2) continue;
-            candidates.push_back({distance2, &light, glm::vec3(origin)});
+            candidates.push_back({distance2, &light, -1, glm::vec3(origin)});
         }
     }
     if (candidates.empty()) {
@@ -663,7 +771,8 @@ void Entities::buildLightBuffer() {
     auto &packed = s.packedLights;
     packed.clear();
     for (const State::LightCandidate &candidate : candidates) {
-        const LightInfo &light = *candidate.light;
+        const LightInfo &light =
+            candidate.transformedIndex >= 0 ? transformed[candidate.transformedIndex] : *candidate.light;
         const float maxRadiance = std::max({light.radiance.r, light.radiance.g, light.radiance.b});
         if (light.area <= 1e-6f || maxRadiance <= 1e-6f) continue;
         packed.push_back(packLightAt(light, candidate.origin));
