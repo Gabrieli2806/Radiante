@@ -138,17 +138,17 @@ void main() {
     float previous = texture(postPreviousDofFocus, vec2(0.5)).r;
     bool historyValid = VPT_POST_DOF_FOCUS_HISTORY_READY && !(previous <= 0.0 || previous >= 100000.0);
     float target = VPT_POST_DOF_FOCUS_DISTANCE;
-#if VPT_POST_DOF_AUTO_FOCUS != 0
-    float autoFocus;
-    if (autoFocusDistance(texelSize, autoFocus)) {
-        target = autoFocus;
-    } else {
-        // Nothing to focus on (the sky, or the hand over the whole centre): the focus stays where it was, or far
-        // away when there is nothing to keep. It went to the manual distance, 12 blocks, and the landscape under
-        // an open sky blurred each time the view crossed it.
-        target = historyValid ? previous : VPT_DOF_REST_FOCUS;
+    if (VPT_POST_DOF_AUTO_FOCUS != 0) {
+        float autoFocus;
+        if (autoFocusDistance(texelSize, autoFocus)) {
+            target = autoFocus;
+        } else {
+            // Nothing to focus on (the sky, or the hand over the whole centre): the focus stays where it was, or far
+            // away when there is nothing to keep. It went to the manual distance, 12 blocks, and the landscape under
+            // an open sky blurred each time the view crossed it.
+            target = historyValid ? previous : VPT_DOF_REST_FOCUS;
+        }
     }
-#endif
 
     // No usable history (first frame, reset, or a sentinel value): take the target as is.
     if (!historyValid) {

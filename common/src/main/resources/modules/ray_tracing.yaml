@@ -40,9 +40,11 @@ attributeConfigs:
   - name: "render_pipeline.module.ray_tracing.attribute.use_jitter"
     type: "bool"
     value: "render_pipeline.true"
+    runtime: true
   - name: "render_pipeline.module.ray_tracing.attribute.use_sharc"
     type: "bool"
     value: "render_pipeline.true"
   - name: "render_pipeline.module.ray_tracing.attribute.sharc_debug_mode"
     type: "enum:off-hash_grid-occupancy-heatmap-query_state-query_cache-surface_cache"
     value: "off"
+    runtime: true

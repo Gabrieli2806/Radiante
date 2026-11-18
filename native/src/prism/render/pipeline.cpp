@@ -308,6 +308,15 @@ bool WorldPipeline::setRuntimeAttribute(std::string_view moduleName,
     return applied;
 }
 
+void WorldPipeline::noteShaderPackRuntimeChange() {
+    for (size_t i = 0; i < worldModules_.size(); i++) {
+        if (worldModules_[i] == nullptr || worldModuleNames_[i] != RayTracingModule::NAME) continue;
+        if (auto rt = std::dynamic_pointer_cast<RayTracingModule>(worldModules_[i])) {
+            rt->noteShaderPackRuntimeChange();
+        }
+    }
+}
+
 void WorldPipeline::bindTexture(std::shared_ptr<gpu::Sampler> sampler,
                                 std::shared_ptr<gpu::DeviceLocalImage> image,
                                 int index) {

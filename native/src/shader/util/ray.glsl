@@ -212,15 +212,16 @@ vec3 rayEmissionTint(MainRay ray, vec3 tint, bool viewBounce) {
 #ifndef VPT_ALBEDO_SRGB_EXACT
 #    define VPT_ALBEDO_SRGB_EXACT 0
 #endif
-vec3 vptSurfaceColour(vec3 stored) {
+vec3 vptSurfaceColourGamma(vec3 stored, float gamma) {
     stored = max(stored, vec3(0.0));
 #if VPT_ALBEDO_SRGB_EXACT != 0
     vec3 curved = pow((stored + 0.055) / 1.055, vec3(2.4));
     return mix(stored / 12.92, curved, greaterThan(stored, vec3(0.04045)));
 #else
-    return pow(stored, vec3(VPT_ALBEDO_GAMMA));
+    return pow(stored, vec3(gamma));
 #endif
 }
+#define vptSurfaceColour(stored) vptSurfaceColourGamma((stored), float(VPT_ALBEDO_GAMMA))
 
 // ---- material hand-off ---------------------------------------------------------------------------------------
 // Layer 0: albedo (rgba). Layer 1: f0 and roughness. Layer 2: metallic, transmission, ior, emission.
