@@ -474,6 +474,43 @@ public final class DevAutomation {
             }
             return;
         }
+        if (action.startsWith("compare=")) {
+            String spec = action.substring(8);
+            if (spec.equals("on")) {
+                if (!(minecraft.gui.screen() instanceof com.g2806.radiante.client.gui.RadianteOptionsScreen)) {
+                    minecraft.gui.setScreen(com.g2806.radiante.client.gui.RadianteOptionsScreen.create(null, minecraft.options));
+                }
+                if (minecraft.gui.screen() instanceof com.g2806.radiante.client.gui.RadianteOptionsScreen opts) {
+                    opts.openCompare();
+                    RadianteClient.LOGGER.info("[dev] compare on (baseline={})",
+                        com.g2806.radiante.client.gui.BeforeAfterPreview.hasBaseline());
+                }
+            } else if (spec.equals("off")) {
+                if (minecraft.gui.screen() instanceof com.g2806.radiante.client.gui.RadianteOptionsScreen opts) {
+                    opts.exitCompare();
+                } else {
+                    com.g2806.radiante.client.gui.BeforeAfterPreview.setActive(false);
+                }
+                RadianteClient.LOGGER.info("[dev] compare off");
+            } else if (spec.equals("rebaseline")) {
+                com.g2806.radiante.client.gui.BeforeAfterPreview.requestRebaseline();
+                RadianteClient.LOGGER.info("[dev] compare rebaseline");
+            } else if (spec.startsWith("split:")) {
+                float frac = Float.parseFloat(spec.substring(6));
+                com.g2806.radiante.client.gui.BeforeAfterPreview.setSplitFraction(frac);
+                RadianteClient.LOGGER.info("[dev] compare split {}", frac);
+            } else if (spec.startsWith("tunable:")) {
+                String[] parts = spec.substring(8).split(":");
+                if (!(minecraft.gui.screen() instanceof com.g2806.radiante.client.gui.RadianteOptionsScreen)) {
+                    minecraft.gui.setScreen(com.g2806.radiante.client.gui.RadianteOptionsScreen.create(null, minecraft.options));
+                }
+                if (minecraft.gui.screen() instanceof com.g2806.radiante.client.gui.RadianteOptionsScreen opts) {
+                    opts.stageTunable(parts[0], Integer.parseInt(parts[1]));
+                    RadianteClient.LOGGER.info("[dev] compare staged tunable {}={}", parts[0], parts[1]);
+                }
+            }
+            return;
+        }
         if (action.startsWith("shot=")) {
             String name = action.substring(5) + ".png";
             Screenshot.grab(minecraft.gameDirectory, name, minecraft.gameRenderer.mainRenderTarget(), 1,

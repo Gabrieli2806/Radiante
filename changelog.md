@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Before / After split-screen preview (`Before / After` in the settings screen's top bar while in a ray-traced world): captures the un-blurred world frame when opening the settings session and compares that "Before" reference on the left of a draggable vertical divider (mouse drag or Left/Right arrow keys, `50%` reset and `Set Before` re-baseline; `Ctrl` + `Before / After` re-baselines directly from the settings list) against the live traced "After" world on the right with the HUD hidden and `Esc` returning to the settings screen.
+
 - Interactive Water Ripples (`Sky & Water`, 100% by default): players, boats, mobs, items and projectiles entering, bobbing on or moving across water surfaces and rain puddles within 48 blocks emit radial dispersive wave packets that superpose into concentric splash rings and V-shaped wakes across all water surface modes and standing rain puddles, applying live without rebuilding the pipeline.
 
 - Adaptive Light Grid (`Lighting`, on by default): learns per two-block world cell which nearby block and entity lights actually deliver unoccluded light there (NEE-AT) and samples them from an unbiased defensive mixture with uniform exploration, cutting wasted occluded shadow rays and crawling grain in rooms and caves with dozens of lights while keeping sharp shadows and zero extra frame cost.

@@ -147,6 +147,7 @@ public abstract class GameRendererMixin {
             radiante$screenEffects();
             radiante$debugCrosshair();
         }
+        com.g2806.radiante.client.gui.BeforeAfterPreview.onWorldFrameRendered(this.mainRenderTarget);
         com.g2806.radiante.client.DevAutomation.frameDrawn();
     }
 
