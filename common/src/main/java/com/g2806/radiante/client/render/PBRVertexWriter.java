@@ -802,6 +802,13 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
 
     @Override
     public VertexConsumer setUv2(int u, int v) {
+        if (com.g2806.radiante.client.compat.emfetf.EmfEtfCompat.isEtfSpecialLight(u, v)) {
+            u = com.g2806.radiante.client.compat.emfetf.EmfEtfCompat.ETF_LIGHT_V_FULL;
+            if (this.albedoEmission == 0.0f) {
+                float glow = Glow.MOB_EYES * (com.g2806.radiante.client.option.Options.emissionBrightness / 12.0f);
+                MemoryUtil.memPutFloat(this.current + OFF_ALBEDO_EMISSION, glow);
+            }
+        }
         MemoryUtil.memPutInt(this.current + OFF_USE_LIGHT, 1);
         MemoryUtil.memPutInt(this.current + OFF_LIGHT_UV, u);
         MemoryUtil.memPutInt(this.current + OFF_LIGHT_UV + 4, v);

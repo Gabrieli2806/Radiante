@@ -101,6 +101,7 @@ public final class EntityHands {
             minecraft.gameRenderer.firstPersonHandsAndItemsRenderer.submitHandsWithItems(
                 cameraState.cameraEntityPartialTicks, POSE_STACK, COLLECTOR, playerState,
                 playerState.firstPersonHandsAndItems);
+            COLLECTOR.flushDeferredModels();
         } catch (RuntimeException e) {
             return;
         }
