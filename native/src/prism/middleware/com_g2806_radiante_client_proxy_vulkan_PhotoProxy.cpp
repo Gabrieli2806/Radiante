@@ -39,6 +39,11 @@ JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_PhotoProxy_se
     });
 }
 
+JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_PhotoProxy_setDenoise(JNIEnv *, jclass,
+                                                                                         jboolean denoise) {
+    jni::guard("[Radiante] PhotoProxy.setDenoise", [denoise] { PhotoMode::instance().setDenoise(denoise == JNI_TRUE); });
+}
+
 JNIEXPORT jint JNICALL Java_com_g2806_radiante_client_proxy_vulkan_PhotoProxy_getTargetSamples(JNIEnv *, jclass) {
     return static_cast<jint>(
         jni::guard("[Radiante] PhotoProxy.getTargetSamples", 256u, [] { return PhotoMode::instance().targetSamples(); }));

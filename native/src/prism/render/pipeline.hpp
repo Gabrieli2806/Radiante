@@ -58,8 +58,9 @@ class WorldPipelineBlueprint : public SharedObject<WorldPipelineBlueprint> {
     void setAttributeValue(std::string_view moduleName, const std::string &key, const std::string &value);
     // The attributes of the first module named moduleName (name, value, name, value...); null without one.
     const std::vector<std::string> *attributesOf(std::string_view moduleName) const;
-    // Makes an unupscaled, denoiser-bypassed blueprint (RayTracing -> PhotoAccumulate -> ToneMapping -> PostRender)
-    // copying this blueprint's module settings while leaving the stored blueprint untouched.
+    // Makes Photo Mode's blueprint, leaving the stored one untouched: unupscaled and with the denoiser bypassed
+    // (RayTracing -> PhotoAccumulate -> ToneMapping -> PostRender) for a reference picture, or with Photo Mode's
+    // Denoiser on, this blueprint's own modules with the accumulation put in ahead of its tone mapping.
     bool makePhotoBlueprint(WorldPipelineBlueprint &out) const;
 
   private:
@@ -73,6 +74,11 @@ class WorldPipelineBlueprint : public SharedObject<WorldPipelineBlueprint> {
 
     std::vector<ModuleDesc> modules_;
     std::vector<VkFormat> imageFormats_;
+    // Photo Mode only: the accumulation runs before module photoAccumulateBefore_, reading image photoAccumInput_
+    // and writing image photoAccumOutput_.
+    size_t photoAccumulateBefore_ = 0;
+    uint32_t photoAccumInput_ = 0;
+    uint32_t photoAccumOutput_ = 0;
 };
 
 // The world pipeline built from a blueprint: its modules, and per frame slot the images they share.
@@ -105,6 +111,15 @@ class WorldPipeline : public SharedObject<WorldPipeline> {
     bool isPhotoMode() const {
         return photoMode_;
     }
+    size_t photoAccumulateBefore() const {
+        return photoAccumulateBefore_;
+    }
+    uint32_t photoAccumInput() const {
+        return photoAccumInput_;
+    }
+    uint32_t photoAccumOutput() const {
+        return photoAccumOutput_;
+    }
 
     void bindTexture(std::shared_ptr<gpu::Sampler> sampler, std::shared_ptr<gpu::DeviceLocalImage> image, int index);
 
@@ -123,6 +138,9 @@ class WorldPipeline : public SharedObject<WorldPipeline> {
     std::vector<std::vector<std::shared_ptr<gpu::DeviceLocalImage>>> sharedImages_;
     std::shared_ptr<ShaderPack> shaderPack_;
     bool photoMode_ = false;
+    size_t photoAccumulateBefore_ = 0;
+    uint32_t photoAccumInput_ = 0;
+    uint32_t photoAccumOutput_ = 0;
 
     std::vector<std::shared_ptr<WorldPipelineContext>> contexts_;
 };

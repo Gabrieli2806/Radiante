@@ -851,6 +851,9 @@
   "gui.radiante.photo.hands.hidden": "Manos: Ocultas",
   "gui.radiante.photo.hands.shown": "Manos: Visibles",
   "gui.radiante.photo.hands.tooltip": "Muestra u oculta las manos y objetos en primera persona en la foto.",
+  "gui.radiante.photo.denoiser.on": "Denoiser: Sí",
+  "gui.radiante.photo.denoiser.off": "Denoiser: No (referencia)",
+  "gui.radiante.photo.denoiser.tooltip": "Sí: el denoiser del juego (DLSS Ray Reconstruction, o el de tu upscaler) limpia cada fotograma y el Modo Foto los promedia; queda limpio en unas decenas de muestras. No: se promedia el trazado de rayos tal cual, una imagen de referencia sin denoiser, que necesita miles de muestras para que desaparezca el ruido.",
   "gui.radiante.photo.open_folder": "Carpeta",
   "gui.radiante.photo.open_folder.tooltip": "Abre la carpeta de capturas de pantalla.",
   "gui.radiante.photo.save_png": "Guardar PNG",
@@ -880,5 +883,9 @@
   "options.radiante.compare.exit": "← Ajustes",
   "options.radiante.compare.set_before": "Fijar Antes",
   "options.radiante.compare.set_before.tooltip": "Guarda la vista actual del mundo como nueva referencia Antes.",
-  "options.radiante.compare.hint": "Arrastra el divisor o Izquierda / Derecha · Esc vuelve a ajustes"
+  "options.radiante.compare.off_on": "Radiante No / Sí",
+  "options.radiante.compare.off": "RADIANTE NO",
+  "options.radiante.compare.on": "RADIANTE SÍ",
+  "options.radiante.compare.capturing_off": "Tomando la imagen sin trazado de rayos...",
+  "options.radiante.compare.hint": "Arrastra, rueda o Izq. / Der. · mantén Espacio para Antes · Esc vuelve"
 }

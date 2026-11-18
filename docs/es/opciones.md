@@ -14,8 +14,11 @@ Se abren con `F6` dentro de un mundo, o desde Opciones → Ajustes de vídeo →
   derecha.
 - **Antes / Después** (arriba, dentro de un mundo con trazado activo) aplica los cambios, oculta los paneles y el
   desenfoque del menú, y divide la pantalla entre la imagen al abrir Ajustes (**ANTES**, izquierda) y el mundo trazado
-  en vivo (**DESPUÉS**, derecha), con un divisor arrastrable (o teclas Izquierda / Derecha). Mantén **Ctrl** (o pulsa
-  **Fijar Antes** en la vista dividida) para tomar una nueva referencia; **Esc** o **← Ajustes** vuelve a la lista.
+  en vivo (**DESPUÉS**, derecha), con un divisor que se arrastra, se mueve con la rueda o con Izquierda / Derecha
+  (Inicio / Fin para los bordes), y **50%** para centrarlo. Mantén **Espacio** para ver Antes en toda la pantalla.
+  Mantén **Ctrl** (o pulsa **Fijar Antes** en la vista dividida) para tomar una nueva referencia. **Radiante No / Sí**
+  toma Antes con el trazado de rayos apagado, para comparar el juego sin Radiante y con él (el trazado se apaga dos
+  segundos mientras se toma la imagen del juego). **Esc** o **← Ajustes** vuelve a la lista.
 - **Buscar** encuentra un ajuste en cualquier sección por su nombre.
 - **Avanzado** (abajo) muestra los controles finos de cada sección en grupos plegables, y añade la sección
   Depuración.

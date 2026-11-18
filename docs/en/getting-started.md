@@ -91,7 +91,7 @@ If something else shows up instead:
 | Key | Action |
 |---|---|
 | `F6` | Opens Radiante's settings (also: Options → Video Settings → Radiante). |
-| `F9` | Opens [Photo Mode](photo-mode.md) while in a world. |
+| Unbound | Opens [Photo Mode](photo-mode.md) while in a world; bind it in Controls, under Radiante. |
 | Toggle Ray Tracing (unbound) | Turns ray tracing on or off at once. Give it a key in Minecraft's controls. |
 
 ## Next

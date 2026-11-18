@@ -137,7 +137,8 @@ public final class RadianteClient {
         com.g2806.radiante.client.photo.PhotoMode.checkWorld(minecraft);
         if (com.g2806.radiante.client.gui.BeforeAfterPreview.hasSession()
             && (!com.g2806.radiante.client.gui.BeforeAfterPreview.matchesLevel(minecraft.level)
-                || !RadianteRenderer.isRayTracingEnabled())) {
+                || !RadianteRenderer.isRayTracingEnabled()
+                    && !com.g2806.radiante.client.gui.BeforeAfterPreview.offCapturePending())) {
             com.g2806.radiante.client.gui.BeforeAfterPreview.onSessionClose();
         }
 

@@ -65,6 +65,11 @@ public final class PhotoMode {
     private static float initialExposureBias = 0.0f;
     private static int targetSamples = 256;
     private static boolean hideHands = true;
+    /**
+     * The denoiser in Photo Mode, on by default: averaging the raw paths needs thousands of samples before the noise
+     * goes, and at the default 256 the picture still looked like the game with its denoiser off.
+     */
+    private static boolean denoise = true;
     private static boolean savedHideGui = false;
     private static float moveSpeed = 6.0f;
 
@@ -133,6 +138,7 @@ public final class PhotoMode {
 
         active = true;
         PhotoProxy.setTargetSamples(targetSamples);
+        PhotoProxy.setDenoise(denoise);
         PhotoProxy.setActive(true);
         pushLens();
         PhotoProxy.setExposureBias(exposureBias);
@@ -476,6 +482,17 @@ public final class PhotoMode {
 
     public static int targetSamples() {
         return targetSamples;
+    }
+
+    public static boolean denoise() {
+        return denoise;
+    }
+
+    public static void setDenoise(boolean enabled) {
+        denoise = enabled;
+        if (active) {
+            PhotoProxy.setDenoise(denoise);
+        }
     }
 
     public static void setTargetSamples(int samples) {

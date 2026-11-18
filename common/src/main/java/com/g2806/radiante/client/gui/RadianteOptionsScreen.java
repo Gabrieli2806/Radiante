@@ -240,15 +240,8 @@ public class RadianteOptionsScreen extends SettingsRows {
                     this.minecraft.gui.setScreen(new ShaderPacksScreen(
                         () -> new RadianteOptionsScreen(last, this.options)));
                 },
-                inTracedWorld
-                    ? () -> {
-                        this.applied = true;
-                        // Photo Mode moves the camera: the Before taken here would not match on coming back.
-                        BeforeAfterPreview.onSessionClose();
-                        Screen last = this.lastScreen;
-                        PhotoModeScreen.open(this.minecraft, new RadianteOptionsScreen(last, this.options));
-                    }
-                    : null,
+                // Photo Mode opens from its own key binding (Controls), not from here.
+                null,
                 inTracedWorld ? this::openCompare : null,
                 inTracedWorld ? BeforeAfterPreview::requestRebaseline : null),
             value -> this.scroll = value);
@@ -668,6 +661,7 @@ public class RadianteOptionsScreen extends SettingsRows {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (BeforeAfterPreview.isActive()) {
+            BeforeAfterPreview.mouseScrolled(scrollY);
             return true;
         }
         if (this.layout != null && this.layout.scrollBy(mouseX, mouseY, scrollY)) {
@@ -735,6 +729,9 @@ public class RadianteOptionsScreen extends SettingsRows {
 
     @Override
     public boolean keyReleased(net.minecraft.client.input.KeyEvent event) {
+        if (BeforeAfterPreview.isActive() && BeforeAfterPreview.keyReleased(event)) {
+            return true;
+        }
         // A change made with the keys that lays the screen out again waits for the key to be let go, as a drag waits
         // for the mouse.
         if (this.refreshPending) {
