@@ -506,9 +506,6 @@ void sampleSurfaceState(bool useTexture,
         // Grass and earth: the surfaces the biome tints.
         float porous = any(lessThan(colorLayer, vec3(0.98))) ? 1.0 : 0.0;
         float puddle = open > 0.0 && fullTop ? vptRainPuddleEdge(vptPuddle(rainPos, open, porous)) : 0.0;
-#if defined(RADIANTE_DEBUG_VIEW) && RADIANTE_DEBUG_VIEW == 11
-        g_radianteDebugRain = vec3(wetness, open, puddle);
-#endif
         if (puddle > 0.0) {
             vptApplyPuddle(mat, puddle, porous);
             // Flat water, so the mirror image is sharp: the rings are kept faint on it, as their changing slope
@@ -517,10 +514,42 @@ void sampleSurfaceState(bool useTexture,
                                                            geometricNormal),
                                                 vptRainRippleSlope(rainPos), puddle * PUDDLE_RIPPLES);
         }
-        // The denoiser's albedo guide darkens with the surface: left dry, the wetness counted as light, which the
-        // denoiser builds up over frames, so a wall coming into view (turning a corner) showed dry and then went wet.
-        vec3 wetRatio = clamp(mat.albedo / max(dryAlbedo, vec3(1e-4)), vec3(0.0), vec3(1.0));
-        albedoValue.rgb *= pow(wetRatio, vec3(1.0 / 2.2));
+
+        // Progressive rime frost and snow accumulation in snowy biomes, melted around heat sources.
+        vec2 groundSnow = radianteIsHeld(g_hit.packedData) ? vec2(0.0) : vptGroundSnow(worldPos, baseGeoNormal);
+        float frost = 0.0;
+        float snowCover = 0.0;
+        if (groundSnow.x > 0.0 || groundSnow.y > 0.0) {
+            float snowStrength = clamp(VPT_SNOW_FROST_STRENGTH, 0.0, 2.0);
+            float frostSoak = sqrt(max(min(skyUBO.rainWetness.x, g_vptSnowSoak), 0.0));
+            frost = groundSnow.y * frostSoak * faceShare * snowStrength;
+            if (frost > 0.0 && VPT_RAIN_PIXELS != 0 && useTexture) {
+                vec2 texSize = vec2(textureSize(textures[nonuniformEXT(textureID)], 0));
+                ivec2 texel = ivec2(floor(uv * texSize));
+                float row = (uv.y - atlasUvMin.y) * texSize.y;
+                uint seed = 0u;
+                if (alphaMode == ALPHA_MODE_OPAQUE) {
+                    ivec3 cell = ivec3(floor(worldUBO.cameraPos.xyz + dvec3(worldPos - baseGeoNormal * 0.01)));
+                    seed = uint(cell.x * 73856093 ^ cell.y * 19349663 ^ cell.z * 83492791);
+                }
+                frost = vptRainPixelWetness(frost, texel, row, seed ^ 0x5A39u, !upward, frostSoak);
+            }
+            float snowShare = upward ? (fullTop ? 1.0 : (solidFace ? 0.65 : 0.35)) : 0.0;
+            snowCover = groundSnow.x > 0.0 && snowShare > 0.0 ? vptSnowCover(rainPos, groundSnow.x * snowShare) : 0.0;
+            if (frost > 0.0 || snowCover > 0.0) {
+                vptApplySnowFrost(mat, rainPos, frost, snowCover, upward);
+                shadingNormal = normalizeF(mix(shadingNormal, geometricNormal,
+                                               clamp(snowCover * 0.80 + frost * 0.25, 0.0, 0.88)),
+                                           geometricNormal);
+            }
+        }
+#if defined(RADIANTE_DEBUG_VIEW) && RADIANTE_DEBUG_VIEW == 11
+        g_radianteDebugRain = max(vec3(wetness, open, puddle), vec3(frost, groundSnow.x, snowCover));
+#endif
+        // The denoiser's albedo guide follows both rain darkening and snow whitening immediately, so neither lags
+        // over several frames when turning a corner.
+        vec3 albedoRatio = clamp(mat.albedo / max(dryAlbedo, vec3(1e-4)), vec3(0.0), vec3(64.0));
+        albedoValue.rgb = clamp(albedoValue.rgb * pow(albedoRatio, vec3(1.0 / 2.2)), vec3(0.0), vec3(1.0));
     } else if (useWaterMaterial && baseGeoNormal.y > 0.5 && skyUBO.rainGradient > 0.01) {
         // Rain rings on water under the open sky.
         float open = vptGroundOpen(worldPos, baseGeoNormal);

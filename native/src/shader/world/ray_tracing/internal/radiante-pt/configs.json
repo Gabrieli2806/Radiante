@@ -564,6 +564,13 @@
             "define": "VPT_RAIN_WETNESS_STRENGTH"
         },
         {
+            "name": "render_pipeline.module.ray_tracing.attribute.snow_frost_strength",
+            "type": "float_range:0.0-2.0",
+            "default_value": "1.0",
+            "runtime": true,
+            "define": "VPT_SNOW_FROST_STRENGTH"
+        },
+        {
             "name": "render_pipeline.module.ray_tracing.attribute.rain_wet_walls",
             "type": "float_range:0.0-1.0",
             "default_value": "0.8",
