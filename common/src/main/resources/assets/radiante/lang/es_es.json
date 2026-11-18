@@ -896,7 +896,7 @@
   "options.radiante.optimize_gpu.done_live": "Optimizado: %s · %s (%s ms GPU, %s GB VRAM)",
   "options.radiante.optimize_gpu.done_estimate": "Optimizado: %s · %s (%s GB VRAM)",
   "options.radiante.compare": "Antes / Después",
-  "options.radiante.compare.tooltip": "Aplica tus cambios y compara la imagen al abrir Ajustes (izquierda) con el mundo trazado en vivo (derecha). Mantén Ctrl para fijar una nueva referencia Antes.",
+  "options.radiante.compare.tooltip": "Aplica los cambios y divide la pantalla: el juego sin Radiante a la izquierda (tomado al abrir, con el trazado apagado dos segundos) y el mundo trazado en vivo a la derecha. Pack cambia el shader pack del lado derecho.",
   "options.radiante.compare.before": "ANTES",
   "options.radiante.compare.after": "DESPUÉS",
   "options.radiante.compare.exit": "← Ajustes",
