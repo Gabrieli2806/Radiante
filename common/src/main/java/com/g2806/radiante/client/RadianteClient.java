@@ -134,9 +134,7 @@ public final class RadianteClient {
             }
         }
 
-        if (minecraft.level == null && com.g2806.radiante.client.photo.PhotoMode.isActive()) {
-            com.g2806.radiante.client.photo.PhotoMode.exit();
-        }
+        com.g2806.radiante.client.photo.PhotoMode.checkWorld(minecraft);
 
         while (RadianteKeys.OPEN_SETTINGS.consumeClick()) {
             if (minecraft.gui.screen() == null && !RadianteKeys.OPEN_SETTINGS.isUnbound()) {

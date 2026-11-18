@@ -54,6 +54,7 @@ class Buffers : public SharedObject<Buffers> {
     void setCameraLens(const glm::vec4 &lens);
     void setPhotoJitter(bool active);
     void setAndUploadSkyUniformBuffer(const gpu::Data::SkyUBO &source);
+    gpu::Data::SkyUBO lastWrittenSkyUniform();
     void setAndUploadTextureMappingBuffer(const gpu::Data::TextureMapping &mapping);
 
     // The current frame's copies; null until the first upload of each.
@@ -92,6 +93,7 @@ class Buffers : public SharedObject<Buffers> {
     std::vector<FrameUniforms> uniforms_;
     std::array<glm::vec4, PRISM_PACK_PARAM_COUNT> packParams_{};
     gpu::Data::WorldUBO lastWorld_{};
+    gpu::Data::SkyUBO lastSky_{};
     glm::vec4 cameraLens_{0.0f};
     bool useJitter_ = true;
     bool photoJitter_ = false;

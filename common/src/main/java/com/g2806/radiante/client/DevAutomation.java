@@ -867,6 +867,11 @@ public final class DevAutomation {
             RadianteClient.LOGGER.info("[dev] photo open -> {}", ok);
             return;
         }
+        if (spec.equals("enter")) {
+            boolean ok = com.g2806.radiante.client.photo.PhotoMode.enter(minecraft);
+            RadianteClient.LOGGER.info("[dev] photo enter -> {}", ok);
+            return;
+        }
         if (spec.equals("close")) {
             com.g2806.radiante.client.photo.PhotoMode.exit();
             if (minecraft.gui.screen() instanceof com.g2806.radiante.client.gui.PhotoModeScreen) {

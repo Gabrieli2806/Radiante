@@ -19,4 +19,8 @@ std::string writeHalfRgbExrFile(const std::filesystem::path &path,
                                 const float *rgbaLinear,
                                 bool flipY = false);
 
+// Writes 8-bit RGBA pixels atomically to `path` as a PNG via `std::ofstream` (full Unicode `std::filesystem::path`
+// support on Windows and Linux without narrow ANSI path conversion). Returns empty string on success, or an error.
+std::string writeRgbaPngFile(const std::filesystem::path &path, uint32_t width, uint32_t height, const uint8_t *rgba);
+
 } // namespace exr_writer

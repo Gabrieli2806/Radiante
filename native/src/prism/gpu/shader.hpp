@@ -69,6 +69,7 @@ class Shader : public SharedObject<Shader> {
 
     // From a SPIR-V file.
     Shader(std::shared_ptr<Device> device, std::string path);
+    Shader(std::shared_ptr<Device> device, const std::filesystem::path &path);
     // Compiled from GLSL, without the cache (see compileGlslToSpv).
     Shader(std::shared_ptr<Device> device,
            std::string sourcePath,
