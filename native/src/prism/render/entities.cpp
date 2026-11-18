@@ -105,6 +105,19 @@ GeometryBuffers stageGeometry(PackedGeometry &packed) {
     return buffers;
 }
 
+void ensurePersistentBuffer(std::shared_ptr<gpu::DeviceLocalBuffer> &buffer,
+                            const std::shared_ptr<gpu::VMA> &vma,
+                            const std::shared_ptr<gpu::Device> &device,
+                            size_t bytes,
+                            VkBufferUsageFlags usage,
+                            VkDeviceSize minAlignment = 0) {
+    const size_t needed = std::max<size_t>(bytes, 16);
+    if (buffer == nullptr || buffer->size() < needed) {
+        buffer = gpu::DeviceLocalBuffer::create(vma, device, true, needed + needed / 2, usage, 0,
+                                                VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, minAlignment);
+    }
+}
+
 void queueUploads(Buffers &uploads, const GeometryBuffers &buffers) {
     uploads.queueImportantWorldUpload(buffers.index);
     uploads.queueImportantWorldUpload(buffers.position);
@@ -220,8 +233,8 @@ class EmissionLookup {
 
 struct QueueProfile {
     bool enabled = std::getenv("RADIANTE_DEV_PROFILE") != nullptr;
-    double acquire = 0, kept = 0, built = 0;
-    long keptCount = 0, builtCount = 0;
+    double acquire = 0, kept = 0, built = 0, finalize = 0;
+    long keptCount = 0, builtCount = 0, finalizeCount = 0;
     int calls = 0;
 };
 QueueProfile g_queueProfile;
@@ -237,9 +250,11 @@ class QueueTimer {
 
     ~QueueTimer() {
         if (!g_queueProfile.enabled || ++g_queueProfile.calls < 300) return;
+        const double finDiv = std::max(1L, g_queueProfile.finalizeCount);
         std::cout << "[native profile] entities: acquire(wait)=" << g_queueProfile.acquire / 300
                   << "ms kept=" << g_queueProfile.kept / 300 << "ms (" << g_queueProfile.keptCount / 300
-                  << ") built=" << g_queueProfile.built / 300 << "ms (" << g_queueProfile.builtCount / 300 << ")"
+                  << ") built=" << g_queueProfile.built / 300 << "ms (" << g_queueProfile.builtCount / 300
+                  << ") finalize=" << g_queueProfile.finalize / finDiv << "ms"
                   << std::endl;
         g_queueProfile = QueueProfile{};
     }
@@ -306,6 +321,18 @@ struct Entities::State {
         glm::vec3 origin;
     };
 
+    // Per-frame buffers kept across frames (one more slot than swapchain images so motion-vector history from the
+    // previous frame is still untouched while frames in flight finish). Each buffer grows with headroom and keeps its
+    // staging allocation mapped so dynamic entities and entity lights pay no allocator cost on steady frames.
+    struct PersistentSlot {
+        std::shared_ptr<gpu::DeviceLocalBuffer> index;
+        std::shared_ptr<gpu::DeviceLocalBuffer> position;
+        std::shared_ptr<gpu::DeviceLocalBuffer> material;
+        std::shared_ptr<gpu::DeviceLocalBuffer> lights;
+        std::shared_ptr<gpu::DeviceLocalBuffer> blasStorage;
+        std::shared_ptr<gpu::DeviceLocalBuffer> blasScratch;
+    };
+
     // What the frame has queued.
     PackedGeometry packed;
     std::vector<PendingEntity> pending;
@@ -315,9 +342,12 @@ struct Entities::State {
     // What build() made of it.
     std::shared_ptr<EntityBatch> entityBatch;
     std::shared_ptr<gpu::BlasBatch> blasBatch;
-    std::shared_ptr<gpu::DeviceLocalBuffer> lightBuffer;
     // Kept until a frame records them, across frames that are prepared but never rendered.
     std::vector<std::shared_ptr<gpu::BlasBatch>> staticBlasBatches;
+
+    std::vector<PersistentSlot> persistentRing;
+    size_t ringIndex = 0;
+    bool lastCollectLights = false;
 
     std::unordered_map<int, CacheEntry> staticCache;
     uint64_t frameCounter = 0;
@@ -329,6 +359,12 @@ struct Entities::State {
     std::unordered_map<uint32_t, Emission::TextureOccupancy> occupancy;
     std::vector<LightCandidate> lightCandidates;
     std::vector<PackedLightData> packedLights;
+
+    PersistentSlot &currentSlot(Framework &framework) {
+        const size_t ringCount = std::max<size_t>(4, static_cast<size_t>(framework.swapchain()->imageCount()) + 1);
+        if (persistentRing.size() < ringCount) persistentRing.resize(ringCount);
+        return persistentRing[ringIndex % persistentRing.size()];
+    }
 
     std::shared_ptr<Entity> gatherTraced(const EntitiesBuildTask &task,
                                          const EntityInput &input,
@@ -402,10 +438,22 @@ Entities::~Entities() = default;
 void Entities::resetFrame() {
     SceneStats::entityBlasLastFrame.store(SceneStats::entityBlasThisFrame.exchange(0, std::memory_order_relaxed),
                                           std::memory_order_relaxed);
-    Renderer::instance().framework()->safeAcquireCurrentContext();
+    auto framework = Renderer::instance().framework();
+    framework->safeAcquireCurrentContext();
     State &s = *state_;
 
-    // What the previous frame built retires itself once no frame in flight uses it.
+    // Advance to the next persistent buffer slot; the ring has one more slot than swapchain images so both the
+    // frames in flight and last frame's motion-vector references finish before a slot comes round again.
+    (void) s.currentSlot(*framework);
+    s.ringIndex = (s.ringIndex + 1) % s.persistentRing.size();
+
+    const bool collectLights = Renderer::options.collectChunkEmission.load(std::memory_order_relaxed);
+    if (collectLights && !s.lastCollectLights) {
+        // Entities cached while emission collection was off carry no light list; rebuild them once so their lights appear immediately.
+        s.staticCache.clear();
+    }
+    s.lastCollectLights = collectLights;
+
     s.packed.clear();
     s.pending.clear();
     s.entityBatch = nullptr;
@@ -500,22 +548,51 @@ void Entities::queueBuild(const EntitiesBuildTask &task) {
 }
 
 void Entities::build() {
-    Renderer::instance().framework()->safeAcquireCurrentContext();
+    const auto finalizeStart = g_queueProfile.enabled ? std::chrono::steady_clock::now()
+                                                      : std::chrono::steady_clock::time_point{};
+    auto framework = Renderer::instance().framework();
+    framework->safeAcquireCurrentContext();
     State &s = *state_;
+    State::PersistentSlot &slot = s.currentSlot(*framework);
     Buffers &uploads = *Renderer::instance().buffers();
 
-    // Everything queued since the frame began, in the order it was queued.
-    const GeometryBuffers frameBuffers = stageGeometry(s.packed);
+    // Dynamic entities queued since the frame began go into this slot's persistent geometry and BLAS buffers.
+    GeometryBuffers frameBuffers;
     s.blasBatch = nullptr;
-    if (frameBuffers) {
-        queueUploads(uploads, frameBuffers);
+    if (!s.packed.positions.empty() && !s.packed.indices.empty()) {
+        auto vma = framework->vma();
+        auto device = framework->device();
+        constexpr VkBufferUsageFlags kShaderRead =
+            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+        constexpr VkBufferUsageFlags kBuildInput = VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
+        const size_t positionBytes = s.packed.positions.size() * sizeof(vf::PositionVertex);
+        const size_t materialBytes = s.packed.materials.size() * sizeof(vf::PackedMaterialVertex);
+        const size_t indexBytes = s.packed.indices.size() * sizeof(uint32_t);
+
+        ensurePersistentBuffer(slot.position, vma, device, positionBytes, kShaderRead | kBuildInput);
+        ensurePersistentBuffer(slot.material, vma, device, materialBytes, kShaderRead);
+        ensurePersistentBuffer(slot.index, vma, device, indexBytes, kShaderRead | kBuildInput);
+
+        slot.position->uploadToStagingBuffer(s.packed.positions.data(), positionBytes, 0);
+        slot.material->uploadToStagingBuffer(s.packed.materials.data(), materialBytes, 0);
+        slot.index->uploadToStagingBuffer(s.packed.indices.data(), indexBytes, 0);
+
+        uploads.queueImportantWorldUpload(slot.index, indexBytes);
+        uploads.queueImportantWorldUpload(slot.position, positionBytes);
+        uploads.queueImportantWorldUpload(slot.material, materialBytes);
+
+        frameBuffers = {slot.index, slot.position, slot.material};
         s.blasBatch = gpu::BlasBatch::create();
         s.awaitingStructure.clear();
         for (const State::PendingEntity &pending : s.pending) {
             attachGeometry(*pending.entity, s.packed, pending.firstRange, frameBuffers, *s.blasBatch,
                            s.awaitingStructure);
         }
-        placeStructures(*s.blasBatch, s.awaitingStructure);
+        SceneStats::entityBlasThisFrame.fetch_add(static_cast<uint32_t>(s.awaitingStructure.size()),
+                                                  std::memory_order_relaxed);
+        std::vector<std::shared_ptr<gpu::BLAS>> structures =
+            s.blasBatch->placePersistent(device, vma, slot.blasStorage, &slot.blasScratch);
+        for (size_t i = 0; i < s.awaitingStructure.size(); i++) s.awaitingStructure[i]->blas = std::move(structures[i]);
     }
 
     s.entityBatch = EntityBatch::create();
@@ -533,17 +610,28 @@ void Entities::build() {
     // Cached entities come after the ones built this frame.
     s.entityBatch->entities.insert(s.entityBatch->entities.end(), s.reused.begin(), s.reused.end());
     buildLightBuffer();
+    if (g_queueProfile.enabled) {
+        const auto finalizeEnd = std::chrono::steady_clock::now();
+        g_queueProfile.finalize += std::chrono::duration<double, std::milli>(finalizeEnd - finalizeStart).count();
+        g_queueProfile.finalizeCount++;
+    }
 }
 
-// The lights of the entities just built, in the buffer WorldUBO points the shaders at. The world uniform of a frame
-// is written before its entities are built, so it carries the buffer of the build before.
+// The lights of the entities just built, staged into the current slot's persistent light buffer and published straight
+// into this frame's WorldUBO so newly spawned or toggled lights illuminate the frame they are built in.
 void Entities::buildLightBuffer() {
     State &s = *state_;
-    // That previous buffer is still read by the frames in flight; it retires itself once they are done.
-    s.lightBuffer = nullptr;
     lightBufferAddress_ = 0;
     lightCount_ = 0;
-    if (s.entityBatch == nullptr || !Renderer::options.collectChunkEmission) return;
+    const auto publish = [&]() {
+        if (auto buffers = Renderer::instance().buffers(); buffers != nullptr) {
+            buffers->setCurrentFrameEntityLights(lightBufferAddress_, lightCount_);
+        }
+    };
+    if (s.entityBatch == nullptr || !Renderer::options.collectChunkEmission) {
+        publish();
+        return;
+    }
 
     const glm::dvec3 cameraPos = Renderer::instance().world()->getCameraPos();
     const double reach = Renderer::options.entityLightReach;
@@ -561,7 +649,10 @@ void Entities::buildLightBuffer() {
             candidates.push_back({distance2, &light, glm::vec3(origin)});
         }
     }
-    if (candidates.empty()) return;
+    if (candidates.empty()) {
+        publish();
+        return;
+    }
     if (candidates.size() > MAX_ENTITY_LIGHTS) {
         std::nth_element(
             candidates.begin(), candidates.begin() + MAX_ENTITY_LIGHTS, candidates.end(),
@@ -577,18 +668,21 @@ void Entities::buildLightBuffer() {
         if (light.area <= 1e-6f || maxRadiance <= 1e-6f) continue;
         packed.push_back(packLightAt(light, candidate.origin));
     }
-    if (packed.empty()) return;
+    if (packed.empty()) {
+        publish();
+        return;
+    }
 
     auto framework = Renderer::instance().framework();
+    State::PersistentSlot &slot = s.currentSlot(*framework);
     const size_t bytes = packed.size() * sizeof(PackedLightData);
-    s.lightBuffer =
-        gpu::DeviceLocalBuffer::create(framework->vma(), framework->device(), false, bytes,
-                                       VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                       0, VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, 16);
-    s.lightBuffer->uploadToStagingBuffer(packed.data(), bytes, 0);
-    Renderer::instance().buffers()->queueImportantWorldUpload(s.lightBuffer);
-    lightBufferAddress_ = s.lightBuffer->bufferAddress();
+    ensurePersistentBuffer(slot.lights, framework->vma(), framework->device(), bytes,
+                           VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, 16);
+    slot.lights->uploadToStagingBuffer(packed.data(), bytes, 0);
+    Renderer::instance().buffers()->queueImportantWorldUpload(slot.lights, bytes);
+    lightBufferAddress_ = slot.lights->bufferAddress();
     lightCount_ = static_cast<uint32_t>(packed.size());
+    publish();
 }
 
 void Entities::close() {

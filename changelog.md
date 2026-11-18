@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Dynamic entities, their acceleration structures and their lights reuse a ring of persistent GPU buffers instead of allocating and retiring new ones every frame, and glowing entities light the frame they appear or are enabled in instead of a frame later.
+
 - HDR Output now keeps the chosen tone mapping curve, grade, bloom and the Nether's lava hue shoulder instead of replacing them with PBR Neutral, and keeps HDR highlights through Stars, Motion Blur, Depth of Field and a shader pack's post grade instead of falling back to SDR on the pixels they touch.
 
 - High resolution resource packs: a new Texture Detail setting (Performance) sets how much of a pack's detail the ray tracer keeps, Automatic by default. Its copies of the textures took over a gigabyte of video memory with a 128 px pack, and once the card ran out every frame slowed down: 31 ms of GPU time against 4.4 with vanilla textures on a 12 GB card shared with other programs. Automatic keeps up to 128 px a block and halves the detail only when the copies would take more than a fifth of the video memory left to the game, which the renderer now asks the driver for; a 128 px pack halved costs what vanilla textures do. Menus and held items keep full detail. Leaves and grass of 128 px packs keep their opacity micromaps (they went to the slow any-hit shader past 64 px).

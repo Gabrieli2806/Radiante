@@ -30,9 +30,13 @@ class Buffers : public SharedObject<Buffers> {
     // Records every queued copy into the current frame's upload command buffer, with the barriers around them.
     void performQueuedUpload();
 
-    // Queues the copy of a buffer's staging memory into the buffer. It stays queued until a frame records it: a frame
-    // dropped before it got that far (a rebuild) must not lose it.
-    void queueImportantWorldUpload(std::shared_ptr<gpu::DeviceLocalBuffer> buffer);
+    // Queues the copy of a buffer's staging memory into the buffer (`bytes` == 0 copies the whole buffer). It stays
+    // queued until a frame records it: a frame dropped before it got that far (a rebuild) must not lose it.
+    void queueImportantWorldUpload(std::shared_ptr<gpu::DeviceLocalBuffer> buffer, size_t bytes = 0);
+
+    // Publishes the current frame's entity light buffer into this frame's WorldUBO so newly spawned or toggled entity
+    // lights show on the frame they are built instead of a frame later.
+    void setCurrentFrameEntityLights(VkDeviceAddress address, uint32_t count);
 
     // Completes the world uniform Java filled (everything before packParams) and writes it to the current frame's
     // buffer; the one written the time before goes to lastWorldUniformBuffer. ubo is left holding what was written.
@@ -92,7 +96,11 @@ class Buffers : public SharedObject<Buffers> {
     std::uniform_int_distribution<int32_t> seedDistribution_;
     std::shared_ptr<gpu::DeviceLocalBuffer> lightMeter_;
 
-    std::vector<std::shared_ptr<gpu::DeviceLocalBuffer>> importantUploads_;
+    struct QueuedUpload {
+        std::shared_ptr<gpu::DeviceLocalBuffer> buffer;
+        size_t bytes = 0;
+    };
+    std::vector<QueuedUpload> importantUploads_;
     // Reused by every performQueuedUpload.
     std::vector<VkBufferMemoryBarrier2> uploadBarriers_;
 };

@@ -181,7 +181,8 @@ std::shared_ptr<DeviceLocalBuffer> recordBlasBuilds(const std::shared_ptr<Comman
                                                     std::span<const std::shared_ptr<BlasBuild>> builds,
                                                     const std::shared_ptr<PhysicalDevice> &physicalDevice,
                                                     const std::shared_ptr<Device> &device,
-                                                    const std::shared_ptr<VMA> &vma) {
+                                                    const std::shared_ptr<VMA> &vma,
+                                                    std::shared_ptr<DeviceLocalBuffer> *reusableScratch) {
     const VkDeviceSize alignment = scratchAlignment(physicalDevice);
     std::vector<VkDeviceSize> offsets;
     offsets.reserve(builds.size());
@@ -206,8 +207,17 @@ std::shared_ptr<DeviceLocalBuffer> recordBlasBuilds(const std::shared_ptr<Comman
         }
     }
     const VkDeviceSize micromapScratch = alignUp(micromapScratchSize(micromaps, alignment), alignment);
+    const VkDeviceSize needed = std::max<VkDeviceSize>(micromapScratch + total, 256);
 
-    auto scratch = allocateScratch(physicalDevice, device, vma, micromapScratch + total);
+    std::shared_ptr<DeviceLocalBuffer> scratch;
+    if (reusableScratch != nullptr) {
+        if (*reusableScratch == nullptr || (*reusableScratch)->size() < needed) {
+            *reusableScratch = allocateScratch(physicalDevice, device, vma, needed + needed / 2);
+        }
+        scratch = *reusableScratch;
+    } else {
+        scratch = allocateScratch(physicalDevice, device, vma, needed);
+    }
     recordMicromapBuilds(commandBuffer, micromaps, scratch->bufferAddress(), alignment);
     const VkDeviceAddress scratchAddress = scratch->bufferAddress() + micromapScratch;
 
@@ -293,11 +303,36 @@ std::vector<std::shared_ptr<BLAS>> BlasBatch::place(const std::shared_ptr<Device
     return placed;
 }
 
+std::vector<std::shared_ptr<BLAS>> BlasBatch::placePersistent(const std::shared_ptr<Device> &device,
+                                                              const std::shared_ptr<VMA> &vma,
+                                                              std::shared_ptr<DeviceLocalBuffer> &reusableStorage,
+                                                              std::shared_ptr<DeviceLocalBuffer> *reusableScratch) {
+    persistentScratch_ = reusableScratch;
+    std::vector<VkDeviceSize> offsets;
+    offsets.reserve(builds_.size());
+    VkDeviceSize total = 0;
+    for (const auto &build : builds_) {
+        offsets.push_back(total);
+        total = alignUp(total + build->sizes(device).accelerationStructureSize, kStructureAlignment);
+    }
+
+    std::vector<std::shared_ptr<BLAS>> placed;
+    if (builds_.empty()) return placed;
+    const VkDeviceSize needed = std::max<VkDeviceSize>(total, 4096);
+    if (reusableStorage == nullptr || reusableStorage->size() < needed) {
+        reusableStorage = allocateStructureStorage(device, vma, needed + needed / 2);
+    }
+    storage_ = reusableStorage;
+    placed.reserve(builds_.size());
+    for (size_t i = 0; i < builds_.size(); i++) placed.push_back(builds_[i]->placeIn(device, storage_, offsets[i]));
+    return placed;
+}
+
 void BlasBatch::record(const std::shared_ptr<CommandBuffer> &commandBuffer,
                        const std::shared_ptr<PhysicalDevice> &physicalDevice,
                        const std::shared_ptr<Device> &device,
                        const std::shared_ptr<VMA> &vma) {
-    scratch_ = recordBlasBuilds(commandBuffer, builds_, physicalDevice, device, vma);
+    scratch_ = recordBlasBuilds(commandBuffer, builds_, physicalDevice, device, vma, persistentScratch_);
 }
 
 VkDeviceSize BlasBatch::storageBytes() const {

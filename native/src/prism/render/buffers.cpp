@@ -18,6 +18,7 @@
 static_assert(offsetof(gpu::Data::WorldUBO, windTime) == 692); // BufferProxy.WIND_OFFSET
 static_assert(offsetof(gpu::Data::WorldUBO, offHandLightPos) == 704);
 static_assert(offsetof(gpu::Data::WorldUBO, packParams) == 736);
+static_assert(offsetof(gpu::Data::WorldUBO, entityLightPad) == offsetof(gpu::Data::WorldUBO, entityLightCount) + 12);
 static_assert(sizeof(gpu::Data::WorldUBO) == 736 + 16 * PRISM_PACK_PARAM_COUNT + 16);
 
 namespace {
@@ -141,14 +142,20 @@ void Buffers::performQueuedUpload() {
 
     // Earlier transfers out of these buffers finish before they are overwritten.
     uploadBarriers_.clear();
-    for (const auto &buffer : importantUploads_) {
-        uploadBarriers_.push_back(bufferBarrier(buffer->vkBuffer(), queueFamily, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+    for (const auto &upload : importantUploads_) {
+        uploadBarriers_.push_back(bufferBarrier(upload.buffer->vkBuffer(), queueFamily, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
                                                 VK_ACCESS_2_MEMORY_READ_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
                                                 VK_ACCESS_2_MEMORY_WRITE_BIT));
     }
     recordBarriers(commandBuffer->vkCommandBuffer(), uploadBarriers_);
 
-    for (const auto &buffer : importantUploads_) buffer->uploadToBuffer(commandBuffer);
+    for (const auto &upload : importantUploads_) {
+        if (upload.bytes > 0) {
+            upload.buffer->uploadToBuffer(commandBuffer, upload.bytes, 0, 0);
+        } else {
+            upload.buffer->uploadToBuffer(commandBuffer);
+        }
+    }
 
     // World geometry feeds acceleration structure builds and ray tracing, and the stages that read it as plain data.
     // Section buffers also hold the inputs of their opacity micromaps, where the device has them.
@@ -159,18 +166,35 @@ void Buffers::performQueuedUpload() {
         (gpu::opacityMicromapsEnabled() ? VK_PIPELINE_STAGE_2_MICROMAP_BUILD_BIT_EXT : VK_PIPELINE_STAGE_2_NONE);
     constexpr VkAccessFlags2 readWrite = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
     uploadBarriers_.clear();
-    for (const auto &buffer : importantUploads_) {
-        uploadBarriers_.push_back(bufferBarrier(buffer->vkBuffer(), queueFamily, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+    for (const auto &upload : importantUploads_) {
+        uploadBarriers_.push_back(bufferBarrier(upload.buffer->vkBuffer(), queueFamily, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
                                                 readWrite, worldReaders, readWrite));
     }
     recordBarriers(commandBuffer->vkCommandBuffer(), uploadBarriers_);
     importantUploads_.clear();
 }
 
-void Buffers::queueImportantWorldUpload(std::shared_ptr<gpu::DeviceLocalBuffer> buffer) {
+void Buffers::queueImportantWorldUpload(std::shared_ptr<gpu::DeviceLocalBuffer> buffer, size_t bytes) {
     if (buffer == nullptr) return;
     std::scoped_lock lock(mutex_);
-    importantUploads_.push_back(std::move(buffer));
+    importantUploads_.push_back({std::move(buffer), bytes});
+}
+
+void Buffers::setCurrentFrameEntityLights(VkDeviceAddress address, uint32_t count) {
+    auto framework = this->framework();
+    const uint32_t frame = framework->safeAcquireCurrentContext()->frameIndex;
+    std::scoped_lock lock(mutex_);
+    const uint32_t validCount = (address != 0 && count > 0) ? count : 0u;
+    const uint32_t lo = validCount > 0 ? low32(address) : 0u;
+    const uint32_t hi = validCount > 0 ? high32(address) : 0u;
+    lastWorld_.entityLightCount = validCount;
+    lastWorld_.entityLightAddressLo = lo;
+    lastWorld_.entityLightAddressHi = hi;
+    lastWorld_.entityLightPad = 0;
+    if (frame < uniforms_.size() && uniforms_[frame].world != nullptr) {
+        const uint32_t words[4] = {validCount, lo, hi, 0u};
+        write(*uniforms_[frame].world, words, sizeof(words), offsetof(gpu::Data::WorldUBO, entityLightCount));
+    }
 }
 
 void Buffers::setAndUploadWorldUniformBuffer(gpu::Data::WorldUBO &ubo) {
