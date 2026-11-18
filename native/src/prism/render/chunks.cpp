@@ -47,22 +47,20 @@ void Chunks::bumpContentVersion() {
 
 void Chunks::reset(uint32_t numChunks, uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ, int32_t bottomSectionCoord) {
     std::unique_lock<std::recursive_mutex> lock(mutex_);
-    auto device = Renderer::instance().framework()->device();
 
-    // Rejoining a world replaces every section. Builds still running on the GPU and frames already handed to
-    // Minecraft reference the old buffers and structures: finish the builds, and keep the old sections alive until
-    // those frames are done.
-    if (chunkBuildScheduler_ != nullptr) chunkBuildScheduler_->waitAllBatchesFinish();
-    gpu::diagnostics::onResult(vkQueueWaitIdle(device->mainVkQueue()), device->mainVkQueue(),
-                               device->secondaryQueue());
-    gpu::diagnostics::onResult(vkQueueWaitIdle(device->secondaryQueue()), device->mainVkQueue(),
-                               device->secondaryQueue());
+    // Rejoining a world or changing the render distance replaces every section without stalling the queues: batches
+    // still running on the GPU stay in retiredSchedulers_ until their own fences signal, and frames already handed to
+    // Minecraft keep the old sections alive through gpu::retire.
+    for (const auto &retired : retiredSchedulers_) retired->discardResults();
+    retireScheduler(false);
+    pollRetiredSchedulers();
     // The old slots point into occupied_, which is about to be replaced.
     for (const auto &slot : chunks_) {
         if (slot != nullptr) slot->occupiedFlag = nullptr;
     }
     retireWithFrames(std::exchange(chunks_, {}), std::exchange(chunkBuildDatas_, {}),
-                     std::exchange(chunkPackedDataBuffers_, {}), std::exchange(chunkBuildScheduler_, nullptr));
+                     std::exchange(chunkPackedDataBuffers_, {}), std::exchange(importantBlasBuilds_, {}),
+                     std::exchange(pendingCompactions_, {}));
 
     sizeX_ = static_cast<int32_t>(sizeX);
     sizeY_ = static_cast<int32_t>(sizeY);
@@ -74,8 +72,6 @@ void Chunks::reset(uint32_t numChunks, uint32_t sizeX, uint32_t sizeY, uint32_t 
     lodJavaVersion_++;
     // Builds still on their way from the old grid carry its versions: they are dropped on arrival.
     generation_++;
-    importantBlasBuilds_.clear();
-    pendingCompactions_.clear();
 
     occupied_.assign(numChunks, 0);
     chunks_.reserve(numChunks);
@@ -100,16 +96,19 @@ void Chunks::reset(uint32_t numChunks, uint32_t sizeX, uint32_t sizeY, uint32_t 
 void Chunks::resetScheduler() {
     std::unique_lock<std::recursive_mutex> lock(mutex_);
     if (chunkBuildScheduler_ == nullptr) return;
-    chunkBuildScheduler_->waitAllBatchesFinish();
+    retireScheduler(true);
+    pollRetiredSchedulers();
     chunkBuildScheduler_ = makeScheduler();
 }
 
 void Chunks::setCollectChunkEmission(bool collect) {
     std::unique_lock<std::recursive_mutex> lock(mutex_);
-    if (chunkBuildScheduler_ != nullptr) chunkBuildScheduler_->waitAllBatchesFinish();
+    if (chunkBuildScheduler_ != nullptr) chunkBuildScheduler_->returnGathering();
+    pollRetiredSchedulers();
 
     // The waiting sections only take the new setting here; their lights are built when a batch takes them, outside
-    // the lock the render thread needs every frame.
+    // the lock the render thread needs every frame. Batches already submitted finish without blocking: swapIn drops
+    // their lights when emission was turned off, and Java's rebuildAll replaces them when it was turned on.
     for (const auto &data : chunkBuildDatas_) {
         if (data == nullptr) continue;
         data->collectEmission = collect;
@@ -128,6 +127,7 @@ void Chunks::setCollectChunkEmission(bool collect) {
 void Chunks::resetFrame() {
     auto context = Renderer::instance().framework()->safeAcquireCurrentContext();
     std::unique_lock<std::recursive_mutex> lock(mutex_);
+    pollRetiredSchedulers();
     if (!Renderer::options.collectChunkEmission || chunkPackedData_.empty()) return;
     const uint32_t frame = context->frameIndex;
     if (frame >= chunkPackedDataBuffers_.size() || chunkPackedDataBuffers_[frame] == nullptr) return;
@@ -252,6 +252,7 @@ void Chunks::close() {
         chunkBuildScheduler_->waitAllBatchesFinish();
         chunkBuildScheduler_ = nullptr;
     }
+    waitRetiredSchedulers();
 
     pending_.reset(0);
     windSlots_.reset(0);
@@ -445,6 +446,10 @@ bool Chunks::swapIn(ChunkBuildData &data) {
     Chunk1 &slot = *chunks_[data.id];
     slot.lastUpdate = Clock::now();
     if (data.version <= slot.blasVersion) return false;
+    if (!Renderer::options.collectChunkEmission) {
+        data.lightBuffer = nullptr;
+        data.lightCount = 0;
+    }
 
     retireDrawn(slot);
     slot.blasVersion = data.version;
@@ -580,6 +585,31 @@ void Chunks::releaseEmissionResources() {
     chunkPackedDataRevision_++;
     retireWithFrames(std::exchange(chunkPackedDataBuffers_, {}));
     chunkPackedDataUploaded_.clear();
+}
+
+void Chunks::retireScheduler(bool swapInWhenDone) {
+    if (chunkBuildScheduler_ == nullptr) return;
+    auto retiring = std::exchange(chunkBuildScheduler_, nullptr);
+    if (retiring->retire(swapInWhenDone)) {
+        retiredSchedulers_.push_back(std::move(retiring));
+    }
+}
+
+void Chunks::pollRetiredSchedulers() {
+    for (size_t i = 0; i < retiredSchedulers_.size();) {
+        if (retiredSchedulers_[i]->pollRetired()) {
+            retiredSchedulers_.erase(retiredSchedulers_.begin() + static_cast<std::ptrdiff_t>(i));
+        } else {
+            i++;
+        }
+    }
+}
+
+void Chunks::waitRetiredSchedulers() {
+    for (const auto &scheduler : retiredSchedulers_) {
+        scheduler->waitAllBatchesFinish();
+    }
+    retiredSchedulers_.clear();
 }
 
 std::shared_ptr<ChunkBuildScheduler> Chunks::makeScheduler() {

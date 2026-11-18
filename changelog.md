@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Changing render distance, rejoining a world, adjusting chunk build batch settings or toggling block-light collection no longer stalls the Vulkan queues on the render thread: in-flight chunk batches retire asynchronously once their own fences signal, each scheduler owns its command pool, and Distant Horizons LOD builder threads and split margin scale with CPU core count and horizontal flight speed.
+
 - Optimize GPU button in the settings sidebar: runs a short hardware GPU timestamp probe in the world (or estimates from GPU model, resolution and VRAM budget in the menus), normalizes for the active settings' load so repeated runs do not oscillate, and stages the optimal upscaler pipeline, quality tier, render distance, texture detail, NVIDIA Reflex and automatic chunk building.
 
 - Photo Mode (`F9` or the Photo Mode button in the settings screen): pauses the scene on an unupscaled, denoiser-bypassed Monte Carlo reference pipeline with progressive 32-bit float accumulation, a camera-traced physical thin-lens model (aperture radius, click-to-focus focal plane, circular or polygonal iris blades and blade rotation), free-fly camera, field of view, camera roll, live exposure adjustment without discarding converged samples, and atomic PNG and 16-bit float linear HDR OpenEXR (`.exr`) export.

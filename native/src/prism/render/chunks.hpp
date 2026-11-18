@@ -130,8 +130,17 @@ class ChunkBuildScheduler : public SharedObject<ChunkBuildScheduler> {
     // Swaps in the sections of the batches the GPU has finished.
     void tryCheckBatchesFinish();
     // Waits for the batches in flight and swaps them in; the sections gathered for the next batch go back to the
-    // queue.
+    // queue. For renderer shutdown only.
     void waitAllBatchesFinish();
+    // Returns any sections gathered for the next batch back to the queue without waiting on batches in flight.
+    void returnGathering();
+    // Hands this scheduler over to non-blocking retirement: returns gathered sections, drops idle submissions, and
+    // returns true while batches remain in flight on the GPU.
+    bool retire(bool swapInWhenDone);
+    // Marks a retiring scheduler's remaining batches to be discarded once their fences signal (after a grid reset).
+    void discardResults();
+    // Polls retiring batches without blocking; returns true once none remain in flight.
+    bool pollRetired();
     // Gathers and submits batches of up to maxBatchSize sections while this frame's small time budget lasts.
     void tryScheduleBatches(uint32_t maxBatchSize);
 
@@ -149,13 +158,16 @@ class ChunkBuildScheduler : public SharedObject<ChunkBuildScheduler> {
     };
 
     bool submit(Batch &batch, const Submission &submission);
-    void finish(InFlight &inFlight);
+    void finish(InFlight &inFlight, bool returnSubmission);
+    void discard(InFlight &inFlight);
     void collectCompactions(Batch &batch);
 
     Chunks &chunks_;
     uint32_t batchSize_;
     // Builds go to the secondary queue when it shares the main queue's family, to the main queue otherwise.
     bool useSecondaryQueue_ = false;
+    bool swapInWhenRetired_ = true;
+    std::shared_ptr<gpu::CommandPool> pool_;
     std::vector<Submission> idle_;
     std::vector<InFlight> inFlight_;
     // Sections taken from the queue for the next batch; a partial batch waits a few frames for more to join it.
@@ -270,6 +282,9 @@ class Chunks : public SharedObject<Chunks> {
     uint32_t lightNeighboursOf(const ChunkPackedData &entry) const;
     void allocateChunkPackedDataBuffers();
     void releaseEmissionResources();
+    void retireScheduler(bool swapInWhenDone);
+    void pollRetiredSchedulers();
+    void waitRetiredSchedulers();
     std::shared_ptr<ChunkBuildScheduler> makeScheduler();
 
     std::recursive_mutex mutex_;
@@ -281,6 +296,7 @@ class Chunks : public SharedObject<Chunks> {
     PendingSlots pending_;
     std::vector<std::pair<float, int64_t>> rankedScratch_;
     std::shared_ptr<ChunkBuildScheduler> chunkBuildScheduler_;
+    std::vector<std::shared_ptr<ChunkBuildScheduler>> retiredSchedulers_;
     std::vector<std::shared_ptr<gpu::BlasBuild>> importantBlasBuilds_;
 
     // The wind pass: the slots with foliage that sways, those the last pass moved, its pipeline, per frame slot the
