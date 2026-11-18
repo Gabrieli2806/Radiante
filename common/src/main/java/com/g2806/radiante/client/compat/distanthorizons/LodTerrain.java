@@ -49,6 +49,7 @@ final class LodTerrain {
      */
     private static final double SPLIT_HYSTERESIS = 1.35;
     private static final long RESELECT_INTERVAL_NS = 500_000_000L;
+    private static final long FAST_RESELECT_INTERVAL_NS = 150_000_000L;
     private static final double RESELECT_DISTANCE = 8.0;
     /** How often built sections are checked for newer data: generation filling them in, or edits. */
     private static final long REFRESH_INTERVAL_NS = 5_000_000_000L;
@@ -60,13 +61,14 @@ final class LodTerrain {
     private static final long UNDATED_REFRESH_NS = 30_000_000_000L;
     /** A section Distant Horizons had no data for is asked again after this long. */
     private static final long RETRY_INTERVAL_NS = 15_000_000_000L;
-    private static final int BUILDER_THREADS = 3;
+    private static final int MIN_BUILDER_THREADS = 2;
+    private static final int MAX_BUILDER_THREADS = 8;
     /**
-     * Chunks past the loaded area that coarse sections leave out as well. They are built again when the player
-     * moves, and flying fast the loaded area outran the rebuild: coarse blocks dozens wide stood over the new
-     * chunks for a second or two. The margin gives the rebuild that long to land.
+     * Chunks past the loaded area that coarse sections split across as well: widened with horizontal camera speed so
+     * fast flight splits far sections ahead of newly arriving chunks.
      */
-    private static final int SQUARE_MARGIN_CHUNKS = 4;
+    private static final int MIN_SQUARE_MARGIN_CHUNKS = 4;
+    private static final int MAX_SQUARE_MARGIN_CHUNKS = 12;
     private static final int ALL_QUADRANTS = 0xF;
 
     private final Map<Long, Tile> tiles = new HashMap<>();
@@ -91,6 +93,10 @@ final class LodTerrain {
     private double lastSelectX = Double.NaN;
     private double lastSelectZ = Double.NaN;
     private long lastSelect;
+    private double lastSpeedX = Double.NaN;
+    private double lastSpeedZ = Double.NaN;
+    private long lastSpeedTimeNs;
+    private double horizontalSpeedBps;
     private long lastRefresh;
     private float reach;
     private volatile boolean closed;
@@ -110,13 +116,34 @@ final class LodTerrain {
         requests.setDaemon(true);
         requests.setPriority(Thread.NORM_PRIORITY - 2);
         requests.start();
-        for (int i = 0; i < BUILDER_THREADS; i++) {
+        int builderCount = builderThreadCount(Runtime.getRuntime().availableProcessors());
+        for (int i = 0; i < builderCount; i++) {
             Thread thread = new Thread(this::buildLoop, "Radiante LOD Builder " + i);
             thread.setDaemon(true);
             thread.setPriority(Thread.NORM_PRIORITY - 2);
             thread.start();
             this.builders.add(thread);
         }
+    }
+
+    static int builderThreadCount(int logicalProcessors) {
+        return Math.clamp(logicalProcessors / 3, MIN_BUILDER_THREADS, MAX_BUILDER_THREADS);
+    }
+
+    static int squareMarginChunks(double horizontalSpeedBps) {
+        if (!Double.isFinite(horizontalSpeedBps) || horizontalSpeedBps <= 6.0) {
+            return MIN_SQUARE_MARGIN_CHUNKS;
+        }
+        int lookahead = (int) Math.ceil((horizontalSpeedBps - 6.0) * 1.5 / 16.0);
+        return Math.clamp(MIN_SQUARE_MARGIN_CHUNKS + lookahead, MIN_SQUARE_MARGIN_CHUNKS, MAX_SQUARE_MARGIN_CHUNKS);
+    }
+
+    static long reselectIntervalNs(double horizontalSpeedBps) {
+        if (!Double.isFinite(horizontalSpeedBps) || horizontalSpeedBps <= 8.0) {
+            return RESELECT_INTERVAL_NS;
+        }
+        double t = Math.clamp((horizontalSpeedBps - 8.0) / 32.0, 0.0, 1.0);
+        return Math.round(RESELECT_INTERVAL_NS - t * (RESELECT_INTERVAL_NS - FAST_RESELECT_INTERVAL_NS));
     }
 
     float reach() {
@@ -154,6 +181,7 @@ final class LodTerrain {
         confirmBuilt();
 
         long now = System.nanoTime();
+        updateHorizontalSpeed(camera.x, camera.z, now);
         int distance = DhData.renderDistanceBlocks();
         this.reach = (float) (distance * Math.sqrt(2.0) + 512.0);
         if (!this.generationRequestsFailed) {
@@ -161,7 +189,7 @@ final class LodTerrain {
         }
         boolean moved = Double.isNaN(this.lastSelectX)
             || Math.abs(camera.x - this.lastSelectX) + Math.abs(camera.z - this.lastSelectZ) > RESELECT_DISTANCE;
-        if (moved || now - this.lastSelect > RESELECT_INTERVAL_NS) {
+        if (moved || now - this.lastSelect > reselectIntervalNs(this.horizontalSpeedBps)) {
             this.lastSelect = now;
             this.lastSelectX = camera.x;
             this.lastSelectZ = camera.z;
@@ -175,6 +203,31 @@ final class LodTerrain {
                 }
             }
         }
+    }
+
+    private void updateHorizontalSpeed(double x, double z, long now) {
+        if (Double.isNaN(this.lastSpeedX)) {
+            this.lastSpeedX = x;
+            this.lastSpeedZ = z;
+            this.lastSpeedTimeNs = now;
+            this.horizontalSpeedBps = 0.0;
+            return;
+        }
+        long dtNs = now - this.lastSpeedTimeNs;
+        if (dtNs < 25_000_000L) {
+            return;
+        }
+        double dist = Math.hypot(x - this.lastSpeedX, z - this.lastSpeedZ);
+        this.lastSpeedX = x;
+        this.lastSpeedZ = z;
+        this.lastSpeedTimeNs = now;
+        if (dtNs > 1_000_000_000L || dist > 256.0) {
+            this.horizontalSpeedBps *= 0.5;
+            return;
+        }
+        double instant = dist / (dtNs * 1.0e-9);
+        double blend = instant > this.horizontalSpeedBps ? 0.35 : 0.12;
+        this.horizontalSpeedBps += (instant - this.horizontalSpeedBps) * blend;
     }
 
     void close() {
@@ -214,7 +267,9 @@ final class LodTerrain {
         int loadedRadius = minecraft.options.getEffectiveRenderDistance();
         int cameraChunkX = Math.floorDiv((int) Math.floor(camera.x), 16);
         int cameraChunkZ = Math.floorDiv((int) Math.floor(camera.z), 16);
-        Selection selection = new Selection(level, camera, distance, cameraChunkX, cameraChunkZ, loadedRadius, now);
+        int marginChunks = squareMarginChunks(this.horizontalSpeedBps);
+        Selection selection =
+            new Selection(level, camera, distance, cameraChunkX, cameraChunkZ, loadedRadius, marginChunks, now);
 
         int rootWidth = 1 << COARSEST_DETAIL;
         int minRootX = Math.floorDiv((int) Math.floor(camera.x) - distance, rootWidth);
@@ -341,9 +396,11 @@ final class LodTerrain {
         private final int maxLoadedChunkX;
         private final int minLoadedChunkZ;
         private final int maxLoadedChunkZ;
+        private final int marginChunks;
         private final long now;
 
-        Selection(ClientLevel level, Vec3 camera, int distance, int chunkX, int chunkZ, int loadedRadius, long now) {
+        Selection(ClientLevel level, Vec3 camera, int distance, int chunkX, int chunkZ, int loadedRadius,
+                  int marginChunks, long now) {
             this.level = level;
             this.camera = camera;
             this.distance = distance;
@@ -351,6 +408,7 @@ final class LodTerrain {
             this.maxLoadedChunkX = chunkX + loadedRadius;
             this.minLoadedChunkZ = chunkZ - loadedRadius;
             this.maxLoadedChunkZ = chunkZ + loadedRadius;
+            this.marginChunks = marginChunks;
             this.now = now;
         }
 
@@ -465,10 +523,10 @@ final class LodTerrain {
             int maxChunkX = (minX + width - 1) >> 4;
             int minChunkZ = minZ >> 4;
             int maxChunkZ = (minZ + width - 1) >> 4;
-            return maxChunkX >= this.minLoadedChunkX - SQUARE_MARGIN_CHUNKS
-                && minChunkX <= this.maxLoadedChunkX + SQUARE_MARGIN_CHUNKS
-                && maxChunkZ >= this.minLoadedChunkZ - SQUARE_MARGIN_CHUNKS
-                && minChunkZ <= this.maxLoadedChunkZ + SQUARE_MARGIN_CHUNKS;
+            return maxChunkX >= this.minLoadedChunkX - this.marginChunks
+                && minChunkX <= this.maxLoadedChunkX + this.marginChunks
+                && maxChunkZ >= this.minLoadedChunkZ - this.marginChunks
+                && minChunkZ <= this.maxLoadedChunkZ + this.marginChunks;
         }
 
     }
@@ -534,6 +592,8 @@ final class LodTerrain {
         this.generation = -1;
         this.reach = 0.0f;
         this.lastSelectX = Double.NaN;
+        this.lastSpeedX = Double.NaN;
+        this.horizontalSpeedBps = 0.0;
     }
 
     // ---- building ----

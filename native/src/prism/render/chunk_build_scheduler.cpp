@@ -94,10 +94,13 @@ ChunkBuildScheduler::ChunkBuildScheduler(Chunks &chunks,
     auto physicalDevice = framework->physicalDevice();
     // On a queue of the main family nothing the builds write needs an ownership transfer before the frames read it.
     useSecondaryQueue_ = physicalDevice->mainQueueIndex() == physicalDevice->secondaryQueueIndex();
-    auto pool = useSecondaryQueue_ ? framework->asyncCommandPool() : framework->mainCommandPool();
+    const uint32_t queueIndex =
+        useSecondaryQueue_ ? physicalDevice->secondaryQueueIndex() : physicalDevice->mainQueueIndex();
+    // A pool of its own frees this scheduler's command buffers once all of its batches have retired.
+    pool_ = gpu::CommandPool::create(physicalDevice, device, queueIndex);
     idle_.reserve(chunkBuildingTotalBatches);
     for (uint32_t i = 0; i < chunkBuildingTotalBatches; i++) {
-        idle_.push_back({gpu::Fence::create(device), gpu::CommandBuffer::create(device, pool)});
+        idle_.push_back({gpu::Fence::create(device), gpu::CommandBuffer::create(device, pool_)});
     }
 }
 
@@ -110,12 +113,20 @@ uint32_t ChunkBuildScheduler::chunkBuildingBatchSize() {
 void ChunkBuildScheduler::tryCheckBatchesFinish() {
     auto device = Renderer::instance().framework()->device();
     std::unique_lock<std::recursive_mutex> lock(chunks_.mutex_);
+    chunks_.pollRetiredSchedulers();
     for (size_t i = 0; i < inFlight_.size();) {
-        if (vkGetFenceStatus(device->vkDevice(), inFlight_[i].submission.fence->vkFence()) != VK_SUCCESS) {
+        const VkResult status = vkGetFenceStatus(device->vkDevice(), inFlight_[i].submission.fence->vkFence());
+        if (status == VK_NOT_READY) {
             i++;
             continue;
         }
-        finish(inFlight_[i]);
+        if (status != VK_SUCCESS) {
+            gpu::diagnostics::onResult(status, device->mainVkQueue(), device->secondaryQueue());
+            discard(inFlight_[i]);
+            inFlight_.erase(inFlight_.begin() + static_cast<std::ptrdiff_t>(i));
+            continue;
+        }
+        finish(inFlight_[i], true);
         inFlight_.erase(inFlight_.begin() + static_cast<std::ptrdiff_t>(i));
     }
 }
@@ -131,13 +142,60 @@ void ChunkBuildScheduler::waitAllBatchesFinish() {
             gpu::diagnostics::onResult(result, device->mainVkQueue(), device->secondaryQueue());
             break;
         }
-        finish(inFlight_.front());
+        if (swapInWhenRetired_) {
+            finish(inFlight_.front(), false);
+        } else {
+            discard(inFlight_.front());
+        }
         inFlight_.erase(inFlight_.begin());
     }
 
+    returnGathering();
+}
+
+void ChunkBuildScheduler::returnGathering() {
+    std::unique_lock<std::recursive_mutex> lock(chunks_.mutex_);
     for (auto &section : gathering_) chunks_.queueBuild(std::move(section));
     gathering_.clear();
     gatheringFrames_ = 0;
+}
+
+bool ChunkBuildScheduler::retire(bool swapInWhenDone) {
+    std::unique_lock<std::recursive_mutex> lock(chunks_.mutex_);
+    returnGathering();
+    idle_.clear();
+    swapInWhenRetired_ = swapInWhenDone;
+    return !inFlight_.empty();
+}
+
+void ChunkBuildScheduler::discardResults() {
+    std::unique_lock<std::recursive_mutex> lock(chunks_.mutex_);
+    swapInWhenRetired_ = false;
+}
+
+bool ChunkBuildScheduler::pollRetired() {
+    auto device = Renderer::instance().framework()->device();
+    std::unique_lock<std::recursive_mutex> lock(chunks_.mutex_);
+    for (size_t i = 0; i < inFlight_.size();) {
+        const VkResult status = vkGetFenceStatus(device->vkDevice(), inFlight_[i].submission.fence->vkFence());
+        if (status == VK_NOT_READY) {
+            i++;
+            continue;
+        }
+        if (status != VK_SUCCESS) {
+            gpu::diagnostics::onResult(status, device->mainVkQueue(), device->secondaryQueue());
+            discard(inFlight_[i]);
+            inFlight_.erase(inFlight_.begin() + static_cast<std::ptrdiff_t>(i));
+            continue;
+        }
+        if (swapInWhenRetired_) {
+            finish(inFlight_[i], false);
+        } else {
+            discard(inFlight_[i]);
+        }
+        inFlight_.erase(inFlight_.begin() + static_cast<std::ptrdiff_t>(i));
+    }
+    return inFlight_.empty();
 }
 
 void ChunkBuildScheduler::tryScheduleBatches(uint32_t maxBatchSize) {
@@ -281,16 +339,29 @@ bool ChunkBuildScheduler::submit(Batch &batch, const Submission &submission) {
     return false;
 }
 
-void ChunkBuildScheduler::finish(InFlight &inFlight) {
-    auto device = Renderer::instance().framework()->device();
-    vkResetFences(device->vkDevice(), 1, &inFlight.submission.fence->vkFence());
-    inFlight.submission.commandBuffer->reset();
-    idle_.push_back(std::move(inFlight.submission));
+void ChunkBuildScheduler::finish(InFlight &inFlight, bool returnSubmission) {
+    if (returnSubmission) {
+        auto device = Renderer::instance().framework()->device();
+        vkResetFences(device->vkDevice(), 1, &inFlight.submission.fence->vkFence());
+        inFlight.submission.commandBuffer->reset();
+        idle_.push_back(std::move(inFlight.submission));
+    }
 
     Batch &batch = *inFlight.batch;
     collectCompactions(batch);
     for (const auto &section : batch.sections) {
         chunks_.swapIn(*section);
+        section->releaseStaging();
+    }
+}
+
+void ChunkBuildScheduler::discard(InFlight &inFlight) {
+    Batch &batch = *inFlight.batch;
+    if (batch.compactedSizes != VK_NULL_HANDLE) {
+        vkDestroyQueryPool(batch.queryDevice->vkDevice(), batch.compactedSizes, nullptr);
+        batch.compactedSizes = VK_NULL_HANDLE;
+    }
+    for (const auto &section : batch.sections) {
         section->releaseStaging();
     }
 }
@@ -309,7 +380,7 @@ void ChunkBuildScheduler::collectCompactions(Batch &batch) {
 
     for (uint32_t i = 0; i < count; i++) {
         const ChunkBuildData &section = *batch.built[i];
-        if (section.blas != nullptr && sizes[i] > 0) {
+        if (section.generation == chunks_.generation_ && section.blas != nullptr && sizes[i] > 0) {
             chunks_.pendingCompactions_.push_back({section.id, section.blas, sizes[i]});
         }
     }

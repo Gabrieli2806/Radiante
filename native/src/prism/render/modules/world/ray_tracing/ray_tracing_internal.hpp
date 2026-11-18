@@ -288,19 +288,20 @@ inline ShaderPack::ShaderCreateInfo shaderRequest(const std::filesystem::path &p
     };
 }
 
-// Records work into a command buffer of its own, submits it and waits until the main queue is idle. For the build
-// only: a frame never waits on the queue.
+// Records work into a command buffer of its own, submits it with a fence and waits for that submission alone. For
+// the build only: a frame never blocks on a fence.
 template <typename Record>
 void submitAndWait(Framework &framework, Record &&record) {
     auto device = framework.device();
     auto pool = gpu::CommandPool::create(framework.physicalDevice(), device);
     auto commandBuffer = gpu::CommandBuffer::create(device, pool);
+    auto fence = gpu::Fence::create(device);
     commandBuffer->begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     record(commandBuffer);
     commandBuffer->end();
-    commandBuffer->submitMainQueueIndividual(device);
-    gpu::diagnostics::onResult(vkQueueWaitIdle(device->mainVkQueue()), device->mainVkQueue(),
-                               device->secondaryQueue());
+    commandBuffer->submitMainQueueIndividual(device, fence);
+    gpu::diagnostics::onResult(vkWaitForFences(device->vkDevice(), 1, &fence->vkFence(), VK_TRUE, UINT64_MAX),
+                               device->mainVkQueue(), device->secondaryQueue());
 }
 
 #ifdef DEBUG
