@@ -36,6 +36,38 @@ JNIEXPORT jboolean JNICALL Java_com_g2806_radiante_client_proxy_vulkan_HdrProxy_
     }));
 }
 
+JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_HdrProxy_setTarget(JNIEnv *,
+                                                                                      jclass,
+                                                                                      jboolean active,
+                                                                                      jfloat paperWhiteNits,
+                                                                                      jfloat peakNits) {
+    jni::guard("[HDR] setTarget", [&] {
+        HdrOutput::instance().setTarget(jni::isTrue(active), paperWhiteNits, peakNits);
+    });
+}
+
+JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_HdrProxy_capturePreview(JNIEnv *env,
+                                                                                           jclass,
+                                                                                           jlong commandBuffer,
+                                                                                           jlong minecraftImage,
+                                                                                           jint minecraftLayout,
+                                                                                           jint minecraftFormat,
+                                                                                           jint width,
+                                                                                           jint height,
+                                                                                           jfloat paperWhiteNits,
+                                                                                           jfloat peakNits,
+                                                                                           jboolean flipY,
+                                                                                           jboolean debugView,
+                                                                                           jstring path) {
+    jni::guard("[HDR] capturePreview", [&] {
+        HdrOutput::instance().capturePreview(
+            jni::as<VkCommandBuffer>(commandBuffer), jni::as<VkImage>(minecraftImage),
+            static_cast<VkImageLayout>(minecraftLayout), static_cast<VkFormat>(minecraftFormat),
+            static_cast<uint32_t>(width), static_cast<uint32_t>(height), paperWhiteNits, peakNits, jni::isTrue(flipY),
+            jni::isTrue(debugView), jni::utf8(env, path).value_or(""));
+    });
+}
+
 JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_HdrProxy_setCalibration(JNIEnv *,
                                                                                            jclass,
                                                                                            jint mode,

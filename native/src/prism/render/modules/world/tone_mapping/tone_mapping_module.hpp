@@ -86,8 +86,10 @@ struct ToneMappingModulePushConstant {
     float balanceG;
     float balanceB;
     float filmicSaturation;
+    // Display peak brightness in paper whites (1.0 in SDR, > 1.0 when HDR output is active).
+    float hdrPeak;
 };
-static_assert(sizeof(ToneMappingModulePushConstant) == 30 * 4,
+static_assert(sizeof(ToneMappingModulePushConstant) == 31 * 4,
               "the layout tone_mapping.frag reads, within the 128 bytes of push constants every device has");
 
 // The push constants of the Bedrock-style tone curve passes (bedrock_hist.comp, bedrock_curve.comp). Pushed over the

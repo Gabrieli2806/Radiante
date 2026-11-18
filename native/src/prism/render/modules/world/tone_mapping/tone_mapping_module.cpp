@@ -1,6 +1,7 @@
 #include "prism/render/modules/world/tone_mapping/tone_mapping_module.hpp"
 
 #include "prism/render/buffers.hpp"
+#include "prism/render/hdr_output.hpp"
 #include "prism/render/pipeline.hpp"
 #include "prism/render/render_framework.hpp"
 #include "prism/render/renderer.hpp"
@@ -419,6 +420,7 @@ ToneMappingModulePushConstant ToneMappingModule::makePushConstants() const {
     constants.balanceG = s.colorBalance[1];
     constants.balanceB = s.colorBalance[2];
     constants.filmicSaturation = s.filmicSaturation;
+    constants.hdrPeak = 1.0f;
     return constants;
 }
 
@@ -651,6 +653,7 @@ void ToneMappingModule::record(uint32_t frameIndex, gpu::CommandBuffer &commandB
 
     ToneMappingModulePushConstant constants = pushConstants_;
     constants.dt = std::clamp(dt, 0.0f, 1.0f);
+    constants.hdrPeak = std::max(HdrOutput::instance().targetPeakRatio(), 1.0f);
     auto pushToneMappingConstants = [&] {
         vkCmdPushConstants(cmd, frame.descriptors->vkPipelineLayout(), kComputeAndFragment, 0, sizeof(constants),
                            &constants);

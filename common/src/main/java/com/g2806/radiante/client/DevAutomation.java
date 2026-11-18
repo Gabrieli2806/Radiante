@@ -41,6 +41,7 @@ public final class DevAutomation {
     private static int glideFrames;
     private static final double[] GLIDE_STEP = new double[5];
     private static String glideShot;
+    private static String pendingHdrShot;
 
     private DevAutomation() {
     }
@@ -79,14 +80,36 @@ public final class DevAutomation {
 
     /** Takes a glide's screenshot once the frame drawn at its last step is in the target. */
     public static void frameDrawn() {
-        if (!active || glideFrames != 0 || glideShot == null) {
+        if (!active) {
             return;
         }
         Minecraft minecraft = Minecraft.getInstance();
-        String name = glideShot + ".png";
+        if (pendingHdrShot != null && glideFrames == 0) {
+            String shotName = pendingHdrShot;
+            pendingHdrShot = null;
+            captureHdrPreview(minecraft, shotName);
+        }
+        if (glideFrames != 0 || glideShot == null) {
+            return;
+        }
+        String shot = glideShot;
         glideShot = null;
+        if (shot.startsWith("hdr:")) {
+            captureHdrPreview(minecraft, shot.substring(4));
+            return;
+        }
+        String name = shot + ".png";
         Screenshot.grab(minecraft.gameDirectory, name, minecraft.gameRenderer.mainRenderTarget(), 1,
             message -> RadianteClient.LOGGER.info("[dev] screenshot {}", name));
+    }
+
+    private static void captureHdrPreview(Minecraft minecraft, String shotName) {
+        java.nio.file.Path outPath = minecraft.gameDirectory.toPath().resolve("screenshots").resolve(shotName + ".png");
+        try {
+            java.nio.file.Files.createDirectories(outPath.getParent());
+        } catch (java.io.IOException ignored) {
+        }
+        com.g2806.radiante.client.hdr.HdrDisplay.requestPreviewCapture(outPath.toAbsolutePath().toString());
     }
 
     public static void register() {
@@ -425,6 +448,16 @@ public final class DevAutomation {
             minecraft.gui.setScreen(new com.g2806.radiante.client.gui.UpscalerDownloadScreen(minecraft.gui.screen(),
                 component, com.g2806.radiante.client.gui.UpscalerDownloadScreen.Mode.CONFIRM));
             RadianteClient.LOGGER.info("[dev] download {} started", component.id);
+            return;
+        }
+        if (action.startsWith("hdrmode=")) {
+            com.g2806.radiante.client.hdr.HdrDisplay.devOverrideActive = Boolean.parseBoolean(action.substring(8));
+            com.g2806.radiante.client.hdr.HdrDisplay.syncTarget();
+            RadianteClient.LOGGER.info("[dev] hdrmode {}", com.g2806.radiante.client.hdr.HdrDisplay.devOverrideActive);
+            return;
+        }
+        if (action.startsWith("hdrshot=")) {
+            pendingHdrShot = action.substring(8);
             return;
         }
         if (action.startsWith("shot=")) {

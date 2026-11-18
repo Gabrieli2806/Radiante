@@ -3,102 +3,62 @@
 // HDR display output (render/hdr_output.cpp): Minecraft's final image, composed for a 16-bit float scRGB swapchain,
 // where 1.0 is 80 nits, linear, with sRGB primaries.
 //
-// A pixel that still shows the traced world as it was fused into Minecraft's image is rebuilt from the world's HDR
-// radiance: with the SDR image's exposure and tone curve below paper white, so the two match, but with highlights
-// rising to the display's peak instead of being squeezed under 1.0. Everything else (menus, text, the hotbar, whatever
-// is drawn over the world, or the whole screen when no world was traced) is Minecraft's SDR image at paper white.
+// Tone mapping (selected curve, Bedrock grade, Nether hue shoulder and bloom) and the post render passes (stars,
+// motion blur, depth of field and shader pack post grading) have already run in 16-bit float, keeping values <= 1.0
+// identical to SDR and extending highlights up to pow(peak, 1 / 2.2).
 //
-// With a lower output resolution the world pipeline's images are smaller than Minecraft's, and what was fused is their
-// FSR 1 upscale (render/output_upscaler.cpp). The radiance is then filtered up to the pixel, and the upscale's own
-// detail (its sharpened edges) is carried over as the ratio between what was fused and the filtered SDR picture.
+// A pixel where Minecraft drew nothing opaque or coloured over the fused world (only leaving it as is, or darkening it
+// with a grey overlay such as vanilla's vignette) shows that HDR world picture at paper white, reaching up to peak.
+// Everything else (menus, text, hotbar, coloured overlays, or the whole screen when no world was traced) shows
+// Minecraft's SDR image at paper white.
 
 layout(local_size_x = 16, local_size_y = 16) in;
 
 layout(set = 0, binding = 0) uniform sampler2D shownImage;      // Minecraft's final image, UI included; gamma 2.2
-layout(set = 0, binding = 1) uniform sampler2D fusedWorld;      // the world as fused into shownImage
-layout(set = 0, binding = 2) uniform sampler2D toneMappedWorld; // tone mapped, before the post render passes
-layout(set = 0, binding = 3) uniform sampler2D worldRadiance;   // what the tone mapping read
-
-// Written by the tone mapping's exposure pass.
-layout(set = 0, binding = 4) readonly buffer Exposure {
-    float exposure;
-    float averageLogLuminance;
-} metered;
-
-layout(set = 0, binding = 5, rgba16f) uniform writeonly image2D composed;
-layout(set = 0, binding = 6) uniform sampler2D worldOutput;     // the pipeline's picture; fusedWorld unless scaled
+layout(set = 0, binding = 1) uniform sampler2D fusedWorld;      // the world image fused into shownImage
+layout(set = 0, binding = 2) uniform sampler2D toneMappedWorld; // tone mapped HDR/SDR, before post render passes
+layout(set = 0, binding = 3) uniform sampler2D worldOutput;     // final pipeline picture, after post render passes
+layout(set = 0, binding = 4, rgba16f) uniform writeonly image2D composed;
 
 layout(push_constant) uniform ComposeParams {
-    float paperWhite;     // the scRGB value of SDR white
-    float peak;           // the display's peak brightness, in paper whites (at least 1)
-    float exposureBias;   // stops
-    float saturation;
-    float manualExposure;
-    int autoExposure;
+    float paperWhite;  // the scRGB value of SDR white (nits / 80)
+    float peak;        // the display's peak brightness, in paper whites (at least 1)
     int worldValid;
-    int debugView;        // tints what is shown as SDR, to tell it from what is HDR
-    int scaled;           // the world images are at a lower output resolution than shownImage
-    int calibration;      // the HDR calibration screen: 0 off, 1 peak pattern in rectA, 2 pictures in rectA and rectB
-    float testLevel;      // the scRGB value of the peak pattern's marks
-    vec4 rectA;           // x, y, width, height, as fractions of the image
+    int debugView;     // tints what is shown as SDR, to tell it from what is HDR
+    int scaled;        // the world images are at a lower output resolution than shownImage
+    int calibration;   // the HDR calibration screen: 0 off, 1 peak pattern in rectA, 2 pictures in rectA and rectB
+    float testLevel;   // the scRGB value of the peak pattern's marks
+    float padding;
+    vec4 rectA;        // x, y, width, height, as fractions of the image
     vec4 rectB;
 } params;
 
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
 
-// Half a step of an 8-bit channel: values closer than this are the same stored value.
-const float HALF_STEP = 0.5 / 255.0;
+// Allow up to three quarters of an 8-bit step so tie-breaking differences in float->UNORM blit rounding still match.
+const float STEP_TOLERANCE = 0.75 / 255.0;
 
 bool sameStored(vec3 a, vec3 b) {
-    return all(lessThan(abs(a - b), vec3(HALF_STEP)));
+    return all(lessThanEqual(abs(a - b), vec3(STEP_TOLERANCE)));
 }
 
 float largest(vec3 v) {
     return max(v.r, max(v.g, v.b));
 }
 
-float smallest(vec3 v) {
-    return min(v.r, min(v.g, v.b));
-}
-
-// How far `shown` is `world` darkened by a grey overlay: 1 where nothing was drawn over the world, the grey (0.2 to 1)
-// where an overlay multiplied it, 0 where it is anything else. Every channel has to agree within a step and a half of
-// 8-bit rounding, so a coloured or opaque element over the world does not pass for shade.
-float greyShade(vec3 shown, vec3 world) {
-    if (sameStored(shown, world)) { return 1.0; }
-    float worldTop = largest(world);
+// How far `shown` is `worldSdr` darkened by a grey overlay: 1 where nothing was drawn over the world, the grey (0.2..1)
+// where an overlay multiplied it, 0 where it is anything else.
+float greyShade(vec3 shown, vec3 worldSdr) {
+    if (sameStored(shown, worldSdr)) { return 1.0; }
+    float worldTop = largest(worldSdr);
     if (worldTop < 16.0 / 255.0) { return 0.0; }
     float factor = largest(shown) / worldTop;
     if (factor > 1.0 + 1.0 / 255.0 || factor < 0.2) { return 0.0; }
-    return all(lessThanEqual(abs(shown - world * factor), vec3(1.5 / 255.0))) ? min(factor, 1.0) : 0.0;
+    return all(lessThanEqual(abs(shown - worldSdr * factor), vec3(1.5 / 255.0))) ? min(factor, 1.0) : 0.0;
 }
 
-vec3 sdrToScRgb(vec3 encoded) {
+vec3 encodedToScRgb(vec3 encoded) {
     return pow(max(encoded, vec3(0.0)), vec3(2.2)) * params.paperWhite;
-}
-
-// Khronos PBR Neutral (the SDR tone mapping's default) with its shoulder ending at `peak` instead of 1. Below where the
-// shoulder starts it is the SDR curve exactly, so shadows and midtones look as they do in SDR.
-vec3 pbrNeutral(vec3 color, float peak) {
-    const float shoulderStart = 0.76;
-    const float desaturation = 0.01;
-
-    float low = smallest(color);
-    color -= low < 0.08 ? low - 6.25 * low * low : 0.04;
-
-    float top = largest(color);
-    if (top < shoulderStart) { return color; }
-
-    float headroom = peak - shoulderStart;
-    float newTop = peak - headroom * headroom / (top + headroom - shoulderStart);
-    color *= newTop / top;
-
-    float toWhite = 1.0 - 1.0 / (desaturation * (top - newTop) + 1.0);
-    return mix(color, vec3(newTop), toWhite);
-}
-
-vec3 withSaturation(vec3 color, float saturation) {
-    return mix(vec3(dot(color, LUMA)), color, saturation);
 }
 
 // Bilinear filtering by hand: the samplers here fetch nearest, which the unscaled path relies on.
@@ -112,6 +72,19 @@ vec3 bilinear(sampler2D image, vec2 uv) {
     vec3 b = texelFetch(image, clamp(base + ivec2(1, 0), ivec2(0), high), 0).rgb;
     vec3 c = texelFetch(image, clamp(base + ivec2(0, 1), ivec2(0), high), 0).rgb;
     vec3 d = texelFetch(image, clamp(base + ivec2(1, 1), ivec2(0), high), 0).rgb;
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+vec3 bilinearClamped(sampler2D image, vec2 uv) {
+    ivec2 size = textureSize(image, 0);
+    vec2 position = uv * vec2(size) - 0.5;
+    ivec2 base = ivec2(floor(position));
+    vec2 f = position - vec2(base);
+    ivec2 high = size - 1;
+    vec3 a = clamp(texelFetch(image, clamp(base, ivec2(0), high), 0).rgb, vec3(0.0), vec3(1.0));
+    vec3 b = clamp(texelFetch(image, clamp(base + ivec2(1, 0), ivec2(0), high), 0).rgb, vec3(0.0), vec3(1.0));
+    vec3 c = clamp(texelFetch(image, clamp(base + ivec2(0, 1), ivec2(0), high), 0).rgb, vec3(0.0), vec3(1.0));
+    vec3 d = clamp(texelFetch(image, clamp(base + ivec2(1, 1), ivec2(0), high), 0).rgb, vec3(0.0), vec3(1.0));
     return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
 }
 
@@ -129,8 +102,7 @@ vec3 peakPattern(vec2 uv) {
     return vec3(mark ? params.testLevel : BACKGROUND);
 }
 
-// A screenshot's highlights back above SDR white: the shoulder of the SDR curve undone, and pbrNeutral's for the
-// display's peak applied, so a calibration picture behaves like the traced world does.
+// A screenshot's highlights back above SDR white for the calibration preview images.
 vec3 pictureToScRgb(vec3 encoded) {
     const float shoulderStart = 0.76;
     const float headroom = 1.0 - shoulderStart;
@@ -149,41 +121,40 @@ void main() {
     if (any(greaterThanEqual(pixel, imageSize(composed)))) { return; }
 
     vec3 shown = texelFetch(shownImage, pixel, 0).rgb;
-    vec3 result = sdrToScRgb(shown);
-    bool fromRadiance = false;
+    vec3 result = encodedToScRgb(shown);
+    bool fromWorldHdr = false;
 
     if (params.worldValid != 0) {
-        vec3 fused = texelFetch(fusedWorld, pixel, 0).rgb;
-        // Untouched since the world was fused in, or only darkened by an overlay that multiplies it by grey. Vanilla's
-        // vignette does that over most of the screen; taken for UI, its soft edge became a hard oval where the picture
-        // switched between HDR and SDR.
-        float shade = greyShade(shown, fused);
-        // And not a star, text or anything else a post render pass drew over the world: told at the pipeline's own
-        // resolution, under the pixel's centre.
-        vec2 uv = (vec2(pixel) + 0.5) / vec2(imageSize(composed));
-        ivec2 source = params.scaled != 0 ?
-                           min(ivec2(uv * vec2(textureSize(worldOutput, 0))), textureSize(worldOutput, 0) - 1) :
-                           pixel;
-        if (shade > 0.0 &&
-            sameStored(texelFetch(worldOutput, source, 0).rgb, texelFetch(toneMappedWorld, source, 0).rgb)) {
-            float exposure = params.autoExposure != 0 ? metered.exposure : params.manualExposure;
-            if (isnan(exposure) || isinf(exposure) || exposure <= 0.0) { exposure = max(params.manualExposure, 1e-6); }
-            exposure *= exp2(params.exposureBias);
+        vec3 fusedRaw = texelFetch(fusedWorld, pixel, 0).rgb;
+        vec3 fusedSdr = clamp(fusedRaw, vec3(0.0), vec3(1.0));
+        // Minecraft's target is 8-bit UNORM: compare against the rounded 8-bit value that the fuse blit stored.
+        vec3 fused8 = round(fusedSdr * 255.0) / 255.0;
+        float shade = greyShade(shown, fused8);
+        if (shade > 0.0) {
+            vec2 uv = (vec2(pixel) + 0.5) / vec2(imageSize(composed));
+            vec3 hdrEncoded = params.scaled != 0 ? bilinear(worldOutput, uv) : texelFetch(worldOutput, pixel, 0).rgb;
+            vec3 prePost = params.scaled != 0 ? bilinear(toneMappedWorld, uv) : texelFetch(toneMappedWorld, pixel, 0).rgb;
 
-            vec3 radiance = params.scaled != 0 ? bilinear(worldRadiance, uv) : texelFetch(worldRadiance, pixel, 0).rgb;
-            radiance = max(radiance * exposure, vec3(0.0));
-            vec3 mapped = max(pbrNeutral(radiance, max(params.peak, 1.0)), vec3(0.0));
-            mapped = max(withSaturation(mapped, max(params.saturation, 0.0)), vec3(0.0));
-            if (!any(isnan(mapped)) && !any(isinf(mapped))) {
-                // The overlay multiplied the gamma encoded value: in linear light, its 2.2th power.
-                result = mapped * params.paperWhite * pow(shade, 2.2);
+            // If a pack's custom post pass clamped an HDR highlight (> 1.0) right at 1.0, carry the tone-mapped
+            // highlight headroom through while keeping the pass's hue. Motion blur and DoF values above 1.0 pass
+            // straight through untouched.
+            float prePeak = largest(prePost);
+            float outPeak = largest(hdrEncoded);
+            if (prePeak > 1.0 && outPeak >= 0.994 && outPeak <= 1.002) {
+                hdrEncoded *= prePeak / max(outPeak, 1e-4);
+            }
+
+            if (!any(isnan(hdrEncoded)) && !any(isinf(hdrEncoded))) {
+                float maxLinear = max(params.peak, 1.0);
+                vec3 linearWorld = min(pow(max(hdrEncoded, vec3(0.0)), vec3(2.2)), vec3(maxLinear));
+                result = linearWorld * params.paperWhite * pow(shade, 2.2);
                 if (params.scaled != 0) {
-                    // The upscale's detail: what was fused against the same picture only filtered, in linear light.
-                    float filtered = dot(pow(max(bilinear(toneMappedWorld, uv), vec3(0.0)), vec3(2.2)), LUMA);
-                    float sharp = dot(pow(max(fused, vec3(0.0)), vec3(2.2)), LUMA);
+                    // Carry over the FSR 1 RCAS sharpening detail from the scaled fuse image.
+                    float filtered = dot(pow(bilinearClamped(worldOutput, uv), vec3(2.2)), LUMA);
+                    float sharp = dot(pow(fusedSdr, vec3(2.2)), LUMA);
                     result *= filtered > 1.0e-4 ? clamp(sharp / filtered, 0.5, 2.0) : 1.0;
                 }
-                fromRadiance = true;
+                fromWorldHdr = true;
             }
         }
     }
@@ -192,14 +163,14 @@ void main() {
         vec2 uv = (vec2(pixel) + 0.5) / vec2(imageSize(composed));
         if (inside(uv, params.rectA) && params.calibration == 1) {
             result = peakPattern(uv);
-            fromRadiance = true;
+            fromWorldHdr = true;
         } else if (params.calibration == 2 && (inside(uv, params.rectA) || inside(uv, params.rectB))) {
             result = pictureToScRgb(shown);
-            fromRadiance = true;
+            fromWorldHdr = true;
         }
     }
 
-    if (params.debugView != 0 && !fromRadiance) { result = vec3(0.25, 0.45, 1.0) * dot(result, LUMA); }
+    if (params.debugView != 0 && !fromWorldHdr) { result = vec3(0.25, 0.45, 1.0) * dot(result, LUMA); }
 
     imageStore(composed, pixel, vec4(result, 1.0));
 }

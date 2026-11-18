@@ -448,6 +448,7 @@ public final class RadianteRenderer {
                 traceHeight = eyeTraceHeight;
             }
         }
+        com.g2806.radiante.client.hdr.HdrDisplay.syncTarget();
         int count = RendererProxy.renderFrame(image, mainTarget.width, mainTarget.height, traceWidth, traceHeight,
             format, commandBufferHandles);
         DevProfiler.mark(5);
