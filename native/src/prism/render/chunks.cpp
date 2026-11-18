@@ -6,6 +6,7 @@
 namespace {
 
 std::atomic<uint64_t> g_contentVersion{0};
+std::atomic<uint64_t> g_geometryVersion{0};
 
 } // namespace
 
@@ -43,6 +44,14 @@ uint64_t Chunks::contentVersion() {
 
 void Chunks::bumpContentVersion() {
     g_contentVersion.fetch_add(1, std::memory_order_acq_rel);
+}
+
+uint64_t Chunks::geometryVersion() {
+    return g_geometryVersion.load(std::memory_order_acquire);
+}
+
+void Chunks::bumpGeometryVersion() {
+    g_geometryVersion.fetch_add(1, std::memory_order_acq_rel);
 }
 
 void Chunks::reset(uint32_t numChunks, uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ, int32_t bottomSectionCoord) {
@@ -89,6 +98,7 @@ void Chunks::reset(uint32_t numChunks, uint32_t sizeX, uint32_t sizeY, uint32_t 
     chunkPackedDataUploaded_.clear();
     if (Renderer::options.collectChunkEmission) allocateChunkPackedDataBuffers();
     bumpContentVersion();
+    bumpGeometryVersion();
 
     chunkBuildScheduler_ = makeScheduler();
 }
@@ -479,6 +489,7 @@ bool Chunks::swapIn(ChunkBuildData &data) {
     }
     if (slot.occupiedFlag != nullptr) *slot.occupiedFlag = slot.blas != nullptr ? 1 : 0;
     bumpContentVersion();
+    bumpGeometryVersion();
 
     storePackedData(data.id, {.x = slot.x,
                               .y = slot.y,
@@ -498,6 +509,7 @@ void Chunks::clearSlot(Chunk1 &slot) {
     slot.geometryCount = 0;
     if (slot.occupiedFlag != nullptr) *slot.occupiedFlag = 0;
     bumpContentVersion();
+    bumpGeometryVersion();
 }
 
 void Chunks::storePackedData(int64_t id, const ChunkPackedData &entry) {

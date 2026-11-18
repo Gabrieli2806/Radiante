@@ -134,8 +134,11 @@ public final class RadianteClient {
             }
         }
 
-        if (minecraft.level == null && com.g2806.radiante.client.photo.PhotoMode.isActive()) {
-            com.g2806.radiante.client.photo.PhotoMode.exit();
+        com.g2806.radiante.client.photo.PhotoMode.checkWorld(minecraft);
+        if (com.g2806.radiante.client.gui.BeforeAfterPreview.hasSession()
+            && (!com.g2806.radiante.client.gui.BeforeAfterPreview.matchesLevel(minecraft.level)
+                || !RadianteRenderer.isRayTracingEnabled())) {
+            com.g2806.radiante.client.gui.BeforeAfterPreview.onSessionClose();
         }
 
         while (RadianteKeys.OPEN_SETTINGS.consumeClick()) {

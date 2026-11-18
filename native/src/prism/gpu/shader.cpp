@@ -670,6 +670,20 @@ Shader::Shader(std::shared_ptr<Device> device, std::string path) : device_(std::
 #endif
 }
 
+Shader::Shader(std::shared_ptr<Device> device, const std::filesystem::path &path) : device_(std::move(device)) {
+    const std::u8string u8 = path.u8string();
+    const std::string display(reinterpret_cast<const char *>(u8.data()), u8.size());
+    std::ifstream file(path, std::ios::binary | std::ios::ate);
+    if (!file) {
+        shaderErr() << "Cannot open file: " << display << std::endl;
+        throw std::runtime_error("cannot open shader " + display);
+    }
+    createModule(readWords(file), display);
+#ifdef DEBUG
+    shaderOut() << "created shader module for " << display << std::endl;
+#endif
+}
+
 Shader::Shader(std::shared_ptr<Device> device,
                std::string sourcePath,
                VkShaderStageFlagBits stage,

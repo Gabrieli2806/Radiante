@@ -1,4 +1,7 @@
 #version 460
+#extension GL_GOOGLE_include_directive : require
+
+#include "classic_tone_curves.glsl"
 
 // Tone mapping: the HDR radiance exposed (plus bloom), then either one of the classic curves with the grade, or the
 // Bedrock-style tone curve and grade (method 6), into the displayable image. When HDR output is active (pc.hdrPeak > 1),
@@ -12,7 +15,7 @@ layout(set = 0, binding = 2) readonly buffer ExposureBuffer {
     float exposure;
     float avgLogLum;
     float padding0;
-    float padding1;
+    float padding1; // the classic curve's input at HDR_KNEE (exposure.comp)
 }
 expData;
 
@@ -66,82 +69,10 @@ layout(location = 0) in vec2 texCoord;
 layout(location = 0) out vec4 fragColor;
 
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
-const float HDR_KNEE = 0.75;
-
-// ---- The classic curves (method 0 to 5).
-
-// Khronos PBR Neutral: https://github.com/KhronosGroup/ToneMapping/tree/main/PBR_Neutral
-vec3 pbrNeutral(vec3 color, float targetPeak) {
-    float startCompression = 0.76;
-    float desaturation = 0.01;
-
-    float x = min(color.r, min(color.g, color.b));
-    float offset = (x < 0.08) ? (x - 6.25 * x * x) : 0.04;
-    color -= offset;
-
-    float peak = max(color.r, max(color.g, color.b));
-    if (peak < startCompression) return color;
-
-    float d = max(targetPeak - startCompression, 1e-4);
-    float newPeak = targetPeak - d * d / (peak + d - startCompression);
-    color *= newPeak / peak;
-
-    float g = 1.0 - 1.0 / (desaturation * max(peak - newPeak, 0.0) + 1.0);
-    return mix(color, newPeak * vec3(1.0), g);
-}
-
-// The rest as collected at https://64.github.io/tonemapping/
-vec3 reinhard(vec3 color) {
-    return color / (1.0 + color);
-}
-
-vec3 reinhardWhitePoint(vec3 color, float whitePoint) {
-    float whiteSquared = max(whitePoint * whitePoint, 1e-6);
-    return (color * (1.0 + color / whiteSquared)) / (1.0 + color);
-}
-
-// Narkowicz's fit of the ACES curve, unclamped.
-vec3 acesCurve(vec3 color) {
-    vec3 numerator = color * (2.51 * color + 0.03);
-    vec3 denominator = color * (2.43 * color + 0.59) + 0.14;
-    return numerator / max(denominator, vec3(1e-6));
-}
-
-vec3 aces(vec3 color) {
-    return clamp(acesCurve(color), 0.0, 1.0);
-}
-
-vec3 acesWhitePoint(vec3 color, float whitePoint) {
-    float whiteScale = 1.0 / max(acesCurve(vec3(whitePoint)).r, 1e-6);
-    return clamp(acesCurve(color) * whiteScale, 0.0, 1.0);
-}
-
-vec3 uncharted2Curve(vec3 x) {
-    const float A = 0.15;
-    const float B = 0.50;
-    const float C = 0.10;
-    const float D = 0.20;
-    const float E = 0.02;
-    const float F = 0.30;
-    return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
-}
-
-vec3 uncharted2(vec3 color, float whitePoint) {
-    vec3 mapped = uncharted2Curve(color);
-    float whiteScale = 1.0 / max(uncharted2Curve(vec3(whitePoint)).r, 1e-6);
-    return mapped * whiteScale;
-}
+// ---- The classic curves (method 0 to 5): util/classic_tone_curves.glsl.
 
 vec3 classicCurve(vec3 color) {
-    switch (pc.toneMappingMethod) {
-        case 1: return reinhard(color);
-        case 2: return reinhardWhitePoint(color, pc.whitePoint);
-        case 3: return aces(color);
-        case 4: return acesWhitePoint(color, pc.whitePoint);
-        case 5: return uncharted2(color, pc.whitePoint);
-        case 0:
-        default: return pbrNeutral(color, 1.0);
-    }
+    return classicCurveFor(color, pc.toneMappingMethod, pc.whitePoint);
 }
 
 float classicCurveScalar(float x) {
@@ -158,24 +89,14 @@ float extendClassicScalar(float x, float xKnee, float slopeKnee, float targetPea
 }
 
 vec3 classicCurveHdr(vec3 color, float targetPeak) {
-    if (pc.toneMappingMethod == 0 || (pc.toneMappingMethod < 1 || pc.toneMappingMethod > 5)) {
+    if (pc.toneMappingMethod < 1 || pc.toneMappingMethod > 5) {
         return pbrNeutral(color, targetPeak);
     }
     vec3 sdr = classicCurve(color);
     if (max(sdr.r, max(sdr.g, sdr.b)) <= HDR_KNEE) { return sdr; }
 
-    float lo = 0.0;
-    float hi = max(pc.whitePoint, 16.0);
-    while (classicCurveScalar(hi) < HDR_KNEE && hi < 4096.0) { hi *= 2.0; }
-    for (int i = 0; i < 10; i++) {
-        float mid = 0.5 * (lo + hi);
-        if (classicCurveScalar(mid) < HDR_KNEE) {
-            lo = mid;
-        } else {
-            hi = mid;
-        }
-    }
-    float xKnee = 0.5 * (lo + hi);
+    // Where the curve reaches the knee: worked out once a frame by the exposure pass (classicCurveKnee).
+    float xKnee = expData.padding1;
     float slopeKnee = max((classicCurveScalar(xKnee + 1e-3) - classicCurveScalar(max(xKnee - 1e-3, 0.0))) * 500.0, 1e-4);
     return vec3(extendClassicScalar(color.r, xKnee, slopeKnee, targetPeak),
                 extendClassicScalar(color.g, xKnee, slopeKnee, targetPeak),

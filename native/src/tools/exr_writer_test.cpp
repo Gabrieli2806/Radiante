@@ -108,5 +108,24 @@ int main() {
         return 1;
     }
 
+    // Verify Unicode directory and file names (Spanish, CJK and Cyrillic) for both PNG and EXR atomic writers.
+    std::error_code ec;
+    const std::filesystem::path unicodeRoot =
+        std::filesystem::temp_directory_path(ec) / std::u16string(u"radiante_foto_niño_雪_фото_test");
+    std::filesystem::remove_all(unicodeRoot, ec);
+    const std::filesystem::path unicodePng = unicodeRoot / std::u16string(u"captura_niño_雪_фото.png");
+    const std::filesystem::path unicodeExr = unicodeRoot / std::u16string(u"captura_niño_雪_фото.exr");
+
+    const std::vector<uint8_t> rgba8(width * height * 4u, 200u);
+    const std::string pngErr = exr_writer::writeRgbaPngFile(unicodePng, width, height, rgba8.data());
+    const std::string exrErr = exr_writer::writeHalfRgbExrFile(unicodeExr, width, height, pixels.data(), true);
+    const bool pngExists = std::filesystem::exists(unicodePng, ec) && std::filesystem::file_size(unicodePng, ec) > 32;
+    const bool exrExists = std::filesystem::exists(unicodeExr, ec) && std::filesystem::file_size(unicodeExr, ec) > 128;
+    std::filesystem::remove_all(unicodeRoot, ec);
+    if (!pngErr.empty() || !exrErr.empty() || !pngExists || !exrExists) {
+        std::cerr << "Unicode PNG/EXR write failed: png='" << pngErr << "' exr='" << exrErr << "'\n";
+        return 1;
+    }
+
     return 0;
 }

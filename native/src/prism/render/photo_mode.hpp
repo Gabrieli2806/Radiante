@@ -1,13 +1,19 @@
 #pragma once
 
+#include "common/shared.hpp"
 #include "prism/all_extern.hpp"
 #include "prism/gpu/gpu.hpp"
 
+#include <array>
 #include <atomic>
+#include <condition_variable>
 #include <cstdint>
+#include <deque>
+#include <filesystem>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
 class Framework;
@@ -16,12 +22,14 @@ class Framework;
 //
 // While active, WorldPipeline runs RayTracingModule at full window resolution (nrd_signals off, post DoF and motion
 // blur off), feeds its raw linear HDR radiance through PhotoMode::recordAccumulate into an FP32 accumulation image,
-// and hands the running mean to ToneMappingModule and PostRenderModule. Moving the camera or changing the physical
-// thin-lens parameters resets the sample count; adjusting tone-mapping / exposure sliders leaves the accumulated HDR
-// radiance intact and updates the picture immediately.
+// and hands the running mean to ToneMappingModule and PostRenderModule. Moving the camera, changing the physical
+// thin-lens parameters, or modifying the world (terrain, entities, sky or shader pack parameters) resets the sample
+// count; adjusting tone-mapping / exposure sliders leaves the accumulated HDR radiance intact and updates the picture
+// immediately.
 class PhotoMode {
   public:
     static PhotoMode &instance();
+    ~PhotoMode();
 
     void setActive(bool active);
     bool active() const {
@@ -43,9 +51,10 @@ class PhotoMode {
 
     // Queues saving the tone-mapped output to `pngPath` (when non-empty) and/or the linear FP32 HDR accumulated
     // radiance to `exrPath` (when non-empty). With `waitForTarget`, waits until `sampleCount >= targetSamples` first.
-    void requestCapture(std::string pngPath, std::string exrPath, bool waitForTarget);
-    // 0: idle, 1: waiting for target samples or GPU readback, 2: saved, -1: error. Resets 2 / -1 back to 0 when read.
-    int pollCaptureStatus(std::string &outMessage);
+    void requestCapture(std::filesystem::path pngPath, std::filesystem::path exrPath, bool waitForTarget);
+    // 0: idle, 1: waiting for target samples, GPU readback or background file write, 2: saved, -1: error.
+    // Resets 2 / -1 back to 0 when read.
+    int pollCaptureStatus(std::u16string &outMessage);
 
     // True when the scene has already reached `targetSamples` and filled every frame slot's guides, so RayTracingModule
     // can pause while ToneMappingModule and PostRenderModule keep running live.
@@ -68,17 +77,14 @@ class PhotoMode {
   private:
     PhotoMode() = default;
 
-    bool ensureResources(Framework &framework, uint32_t width, uint32_t height);
-    bool checkPoseChangedAndUpdate();
-
     struct PushConstants {
         uint32_t sampleIndex = 1;
         float fireflyClamp = 64.0f;
     };
 
     struct PendingReadback {
-        std::string pngPath;
-        std::string exrPath;
+        std::filesystem::path pngPath;
+        std::filesystem::path exrPath;
         uint32_t width = 0;
         uint32_t height = 0;
         uint32_t samples = 0;
@@ -88,6 +94,22 @@ class PhotoMode {
         std::shared_ptr<gpu::HostVisibleBuffer> pngBuffer;
         std::shared_ptr<gpu::HostVisibleBuffer> exrBuffer;
     };
+
+    struct SaveJob {
+        std::filesystem::path pngPath;
+        std::filesystem::path exrPath;
+        uint32_t width = 0;
+        uint32_t height = 0;
+        uint32_t samples = 0;
+        std::vector<uint16_t> pngHalfRgba;
+        std::vector<float> exrFloatRgba;
+    };
+
+    bool ensureResources(Framework &framework, uint32_t width, uint32_t height);
+    bool checkSceneChangedAndUpdate();
+    void enqueueSaveJob(SaveJob &&job);
+    void saveWorkerLoop();
+    void stopAndJoinSaveWorker();
 
     static constexpr size_t kTableRing = 4;
 
@@ -100,10 +122,18 @@ class PhotoMode {
     glm::vec4 lens_{0.0f, 12.0f, 0.0f, 0.0f};
     bool hasExposureOverride_ = false;
     float exposureBias_ = 0.0f;
-    bool hasPose_ = false;
+    bool hasSceneState_ = false;
     glm::mat4 lastEffectedView_{1.0f};
     glm::mat4 lastProj_{1.0f};
     glm::dvec3 lastCameraPos_{0.0};
+    uint64_t lastChunkGeometryVersion_ = 0;
+    uint32_t lastSkyType_ = 0;
+    glm::vec3 lastSunDirection_{0.0f};
+    float lastRainGradient_ = -1.0f;
+    glm::vec4 lastHeldMainPos_{0.0f};
+    glm::vec4 lastHeldOffPos_{0.0f};
+    glm::vec4 lastBrightness_{0.0f};
+    std::array<glm::vec4, PRISM_PACK_PARAM_COUNT> lastPackParams_{};
     uint32_t convergedSlotFrames_ = 0;
 
     std::shared_ptr<gpu::Device> device_;
@@ -115,9 +145,15 @@ class PhotoMode {
 
     bool captureQueued_ = false;
     bool captureWaitForTarget_ = false;
-    std::string queuedPngPath_;
-    std::string queuedExrPath_;
+    std::filesystem::path queuedPngPath_;
+    std::filesystem::path queuedExrPath_;
     std::vector<PendingReadback> pendingReadbacks_;
     int captureStatus_ = 0;
-    std::string captureMessage_;
+    std::u16string captureMessage_;
+
+    std::mutex saveMutex_;
+    std::condition_variable saveCv_;
+    std::deque<SaveJob> saveQueue_;
+    bool stopSaveWorker_ = false;
+    std::thread saveWorker_;
 };

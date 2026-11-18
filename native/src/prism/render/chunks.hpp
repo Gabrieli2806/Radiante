@@ -223,6 +223,9 @@ class Chunks : public SharedObject<Chunks> {
     // Bumped whenever any slot's geometry is replaced or dropped, so per-frame work can cache what depends on it.
     static uint64_t contentVersion();
     static void bumpContentVersion();
+    // Bumped only when visible section geometry changes (reset, install or clear), ignoring background BLAS compactions.
+    static uint64_t geometryVersion();
+    static void bumpGeometryVersion();
     // Development counters: bytes ever allocated for section geometry (indices, positions and materials share one
     // buffer, counted in the first) and for structures (the fourth). The others are no longer counted.
     static std::atomic<uint64_t> devBytes[5];

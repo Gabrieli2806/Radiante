@@ -548,11 +548,14 @@ public final class RadianteRenderer {
         Vector4f horizonColor = sky.sunriseAndSunsetColor == null
             ? new Vector4f(0.0f)
             : new Vector4f(sky.sunriseAndSunsetColor);
-        Matrix4f celestial = com.g2806.radiante.api.RadianteApi.celestialTransform(sky.sunAngle);
+        float sunAngle = photo
+            ? com.g2806.radiante.client.photo.PhotoMode.frozenSunAngle(sky.sunAngle)
+            : sky.sunAngle;
+        Matrix4f celestial = com.g2806.radiante.api.RadianteApi.celestialTransform(sunAngle);
         Vector3f sunDirection = celestial.transformDirection(new Vector3f(0.0f, 1.0f, 0.0f)).normalize();
         // The moon on a path of its own when the player gave it one, at the hour opposite the sun's. Following the
         // sun it is exactly the sun's direction turned round, as the shaders took it before it had a path.
-        Matrix4f moonPath = com.g2806.radiante.api.RadianteApi.moonTransform(sky.sunAngle);
+        Matrix4f moonPath = com.g2806.radiante.api.RadianteApi.moonTransform(sunAngle);
         Vector3f moonDirection = moonPath.transformDirection(new Vector3f(0.0f, -1.0f, 0.0f)).normalize();
         Vector3f moonAxis = moonPath.transformDirection(new Vector3f(1.0f, 0.0f, 0.0f)).normalize();
         if (skyType == 2) {
@@ -588,7 +591,7 @@ public final class RadianteRenderer {
             levelRenderState.gameTime, levelRenderState.worldPartialTicks);
 
         BufferProxy.updateSkyUniform(new BufferProxy.SkyUniform(skyColor, horizonColor, sunDirection, skyType,
-            Mth.sin(sky.sunAngle) >= 0.0f && horizonColor.w() > 0.0f, VersionCompat.drawsDarkDisc(sky),
+            Mth.sin(sunAngle) >= 0.0f && horizonColor.w() > 0.0f, VersionCompat.drawsDarkDisc(sky),
             mobEffect.x() > 0.0f, submersionTypeOf(cameraState.fogType),
             sky.moonPhase.ordinal(), 1.0f - sky.rainBrightness, celestialsId, celestialsId,
             spriteRect(celestials, SUN_SPRITE),

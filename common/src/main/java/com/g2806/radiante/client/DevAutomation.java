@@ -489,9 +489,15 @@ public final class DevAutomation {
                 }
                 if (minecraft.gui.screen() instanceof com.g2806.radiante.client.gui.RadianteOptionsScreen opts) {
                     opts.openCompare();
-                    RadianteClient.LOGGER.info("[dev] compare on (baseline={})",
-                        com.g2806.radiante.client.gui.BeforeAfterPreview.hasBaseline());
+                    RadianteClient.LOGGER.info("[dev] compare on (baseline={}, captures={})",
+                        com.g2806.radiante.client.gui.BeforeAfterPreview.hasBaseline(),
+                        com.g2806.radiante.client.gui.BeforeAfterPreview.captureCount());
                 }
+            } else if (spec.equals("status")) {
+                RadianteClient.LOGGER.info("[dev] compare status active={} baseline={} captures={}",
+                    com.g2806.radiante.client.gui.BeforeAfterPreview.isActive(),
+                    com.g2806.radiante.client.gui.BeforeAfterPreview.hasBaseline(),
+                    com.g2806.radiante.client.gui.BeforeAfterPreview.captureCount());
             } else if (spec.equals("off")) {
                 if (minecraft.gui.screen() instanceof com.g2806.radiante.client.gui.RadianteOptionsScreen opts) {
                     opts.exitCompare();
@@ -865,6 +871,11 @@ public final class DevAutomation {
         if (spec.equals("open")) {
             boolean ok = com.g2806.radiante.client.gui.PhotoModeScreen.open(minecraft, null);
             RadianteClient.LOGGER.info("[dev] photo open -> {}", ok);
+            return;
+        }
+        if (spec.equals("enter")) {
+            boolean ok = com.g2806.radiante.client.photo.PhotoMode.enter(minecraft);
+            RadianteClient.LOGGER.info("[dev] photo enter -> {}", ok);
             return;
         }
         if (spec.equals("close")) {
