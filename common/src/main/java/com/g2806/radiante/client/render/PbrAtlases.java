@@ -102,7 +102,7 @@ public final class PbrAtlases {
                     merStitched = stitchResource(raw.get(), entry.getValue(), rawMer, width, height, true, true);
                     hasRawMer |= merStitched;
                     if (merStitched) {
-                        EmissionTiles.softenMer(entry.getValue(), rawMer, width, height);
+                        EmissionMaps.softenMer(entry.getValue(), rawMer, width, height);
                         EmissionTiles.uploadFromMer(albedoTextureId, entry.getValue(), rawMer, width, height);
                     }
                 } else if (defaults && EmissionTiles.isLightSprite(entry.getValue())
@@ -110,13 +110,13 @@ public final class PbrAtlases {
                     // No Bedrock pack covers this light block: it takes Radiante's built-in Bedrock RTX
                     // glow, through the very path a pack's MER map takes.
                     if (rawMer == null) { rawMer = fill(width, height, 0); }
-                    EmissionTiles.defaultMer(entry.getValue(), BedrockDefaults.glow(entry.getKey()), specular, rawMer,
+                    EmissionMaps.defaultMer(entry.getValue(), BedrockDefaults.glow(entry.getKey()), specular, rawMer,
                         width, height);
                     hasRawMer = true;
-                    EmissionTiles.softenMer(entry.getValue(), rawMer, width, height);
+                    EmissionMaps.softenMer(entry.getValue(), rawMer, width, height);
                     EmissionTiles.uploadFromMer(albedoTextureId, entry.getValue(), rawMer, width, height);
                 }
-                byte[] derivedGlow = EmissionTiles.derivedGlow(entry.getValue(), specular, width, height);
+                byte[] derivedGlow = EmissionMaps.derivedGlow(entry.getValue(), specular, width, height);
                 boolean any = stitch(resources, entry.getKey(), entry.getValue(), "_s", specular, width, height);
                 if (any) {
                     // Radiante's own maps are for showing: a light block's light stays the calibrated one, and only a block
@@ -125,9 +125,9 @@ public final class PbrAtlases {
                         || !isOwnSpecular(resources, entry.getKey()))) {
                         EmissionTiles.uploadFromLabPbr(albedoTextureId, entry.getValue(), specular, width, height);
                     }
-                    EmissionTiles.keepSetGlow(entry.getValue(), specular, width, height);
-                    EmissionTiles.keepVisibleGlow(entry.getValue(), specular, derivedGlow, width, height);
-                    EmissionTiles.softenSpecular(entry.getValue(), specular, width, height);
+                    EmissionMaps.keepSetGlow(entry.getValue(), specular, width, height);
+                    EmissionMaps.keepVisibleGlow(entry.getValue(), specular, derivedGlow, width, height);
+                    EmissionMaps.softenSpecular(entry.getValue(), specular, width, height);
                 }
                 any |= stitch(resources, entry.getKey(), entry.getValue(), "_n", normal, width, height);
                 if (any) {
@@ -244,7 +244,7 @@ public final class PbrAtlases {
         // Nor for a sprite whose glow Radiante sets itself: radiante-pt's Bedrock RTX look takes emission from
         // the MER as authored, and the eye of ender sat dark again in the light it casts.
         if (!spriteId.getNamespace().equals("minecraft") || !spriteId.getPath().startsWith("block/")
-            || EmissionTiles.setsOwnGlow(spriteId)) {
+            || EmissionMaps.setsOwnGlow(spriteId)) {
             return Optional.empty();
         }
         Identifier id = Identifier.fromNamespaceAndPath("radiante",
