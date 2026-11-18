@@ -92,7 +92,7 @@ Si en vez de eso aparece otra pantalla:
 | Tecla | Acción |
 |---|---|
 | `F6` | Abre los ajustes de Radiante (también: Opciones → Ajustes de vídeo → Radiante). |
-| `F9` | Abre el [modo foto](modo-foto.md) dentro de un mundo. |
+| Sin asignar | Abre el [modo foto](modo-foto.md) dentro de un mundo; asígnala en Controles, bajo Radiante. |
 | Alternar Trazado de Rayos (sin asignar) | Activa o desactiva el trazado de rayos al instante. Asígnale una tecla en los controles de Minecraft. |
 
 ## Siguiente

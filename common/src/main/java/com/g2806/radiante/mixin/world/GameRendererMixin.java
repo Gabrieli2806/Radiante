@@ -111,6 +111,8 @@ public abstract class GameRendererMixin {
         com.g2806.radiante.client.DevAutomation.frame();
         if (!RadianteRenderer.isRayTracingEnabled()) {
             original.call(gameRenderer, deltaTracker);
+            // Before / After's Radiante Off / On takes the game's own picture from here.
+            com.g2806.radiante.client.gui.BeforeAfterPreview.onWorldFrameRendered(this.mainRenderTarget);
             return;
         }
 

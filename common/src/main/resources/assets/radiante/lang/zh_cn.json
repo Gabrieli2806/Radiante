@@ -851,6 +851,9 @@
   "gui.radiante.photo.hands.hidden": "手部：隐藏",
   "gui.radiante.photo.hands.shown": "手部：显示",
   "gui.radiante.photo.hands.tooltip": "是否在照片中显示第一人称手部与手持物品。",
+  "gui.radiante.photo.denoiser.on": "降噪：开",
+  "gui.radiante.photo.denoiser.off": "降噪：关（参考）",
+  "gui.radiante.photo.denoiser.tooltip": "开：由游戏的降噪器（DLSS 光线重建或你所用超分的降噪器）清理每一帧，照片模式再将其平均，几十个样本即可干净。关：直接平均原始路径追踪结果，得到不含降噪的参考图像，需要数千个样本噪点才会消失。",
   "gui.radiante.photo.open_folder": "文件夹",
   "gui.radiante.photo.open_folder.tooltip": "打开截图文件夹。",
   "gui.radiante.photo.save_png": "保存 PNG",
@@ -880,5 +883,9 @@
   "options.radiante.compare.exit": "← 返回设置",
   "options.radiante.compare.set_before": "重设基准",
   "options.radiante.compare.set_before.tooltip": "将当前场景画面捕获为新的“修改前”对比基准。",
-  "options.radiante.compare.hint": "拖动分割线或按 左 / 右 方向键 · Esc 返回设置"
+  "options.radiante.compare.off_on": "Radiante 关 / 开",
+  "options.radiante.compare.off": "RADIANTE 关",
+  "options.radiante.compare.on": "RADIANTE 开",
+  "options.radiante.compare.capturing_off": "正在拍摄关闭光线追踪时的画面……",
+  "options.radiante.compare.hint": "拖动、滚轮或左右键 · 按住空格查看之前 · Esc 返回"
 }

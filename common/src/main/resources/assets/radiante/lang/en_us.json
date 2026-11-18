@@ -851,6 +851,9 @@
   "gui.radiante.photo.hands.hidden": "Hands: Hidden",
   "gui.radiante.photo.hands.shown": "Hands: Shown",
   "gui.radiante.photo.hands.tooltip": "Whether first-person hands and held items appear in the photo.",
+  "gui.radiante.photo.denoiser.on": "Denoiser: On",
+  "gui.radiante.photo.denoiser.off": "Denoiser: Off (reference)",
+  "gui.radiante.photo.denoiser.tooltip": "On: the game's denoiser (DLSS Ray Reconstruction, or the one of your upscaler) cleans each frame and Photo Mode averages them, clean in a few dozen samples. Off: the raw path tracing is averaged, a reference picture with no denoiser in it, which needs thousands of samples before the noise is gone.",
   "gui.radiante.photo.open_folder": "Folder",
   "gui.radiante.photo.open_folder.tooltip": "Open the screenshots folder.",
   "gui.radiante.photo.save_png": "Save PNG",
@@ -880,5 +883,9 @@
   "options.radiante.compare.exit": "← Settings",
   "options.radiante.compare.set_before": "Set Before",
   "options.radiante.compare.set_before.tooltip": "Captures the current world view as the new Before reference.",
-  "options.radiante.compare.hint": "Drag divider or Left / Right · Esc returns to settings"
+  "options.radiante.compare.off_on": "Radiante Off / On",
+  "options.radiante.compare.off": "RADIANTE OFF",
+  "options.radiante.compare.on": "RADIANTE ON",
+  "options.radiante.compare.capturing_off": "Taking the picture with ray tracing off...",
+  "options.radiante.compare.hint": "Drag, wheel or Left / Right · hold Space for Before · Esc returns"
 }

@@ -118,6 +118,13 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
             PhotoMode::cycleBlades, () -> true, false));
         y += BUTTON_H + 4;
 
+        this.buttons.add(new ButtonBox(
+            () -> Component.translatable(PhotoMode.denoise()
+                ? "gui.radiante.photo.denoiser.on" : "gui.radiante.photo.denoiser.off"),
+            "gui.radiante.photo.denoiser.tooltip", innerX, y, innerW, BUTTON_H,
+            () -> PhotoMode.setDenoise(!PhotoMode.denoise()), () -> true, false));
+        y += BUTTON_H + 4;
+
         // Physical thin-lens & camera sliders
         addSlider("gui.radiante.photo.aperture", "gui.radiante.photo.aperture.tooltip", innerX, y, innerW,
             () -> PhotoMode.apertureRadius() / 0.40f,

@@ -16,6 +16,9 @@ public final class PhotoProxy {
 
     public static native void setTargetSamples(int targetSamples);
 
+    /** The denoiser and upscaler run and their output is averaged (true), or the raw paths are (false). */
+    public static native void setDenoise(boolean denoise);
+
     public static native int getTargetSamples();
 
     public static native int getSampleCount();
