@@ -76,6 +76,9 @@ class RayTracingModule : public WorldModule, public SharedObject<RayTracingModul
     static std::string getAttributes(const std::vector<std::string> &attributes, const std::string &language);
 
     void setAttributes(int attributeCount, std::vector<std::string> &attributeKVs) override;
+    bool setRuntimeAttribute(const std::string &key, const std::string &value) override;
+    // Marks cached one-shot passes (such as trans_lut) to run again after a live shader pack attribute change.
+    void noteShaderPackRuntimeChange();
 
     // The background compile (see ShaderPrewarm) of what this module, built again with the attributes
     // `attributeKVs`, will need: its passes' shaders with those settings' defines, and their ray tracing pipelines.

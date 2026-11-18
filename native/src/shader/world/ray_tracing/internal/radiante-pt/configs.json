@@ -203,6 +203,7 @@
             "name": "render_pipeline.module.ray_tracing.attribute.indirect_volumetric_cloud_reflection_max_roughness",
             "type": "float_range:0.0-1.0",
             "default_value": "0.12",
+            "runtime": true,
             "define": "VPT_INDIRECT_VOLUMETRIC_CLOUD_REFLECTION_MAX_ROUGHNESS"
         },
         {
@@ -364,6 +365,7 @@
             "name": "render_pipeline.module.ray_tracing.attribute.seamless_glass_scope",
             "type": "enum:render_pipeline.module.ray_tracing.attribute.seamless_glass_scope.both-render_pipeline.module.ray_tracing.attribute.seamless_glass_scope.blocks-render_pipeline.module.ray_tracing.attribute.seamless_glass_scope.panes",
             "default_value": "render_pipeline.module.ray_tracing.attribute.seamless_glass_scope.both",
+            "runtime": true,
             "define": {
                 "VPT_SEAMLESS_GLASS_SCOPE": "uint(X)"
             }
@@ -453,6 +455,7 @@
             "name": "render_pipeline.module.ray_tracing.attribute.water_light_depth",
             "type": "float_range:0.0-64.0",
             "default_value": "3.0",
+            "runtime": true,
             "define": "VPT_WATER_LIGHT_DEPTH"
         },
         {
@@ -613,6 +616,7 @@
             "name": "render_pipeline.module.ray_tracing.attribute.albedo_gamma",
             "type": "float_range:1.0-2.4",
             "default_value": "2.2",
+            "runtime": true,
             "define": "VPT_ALBEDO_GAMMA"
         },
         {
@@ -738,6 +742,7 @@
             "name": "render_pipeline.module.ray_tracing.attribute.atmosphere_planet_radius",
             "type": "float_range:1000.0-10000.0",
             "default_value": "6360.0",
+            "runtime": true,
             "define": {
                 "VPT_ATMOSPHERE_RG": "((X) * 1000.0)"
             }
@@ -746,6 +751,7 @@
             "name": "render_pipeline.module.ray_tracing.attribute.atmosphere_top_radius",
             "type": "float_range:1000.0-10000.0",
             "default_value": "6460.0",
+            "runtime": true,
             "define": {
                 "VPT_ATMOSPHERE_RT": "((X) * 1000.0)"
             }
@@ -754,6 +760,7 @@
             "name": "render_pipeline.module.ray_tracing.attribute.rayleigh_scale_height",
             "type": "float_range:0.0-100.0",
             "default_value": "8.0",
+            "runtime": true,
             "define": {
                 "VPT_ATMOSPHERE_HR": "((X) * 1000.0)"
             }
@@ -762,6 +769,7 @@
             "name": "render_pipeline.module.ray_tracing.attribute.mie_scale_height",
             "type": "float_range:0.0-20.0",
             "default_value": "1.2",
+            "runtime": true,
             "define": {
                 "VPT_ATMOSPHERE_HM": "((X) * 1000.0)"
             }
@@ -770,6 +778,7 @@
             "name": "render_pipeline.module.ray_tracing.attribute.rayleigh_scattering_coefficient",
             "type": "vec3",
             "default_value": "0.000005802,0.000013558,0.0000331",
+            "runtime": true,
             "define": {
                 "VPT_ATMOSPHERE_BETA_R": "vec3(X)"
             }
@@ -785,6 +794,7 @@
             "name": "render_pipeline.module.ray_tracing.attribute.mie_scattering_coefficient",
             "type": "vec3",
             "default_value": "0.000021,0.000021,0.000021",
+            "runtime": true,
             "define": {
                 "VPT_ATMOSPHERE_BETA_M": "vec3(X)"
             }
@@ -826,6 +836,7 @@
             "name": "render_pipeline.module.ray_tracing.attribute.post_dof_auto_focus",
             "type": "bool",
             "default_value": "render_pipeline.true",
+            "runtime": true,
             "define": "VPT_POST_DOF_AUTO_FOCUS"
         },
         {

@@ -97,6 +97,7 @@ class WorldPipeline : public SharedObject<WorldPipeline> {
     // Hands an attribute to the built modules named moduleName (WorldModule::setRuntimeAttribute). False when the
     // pipeline has no such module or one of them takes the attribute only at a build.
     bool setRuntimeAttribute(std::string_view moduleName, const std::string &key, const std::string &value);
+    void noteShaderPackRuntimeChange();
 
     void bindTexture(std::shared_ptr<gpu::Sampler> sampler, std::shared_ptr<gpu::DeviceLocalImage> image, int index);
 

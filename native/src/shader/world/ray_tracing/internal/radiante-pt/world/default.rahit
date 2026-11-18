@@ -31,6 +31,7 @@ layout(set = 1, binding = 7) readonly buffer TextureMappingBuffer {
 layout(set = 2, binding = 0) uniform Uniform {
     WorldUBO ubo;
 };
+#define worldUBO ubo
 
 layout(std430, buffer_reference, buffer_reference_align = 8) readonly buffer IndexBuffer {
     uint indices[];

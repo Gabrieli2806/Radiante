@@ -229,16 +229,16 @@ void main() {
     return;
 #else
     float focusDistance = VPT_POST_DOF_FOCUS_DISTANCE;
-#if VPT_POST_DOF_AUTO_FOCUS != 0
-    // Prefer the smoothed focus from the focus pass; values outside (0, 100000) mean it has none yet.
-    float smoothedFocus = texture(postDofFocus, vec2(0.5)).r;
-    float fallbackFocus;
-    if (smoothedFocus > 0.0 && smoothedFocus < 100000.0) {
-        focusDistance = smoothedFocus;
-    } else if (autoFocusDistance(texelSize, fallbackFocus)) {
-        focusDistance = fallbackFocus;
+    if (VPT_POST_DOF_AUTO_FOCUS != 0) {
+        // Prefer the smoothed focus from the focus pass; values outside (0, 100000) mean it has none yet.
+        float smoothedFocus = texture(postDofFocus, vec2(0.5)).r;
+        float fallbackFocus;
+        if (smoothedFocus > 0.0 && smoothedFocus < 100000.0) {
+            focusDistance = smoothedFocus;
+        } else if (autoFocusDistance(texelSize, fallbackFocus)) {
+            focusDistance = fallbackFocus;
+        }
     }
-#endif
 
     vec2 axis = vec2(VPT_POST_DOF_DIRECTION_X, VPT_POST_DOF_DIRECTION_Y);
     float axisLength = length(axis);

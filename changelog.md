@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Depth of Field Auto-Focus, Seamless Glass Scope, Water Light Depth, Albedo Gamma, Indirect Cloud Reflection Max Roughness, the six physical atmosphere parameters (with the transmittance lookup table re-baked automatically) and the ray tracing module's jitter and SHaRC debug settings now apply live without rebuilding the pipeline.
+
 - Dynamic entities, their acceleration structures and their lights reuse a ring of persistent GPU buffers instead of allocating and retiring new ones every frame, and glowing entities light the frame they appear or are enabled in instead of a frame later.
 
 - HDR Output now keeps the chosen tone mapping curve, grade, bloom and the Nether's lava hue shoulder instead of replacing them with PBR Neutral, and keeps HDR highlights through Stars, Motion Blur, Depth of Field and a shader pack's post grade instead of falling back to SDR on the pixels they touch.

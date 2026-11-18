@@ -114,7 +114,7 @@ JNIEXPORT jboolean JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_setR
             // Rebuilds made from the blueprint alone (a resize, vsync) build the modules again: they keep the value
             // only when it is recorded there too.
             const std::string module = moduleOf(attribute);
-            if (module != RayTracingModule::NAME && worldPipeline->setRuntimeAttribute(module, attribute, *valueText)) {
+            if (worldPipeline->setRuntimeAttribute(module, attribute, *valueText)) {
                 blueprint->setAttributeValue(module, attribute, *valueText);
                 return true;
             }
@@ -122,6 +122,7 @@ JNIEXPORT jboolean JNICALL Java_com_g2806_radiante_client_pipeline_Pipeline_setR
             auto shaderPack = worldPipeline->shaderPack();
             if (shaderPack == nullptr) return false;
             if (!shaderPack->setRuntimeAttribute(attribute, *valueText, slot, packed)) return false;
+            worldPipeline->noteShaderPackRuntimeChange();
             blueprint->setAttributeValue(RayTracingModule::NAME, attribute, *valueText);
         }
         // Not under the frame lock: the world uniform upload takes the buffers' lock and then the frame lock, and
