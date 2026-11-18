@@ -19,7 +19,7 @@ static_assert(offsetof(gpu::Data::WorldUBO, windTime) == 692); // BufferProxy.WI
 static_assert(offsetof(gpu::Data::WorldUBO, offHandLightPos) == 704);
 static_assert(offsetof(gpu::Data::WorldUBO, packParams) == 736);
 static_assert(offsetof(gpu::Data::WorldUBO, entityLightPad) == offsetof(gpu::Data::WorldUBO, entityLightCount) + 12);
-static_assert(sizeof(gpu::Data::WorldUBO) == 736 + 16 * PRISM_PACK_PARAM_COUNT + 16);
+static_assert(sizeof(gpu::Data::WorldUBO) == 736 + 16 * PRISM_PACK_PARAM_COUNT + 32);
 
 namespace {
 
@@ -76,6 +76,15 @@ glm::vec2 halton(uint32_t index) {
 // How many jitter positions the camera goes round before it starts over: NVIDIA asks for at least 8 times the area
 // scale (72 at Ultra Performance's third of the size); more costs nothing, and a cycle keeps the index small.
 constexpr uint32_t kJitterPhases = 128;
+
+// Martin Roberts's R2 low-discrepancy 2D sequence: never repeats over thousands of samples, for Photo Mode's
+// progressive accumulation past kJitterPhases.
+glm::vec2 r2Jitter(size_t index) {
+    const double n = static_cast<double>(index + 1);
+    const double x = std::fmod(0.5 + 0.7548776662466927 * n, 1.0);
+    const double y = std::fmod(0.5 + 0.5698402909980532 * n, 1.0);
+    return glm::vec2(static_cast<float>(x), static_cast<float>(y));
+}
 
 VkBufferMemoryBarrier2 bufferBarrier(VkBuffer buffer,
                                      uint32_t queueFamily,
@@ -250,8 +259,13 @@ void Buffers::setAndUploadWorldUniformBuffer(gpu::Data::WorldUBO &ubo) {
     ubo.seed = static_cast<uint32_t>(seedDistribution_(seedEngine_));
     ubo.frameCounter = frameCounter_++;
     std::copy(packParams_.begin(), packParams_.end(), ubo.packParams);
-    ubo.cameraJitter =
-        useJitter_ ? halton(static_cast<uint32_t>(jitterIndex_++ % kJitterPhases) + 1u) - glm::vec2(0.5f) : glm::vec2(0.0f);
+    ubo.cameraLens = cameraLens_;
+    if (photoJitter_) {
+        ubo.cameraJitter = r2Jitter(jitterIndex_++) - glm::vec2(0.5f);
+    } else {
+        ubo.cameraJitter =
+            useJitter_ ? halton(static_cast<uint32_t>(jitterIndex_++ % kJitterPhases) + 1u) - glm::vec2(0.5f) : glm::vec2(0.0f);
+    }
 
     FrameUniforms &uniforms = uniforms_[frame];
     uniforms.heldLightHistoryReset = held_light_history::changed(ubo, lastWorld_);
@@ -286,6 +300,19 @@ void Buffers::setPackParam(uint32_t slot, const glm::vec4 &value) {
 void Buffers::setUseJitter(bool useJitter) {
     std::scoped_lock lock(mutex_);
     useJitter_ = useJitter;
+}
+
+void Buffers::setCameraLens(const glm::vec4 &lens) {
+    std::scoped_lock lock(mutex_);
+    cameraLens_ = lens;
+}
+
+void Buffers::setPhotoJitter(bool active) {
+    std::scoped_lock lock(mutex_);
+    if (photoJitter_ != active) {
+        photoJitter_ = active;
+        jitterIndex_ = 0;
+    }
 }
 
 void Buffers::setAndUploadSkyUniformBuffer(const gpu::Data::SkyUBO &source) {

@@ -1,0 +1,56 @@
+#version 460
+#extension GL_GOOGLE_include_directive : require
+
+// Progressive Monte Carlo accumulation for Photo Mode. Accumulates raw path-traced linear HDR radiance in 32-bit float
+// so thousands of samples suffer no half-float rounding, and writes the running mean to the 16-bit float image read by
+// ToneMappingModule and PostRenderModule. When sampleIndex is 0 (target sample count reached), the converged buffer is
+// forwarded untouched so tone-mapping and grading sliders update live without re-tracing.
+
+#include "numeric.glsl"
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(set = 0, binding = 0, rgba16f) uniform readonly image2D rtRadianceImage;
+layout(set = 0, binding = 1, rgba32f) uniform image2D accumImage;
+layout(set = 0, binding = 2, rgba16f) uniform writeonly image2D outRadianceImage;
+
+layout(push_constant) uniform PushConstants {
+    uint sampleIndex;
+    float fireflyClamp;
+} pc;
+
+vec3 sanitizeRadiance(vec3 v) {
+    return vec3(finiteFloat(v.r) ? max(v.r, 0.0) : 0.0,
+                finiteFloat(v.g) ? max(v.g, 0.0) : 0.0,
+                finiteFloat(v.b) ? max(v.b, 0.0) : 0.0);
+}
+
+void main() {
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(outRadianceImage);
+    if (any(greaterThanEqual(pixel, size))) {
+        return;
+    }
+
+    vec3 accum;
+    if (pc.sampleIndex == 0u) {
+        accum = sanitizeRadiance(imageLoad(accumImage, pixel).rgb);
+    } else {
+        vec3 current = sanitizeRadiance(imageLoad(rtRadianceImage, pixel).rgb);
+        if (pc.fireflyClamp > 0.0) {
+            float peak = max(current.r, max(current.g, current.b));
+            if (peak > pc.fireflyClamp) {
+                current *= pc.fireflyClamp / peak;
+            }
+        }
+        if (pc.sampleIndex == 1u) {
+            accum = current;
+        } else {
+            vec3 previous = sanitizeRadiance(imageLoad(accumImage, pixel).rgb);
+            accum = mix(previous, current, 1.0 / float(pc.sampleIndex));
+        }
+        imageStore(accumImage, pixel, vec4(accum, 1.0));
+    }
+
+    imageStore(outRadianceImage, pixel, vec4(min(accum, vec3(65504.0)), 1.0));
+}

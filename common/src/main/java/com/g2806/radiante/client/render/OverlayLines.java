@@ -103,6 +103,9 @@ final class OverlayLines {
      * hide it, and traced under the particle mask so it casts no shadow.
      */
     static void collectBlockOutline(LevelRenderState levelRenderState, CameraRenderState cameraState) {
+        if (com.g2806.radiante.client.photo.PhotoMode.isActive()) {
+            return;
+        }
         net.minecraft.client.renderer.state.level.BlockOutlineRenderState state =
             levelRenderState.blockOutlineRenderState;
         if (!Options.blockOutline || state == null || state.shape().isEmpty()) {

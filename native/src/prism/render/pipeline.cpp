@@ -2,6 +2,7 @@
 
 #include "prism/render/buffers.hpp"
 #include "prism/render/gpu_profiler.hpp"
+#include "prism/render/photo_mode.hpp"
 #include "prism/render/render_framework.hpp"
 #include "prism/render/renderer.hpp"
 
@@ -155,20 +156,89 @@ const std::vector<std::string> *WorldPipelineBlueprint::attributesOf(std::string
     return nullptr;
 }
 
+bool WorldPipelineBlueprint::makePhotoBlueprint(WorldPipelineBlueprint &out) const {
+    const auto *rtAttrs = attributesOf(RayTracingModule::NAME);
+    const auto *tmAttrs = attributesOf(ToneMappingModule::NAME);
+    const auto *prAttrs = attributesOf(PostRenderModule::NAME);
+    if (rtAttrs == nullptr || tmAttrs == nullptr || prAttrs == nullptr) return false;
+
+    out = WorldPipelineBlueprint{};
+    out.imageFormats_ = {
+        VK_FORMAT_R16G16B16A16_SFLOAT, // 0: post_rendered output
+        VK_FORMAT_R16G16B16A16_SFLOAT, // 1: rt radiance
+        VK_FORMAT_R8G8B8A8_UNORM,      // 2: diffuse_albedo_metallic
+        VK_FORMAT_R8G8B8A8_UNORM,      // 3: specular_albedo
+        VK_FORMAT_R16G16B16A16_SFLOAT, // 4: normal_roughness
+        VK_FORMAT_R16G16_SFLOAT,       // 5: motion_vector
+        VK_FORMAT_R16_SFLOAT,          // 6: linear_depth
+        VK_FORMAT_R16_SFLOAT,          // 7: specular_hit_depth
+        VK_FORMAT_R16_SFLOAT,          // 8: first_hit_depth
+        VK_FORMAT_R16G16B16A16_SFLOAT, // 9: first_hit_diffuse_direct_light
+        VK_FORMAT_R16G16B16A16_SFLOAT, // 10: first_hit_diffuse_indirect_light
+        VK_FORMAT_R16G16B16A16_SFLOAT, // 11: first_hit_specular
+        VK_FORMAT_R16G16B16A16_SFLOAT, // 12: first_hit_clear
+        VK_FORMAT_R16G16B16A16_SFLOAT, // 13: first_hit_base_emission
+        VK_FORMAT_R16G16B16A16_SFLOAT, // 14: fog_image
+        VK_FORMAT_R16G16B16A16_SFLOAT, // 15: first_hit_refraction
+        VK_FORMAT_R16G16B16A16_SFLOAT, // 16: fog_transmission
+        VK_FORMAT_R16G16B16A16_SFLOAT, // 17: photo_accumulated
+        VK_FORMAT_R16G16B16A16_SFLOAT, // 18: mapped_output
+    };
+
+    out.modules_.push_back({
+        .name = std::string(RayTracingModule::NAME),
+        .inputs = {},
+        .outputs = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
+        .attributeKVs = *rtAttrs,
+    });
+    out.modules_.push_back({
+        .name = std::string(ToneMappingModule::NAME),
+        .inputs = {17},
+        .outputs = {18},
+        .attributeKVs = *tmAttrs,
+    });
+    out.modules_.push_back({
+        .name = std::string(PostRenderModule::NAME),
+        .inputs = {18, 8, 17, 5, 4},
+        .outputs = {0},
+        .attributeKVs = *prAttrs,
+    });
+
+    // Reference Photo Mode bypasses NRD signal splitting, post screen-space DoF and post motion blur.
+    out.setAttributeValue(RayTracingModule::NAME, "render_pipeline.module.ray_tracing.attribute.nrd_signals",
+                          "render_pipeline.false");
+    out.setAttributeValue(RayTracingModule::NAME, "render_pipeline.module.ray_tracing.attribute.post_enable_dof",
+                          "render_pipeline.false");
+    out.setAttributeValue(RayTracingModule::NAME, "render_pipeline.module.ray_tracing.attribute.post_enable_motion_blur",
+                          "render_pipeline.false");
+    out.setAttributeValue(RayTracingModule::NAME, "render_pipeline.module.ray_tracing.attribute.use_jitter",
+                          "render_pipeline.true");
+    float exposureBias = 0.0f;
+    if (PhotoMode::instance().exposureOverride(exposureBias)) {
+        out.setAttributeValue(ToneMappingModule::NAME, "render_pipeline.module.tone_mapping.attribute.exposure_bias",
+                              std::to_string(exposureBias));
+    }
+    return true;
+}
+
 // ---- WorldPipeline
 
 WorldPipeline::WorldPipeline() = default;
 
 void WorldPipeline::init(std::shared_ptr<Framework> framework, std::shared_ptr<Pipeline> pipeline) {
-    auto blueprint = pipeline->worldPipelineBlueprint();
+    auto storedBlueprint = pipeline->worldPipelineBlueprint();
+    WorldPipelineBlueprint photoBlueprint;
+    photoMode_ = PhotoMode::instance().active() && storedBlueprint->makePhotoBlueprint(photoBlueprint);
+    WorldPipelineBlueprint &activeBlueprint = photoMode_ ? photoBlueprint : *storedBlueprint;
+
     const uint32_t frameCount = framework->swapchain()->imageCount();
-    const size_t moduleCount = blueprint->modules_.size();
-    if (blueprint->imageFormats_.empty()) throw std::runtime_error("the world pipeline has no images");
+    const size_t moduleCount = activeBlueprint.modules_.size();
+    if (activeBlueprint.imageFormats_.empty()) throw std::runtime_error("the world pipeline has no images");
 
     worldModules_.assign(moduleCount, nullptr);
     worldModuleNames_.assign(moduleCount, std::string());
     sharedImages_.assign(frameCount,
-                         std::vector<std::shared_ptr<gpu::DeviceLocalImage>>(blueprint->imageFormats_.size(), nullptr));
+                         std::vector<std::shared_ptr<gpu::DeviceLocalImage>>(activeBlueprint.imageFormats_.size(), nullptr));
 
     // The frame slots' contexts exist before the modules, whose own contexts point back at them; what they run is
     // filled in once every module is built.
@@ -181,19 +251,19 @@ void WorldPipeline::init(std::shared_ptr<Framework> framework, std::shared_ptr<P
     const VkExtent2D extent = framework->swapchain()->vkExtent();
     for (auto &images : sharedImages_) {
         images[0] = gpu::DeviceLocalImage::create(framework->device(), framework->vma(), false, extent.width,
-                                                  extent.height, 1, blueprint->imageFormats_[0],
+                                                  extent.height, 1, activeBlueprint.imageFormats_[0],
                                                   VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                                                       VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
     }
 
     const auto initStart = Clock::now();
-    if (loadShaderPack(framework, *blueprint)) {
+    if (loadShaderPack(framework, activeBlueprint)) {
         radiante::out() << "[Rebuild] shader pack " << msSince(initStart) << " ms" << std::endl;
     }
 
     // Last to first: a module's outputs are the images the modules after it read, already made at the size those
     // need, and it makes the inputs that no module made yet.
-    for (size_t i = moduleCount; i-- > 0;) buildModule(framework, *blueprint, i, frameCount);
+    for (size_t i = moduleCount; i-- > 0;) buildModule(framework, activeBlueprint, i, frameCount);
 
     // The settings the shaders read live start at the values this build was made with; published only once every
     // module is built, so a failed build leaves the previous pack's values in place.
@@ -343,9 +413,34 @@ void WorldPipelineContext::render() {
 
     GpuProfiler::beginFrame(framework->device()->vkDevice(), framework->physicalDevice()->vkPhysicalDevice(),
                             commandBuffer.vkCommandBuffer(), context->frameIndex);
-    for (const auto &moduleContext : worldModuleContexts) {
-        moduleContext->render();
-        if (GpuProfiler::enabled()) GpuProfiler::mark(commandBuffer.vkCommandBuffer(), typeid(*moduleContext).name());
+    auto pipelineOwner = worldPipeline.lock();
+    if (pipelineOwner != nullptr && pipelineOwner->isPhotoMode() && worldModuleContexts.size() == 3) {
+        const bool traceSample =
+            !PhotoMode::instance().canSkipRayTracing(static_cast<uint32_t>(pipelineOwner->contexts().size()));
+        if (traceSample) {
+            worldModuleContexts[0]->render();
+            if (GpuProfiler::enabled()) {
+                GpuProfiler::mark(commandBuffer.vkCommandBuffer(), typeid(*worldModuleContexts[0]).name());
+            }
+        }
+        PhotoMode::instance().recordAccumulate(*framework, commandBuffer,
+                                               pipelineOwner->sharedImage(context->frameIndex, 1),
+                                               pipelineOwner->sharedImage(context->frameIndex, 17), traceSample);
+        if (GpuProfiler::enabled()) GpuProfiler::mark(commandBuffer.vkCommandBuffer(), "PhotoAccumulate");
+        for (size_t idx = 1; idx < worldModuleContexts.size(); idx++) {
+            worldModuleContexts[idx]->render();
+            if (GpuProfiler::enabled()) {
+                GpuProfiler::mark(commandBuffer.vkCommandBuffer(), typeid(*worldModuleContexts[idx]).name());
+            }
+        }
+        PhotoMode::instance().recordCaptureIfReady(*framework, commandBuffer, outputImage);
+    } else {
+        for (const auto &moduleContext : worldModuleContexts) {
+            moduleContext->render();
+            if (GpuProfiler::enabled()) {
+                GpuProfiler::mark(commandBuffer.vkCommandBuffer(), typeid(*moduleContext).name());
+            }
+        }
     }
 
     // Whatever layout the last pass left the picture in, it rests in OUTPUT_LAYOUT until the framework blits it.

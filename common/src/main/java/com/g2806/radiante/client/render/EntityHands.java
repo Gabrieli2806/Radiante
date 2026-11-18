@@ -58,8 +58,13 @@ public final class EntityHands {
      * quarter of a millisecond for nothing.
      */
     public static boolean handsDrawn(Minecraft minecraft, LevelRenderState levelRenderState) {
+        boolean photo = com.g2806.radiante.client.photo.PhotoMode.isActive();
+        if (photo && com.g2806.radiante.client.photo.PhotoMode.hideHands()) {
+            return false;
+        }
         CameraRenderState cameraState = levelRenderState.cameraRenderState;
-        return PlayerFrame.hasPlayer() && !minecraft.gameRenderer.gameRenderState().guiRenderState.isHudHidden
+        boolean hudAllowsHands = photo || !minecraft.gameRenderer.gameRenderState().guiRenderState.isHudHidden;
+        return PlayerFrame.hasPlayer() && hudAllowsHands
             && minecraft.options.getCameraType().isFirstPerson() && !cameraState.entityRenderState.isSleeping
             && minecraft.gameMode != null && minecraft.gameMode.getPlayerMode() != GameType.SPECTATOR
             // In VR, Vivecraft draws the hands at the controllers; vanilla's would sit in front of the face.

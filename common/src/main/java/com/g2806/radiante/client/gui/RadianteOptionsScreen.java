@@ -225,7 +225,14 @@ public class RadianteOptionsScreen extends SettingsRows {
                     Screen last = this.lastScreen;
                     this.minecraft.gui.setScreen(new ShaderPacksScreen(
                         () -> new RadianteOptionsScreen(last, this.options)));
-                }),
+                },
+                this.minecraft != null && this.minecraft.level != null && RadianteRenderer.isRayTracingEnabled()
+                    ? () -> {
+                        this.applied = true;
+                        Screen last = this.lastScreen;
+                        PhotoModeScreen.open(this.minecraft, new RadianteOptionsScreen(last, this.options));
+                    }
+                    : null),
             value -> this.scroll = value);
         this.layout.restartInfo(new SettingsLayout.RestartInfo() {
             @Override

@@ -7,6 +7,7 @@
 #include "prism/render/framegen/native_frame_generation.hpp"
 #include "prism/render/gpu_profiler.hpp"
 #include "prism/render/hdr_output.hpp"
+#include "prism/render/photo_mode.hpp"
 #include "prism/render/renderer.hpp"
 #include "prism/render/textures.hpp"
 #include "prism/render/world.hpp"
@@ -297,6 +298,7 @@ void Framework::acquireContext() {
     nextContextIndex_ = (nextContextIndex_ + 1) % static_cast<uint32_t>(contexts_.size());
 
     context->waitForPreviousSubmit();
+    PhotoMode::instance().flushPendingCapture(false);
     currentContext_ = context;
     gpu::retire::openSlot(context->frameIndex);
 
@@ -426,6 +428,7 @@ void Framework::markSubmitted(VkSemaphore timeline, uint64_t value) {
     if (lastRenderedContext_ == nullptr) return;
     lastRenderedContext_->submitTimeline = timeline;
     lastRenderedContext_->submitTimelineValue = value;
+    PhotoMode::instance().noteSubmitted(timeline, value);
     acquireContext();
 }
 
@@ -523,6 +526,7 @@ void Framework::waitRenderQueueIdle() {
 }
 
 void Framework::close() {
+    PhotoMode::instance().release();
     framegen::NativeFrameGeneration::instance().release();
     mcDepth_.reset();
     outputUpscaler_.reset();

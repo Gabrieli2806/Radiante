@@ -29,7 +29,7 @@ public final class FrameGeneration {
 
     /** True while frames are being generated. Off with HDR output, which presents its own way. */
     public static boolean isActive() {
-        return active && !HdrDisplay.isActive();
+        return active && !HdrDisplay.isActive() && !com.g2806.radiante.client.photo.PhotoMode.isActive();
     }
 
     /** How many frames this GPU can generate per rendered one; 0 when it cannot. */

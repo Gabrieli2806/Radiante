@@ -50,6 +50,9 @@ class Buffers : public SharedObject<Buffers> {
     void setPackParam(uint32_t slot, const glm::vec4 &value);
     // Whether the camera moves by a sub-pixel jitter from frame to frame, for the temporal passes and upscalers.
     void setUseJitter(bool useJitter);
+    // Photo Mode's thin-lens camera parameters (WorldUBO.cameraLens) and unbounded R2 sub-pixel jitter sequence.
+    void setCameraLens(const glm::vec4 &lens);
+    void setPhotoJitter(bool active);
     void setAndUploadSkyUniformBuffer(const gpu::Data::SkyUBO &source);
     void setAndUploadTextureMappingBuffer(const gpu::Data::TextureMapping &mapping);
 
@@ -89,7 +92,9 @@ class Buffers : public SharedObject<Buffers> {
     std::vector<FrameUniforms> uniforms_;
     std::array<glm::vec4, PRISM_PACK_PARAM_COUNT> packParams_{};
     gpu::Data::WorldUBO lastWorld_{};
+    glm::vec4 cameraLens_{0.0f};
     bool useJitter_ = true;
+    bool photoJitter_ = false;
     size_t jitterIndex_ = 0;
     uint32_t frameCounter_ = 0;
     std::ranlux48 seedEngine_;
