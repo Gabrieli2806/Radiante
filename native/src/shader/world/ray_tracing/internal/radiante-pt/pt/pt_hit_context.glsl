@@ -47,8 +47,11 @@ void ptHitContextFromBuiltins() {
     loadTrianglePositions(g_hit.geometryBufferIndex, i0, i1, i2, g_hit.p0, g_hit.p1, g_hit.p2);
 
     g_hit.bary = vec3(1.0 - (attribs.x + attribs.y), attribs.x, attribs.y);
-    g_hit.objectToWorld = mat3(gl_ObjectToWorld3x4EXT);
-    g_hit.normalMatrix = transpose(mat3(gl_WorldToObject3x4EXT));
+    // The 4x3 forms, whose columns are the instance's axes: mat3 of the 3x4 ones is their transpose, which went
+    // unnoticed while entities were placed by translation alone and turned a swung limb's faces the other way once
+    // each limb became an instance with its own rotation.
+    g_hit.objectToWorld = mat3(gl_ObjectToWorldEXT);
+    g_hit.normalMatrix = transpose(mat3(gl_WorldToObjectEXT));
     g_hit.packedData = g_hit.m0.packedData;
     g_hit.planeHitWorldPos = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
 }

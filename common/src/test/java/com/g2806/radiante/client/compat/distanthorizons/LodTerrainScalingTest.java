@@ -9,9 +9,9 @@ class LodTerrainScalingTest {
 
     @Test
     void builderThreadCountScalesWithProcessorsAndStaysClamped() {
-        assertEquals(2, LodTerrain.builderThreadCount(1));
-        assertEquals(2, LodTerrain.builderThreadCount(4));
-        assertEquals(2, LodTerrain.builderThreadCount(6));
+        assertEquals(3, LodTerrain.builderThreadCount(1));
+        assertEquals(3, LodTerrain.builderThreadCount(4));
+        assertEquals(3, LodTerrain.builderThreadCount(6));
         assertEquals(4, LodTerrain.builderThreadCount(12));
         assertEquals(5, LodTerrain.builderThreadCount(16));
         assertEquals(8, LodTerrain.builderThreadCount(24));

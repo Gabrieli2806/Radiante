@@ -565,8 +565,13 @@ void sampleSurfaceState(bool useTexture,
 #endif
         // The denoiser's albedo guide follows both rain darkening and snow whitening immediately, so neither lags
         // over several frames when turning a corner.
-        vec3 albedoRatio = clamp(mat.albedo / max(dryAlbedo, vec3(1e-4)), vec3(0.0), vec3(64.0));
+        // Darkening by its ratio to the dry colour; whitening by the snow's own colour, since on a near black block
+        // (obsidian, coal) a ratio of a few hundred was clamped and left the guide black under white snow.
+        vec3 albedoRatio = clamp(mat.albedo / max(dryAlbedo, vec3(1e-4)), vec3(0.0), vec3(1.0));
         albedoValue.rgb = clamp(albedoValue.rgb * pow(albedoRatio, vec3(1.0 / 2.2)), vec3(0.0), vec3(1.0));
+        if (frost > 0.0 || snowCover > 0.0) {
+            albedoValue.rgb = max(albedoValue.rgb, pow(clamp(mat.albedo, vec3(0.0), vec3(1.0)), vec3(1.0 / 2.2)));
+        }
     } else if (useWaterMaterial && baseGeoNormal.y > 0.5 && skyUBO.rainGradient > 0.01) {
         // Rain rings on water under the open sky.
         float open = vptGroundOpen(worldPos, baseGeoNormal);

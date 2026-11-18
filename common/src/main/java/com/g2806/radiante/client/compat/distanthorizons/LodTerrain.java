@@ -61,7 +61,8 @@ final class LodTerrain {
     private static final long UNDATED_REFRESH_NS = 30_000_000_000L;
     /** A section Distant Horizons had no data for is asked again after this long. */
     private static final long RETRY_INTERVAL_NS = 15_000_000_000L;
-    private static final int MIN_BUILDER_THREADS = 2;
+    /** Never fewer than the three builders every CPU had before the count followed its cores. */
+    private static final int MIN_BUILDER_THREADS = 3;
     private static final int MAX_BUILDER_THREADS = 8;
     /**
      * Chunks past the loaded area that coarse sections split across as well: widened with horizontal camera speed so
