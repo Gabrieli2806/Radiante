@@ -98,6 +98,7 @@ indexBuffer;
 #include "common/constants.glsl"
 #include "common/water_medium.glsl"
 #include "common/rain_wetness.glsl"
+#include "common/water_ripples.glsl"
 #if defined(RADIANTE_DEBUG_VIEW) && RADIANTE_DEBUG_VIEW == 11
 // The rain debug view's values for this surface: wetness, open sky, standing water (pt_material.glsl).
 vec3 g_radianteDebugRain = vec3(0.0);

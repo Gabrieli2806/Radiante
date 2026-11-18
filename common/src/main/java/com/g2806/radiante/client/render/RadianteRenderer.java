@@ -582,6 +582,10 @@ public final class RadianteRenderer {
 
         TextureAtlas celestials = minecraft.getAtlasManager().getAtlasOrThrow(AtlasIds.CELESTIALS);
         int celestialsId = TextureTracker.idOf(VersionCompat.gpuTexture(celestials));
+        Vector4f rainWetness = LightningFlash.apply(
+            RainExposure.update(minecraft, cameraState.pos.x(), cameraState.pos.z()), minecraft, cameraState.pos);
+        float[] waterRipples = WaterRipples.update(minecraft, cameraState.pos, rainWetness.x(),
+            levelRenderState.gameTime, levelRenderState.worldPartialTicks);
 
         BufferProxy.updateSkyUniform(new BufferProxy.SkyUniform(skyColor, horizonColor, sunDirection, skyType,
             Mth.sin(sky.sunAngle) >= 0.0f && horizonColor.w() > 0.0f, VersionCompat.drawsDarkDisc(sky),
@@ -594,15 +598,14 @@ public final class RadianteRenderer {
             new Vector4f(celestialAxis, Options.vanillaCelestialOrientation ? 1.0f : 0.0f),
             BiomeAmbiance.chroma(), BiomeAmbiance.heights(), BiomeAmbiance.waterExtinction(),
             BiomeAmbiance.waterAlbedo(), mobEffect,
-            LightningFlash.apply(RainExposure.update(minecraft, cameraState.pos.x(), cameraState.pos.z()), minecraft,
-                cameraState.pos),
+            rainWetness,
             BiomeAmbiance.waterFog(), new Vector4f(moonDirection, 0.0f), new Vector4f(moonAxis, 0.0f),
             spriteRotation, BiomeClimate.climate(),
             BiomeClimate.thunder(minecraft, levelRenderState.worldPartialTicks), BiomeClimate.biomeId(),
             BiomeClimate.previousBiomeId(), BiomeClimate.idBlend(),
             PackWeather.update(minecraft, levelRenderState.worldPartialTicks)
                 .setComponent(2, WaterBody.depth()).setComponent(3, WaterBody.width()),
-            PackPlayer.state(), PackPlayer.motion()));
+            PackPlayer.state(), PackPlayer.motion(), waterRipples));
     }
 
     /**

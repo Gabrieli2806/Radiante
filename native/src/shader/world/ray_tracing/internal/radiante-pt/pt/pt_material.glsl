@@ -392,6 +392,16 @@ void sampleSurfaceState(bool useTexture,
                                                      footprint, baseGeoNormal.y < 0.0, fftWaterWaveShape());
 #endif
         }
+        if (abs(baseGeoNormal.y) > 0.75) {
+            float rippleFootprint = mainRay.coneWidth + g_hit.hitT * mainRay.coneSpread;
+            vec2 interactiveSlope = vptInteractiveRippleSlope(worldPos, 0.0, rippleFootprint);
+            if (dot(interactiveSlope, interactiveSlope) > 0.0) {
+                vec3 faceUp = dot(baseGeoNormal, viewDir) < 0.0 ? -baseGeoNormal : baseGeoNormal;
+                shadingNormal = keepReflectionOutOfFace(
+                    vptApplyInteractiveRippleNormal(shadingNormal, baseGeoNormal, interactiveSlope), faceUp, viewDir);
+                mat.roughness = clamp(mat.roughness + 0.008 * min(length(interactiveSlope), 1.5), 0.005, 0.045);
+            }
+        }
     }
 
     // Water's sides (and any water face without the wave surface) stay flat, as in Bedrock RTX: the pack's water
@@ -513,6 +523,13 @@ void sampleSurfaceState(bool useTexture,
             shadingNormal = vptApplyRainRipples(normalizeF(mix(shadingNormal, geometricNormal, puddle),
                                                            geometricNormal),
                                                 vptRainRippleSlope(rainPos), puddle * PUDDLE_RIPPLES);
+            float rippleFootprint = mainRay.coneWidth + g_hit.hitT * mainRay.coneSpread;
+            vec2 stepRippleSlope = vptInteractiveRippleSlope(rainPos, 1.0, rippleFootprint) * puddle;
+            if (dot(stepRippleSlope, stepRippleSlope) > 0.0) {
+                vec3 faceUp = dot(baseGeoNormal, viewDir) < 0.0 ? -baseGeoNormal : baseGeoNormal;
+                shadingNormal = keepReflectionOutOfFace(
+                    vptApplyInteractiveRippleNormal(shadingNormal, baseGeoNormal, stepRippleSlope), faceUp, viewDir);
+            }
         }
 
         // Progressive rime frost and snow accumulation in snowy biomes, melted around heat sources.

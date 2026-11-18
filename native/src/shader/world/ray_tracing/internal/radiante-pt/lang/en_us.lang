@@ -109,3 +109,4 @@ render_pipeline.module.ray_tracing.attribute.face_shading=Vanilla Face Shading
 render_pipeline.module.ray_tracing.attribute.wind=Wind
 render_pipeline.module.ray_tracing.attribute.wind_strength=Wind Strength
 render_pipeline.module.ray_tracing.attribute.fog_veil_dimming=Fog Veil Dimming
+render_pipeline.module.ray_tracing.attribute.water_ripples=Interactive Water Ripples
