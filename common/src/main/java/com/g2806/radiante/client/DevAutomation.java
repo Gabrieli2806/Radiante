@@ -505,6 +505,9 @@ public final class DevAutomation {
                     com.g2806.radiante.client.gui.BeforeAfterPreview.setActive(false);
                 }
                 RadianteClient.LOGGER.info("[dev] compare off");
+            } else if (spec.equals("offon")) {
+                com.g2806.radiante.client.gui.BeforeAfterPreview.requestOffBaseline();
+                RadianteClient.LOGGER.info("[dev] compare off/on capture");
             } else if (spec.equals("rebaseline")) {
                 com.g2806.radiante.client.gui.BeforeAfterPreview.requestRebaseline();
                 RadianteClient.LOGGER.info("[dev] compare rebaseline");
@@ -917,6 +920,11 @@ public final class DevAutomation {
         if (spec.startsWith("samples:")) {
             com.g2806.radiante.client.photo.PhotoMode.setTargetSamples(Integer.parseInt(spec.substring(8)));
             RadianteClient.LOGGER.info("[dev] photo target samples {}", spec.substring(8));
+            return;
+        }
+        if (spec.startsWith("denoise:")) {
+            com.g2806.radiante.client.photo.PhotoMode.setDenoise(Boolean.parseBoolean(spec.substring(8)));
+            RadianteClient.LOGGER.info("[dev] photo denoise {}", spec.substring(8));
             return;
         }
         if (spec.startsWith("focusclick:")) {

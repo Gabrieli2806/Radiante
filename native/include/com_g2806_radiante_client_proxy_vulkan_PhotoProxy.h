@@ -41,6 +41,14 @@ JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_PhotoProxy_se
 
 /*
  * Class:     com_g2806_radiante_client_proxy_vulkan_PhotoProxy
+ * Method:    setDenoise
+ * Signature: (Z)V
+ */
+JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_PhotoProxy_setDenoise
+  (JNIEnv *, jclass, jboolean);
+
+/*
+ * Class:     com_g2806_radiante_client_proxy_vulkan_PhotoProxy
  * Method:    getTargetSamples
  * Signature: ()I
  */

@@ -148,6 +148,12 @@ void PhotoMode::setTargetSamples(uint32_t targetSamples) {
     }
 }
 
+void PhotoMode::setDenoise(bool denoise) {
+    if (denoise_.exchange(denoise, std::memory_order_relaxed) == denoise) return;
+    resetAccumulation();
+    if (active()) Renderer::options.needRecreate = true;
+}
+
 void PhotoMode::resetAccumulation() {
     sampleCount_.store(0, std::memory_order_relaxed);
     resetRequested_.store(true, std::memory_order_relaxed);
@@ -335,11 +341,20 @@ void PhotoMode::recordAccumulate(Framework &framework,
     const uint32_t target = targetSamples_.load(std::memory_order_relaxed);
     uint32_t current = sampleCount_.load(std::memory_order_relaxed);
     uint32_t shaderSampleIndex = 0;
-    if (tracedNewSample && (target == 0 || current < target)) {
+    if (current == 0 && lastSampleCount_ > 0) warmupFrames_ = 0;
+    // With the denoiser, the first frames after a reset are shown as they come and not averaged: its history still
+    // holds the view from before the change, and averaged in, that left a ghost of it in the picture.
+    constexpr uint32_t DENOISED_WARMUP_FRAMES = 8;
+    if (tracedNewSample && denoise_.load(std::memory_order_relaxed) && current == 0 &&
+        warmupFrames_ < DENOISED_WARMUP_FRAMES) {
+        warmupFrames_++;
+        shaderSampleIndex = 1;
+    } else if (tracedNewSample && (target == 0 || current < target)) {
         current++;
         sampleCount_.store(current, std::memory_order_relaxed);
         shaderSampleIndex = current;
     }
+    lastSampleCount_ = current;
 
     commandBuffer.sync({
         {rtRadiance, gpu::ImageUsage::StorageRead, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT},

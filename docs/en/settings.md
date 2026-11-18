@@ -13,8 +13,11 @@ Open them with `F6` in a world, or from Options → Video Settings → Radiante 
   since the last Apply. Changes compile in the background with a progress popup at the top right.
 - **Before / After** (top bar, while in a traced world) applies your changes, hides the panels and menu blur, and
   splits the screen between the picture from when Settings opened (**BEFORE**, left) and the live traced world
-  (**AFTER**, right), with a draggable divider (or Left / Right keys). Hold **Ctrl** (or press **Set Before** in the
-  split view) to capture a fresh Before reference; **Esc** or **← Settings** returns to the option list.
+  (**AFTER**, right), with a divider you drag, move with the mouse wheel or Left / Right (Home / End for the edges),
+  and **50%** to centre it. Hold **Space** to see Before on the whole screen. Hold **Ctrl** (or press **Set Before**
+  in the split view) to capture a fresh Before reference. **Radiante Off / On** takes Before with ray tracing off
+  instead, so the halves compare the game without Radiante and with it (ray tracing goes off for two seconds while
+  the game's own picture is taken). **Esc** or **← Settings** returns to the option list.
 - **Search** finds a setting in any section by name.
 - **Advanced** (bottom) shows the fine-tuning controls of each section in folding groups, and adds the Debug section.
 - **Reset to Defaults** (bottom left) returns everything to a fresh install. Hold **Ctrl** to turn it into **Rebuild

@@ -40,6 +40,12 @@ class PhotoMode {
     void setExposureOverride(bool enabled, float exposureBias);
     bool exposureOverride(float &outBias) const;
     void setTargetSamples(uint32_t targetSamples);
+    // Denoiser: the pipeline's own denoiser and upscaler run and their output is averaged (on by default), or the raw
+    // paths are averaged for a reference picture. Takes effect with the pipeline rebuild it asks for.
+    void setDenoise(bool denoise);
+    bool denoise() const {
+        return denoise_.load(std::memory_order_relaxed);
+    }
     uint32_t targetSamples() const {
         return targetSamples_.load(std::memory_order_relaxed);
     }
@@ -116,6 +122,11 @@ class PhotoMode {
     std::atomic<bool> active_{false};
     std::atomic<uint32_t> targetSamples_{256};
     std::atomic<uint32_t> sampleCount_{0};
+    std::atomic<bool> denoise_{true};
+    // Denoised accumulation: frames shown live after a reset before any is averaged, while the denoiser's own history
+    // still holds the view before (DENOISED_WARMUP_FRAMES); and the count the last frame saw, to tell a reset.
+    uint32_t warmupFrames_ = 0;
+    uint32_t lastSampleCount_ = 0;
     std::atomic<bool> resetRequested_{true};
 
     mutable std::mutex mutex_;

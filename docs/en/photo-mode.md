@@ -2,12 +2,11 @@
 
 # Photo Mode
 
-Photo Mode pauses the scene and switches Radiante to an unupscaled, denoiser-bypassed Monte Carlo reference pipeline, accumulating hundreds or thousands of path-traced samples per pixel through a camera-traced physical thin-lens model.
+Photo Mode pauses the scene, frees the camera and averages frame after frame of the traced picture through a camera-traced physical thin-lens model. With **Denoiser** on (the default) it averages the denoised picture and comes out clean in a few dozen samples; off, it averages the raw path tracing for a reference picture with no denoiser in it, which needs thousands of samples before the noise is gone.
 
 ## Opening Photo Mode
 
-- Press **`F9`** while in a world (you can rebind this in Minecraft's Controls screen under **Radiante**).
-- Or open Radiante's settings (`F6`) while in a world and press **Photo Mode** in the top bar.
+Photo Mode has no key until you give it one: in Minecraft's **Options → Controls → Key Binds**, under **Radiante**, bind **Photo Mode**, then press that key while in a world.
 
 > [!TIP]
 > Enter Photo Mode from first person for a clean camera without your character in the shot, or switch to third person (`F5`) first if you want your character posed in the world while you fly the camera around them.
@@ -27,6 +26,7 @@ Photo Mode pauses the scene and switches Radiante to an unupscaled, denoiser-byp
 
 ## Camera and physical thin-lens settings
 
+- **Denoiser (On / Off)**: On, the game's denoiser (DLSS Ray Reconstruction, or the one your upscaler uses) cleans each frame and Photo Mode averages them: clean in a few dozen samples. Off, the raw path tracing is averaged, a reference with no denoiser, which needs thousands of samples. Switching rebuilds the pipeline for a moment.
 - **Target Samples (`64` / `256` / `1024` / `4096`)**: How many path-traced samples per pixel accumulate before ray tracing pauses (and before a queued capture writes to disk).
 - **Aperture**: Physical radius of the camera lens in blocks (`0` = pinhole with infinite depth of field). Higher values produce shallower depth of field and true ray-traced bokeh through glass, water and reflections.
 - **Focus Distance**: Distance in blocks to the sharp focal plane. Click any block or entity directly in the viewport to pull focus onto it.

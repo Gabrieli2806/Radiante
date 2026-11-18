@@ -162,7 +162,48 @@ bool WorldPipelineBlueprint::makePhotoBlueprint(WorldPipelineBlueprint &out) con
     const auto *prAttrs = attributesOf(PostRenderModule::NAME);
     if (rtAttrs == nullptr || tmAttrs == nullptr || prAttrs == nullptr) return false;
 
+    if (PhotoMode::instance().denoise()) {
+        // The pipeline as it plays, denoiser and upscaler included, with the accumulation averaging their output
+        // ahead of the tone mapping: the denoised picture, held still and averaged over frames of a jittered camera,
+        // comes out clean in a few dozen frames where the raw paths needed thousands.
+        size_t toneMapping = modules_.size();
+        for (size_t i = 0; i < modules_.size(); i++) {
+            if (modules_[i].name == ToneMappingModule::NAME && !modules_[i].inputs.empty()) {
+                toneMapping = i;
+                break;
+            }
+        }
+        if (toneMapping == modules_.size() || toneMapping == 0) return false;
+        out = *this;
+        const uint32_t radiance = out.modules_[toneMapping].inputs[0];
+        const uint32_t accumulated = static_cast<uint32_t>(out.imageFormats_.size());
+        out.imageFormats_.push_back(VK_FORMAT_R16G16B16A16_SFLOAT);
+        for (size_t i = toneMapping; i < out.modules_.size(); i++) {
+            for (uint32_t &input : out.modules_[i].inputs) {
+                if (input == radiance) input = accumulated;
+            }
+        }
+        out.photoAccumulateBefore_ = toneMapping;
+        out.photoAccumInput_ = radiance;
+        out.photoAccumOutput_ = accumulated;
+        out.setAttributeValue(RayTracingModule::NAME,
+                              "render_pipeline.module.ray_tracing.attribute.post_enable_dof", "render_pipeline.false");
+        out.setAttributeValue(RayTracingModule::NAME, "render_pipeline.module.ray_tracing.attribute.post_enable_motion_blur",
+                              "render_pipeline.false");
+        out.setAttributeValue(RayTracingModule::NAME, "render_pipeline.module.ray_tracing.attribute.use_jitter",
+                              "render_pipeline.true");
+        float bias = 0.0f;
+        if (PhotoMode::instance().exposureOverride(bias)) {
+            out.setAttributeValue(ToneMappingModule::NAME,
+                                  "render_pipeline.module.tone_mapping.attribute.exposure_bias", std::to_string(bias));
+        }
+        return true;
+    }
+
     out = WorldPipelineBlueprint{};
+    out.photoAccumulateBefore_ = 1;
+    out.photoAccumInput_ = 1;
+    out.photoAccumOutput_ = 17;
     out.imageFormats_ = {
         VK_FORMAT_R16G16B16A16_SFLOAT, // 0: post_rendered output
         VK_FORMAT_R16G16B16A16_SFLOAT, // 1: rt radiance
@@ -230,6 +271,9 @@ void WorldPipeline::init(std::shared_ptr<Framework> framework, std::shared_ptr<P
     WorldPipelineBlueprint photoBlueprint;
     photoMode_ = PhotoMode::instance().active() && storedBlueprint->makePhotoBlueprint(photoBlueprint);
     WorldPipelineBlueprint &activeBlueprint = photoMode_ ? photoBlueprint : *storedBlueprint;
+    photoAccumulateBefore_ = photoBlueprint.photoAccumulateBefore_;
+    photoAccumInput_ = photoBlueprint.photoAccumInput_;
+    photoAccumOutput_ = photoBlueprint.photoAccumOutput_;
 
     const uint32_t frameCount = framework->swapchain()->imageCount();
     const size_t moduleCount = activeBlueprint.modules_.size();
@@ -263,7 +307,23 @@ void WorldPipeline::init(std::shared_ptr<Framework> framework, std::shared_ptr<P
 
     // Last to first: a module's outputs are the images the modules after it read, already made at the size those
     // need, and it makes the inputs that no module made yet.
-    for (size_t i = moduleCount; i-- > 0;) buildModule(framework, activeBlueprint, i, frameCount);
+    for (size_t i = moduleCount; i-- > 0;) {
+        buildModule(framework, activeBlueprint, i, frameCount);
+        // Photo Mode with the denoiser: the image the accumulation reads (the denoiser's output) is read by no module
+        // any more, so none made it for the module writing it to fill. It is made here at the size of the image the
+        // accumulation writes, which the tone mapping just made as its input.
+        if (photoMode_ && i == photoAccumulateBefore_ && photoAccumulateBefore_ > 1) {
+            for (auto &images : sharedImages_) {
+                const auto &accumulated = images[photoAccumOutput_];
+                if (accumulated == nullptr || images[photoAccumInput_] != nullptr) continue;
+                images[photoAccumInput_] = gpu::DeviceLocalImage::create(
+                    framework->device(), framework->vma(), false, accumulated->width(), accumulated->height(), 1,
+                    activeBlueprint.imageFormats_[photoAccumInput_],
+                    VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+                        VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+            }
+        }
+    }
 
     // The settings the shaders read live start at the values this build was made with; published only once every
     // module is built, so a failed build leaves the previous pack's values in place.
@@ -414,20 +474,24 @@ void WorldPipelineContext::render() {
     GpuProfiler::beginFrame(framework->device()->vkDevice(), framework->physicalDevice()->vkPhysicalDevice(),
                             commandBuffer.vkCommandBuffer(), context->frameIndex);
     auto pipelineOwner = worldPipeline.lock();
-    if (pipelineOwner != nullptr && pipelineOwner->isPhotoMode() && worldModuleContexts.size() == 3) {
+    const size_t accumulateBefore = pipelineOwner != nullptr ? pipelineOwner->photoAccumulateBefore() : 0;
+    if (pipelineOwner != nullptr && pipelineOwner->isPhotoMode() && accumulateBefore > 0 &&
+        accumulateBefore < worldModuleContexts.size()) {
         const bool traceSample =
             !PhotoMode::instance().canSkipRayTracing(static_cast<uint32_t>(pipelineOwner->contexts().size()));
         if (traceSample) {
-            worldModuleContexts[0]->render();
-            if (GpuProfiler::enabled()) {
-                GpuProfiler::mark(commandBuffer.vkCommandBuffer(), typeid(*worldModuleContexts[0]).name());
+            for (size_t idx = 0; idx < accumulateBefore; idx++) {
+                worldModuleContexts[idx]->render();
+                if (GpuProfiler::enabled()) {
+                    GpuProfiler::mark(commandBuffer.vkCommandBuffer(), typeid(*worldModuleContexts[idx]).name());
+                }
             }
         }
-        PhotoMode::instance().recordAccumulate(*framework, commandBuffer,
-                                               pipelineOwner->sharedImage(context->frameIndex, 1),
-                                               pipelineOwner->sharedImage(context->frameIndex, 17), traceSample);
+        PhotoMode::instance().recordAccumulate(
+            *framework, commandBuffer, pipelineOwner->sharedImage(context->frameIndex, pipelineOwner->photoAccumInput()),
+            pipelineOwner->sharedImage(context->frameIndex, pipelineOwner->photoAccumOutput()), traceSample);
         if (GpuProfiler::enabled()) GpuProfiler::mark(commandBuffer.vkCommandBuffer(), "PhotoAccumulate");
-        for (size_t idx = 1; idx < worldModuleContexts.size(); idx++) {
+        for (size_t idx = accumulateBefore; idx < worldModuleContexts.size(); idx++) {
             worldModuleContexts[idx]->render();
             if (GpuProfiler::enabled()) {
                 GpuProfiler::mark(commandBuffer.vkCommandBuffer(), typeid(*worldModuleContexts[idx]).name());

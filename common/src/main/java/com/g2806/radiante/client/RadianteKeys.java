@@ -12,8 +12,9 @@ public final class RadianteKeys {
 
     public static final KeyMapping OPEN_SETTINGS =
         new KeyMapping("key.radiante.open_settings", InputConstants.KEY_F6, CATEGORY);
+    // Unbound by default too: Photo Mode is for whoever looks for it in Controls, and F9 is a key other mods take.
     public static final KeyMapping PHOTO_MODE =
-        new KeyMapping("key.radiante.photo_mode", InputConstants.KEY_F9, CATEGORY);
+        new KeyMapping("key.radiante.photo_mode", InputConstants.UNKNOWN.getValue(), CATEGORY);
     // Unbound by default: switching rebuilds the whole world, too costly to sit on a key pressed by accident, and
     // the settings screen has the same switch.
     public static final KeyMapping TOGGLE_RAY_TRACING =
