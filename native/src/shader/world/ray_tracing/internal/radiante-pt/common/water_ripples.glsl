@@ -26,8 +26,17 @@ vec2 vptInteractiveRippleSlope(vec3 samplePos, float surfaceKind, float footprin
         return vec2(0.0);
     }
 
+    // With Pixel Rain the rings are drawn as the rain's are: looked up at the centre of the sixteenth of a block the
+    // hit falls in, and their slope stepped (below), so a wake spreads in pixels instead of as smooth real water.
+    if (VPT_RAIN_PIXELS != 0) {
+        vec2 cameraFraction = vec2(mod(worldUBO.cameraPos.xz, dvec2(1.0)));
+        vec2 world = samplePos.xz + cameraFraction;
+        samplePos.xz = (floor(world * 16.0) + 0.5) / 16.0 - cameraFraction;
+    }
+
     bool isPuddle = surfaceKind > 0.5;
-    float waveNumber = isPuddle ? 16.5 : 12.0;
+    // Wider rings with Pixel Rain: a crest and a trough of three or four pixels each.
+    float waveNumber = VPT_RAIN_PIXELS != 0 ? (isPuddle ? 11.0 : 8.0) : (isPuddle ? 16.5 : 12.0);
     float coneFade = 1.0 / (1.0 + waveNumber * waveNumber * max(footprint, 0.0) * max(footprint, 0.0));
     if (coneFade < 0.02) {
         return vec2(0.0);
@@ -88,6 +97,9 @@ vec2 vptInteractiveRippleSlope(vec3 samplePos, float surfaceKind, float footprin
         float scale = INTERACTIVE_RIPPLE_SLOPE * strength * coneFade *
                       (isPuddle ? INTERACTIVE_PUDDLE_RIPPLE_SCALE : 1.0);
         float saturated = 1.35 * tanh(mag * scale / 1.35);
+        // In steps with Pixel Rain: each pixel of a ring leans one of a few set amounts, as a texture painted for the
+        // game would shade it, not by a smooth gradient.
+        if (VPT_RAIN_PIXELS != 0) { saturated = floor(saturated / 0.1 + 0.5) * 0.1; }
         totalSlope *= saturated / mag;
     }
     return totalSlope;

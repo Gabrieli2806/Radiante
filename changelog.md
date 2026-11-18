@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Water ripples and wakes follow Pixel Rain: they are looked up per sixteenth of a block and lean in steps, rings of a few pixels like the rain's, instead of smooth realistic waves, and they no longer make a pack's rougher water glassy where they run.
+
+- Snow: rime frost settles as a soft film in broad patches instead of white and dark specks texel by texel, and the grass overlay on a grass block's sides whitens into the snowy grass fringe as the snow builds instead of taking the frost.
+
 - Photo Mode has a Cinematic panel: Frame cuts the photo to 16:9, 2.39:1, 1.85:1, 4:3, 1:1 or 9:16 (bars on screen, the saved PNG and EXR cut the same), composition Guides (thirds, golden ratio, centre, diagonals), Lens steps through 14 to 135 mm full-frame lenses and the Field of View shows its focal length, and in singleplayer Time of Day and Weather change the scene, the world running on for a moment so the sky and the rain follow.
 
 - Before / After: clicks work on 26.3 and 26.4, whose left mouse button is numbered 1 (the divider could only be moved with the wheel, and no button answered). Before is now always the game without Radiante, taken as the comparison opens (Radiante Off / On and Set Before are gone), and the right side is named by its shader pack; a Pack button changes that pack, to see any pack against vanilla. While the picture is taken the screen stays covered, where the halves showed swapped for two seconds. A Before / After key binding (Controls, unbound by default) opens the comparison from the game.
