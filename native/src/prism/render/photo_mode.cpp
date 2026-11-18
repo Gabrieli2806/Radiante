@@ -460,6 +460,43 @@ void PhotoMode::enqueueSaveJob(SaveJob &&job) {
     saveCv_.notify_one();
 }
 
+namespace {
+
+// Keeps the centred part of an RGBA image of `width` by `height` that is `cropW` by `cropH`.
+template <typename T>
+void cropRgba(std::vector<T> &pixels, uint32_t width, uint32_t height, uint32_t cropW, uint32_t cropH) {
+    if (pixels.size() != static_cast<size_t>(width) * height * 4u) return;
+    const uint32_t x0 = (width - cropW) / 2;
+    const uint32_t y0 = (height - cropH) / 2;
+    std::vector<T> out(static_cast<size_t>(cropW) * cropH * 4u);
+    for (uint32_t y = 0; y < cropH; y++) {
+        std::copy_n(pixels.data() + (static_cast<size_t>(y0 + y) * width + x0) * 4u, static_cast<size_t>(cropW) * 4u,
+                    out.data() + static_cast<size_t>(y) * cropW * 4u);
+    }
+    pixels = std::move(out);
+}
+
+} // namespace
+
+// The frame chosen in Photo Mode, cut out of the middle of the picture before it is written: the bars the screen
+// shows are not in the file.
+void PhotoMode::cropToAspect(SaveJob &job) {
+    if (!(job.aspect > 0.0f) || job.width == 0 || job.height == 0) return;
+    const float screen = static_cast<float>(job.width) / static_cast<float>(job.height);
+    uint32_t cropW = job.width;
+    uint32_t cropH = job.height;
+    if (job.aspect > screen) {
+        cropH = std::max(1u, static_cast<uint32_t>(std::lround(static_cast<float>(job.width) / job.aspect)));
+    } else {
+        cropW = std::max(1u, static_cast<uint32_t>(std::lround(static_cast<float>(job.height) * job.aspect)));
+    }
+    if (cropW == job.width && cropH == job.height) return;
+    cropRgba(job.pngHalfRgba, job.width, job.height, cropW, cropH);
+    cropRgba(job.exrFloatRgba, job.width, job.height, cropW, cropH);
+    job.width = cropW;
+    job.height = cropH;
+}
+
 void PhotoMode::saveWorkerLoop() {
     while (true) {
         SaveJob job;
@@ -478,6 +515,7 @@ void PhotoMode::saveWorkerLoop() {
         // An exception leaving this thread would end the game (std::terminate): the buffers of an 8K picture, a path
         // the file system refuses. It fails the capture instead.
         try {
+            cropToAspect(job);
             const size_t pixelCount = static_cast<size_t>(job.width) * job.height;
 
             if (!job.pngPath.empty() && job.pngHalfRgba.size() == pixelCount * 4u) {
@@ -596,6 +634,7 @@ void PhotoMode::flushPendingCapture(bool waitAll) {
         job.width = item.width;
         job.height = item.height;
         job.samples = item.samples;
+        job.aspect = captureAspect_.load(std::memory_order_relaxed);
 
         if (!job.pngPath.empty() && item.pngBuffer != nullptr && item.pngBuffer->mappedPtr() != nullptr) {
             job.pngHalfRgba.resize(pixelCount * 4u);

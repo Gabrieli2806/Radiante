@@ -139,6 +139,7 @@ public final class PhotoMode {
         active = true;
         PhotoProxy.setTargetSamples(targetSamples);
         PhotoProxy.setDenoise(denoise);
+        PhotoCinema.push();
         PhotoProxy.setActive(true);
         pushLens();
         PhotoProxy.setExposureBias(exposureBias);
@@ -543,7 +544,7 @@ public final class PhotoMode {
     }
 
     public static float frozenDayFraction(float liveDayFraction) {
-        if (frozenDayFraction < 0.0f) {
+        if (frozenDayFraction < 0.0f || isFollowingSky()) {
             frozenDayFraction = liveDayFraction;
         }
         return frozenDayFraction;
@@ -556,8 +557,28 @@ public final class PhotoMode {
         return frozenWindTime;
     }
 
+    /**
+     * Lets the frozen sky take the world's time again (Photo Mode's time of day and weather): it is caught anew on
+     * the next frame, and the picture starts over from it.
+     */
+    static void releaseFrozenSky(long millis) {
+        // The sky and the rain move with the game's ticks, which a paused world does not run: for this long the
+        // world runs on (isFollowingSky) and the sky follows it, then it is caught again where it got to.
+        followSkyUntil = Math.max(followSkyUntil, Util.getMillis() + millis);
+        if (active) {
+            PhotoProxy.resetAccumulation();
+        }
+    }
+
+    private static long followSkyUntil;
+
+    /** True while the world runs on after a change of time or weather, so Photo Mode does not pause it. */
+    public static boolean isFollowingSky() {
+        return active && Util.getMillis() < followSkyUntil;
+    }
+
     public static float frozenSunAngle(float liveSunAngle) {
-        if (Float.isNaN(frozenSunAngle)) {
+        if (Float.isNaN(frozenSunAngle) || isFollowingSky()) {
             frozenSunAngle = liveSunAngle;
         }
         return frozenSunAngle;

@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Photo Mode has a Cinematic panel: Frame cuts the photo to 16:9, 2.39:1, 1.85:1, 4:3, 1:1 or 9:16 (bars on screen, the saved PNG and EXR cut the same), composition Guides (thirds, golden ratio, centre, diagonals), Lens steps through 14 to 135 mm full-frame lenses and the Field of View shows its focal length, and in singleplayer Time of Day and Weather change the scene, the world running on for a moment so the sky and the rain follow.
+
+- Before / After: clicks work on 26.3 and 26.4, whose left mouse button is numbered 1 (the divider could only be moved with the wheel, and no button answered). A Pack button changes the live picture's shader pack while Before stays, to compare packs. While Radiante Off / On takes its picture the screen stays covered, where the halves showed swapped for two seconds. A Before / After key binding (Controls, unbound by default) opens the comparison from the game.
+
+- Turning ray tracing off and on again (the key, Before / After's Radiante Off / On) waits for the chunk builds on the GPU again before the world is rebuilt; left to their fences it lost the device now and then.
+
 - Photo Mode has a Denoiser switch, on by default: the game's denoiser cleans each frame and Photo Mode averages them, clean in a few dozen samples, where averaging the raw paths (Off, the reference picture) still showed the noise at 256. Photo Mode now opens from its own key binding in Controls, unbound by default, instead of from the settings screen.
 
 - Before / After: a larger divider with a drawn knob that slides to 50%, the arrow keys and the mouse wheel, Home / End for the edges, Space held to see Before on the whole screen, and Radiante Off / On, which takes Before with ray tracing off to compare the game without Radiante and with it.
