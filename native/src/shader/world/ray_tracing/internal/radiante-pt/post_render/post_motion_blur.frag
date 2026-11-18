@@ -110,7 +110,8 @@ void main() {
             float depthGap = abs(depth - centreDepth) / max(1.0, min(centreDepth, depth));
             float sameLayer = 1.0 - smoothstep(0.02, 0.1, depthGap);
             float sameMotion = 1.0 - smoothstep(1.5, radius * 1.8 + 1.5, length(otherMotion - motion));
-            float similarColour = 1.0 - smoothstep(0.2, 0.9, length(colour - centreColour));
+            float similarColour =
+                1.0 - smoothstep(0.2, 0.9, length(clamp(colour, 0.0, 1.0) - clamp(centreColour, 0.0, 1.0)));
             float weight = falloff * sameLayer * mix(0.65, 1.0, sameMotion) * mix(0.6, 1.0, similarColour);
 
             sum += colour * weight;

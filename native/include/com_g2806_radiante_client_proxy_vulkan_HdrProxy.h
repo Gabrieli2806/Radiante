@@ -17,6 +17,22 @@ JNIEXPORT jboolean JNICALL Java_com_g2806_radiante_client_proxy_vulkan_HdrProxy_
 
 /*
  * Class:     com_g2806_radiante_client_proxy_vulkan_HdrProxy
+ * Method:    setTarget
+ * Signature: (ZFF)V
+ */
+JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_HdrProxy_setTarget
+  (JNIEnv *, jclass, jboolean, jfloat, jfloat);
+
+/*
+ * Class:     com_g2806_radiante_client_proxy_vulkan_HdrProxy
+ * Method:    capturePreview
+ * Signature: (JJIIIIFFZZLjava/lang/String;)V
+ */
+JNIEXPORT void JNICALL Java_com_g2806_radiante_client_proxy_vulkan_HdrProxy_capturePreview
+  (JNIEnv *, jclass, jlong, jlong, jint, jint, jint, jint, jfloat, jfloat, jboolean, jboolean, jstring);
+
+/*
+ * Class:     com_g2806_radiante_client_proxy_vulkan_HdrProxy
  * Method:    setCalibration
  * Signature: (IFFFFFFFF)V
  */

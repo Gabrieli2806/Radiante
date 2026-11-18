@@ -64,6 +64,14 @@ public abstract class HdrPresentMixin {
         int dstLayout, VkImageBlit.Buffer regions, int filter) {
         GpuTextureView view = this.radiante$presented;
         this.radiante$presented = null;
+        String previewPath = HdrDisplay.takePendingPreviewPath();
+        if (previewPath != null && view != null && view.texture() instanceof VulkanGpuTexture previewTex) {
+            boolean flipY = regions.srcOffsets(0).y() > regions.srcOffsets(1).y()
+                != regions.dstOffsets(0).y() > regions.dstOffsets(1).y();
+            HdrProxy.capturePreview(commandBuffer.address(), srcImage, srcLayout,
+                VulkanConst.toVk(previewTex.getFormat()), view.getWidth(0), view.getHeight(0),
+                Options.hdrPaperWhiteNits, Options.hdrPeakNits, flipY, Options.hdrDebugView, previewPath);
+        }
         if (!HdrDisplay.isActive() && FrameGeneration.isActive() && view != null
             && view.texture() instanceof VulkanGpuTexture texture) {
             // Frame generation: the generated frames are evaluated here, and the first of them replaces the blit.

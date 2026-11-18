@@ -3,9 +3,11 @@
 #include "prism/all_extern.hpp"
 #include "prism/gpu/gpu.hpp"
 
+#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <vector>
 
 class FrameworkContext;
@@ -14,17 +16,22 @@ struct WorldPipelineContext;
 // HDR display output. Minecraft presents by blitting its main render target (8-bit SDR) into the window's swapchain;
 // with HDR on, the swapchain is 16-bit float scRGB instead, and compose() takes the place of that blit:
 //
-// - Pixels Minecraft left as the traced world (nothing drawn over them since the world was fused in) are rebuilt from
-//   the world's HDR radiance with an HDR tone curve, so highlights reach up to the display's peak brightness.
-// - Everything else (menus, text, the hotbar, anything translucent over the world, the whole screen when the world is
-//   not traced) is Minecraft's SDR image shown at the paper white brightness.
-//
-// The world pipeline is not changed at all: SDR output, screenshots and every module work as before. The only inputs
-// are images the pipeline keeps anyway (the tone mapping module's input, its output and its exposure, and the world
-// image fused into Minecraft's target), noted here every frame by Framework::renderFrame.
+// - Tone mapping and post render run in 16-bit float, matching SDR up to the highlight knee and extending highlights
+//   up to the display's peak brightness while HDR output is active.
+// - Pixels Minecraft left as the traced world (or only darkened with a grey overlay) show that HDR world image at
+//   paper white.
+// - Everything else (menus, text, the hotbar, coloured overlays, or the whole screen when the world is not traced) is
+//   Minecraft's SDR image shown at paper white.
 class HdrOutput {
   public:
     static HdrOutput &instance();
+
+    // Updates whether the window presents in HDR and its peak/paper-white ratio, read by ToneMappingModule each frame.
+    void setTarget(bool active, float paperWhiteNits, float peakNits);
+
+    float targetPeakRatio() const {
+        return targetPeakRatio_.load(std::memory_order_relaxed);
+    }
 
     // A world frame was traced and fused into Minecraft's target; compose() may use it until the next one. upscaled
     // is what was fused in place of the pipeline's picture with a lower output resolution (OutputUpscaler), or null.
@@ -49,6 +56,20 @@ class HdrOutput {
                  bool flipY,
                  bool debugView);
 
+    // Development: records an HDR composition on `commandBuffer` into a readback buffer and writes a preview PNG and
+    // scRGB luminance stats on the next frame once the present submit has completed.
+    void capturePreview(VkCommandBuffer commandBuffer,
+                        VkImage minecraftImage,
+                        VkImageLayout minecraftLayout,
+                        VkFormat minecraftFormat,
+                        uint32_t width,
+                        uint32_t height,
+                        float paperWhiteNits,
+                        float peakNits,
+                        bool flipY,
+                        bool debugView,
+                        std::string path);
+
     // The HDR calibration screen: from now on compose() draws, in these rectangles (x, y, width, height, as top-down
     // fractions of the image), the peak pattern (mode 1, rectA) or Minecraft's image with its highlights brought back
     // (mode 2). Mode 0 ends it.
@@ -58,17 +79,10 @@ class HdrOutput {
     void release();
 
   private:
-    // What compose() needs of the last traced frame.
     struct WorldFrame {
-        std::shared_ptr<gpu::DeviceLocalImage> fused;    // the world as fused into Minecraft's target
-        std::shared_ptr<gpu::DeviceLocalImage> output;   // the pipeline's picture; fused unless it was upscaled
-        std::shared_ptr<gpu::DeviceLocalImage> mapped;   // tone mapped, before the post render passes
-        std::shared_ptr<gpu::DeviceLocalImage> radiance; // the HDR radiance the tone mapping read
-        std::shared_ptr<gpu::DeviceLocalBuffer> exposure;
-        float exposureBias = 0.0f;
-        float saturation = 1.0f;
-        float manualExposure = 1.0f;
-        bool autoExposure = true;
+        std::shared_ptr<gpu::DeviceLocalImage> fused;  // the world as fused into Minecraft's target
+        std::shared_ptr<gpu::DeviceLocalImage> output; // the pipeline's final picture (RGBA16F)
+        std::shared_ptr<gpu::DeviceLocalImage> mapped; // tone mapped picture before post render (RGBA16F)
     };
 
     struct Calibration {
@@ -82,17 +96,37 @@ class HdrOutput {
         uint32_t age;
     };
 
+    struct PendingReadback {
+        std::shared_ptr<gpu::HostVisibleBuffer> buffer;
+        uint32_t width = 0;
+        uint32_t height = 0;
+        float paperWhiteNits = 200.0f;
+        float peakNits = 1000.0f;
+        bool flipY = false;
+        std::string path;
+    };
+
     bool prepare(uint32_t width, uint32_t height);
     std::shared_ptr<gpu::ExternalImage> minecraftView(VkImage image, VkFormat format, uint32_t width, uint32_t height);
+    bool recordComposeDispatch(VkCommandBuffer commandBuffer,
+                               VkImage minecraftImage,
+                               VkImageLayout minecraftLayout,
+                               VkFormat minecraftFormat,
+                               uint32_t width,
+                               uint32_t height,
+                               float paperWhiteNits,
+                               float peakNits,
+                               bool flipY,
+                               bool debugView,
+                               bool consumeWorldFrame);
+    void flushPendingReadback();
 
-    // Descriptor sets are written again by every compose(), and one may still be read by a frame in flight: a ring.
     static constexpr uint32_t TABLE_RING = 4;
-    // How many compose() calls a replaced view of Minecraft's image outlives, so no frame in flight still reads it.
     static constexpr uint32_t VIEW_RETIREMENT = 8;
 
+    std::atomic<float> targetPeakRatio_{1.0f};
     std::mutex mutex_;
     bool ready_ = false;
-    // Setting up failed once; SDR from then on.
     bool failed_ = false;
     std::shared_ptr<gpu::Device> device_;
     std::shared_ptr<gpu::VMA> vma_;
@@ -101,10 +135,7 @@ class HdrOutput {
     std::shared_ptr<gpu::ComputePipeline> pipeline_;
     std::shared_ptr<gpu::Sampler> sampler_;
     std::shared_ptr<gpu::DeviceLocalImage> composed_;
-    // Stands in for the exposure buffer while there is no traced world.
-    std::shared_ptr<gpu::DeviceLocalBuffer> noExposure_;
 
-    // A view of Minecraft's image, made again when the image changes (a resize).
     std::shared_ptr<gpu::ExternalImage> view_;
     VkImage viewedImage_ = VK_NULL_HANDLE;
     std::vector<RetiredView> retiredViews_;
@@ -112,4 +143,5 @@ class HdrOutput {
     WorldFrame world_;
     bool worldFresh_ = false;
     Calibration calibration_;
+    std::vector<PendingReadback> pendingReadbacks_;
 };

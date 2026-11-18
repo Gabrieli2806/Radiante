@@ -2,6 +2,7 @@ package com.g2806.radiante.client.hdr;
 
 import com.g2806.radiante.client.RadianteClient;
 import com.g2806.radiante.client.option.Options;
+import com.g2806.radiante.client.proxy.vulkan.HdrProxy;
 import org.lwjgl.vulkan.VkSurfaceFormatKHR;
 
 /**
@@ -36,6 +37,7 @@ public final class HdrDisplay {
     public static VkSurfaceFormatKHR pick(VkSurfaceFormatKHR.Buffer formats) {
         if (!Options.hdrOutput) {
             active = false;
+            syncTarget();
             return null;
         }
         for (VkSurfaceFormatKHR format : formats) {
@@ -44,6 +46,7 @@ public final class HdrDisplay {
                     RadianteClient.LOGGER.info("HDR output on: scRGB swapchain");
                 }
                 active = true;
+                syncTarget();
                 return format;
             }
         }
@@ -53,7 +56,31 @@ public final class HdrDisplay {
             loggedUnavailable = true;
         }
         active = false;
+        syncTarget();
         return null;
+    }
+
+    /** Hands the current HDR display state and nits to the native tone mapper. */
+    public static void syncTarget() {
+        if (RadianteClient.isNativeLoaded()) {
+            HdrProxy.setTarget(active || devOverrideActive, Options.hdrPaperWhiteNits, Options.hdrPeakNits);
+        }
+    }
+
+    /** Development override so automated runs can exercise the full HDR pipeline on an SDR desktop. */
+    public static volatile boolean devOverrideActive;
+    private static volatile String pendingPreviewPath;
+
+    public static void requestPreviewCapture(String path) {
+        pendingPreviewPath = path;
+    }
+
+    public static String takePendingPreviewPath() {
+        String path = pendingPreviewPath;
+        if (path != null) {
+            pendingPreviewPath = null;
+        }
+        return path;
     }
 
     private static boolean loggedUnavailable;

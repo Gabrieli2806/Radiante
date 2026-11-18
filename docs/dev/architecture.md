@@ -377,10 +377,12 @@ first-hit direct and indirect diffuse, specular, emission, refraction, and fog i
 - The `shader/world/upscaler/*.comp` passes bring motion vectors, depth and normals to the output size for the
   upscalers.
 - **Tone mapping** (`tone_mapping/`): histogram exposure (`hist.comp`, `exposure.comp`), bloom down/up, the tone
-  curve, and a Bedrock-style curve (`bedrock_hist.comp`, `bedrock_curve.comp`). The exposure buffer is also read by
-  HDR output (`render/hdr_output.*`).
-- **Post render** (`post_render/`): turns first-hit distances into depth, copies the tone-mapped image out and runs
-  the pack's `post_render` stage: stars, depth of field, motion blur. Text, name tags, particles and rain are traced
+  curve, and a Bedrock-style curve (`bedrock_hist.comp`, `bedrock_curve.comp`). Writes a 16-bit float output matching
+  SDR up to the highlight knee and extending highlights to the display's peak while HDR output (`render/hdr_output.*`)
+  is active.
+- **Post render** (`post_render/`): turns first-hit distances into depth, copies the tone-mapped 16-bit float image out
+  and runs the pack's `post_render` stage: stars, depth of field, motion blur and the pack's post grade, keeping HDR
+  headroom through to `HdrOutput::compose`. Text, name tags, particles and rain are traced
   in the world, not drawn afterwards.
 
 Fog and clouds are mostly in the path tracer: volumetric fog per pixel (`pt_volumetric.glsl`) or through

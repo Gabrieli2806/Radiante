@@ -1,7 +1,8 @@
 #version 460
 
 // Tone mapping: the HDR radiance exposed (plus bloom), then either one of the classic curves with the grade, or the
-// Bedrock-style tone curve and grade (method 6), into the displayable image.
+// Bedrock-style tone curve and grade (method 6), into the displayable image. When HDR output is active (pc.hdrPeak > 1),
+// colours up to the highlight knee match SDR bit for bit and highlights extend smoothly to the display's peak.
 
 layout(set = 0, binding = 0) uniform sampler2D hdrImage;
 // The bloom pyramid's result at half size; the HDR image again while bloom is off (bloomIntensity is 0 then).
@@ -56,6 +57,7 @@ layout(push_constant) uniform PushConstant {
     float balanceG;
     float balanceB;
     float filmicSaturation; // Bedrock's filmic saturation correction, 0 off
+    float hdrPeak;          // display peak in paper whites (1.0 in SDR)
 }
 pc;
 
@@ -64,11 +66,12 @@ layout(location = 0) in vec2 texCoord;
 layout(location = 0) out vec4 fragColor;
 
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
+const float HDR_KNEE = 0.75;
 
 // ---- The classic curves (method 0 to 5).
 
 // Khronos PBR Neutral: https://github.com/KhronosGroup/ToneMapping/tree/main/PBR_Neutral
-vec3 pbrNeutral(vec3 color) {
+vec3 pbrNeutral(vec3 color, float targetPeak) {
     float startCompression = 0.76;
     float desaturation = 0.01;
 
@@ -79,11 +82,11 @@ vec3 pbrNeutral(vec3 color) {
     float peak = max(color.r, max(color.g, color.b));
     if (peak < startCompression) return color;
 
-    float d = 1.0 - startCompression;
-    float newPeak = 1.0 - d * d / (peak + d - startCompression);
+    float d = max(targetPeak - startCompression, 1e-4);
+    float newPeak = targetPeak - d * d / (peak + d - startCompression);
     color *= newPeak / peak;
 
-    float g = 1.0 - 1.0 / (desaturation * (peak - newPeak) + 1.0);
+    float g = 1.0 - 1.0 / (desaturation * max(peak - newPeak, 0.0) + 1.0);
     return mix(color, newPeak * vec3(1.0), g);
 }
 
@@ -137,8 +140,46 @@ vec3 classicCurve(vec3 color) {
         case 4: return acesWhitePoint(color, pc.whitePoint);
         case 5: return uncharted2(color, pc.whitePoint);
         case 0:
-        default: return pbrNeutral(color);
+        default: return pbrNeutral(color, 1.0);
     }
+}
+
+float classicCurveScalar(float x) {
+    return classicCurve(vec3(max(x, 0.0))).r;
+}
+
+// Extends methods 1..5 to `targetPeak` (> 1) with C1 continuity at HDR_KNEE, matching SDR exactly below HDR_KNEE.
+float extendClassicScalar(float x, float xKnee, float slopeKnee, float targetPeak) {
+    float sdr = classicCurveScalar(x);
+    if (sdr <= HDR_KNEE || x <= xKnee) { return sdr; }
+    float room = max(targetPeak - HDR_KNEE, 1e-4);
+    float dx = x - xKnee;
+    return HDR_KNEE + (room * slopeKnee * dx) / (room + slopeKnee * dx);
+}
+
+vec3 classicCurveHdr(vec3 color, float targetPeak) {
+    if (pc.toneMappingMethod == 0 || (pc.toneMappingMethod < 1 || pc.toneMappingMethod > 5)) {
+        return pbrNeutral(color, targetPeak);
+    }
+    vec3 sdr = classicCurve(color);
+    if (max(sdr.r, max(sdr.g, sdr.b)) <= HDR_KNEE) { return sdr; }
+
+    float lo = 0.0;
+    float hi = max(pc.whitePoint, 16.0);
+    while (classicCurveScalar(hi) < HDR_KNEE && hi < 4096.0) { hi *= 2.0; }
+    for (int i = 0; i < 10; i++) {
+        float mid = 0.5 * (lo + hi);
+        if (classicCurveScalar(mid) < HDR_KNEE) {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    float xKnee = 0.5 * (lo + hi);
+    float slopeKnee = max((classicCurveScalar(xKnee + 1e-3) - classicCurveScalar(max(xKnee - 1e-3, 0.0))) * 500.0, 1e-4);
+    return vec3(extendClassicScalar(color.r, xKnee, slopeKnee, targetPeak),
+                extendClassicScalar(color.g, xKnee, slopeKnee, targetPeak),
+                extendClassicScalar(color.b, xKnee, slopeKnee, targetPeak));
 }
 
 // The controls of Bedrock's tone mapping material (colour balance, contrast, shadow contrast and its end), applied
@@ -188,11 +229,20 @@ vec3 encodeSrgb(vec3 linear) {
 
 // Bedrock's tone mapping material in its order: the luminance through the tone curve with the hue kept, the filmic
 // saturation correction, then the grade (colour balance, contrast about 0.18, clamp, saturation, gamma) and the sRGB
-// encoding.
-vec3 bedrockToneMap(vec3 color) {
+// encoding. When hdrPeak > 1, highlights past the knee extend smoothly to hdrPeak while midtones and shadows stay
+// identical to SDR.
+vec3 bedrockToneMap(vec3 color, float hdrPeak) {
+    bool hdr = hdrPeak > 1.0001;
     float luminance = dot(color, LUMA);
-    vec3 mapped = luminance > 0.0 ? color * (exp2(bedrockCurveAt(log2(max(luminance, exp2(-24.0))))) / luminance)
-                                  : vec3(0.0);
+    float logLum = log2(max(luminance, exp2(-24.0)));
+    float curveLogLum = bedrockCurveAt(logLum);
+    if (hdr && logLum > 2.0) {
+        // Past 2 stops above unit exposure the SDR histogram bins compress towards white and clip at +4 stops; keep at
+        // least the highlight budget's natural slope (~0.38 stops/stop) so lamps, lava and the sun separate in HDR.
+        float extended = bedrockCurveAt(2.0) + (logLum - 2.0) * 0.38;
+        curveLogLum = max(curveLogLum, extended);
+    }
+    vec3 mapped = luminance > 0.0 ? color * (exp2(curveLogLum) / luminance) : vec3(0.0);
 
     if (pc.filmicSaturation != 0.0) {
         float mean = dot(mapped, vec3(1.0 / 3.0));
@@ -211,21 +261,35 @@ vec3 bedrockToneMap(vec3 color) {
         float chroma = peak > 0.0 ? clamp((peak - low) / peak * 1.25 - 0.25, 0.0, 1.0) : 0.0;
         bool nether = expData.padding0 > 0.5;
         float knee = nether ? NETHER_SHOULDER_KNEE : 0.7;
-        float ceiling = nether ? NETHER_HUE_HOLD : 1.0;
+        float ceiling = (nether ? NETHER_HUE_HOLD : 1.0) * (hdr ? hdrPeak : 1.0);
         if (peak > knee && chroma > 0.0) {
-            float room = ceiling - knee;
+            float room = max(ceiling - knee, 1e-4);
             float shouldered = knee + room * tanh((peak - knee) / room);
             mapped *= mix(1.0, shouldered / peak, chroma);
         }
     }
 
     vec3 graded = mapped * vec3(pc.balanceR, pc.balanceG, pc.balanceB);
-    graded = clamp((graded - 0.18) * pc.contrast + 0.18, 0.0, 1.0);
+    graded = max((graded - 0.18) * pc.contrast + 0.18, vec3(0.0));
+    if (!hdr) { graded = min(graded, vec3(1.0)); }
     float gradedLuma = dot(graded, LUMA);
     graded = max(gradedLuma + (graded - gradedLuma) * max(pc.saturation, 0.0), vec3(0.0));
     graded = pow(graded, vec3(pc.gamma));
     graded = mapped + BEDROCK_TONE_MAPPING_INTENSITY * (graded - mapped);
-    return clamp(encodeSrgb(graded), 0.0, 1.0);
+    if (!hdr) {
+        return clamp(encodeSrgb(graded), 0.0, 1.0);
+    }
+
+    graded = max(graded, vec3(0.0));
+    float top = max(graded.r, max(graded.g, graded.b));
+    if (top > HDR_KNEE) {
+        float room = hdrPeak - HDR_KNEE;
+        float newTop = HDR_KNEE + (room * (top - HDR_KNEE)) / (room + (top - HDR_KNEE));
+        graded *= newTop / top;
+    }
+    vec3 srgb = encodeSrgb(min(graded, vec3(1.0)));
+    vec3 above = pow(max(graded, vec3(1.0)), vec3(1.0 / 2.2));
+    return mix(srgb, above, greaterThan(graded, vec3(1.0)));
 }
 
 // ----
@@ -248,14 +312,21 @@ void main() {
     vec3 exposed = clamp(hdr * max(currentExposure(), 0.0), vec3(0.0), vec3(1.0e6));
     if (pc.bloomIntensity > 0.0) { exposed += max(texture(bloomImage, texCoord).rgb, vec3(0.0)) * pc.bloomIntensity; }
 
+    float hdrPeak = max(pc.hdrPeak, 1.0);
     if (pc.toneMappingMethod == 6) {
-        fragColor = vec4(bedrockToneMap(exposed), 1.0);
+        fragColor = vec4(bedrockToneMap(exposed, hdrPeak), 1.0);
         return;
     }
 
-    vec3 mapped = max(classicCurve(bedrockGrade(exposed)), vec3(0.0));
+    bool isHdr = hdrPeak > 1.0001;
+    float gammaVal = max(pc.gamma, 1e-3);
+    float classicPeak = isHdr ? pow(hdrPeak, gammaVal / 2.2) : 1.0;
+    vec3 graded = bedrockGrade(exposed);
+    vec3 mapped = max(isHdr ? classicCurveHdr(graded, classicPeak) : classicCurve(graded), vec3(0.0));
     mapped = max(withSaturation(mapped, max(pc.saturation, 0.0)), vec3(0.0));
-    mapped = pow(mapped, vec3(1.0 / max(pc.gamma, 1e-3)));
-    if (pc.clampOutput != 0) mapped = clamp(mapped, vec3(0.0), vec3(1.0));
+    mapped = pow(mapped, vec3(1.0 / gammaVal));
+    if (pc.clampOutput != 0) {
+        mapped = clamp(mapped, vec3(0.0), vec3(isHdr ? pow(hdrPeak, 1.0 / 2.2) : 1.0));
+    }
     fragColor = vec4(mapped, 1.0);
 }
