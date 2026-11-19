@@ -541,10 +541,11 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
 
     int surfaceBlockY = cameraCell.y + int(floor(relativePosition.y - 0.001));
     ivec4 center = vptRainColumn(column, textureId);
-    bool laidBare = (center.b & 4) != 0;
-    g_vptSnowSoak = laidBare ? vptColumnSoak(center) : 1.0;
 
     if (vptRainColumnBlocks(center, surfaceBlockY)) {
+        // The floor of a pool or a river: snow does not lie under water, nor drift in from the bank. It showed the
+        // snow that lay there before the water came, and drifts reaching in from the snowy ground round the pool.
+        if ((center.b & 8) != 0) { return vec2(0.0); }
         g_vptSnowSoak = 1.0;
         float since = vptColumnSince(center);
         float covered = since >= 0.0 ? exp(-since * 1.5) : 0.0;
@@ -567,14 +568,11 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
         return vec2(snowOpen, frostOpen) * fade;
     }
 
-    float since = laidBare ? vptColumnSince(center) : -1.0;
-    if (since >= 0.0) {
-        vec2 edge = min(withinColumn, vec2(1.0) - withinColumn);
-        float fromEdge = min(edge.x, edge.y);
-        float reach = mix(0.28, 0.65, clamp(since, 0.0, 1.0));
-        float creep = vptRainFray(vec2(column) + withinColumn, 1.0 - smoothstep(0.0, reach, fromEdge), 29.3);
-        g_vptSnowSoak = max(g_vptSnowSoak, creep);
-    }
+    // A new top, whether a block was put down or taken away (or water came and went), starts bare and gathers the
+    // snow as the ground did when it began to snow, in patches over the Wet-Up Time (vptSnowCover). A block put
+    // down came out under as much snow as the ground round it, and a top laid bare had the snow round it reaching
+    // in from its edges, which drew a ragged white frame round every block.
+    g_vptSnowSoak = vptColumnSince(center) >= 0.0 ? vptColumnSoak(center) : 1.0;
 
     vec2 melt = vptSnowHeatMelt(column, textureId, withinColumn);
     return vec2(fade * (1.0 - melt.x), fade * (1.0 - melt.y));

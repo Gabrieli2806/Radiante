@@ -8,6 +8,7 @@ import java.util.Arrays;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
@@ -33,6 +34,8 @@ import org.lwjgl.system.MemoryUtil;
  * <p>Blue's two low bits (where it rains) say how hot the column's top is: 3 for fire, lava, magma and a lit
  * campfire, furnace, blast furnace or smoker, 2 for a torch or a lantern standing on it, 0 for nothing. The ground round
  * such a block stays drier in the rain and dries sooner after (rain_wetness.glsl).
+ *
+ * <p>Where it snows, blue's bit 3 says the column's top is water: the floor under it holds no snow.
  */
 public final class RainExposure {
 
@@ -341,6 +344,11 @@ public final class RainExposure {
                     // Bit 2: the column's recent change lowered its top (see lowered), for the faces it opened.
                     int down = lowered[column] && !Float.isNaN(exposedAt[column]) ? 4 : 0;
                     int kind = rains ? (leaves ? 128 : 248) : snows ? (leaves ? 32 : 96) : 0;
+                    // Bit 3 where it snows: the column's top is water, so the floor under it holds no snow.
+                    if (snows && chunk.getFluidState(pos.set(tileX[slot] * 16 + x, y, tileZ[slot] * 16 + z))
+                        .is(FluidTags.WATER)) {
+                        kind |= 8;
+                    }
                     pixels.put(offset + 2, (byte) (kind == 0 ? 0 : kind | down | heat));
                     float stamp = exposedAt[column];
                     pixels.put(offset + 3, (byte) (Float.isNaN(stamp) ? 255
