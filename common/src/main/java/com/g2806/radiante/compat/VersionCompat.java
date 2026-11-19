@@ -37,7 +37,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
-import net.minecraft.world.level.material.FlowingFluid;
 import net.minecraft.world.level.material.FluidState;
 import org.joml.Vector3fc;
 import org.jspecify.annotations.Nullable;
@@ -270,6 +269,6 @@ public final class VersionCompat {
 
     /** Whether flowing water or lava is falling: the FALLING property up to 26.3, FluidState.isFalling on 26.4. */
     public static boolean isFalling(FluidState fluid) {
-        return fluid.getValue(FlowingFluid.FALLING);
+        return fluid.isFalling();
     }
 }
