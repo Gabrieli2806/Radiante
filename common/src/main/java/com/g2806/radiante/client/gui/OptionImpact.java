@@ -91,7 +91,6 @@ enum OptionImpact {
         Map.entry("options.radiante.tunable.snow_frost", LOW),
         Map.entry("options.radiante.tunable.lightning_flash", LOW),
         Map.entry("options.radiante.wind", LOW),
-        Map.entry("options.radiante.rain_pixels", NONE),
         Map.entry("options.radiante.tunable.water_clear_teal", LOW));
 
     static OptionImpact of(String optionKey) {

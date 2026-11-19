@@ -42,6 +42,14 @@ int vptColumnHeat(ivec4 data) { return data.b > 0 ? (data.b & 3) : 0; }
 // storm and dries first after it.
 const float HEAT_DRYING = 0.85;
 const float RAIN_PIXELS_PER_BLOCK = 16.0;
+// Minecraft's look for the weather's marks: puddles, the rings on them and on water, the wakes, the wetness of every
+// surface, the snow and the footprints in it go on in pixels of a sixteenth of a block, the size of a block
+// texture's, with hard edges, as a texture painted for the game would show them. Always in Radiante PT; a pack that
+// extends it may define VPT_RAIN_PIXELS 0 for smooth, round shapes (Aether's Pixel Weather).
+#ifndef VPT_RAIN_PIXELS
+#    define VPT_RAIN_PIXELS 1
+#endif
+
 float vptRainHash(vec2 cell);
 float vptRainValueNoise(vec2 p);
 
@@ -94,12 +102,6 @@ const float BIOME_BLEND_STEP = 4.0;
 #    define VPT_RAIN_WET_WALLS 0.8
 #endif
 
-// Minecraft's look for the rain's marks (the Pixel Rain setting, on by default): puddles, the rings on them and on
-// water, and the wetness of every surface go on in pixels of a sixteenth of a block, the size of a block texture's,
-// with hard edges, as a texture painted for the game would show them.
-#ifndef VPT_RAIN_PIXELS
-#    define VPT_RAIN_PIXELS 1
-#endif
 
 /** How much of the rain falls here, 0..1, from the biomes of the columns around: a wet area fades out over a few
  *  blocks into a desert or a snowy biome instead of stopping at the biome's edge. */
@@ -598,6 +600,52 @@ float vptSnowCover(vec3 position, float open) {
     float threshold = mix(0.88, 0.10, spread);
     float cover = open * smoothstep(threshold, threshold + 0.08, n) * clamp(strength, 0.0, 1.5);
     return clamp(VPT_RAIN_PIXELS != 0 ? step(0.45, cover) * min(strength, 1.0) : cover, 0.0, 1.0);
+}
+
+/** The footprints in the snow (skyUBO.snowPrints, SnowPrints on the Java side) at a camera-relative point of an
+ *  upward face. x: how deep a print is there, 1 fresh to 0 filled back in, which clears the blanket vptSnowCover
+ *  lays. y: the same for the prints left in a snow layer's or snow block's own snow, which is packed greyer where
+ *  it was stepped on (only those: a print kept to the blanket would grey a white floor it was left on). z: the
+ *  print's rim, in the shade of the step. */
+vec3 vptSnowPrint(vec3 position) {
+    int count = clamp(int(skyUBO.snowPrintControl.x + 0.5), 0, PRISM_SNOW_PRINT_MAX);
+    vec3 pressed = vec3(0.0);
+    for (int i = 0; i < count; i++) {
+        vec4 print = skyUBO.snowPrints[i];
+        vec3 d = position - print.xyz;
+        if (abs(d.y) > 0.3 || dot(d.xz, d.xz) > 0.06) { continue; }
+        // The age, plus 2 for a print in a snow layer or block (SnowPrints.IN_SNOW_BLOCK).
+        float stamp = skyUBO.snowPrintAge[i / 4][i % 4];
+        bool inBlock = stamp >= 2.0;
+        float age = inBlock ? stamp - 2.0 : stamp;
+        float depth;
+        float rim;
+        if (VPT_RAIN_PIXELS != 0) {
+            // A block of whole pixels, three across and five along, set square to the world's grid on the side the
+            // walker faced most nearly, as Minecraft would draw it; its outer pixels are the rim. It fills back in
+            // a pixel at a time as the snow drifts into it.
+            vec2 cameraFraction = vec2(mod(worldUBO.cameraPos.xz, dvec2(1.0)));
+            vec2 centre = (floor((print.xz + cameraFraction) * RAIN_PIXELS_PER_BLOCK) + 0.5) / RAIN_PIXELS_PER_BLOCK -
+                          cameraFraction;
+            float quarter = floor(print.w / 1.5707963 + 0.5) * 1.5707963;
+            vec2 across = vec2(cos(quarter), sin(quarter));
+            vec2 offset = (position.xz - centre) * RAIN_PIXELS_PER_BLOCK;
+            vec2 local = floor(abs(vec2(dot(offset, across), dot(offset, vec2(-across.y, across.x)))) + 0.5);
+            vec2 cell = floor(vptRainWorldXZ(position) * RAIN_PIXELS_PER_BLOCK);
+            depth = step(local.x, 1.0) * step(local.y, 2.0) *
+                    step(age, 0.1 + 0.85 * vptRainHash(cell + vec2(17.0 + float(i), 5.0)));
+            rim = depth * max(step(1.0, local.x), step(2.0, local.y));
+        } else {
+            // Across and along the way the walker faced: a boot's sole, a little longer than it is wide.
+            vec2 across = vec2(cos(print.w), sin(print.w));
+            vec2 local = vec2(dot(d.xz, across), dot(d.xz, vec2(-across.y, across.x)));
+            float e = length(local / vec2(0.10, 0.16));
+            depth = (1.0 - smoothstep(0.82, 1.04, e)) * (1.0 - smoothstep(0.55, 1.0, age));
+            rim = depth * smoothstep(0.55, 0.95, e);
+        }
+        pressed = max(pressed, vec3(depth, inBlock ? depth : 0.0, rim));
+    }
+    return pressed;
 }
 
 void vptApplySnowFrost(inout LabPBRMat material, vec3 worldPos, float frost, float snowCover, bool upward) {
