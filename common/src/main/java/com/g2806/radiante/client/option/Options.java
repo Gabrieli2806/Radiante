@@ -110,6 +110,8 @@ public class Options {
     public static volatile boolean snowAccumulation = true;
     /** The outline around the block under the crosshair. */
     public static volatile boolean blockOutline = false;
+    /** Foam on flowing water and mist where a waterfall lands (WaterRapids). */
+    public static volatile boolean waterFoam = true;
     /**
      * Frames a second at most while the window is on screen but another one has the focus, 0 for no cap
      * (BackgroundFramerateMixin).
@@ -293,6 +295,7 @@ public class Options {
         bool("heldItemLight", () -> heldItemLight, v -> heldItemLight = v),
         bool("rainWetness", () -> rainWetness, v -> rainWetness = v),
         bool("snowAccumulation", () -> snowAccumulation, v -> snowAccumulation = v),
+        bool("waterFoam", () -> waterFoam, v -> waterFoam = v),
         bool("blockOutline", () -> blockOutline, v -> blockOutline = v),
         number("backgroundFrameRate", () -> backgroundFrameRate,
             v -> backgroundFrameRate = Math.max(0, Math.min(MAX_BACKGROUND_FRAME_RATE, v))),

@@ -403,6 +403,8 @@
   "options.radiante.rain_wetness": "雨天地面湿润",
   "options.radiante.snow_accumulation": "寒冷群系积雪与结霜",
   "options.radiante.snow_accumulation.tooltip": "降雪群系中露天的表面会在下雪时逐渐结霜并积雪，在火把、营火与熔岩附近融化，并在雪停后缓慢消退。",
+  "options.radiante.water_foam": "水面泡沫与水雾",
+  "options.radiante.water_foam.tooltip": "流动的水面上会有随水流漂动的水花，瀑布落入水中的地方会溅起水沫并升起水雾，使用 Minecraft 自带的粒子。静水保持平静。",
   "options.radiante.rain_wetness.tooltip": "下雨时露天的表面会变暗并反光，雨停后慢慢变干。",
   "options.radiante.wind": "风",
   "options.radiante.wind.tooltip": "你附近的树叶、草、花、藤蔓和水生植物会随风摇摆，下雨和雷暴时摆得更厉害。阴影和反射会随之移动。切换时会重新加载世界。",

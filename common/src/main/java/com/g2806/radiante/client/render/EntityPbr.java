@@ -41,7 +41,7 @@ public final class EntityPbr {
 
     /** Atlases whose sprites are drawn as entity geometry. The block atlas has its own maps (PbrAtlases). */
     private static final List<Identifier> ATLASES = List.of(AtlasIds.CHESTS, AtlasIds.SHULKER_BOXES,
-        AtlasIds.DECORATED_POT, AtlasIds.BANNER_PATTERNS, AtlasIds.SHIELD_PATTERNS, AtlasIds.ITEMS);
+        AtlasIds.DECORATED_POT, AtlasIds.BANNER_PATTERNS, AtlasIds.SHIELD_PATTERNS, AtlasIds.ITEMS, AtlasIds.PARTICLES);
 
     /** Written on the render thread, read from whichever thread collects entities. */
     private static final Map<Identifier, Maps> STANDALONE = new ConcurrentHashMap<>();

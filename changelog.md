@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Water Foam & Mist (`Sky & Water`, on by default): splashes ride the current of flowing water, and spray and mist rise where a waterfall lands in water, with Minecraft's own particles. Still water stays calm.
+
+- A resource pack's LabPBR maps for particles (`_s`, `_n` next to a particle texture) are read, as they are for items and block entities.
+
 - Mobs out of view near you (within 20 blocks, up to 48 a frame) stay in the scene: the one behind you casts its shadow into view and shows in water, glass and mirrors, instead of appearing only once you turn round.
 
 - Fabric: blocks whose models draw themselves through Fabric's rendering API (connected textures from Continuity, models other mods make at run time) are built through it, tinted and lit as Minecraft builds them, instead of coming out plain or missing. Vanilla's models keep the quicker vanilla way.
