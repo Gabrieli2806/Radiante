@@ -104,7 +104,7 @@ public final class SnowPrints {
         }
         double now = (gameTime + partialTick) / 20.0;
         // Game time, so a paused game fills nothing in; at most half a second at once, after a hitch.
-        double dt = Double.isNaN(lastNow) ? 0.0 : Mth.clamp(now - lastNow, 0.0, 0.5);
+        double dt = Double.isNaN(lastNow) ? 0.0 : Math.min(Math.max(now - lastNow, 0.0), 0.5);
         lastNow = now;
         float snowfall = level.getRainLevel(partialTick);
         if (snowfall > 0.0f) {
