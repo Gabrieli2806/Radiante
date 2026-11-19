@@ -1,0 +1,142 @@
+#version 460
+
+// Local tone mapping: how bright each part of the picture is around each pixel, for the tone mapping pass to bring
+// the bright and the dark parts of one picture closer together (tone_mapping.frag, localToneGain). One exposure
+// leaves either the sky outside a cave white or the cave black; this lowers the one and lifts the other while every
+// block keeps its pixels.
+//
+// The brightness around a pixel is a guided filter of the log luminance by itself (He, Sun and Tang), built at an
+// eighth of the picture's size and applied at full size: base = a * L + b, with a and b blurred and filtered up. Where
+// a window holds a strong edge (a tree against the sky, a torch against a wall) a goes to 1 and the base follows the
+// pixel, so neither side of the edge borrows the other's brightness and no halo forms; where it holds only texture,
+// a goes to 0 and the base is the window's mean, so the texture is kept as detail.
+//
+// One shader, four passes in this order (pc.pass):
+//   0 reduce:  the mean of L and L * L over each 8 x 8 block of the radiance.
+//   1 anchor:  the mean of L over the picture, eased over time: the brightness left as it is (one group).
+//   2 coeffs:  a and b from the means over the window around each block.
+//   3 smooth:  a and b averaged over the same window, for the tone mapping pass to sample.
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) uniform sampler2D hdrImage;
+layout(set = 0, binding = 1, rgba32f) uniform image2D reduced;
+layout(set = 0, binding = 2, rgba32f) uniform image2D coefficients;
+layout(set = 0, binding = 3, rgba16f) uniform writeonly image2D smoothed;
+
+// Read by tone_mapping.frag (LocalToneBuffer); kept from frame to frame.
+layout(std430, set = 0, binding = 4) buffer LocalToneBuffer {
+    float anchor;     // the log2 luminance the mapping leaves as it is
+    float highlights; // how far what is brighter than that is brought down, 0 .. 1
+    float shadows;    // how far what is darker is lifted, 0 .. 1
+    float started;    // 1 once anchor holds a value to ease from
+}
+localTone;
+
+// ToneMappingLocalPushConstant (tone_mapping_module.hpp).
+layout(push_constant) uniform PushConstant {
+    int pass;
+    int radius;       // the window's half size, in blocks
+    float epsilon;    // edges whose contrast (in stops, squared) is well over this are kept sharp
+    float highlights;
+    float shadows;
+    float dt;
+    int reset;        // the anchor starts over instead of easing
+    float padding0;
+}
+pc;
+
+const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
+// Must match tone_mapping.frag: black would pull the mean of the logarithm down without end.
+const float LOCAL_TONE_MIN_LUMINANCE = 1.0 / 16384.0;
+const int BLOCK = 8;
+// How fast the anchor follows the picture, per second: about the exposure's own pace.
+const float ANCHOR_SPEED = 3.0;
+
+float logLuminance(vec3 radiance) {
+    // Not a number counts as black, infinity as very bright (tone_mapping.frag does the same to the picture).
+    radiance = vec3(isnan(radiance.r) ? 0.0 : min(radiance.r, 60000.0), isnan(radiance.g) ? 0.0 : min(radiance.g, 60000.0),
+                    isnan(radiance.b) ? 0.0 : min(radiance.b, 60000.0));
+    return log2(max(dot(max(radiance, vec3(0.0)), LUMA), LOCAL_TONE_MIN_LUMINANCE));
+}
+
+void reduce(ivec2 block) {
+    ivec2 size = textureSize(hdrImage, 0);
+    ivec2 origin = block * BLOCK;
+    float sum = 0.0;
+    float sumSquares = 0.0;
+    float count = 0.0;
+    for (int y = 0; y < BLOCK; y++) {
+        for (int x = 0; x < BLOCK; x++) {
+            ivec2 pixel = origin + ivec2(x, y);
+            if (any(greaterThanEqual(pixel, size))) continue;
+            float l = logLuminance(texelFetch(hdrImage, pixel, 0).rgb);
+            sum += l;
+            sumSquares += l * l;
+            count += 1.0;
+        }
+    }
+    count = max(count, 1.0);
+    imageStore(reduced, block, vec4(sum / count, sumSquares / count, 0.0, 0.0));
+}
+
+shared float groupSum[256];
+
+void anchor() {
+    ivec2 size = imageSize(reduced);
+    uint index = gl_LocalInvocationIndex;
+    uint total = uint(size.x * size.y);
+    float sum = 0.0;
+    for (uint i = index; i < total; i += 256u) {
+        sum += imageLoad(reduced, ivec2(int(i) % size.x, int(i) / size.x)).r;
+    }
+    groupSum[index] = sum;
+    barrier();
+    for (uint stride = 128u; stride > 0u; stride >>= 1u) {
+        if (index < stride) groupSum[index] += groupSum[index + stride];
+        barrier();
+    }
+    if (index != 0u) return;
+
+    float target = groupSum[0] / float(max(total, 1u));
+    float current = localTone.anchor;
+    bool fresh = pc.reset != 0 || localTone.started < 0.5 || isnan(current) || isinf(current);
+    localTone.anchor = fresh ? target : mix(target, current, exp(-ANCHOR_SPEED * pc.dt));
+    localTone.highlights = pc.highlights;
+    localTone.shadows = pc.shadows;
+    localTone.started = 1.0;
+}
+
+// The mean over the window around `block` of the first two channels of `image`, the window held inside the image.
+vec2 windowMean(ivec2 block, bool ofReduced) {
+    ivec2 high = (ofReduced ? imageSize(reduced) : imageSize(coefficients)) - 1;
+    vec2 sum = vec2(0.0);
+    for (int y = -pc.radius; y <= pc.radius; y++) {
+        for (int x = -pc.radius; x <= pc.radius; x++) {
+            ivec2 at = clamp(block + ivec2(x, y), ivec2(0), high);
+            sum += ofReduced ? imageLoad(reduced, at).rg : imageLoad(coefficients, at).rg;
+        }
+    }
+    float side = float(2 * pc.radius + 1);
+    return sum / (side * side);
+}
+
+void main() {
+    if (pc.pass == 1) {
+        anchor();
+        return;
+    }
+    ivec2 block = ivec2(gl_GlobalInvocationID.xy);
+    if (any(greaterThanEqual(block, imageSize(reduced)))) return;
+
+    if (pc.pass == 0) {
+        reduce(block);
+    } else if (pc.pass == 2) {
+        vec2 means = windowMean(block, true);
+        float variance = max(means.y - means.x * means.x, 0.0);
+        float a = variance / (variance + pc.epsilon);
+        imageStore(coefficients, block, vec4(a, means.x * (1.0 - a), 0.0, 0.0));
+    } else {
+        imageStore(smoothed, block, vec4(windowMean(block, false), 0.0, 0.0));
+    }
+}

@@ -88,8 +88,10 @@ struct ToneMappingModulePushConstant {
     float filmicSaturation;
     // Display peak brightness in paper whites (1.0 in SDR, > 1.0 when HDR output is active).
     float hdrPeak;
+    // Local Tone Mapping's strength, 0 .. 1; 0 is off, and its passes do not run.
+    float localToneMapping;
 };
-static_assert(sizeof(ToneMappingModulePushConstant) == 31 * 4,
+static_assert(sizeof(ToneMappingModulePushConstant) == 32 * 4,
               "the layout tone_mapping.frag reads, within the 128 bytes of push constants every device has");
 
 // The push constants of the Bedrock-style tone curve passes (bedrock_hist.comp, bedrock_curve.comp). Pushed over the
@@ -109,6 +111,19 @@ struct ToneMappingBedrockCurvePushConstant {
 static_assert(sizeof(ToneMappingBedrockCurvePushConstant) == 10 * 4, "the layout the curve passes read");
 static_assert(sizeof(ToneMappingBedrockCurvePushConstant) <= sizeof(ToneMappingModulePushConstant),
               "the curve passes push within the tone mapping range");
+
+// The push constants of the local tone mapping passes (local_tone.comp).
+struct ToneMappingLocalPushConstant {
+    int32_t pass;
+    int32_t radius;
+    float epsilon;
+    float highlights;
+    float shadows;
+    float dt;
+    int32_t reset;
+    float padding0;
+};
+static_assert(sizeof(ToneMappingLocalPushConstant) == 8 * 4, "the layout local_tone.comp reads");
 
 // The push constants of one bloom pass (bloom_down.frag, bloom_up.frag).
 struct ToneMappingBloomPushConstant {
@@ -234,6 +249,10 @@ class ToneMappingModule : public WorldModule, public SharedObject<ToneMappingMod
         float bloomScatter = 0.5f;
         float bloomThreshold = 0.0f;
         std::array<float, BLOOM_UP_LEVELS> bloomWeights = {1.0f, 1.0f, 1.0f, 1.0f};
+        // Local tone mapping, off unless the pipeline sets it: how far the bright parts of the picture are brought
+        // down towards the rest, and the share of that the dark parts are lifted by.
+        float localToneMapping = 0.0f;
+        float localToneShadows = 0.5f;
     };
 
     // One bloom pass of one frame: it draws `target` from the images its descriptors name.
@@ -253,6 +272,12 @@ class ToneMappingModule : public WorldModule, public SharedObject<ToneMappingMod
         std::shared_ptr<gpu::Framebuffer> framebuffer;
         // In the order they run: the downscales, then the upscales from the coarsest level.
         std::array<BloomPass, BLOOM_PASSES> bloomPasses;
+        // Local tone mapping's images, an eighth of the picture's size (local_tone.comp): the block means, the
+        // guided filter's coefficients and those smoothed, which the tone mapping pass samples.
+        std::shared_ptr<gpu::DeviceLocalImage> localReduced;
+        std::shared_ptr<gpu::DeviceLocalImage> localCoefficients;
+        std::shared_ptr<gpu::DeviceLocalImage> localSmoothed;
+        std::shared_ptr<gpu::DescriptorTable> localDescriptors;
     };
 
     // Sets the attribute `key` (its full name) from `value`; false for a name the module does not know or a value
@@ -269,6 +294,9 @@ class ToneMappingModule : public WorldModule, public SharedObject<ToneMappingMod
     void record(uint32_t frameIndex, gpu::CommandBuffer &commandBuffer);
     void recordBedrockCurve(Frame &frame, gpu::CommandBuffer &commandBuffer);
     void recordBloom(Frame &frame, gpu::CommandBuffer &commandBuffer);
+    // Made whatever the setting, so that it can be turned on live; small next to the picture.
+    void createLocalTone(Framework &framework);
+    void recordLocalTone(Frame &frame, gpu::CommandBuffer &commandBuffer, float dt);
     // Whether the bloom pyramid is drawn: for the Bloom setting or for the shader pack's post passes.
     bool runsBloom() const {
         return settings_.bloomEnabled || packBloom_;
@@ -299,6 +327,13 @@ class ToneMappingModule : public WorldModule, public SharedObject<ToneMappingMod
     std::shared_ptr<gpu::RenderPass> bloomRenderPass_;
     // One per pass: a pipeline bakes its viewport, and every pass draws a different size.
     std::array<std::shared_ptr<gpu::GraphicsPipeline>, BLOOM_PASSES> bloomPipelines_;
+
+    // Local tone mapping's anchor and strengths (local_tone.comp's LocalToneBuffer), one for all frames: the anchor is
+    // eased from frame to frame.
+    std::shared_ptr<gpu::DeviceLocalBuffer> localTone_;
+    std::shared_ptr<gpu::ComputePipeline> localTonePipeline_;
+    std::shared_ptr<gpu::Sampler> localToneSampler_;
+    bool localToneNeedsReset_ = true;
 
     // Made at a build and again when a setting changes live; dt is filled in every frame.
     ToneMappingModulePushConstant pushConstants_{};

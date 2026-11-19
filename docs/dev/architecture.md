@@ -381,7 +381,9 @@ first-hit direct and indirect diffuse, specular, emission, refraction, and fog i
 - The `shader/world/upscaler/*.comp` passes bring motion vectors, depth and normals to the output size for the
   upscalers.
 - **Tone mapping** (`tone_mapping/`): histogram exposure (`hist.comp`, `exposure.comp`), bloom down/up, the tone
-  curve, and a Bedrock-style curve (`bedrock_hist.comp`, `bedrock_curve.comp`). Writes a 16-bit float output matching
+  curve, a Bedrock-style curve (`bedrock_hist.comp`, `bedrock_curve.comp`), and local tone mapping
+  (`local_tone.comp`: a guided filter of the log luminance at an eighth of the size, which the tone mapping pass uses
+  to bring each part's surroundings towards the picture's mean before the curve). Writes a 16-bit float output matching
   SDR up to the highlight knee and extending highlights to the display's peak while HDR output (`render/hdr_output.*`)
   is active.
 - **Post render** (`post_render/`): turns first-hit distances into depth, copies the tone-mapped 16-bit float image out

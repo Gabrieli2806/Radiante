@@ -161,3 +161,11 @@ attributeConfigs:
     type: "float_range:0.0-4.0"
     value: "1.0"
     runtime: true
+  - name: "render_pipeline.module.tone_mapping.attribute.local_tone_mapping"
+    type: "float_range:0.0-1.0"
+    value: "0.4"
+    runtime: true
+  - name: "render_pipeline.module.tone_mapping.attribute.local_tone_mapping_shadows"
+    type: "float_range:0.0-1.0"
+    value: "0.5"
+    runtime: true
