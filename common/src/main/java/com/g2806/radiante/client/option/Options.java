@@ -110,6 +110,18 @@ public class Options {
     public static volatile boolean snowAccumulation = true;
     /** The outline around the block under the crosshair. */
     public static volatile boolean blockOutline = false;
+    /** How thick the Vanilla clouds are, in percent of Minecraft's 4 blocks (CloudGeometry). */
+    public static volatile int cloudThickness = 100;
+    public static final int MIN_CLOUD_THICKNESS = 25;
+    public static final int MAX_CLOUD_THICKNESS = 400;
+    /** Foam on flowing water and mist where a waterfall lands (WaterRapids). */
+    public static volatile boolean waterFoam = true;
+    /**
+     * Frames a second at most while the window is on screen but another one has the focus, 0 for no cap
+     * (BackgroundFramerateMixin).
+     */
+    public static volatile int backgroundFrameRate = 15;
+    public static final int MAX_BACKGROUND_FRAME_RATE = 60;
     /**
      * Lets Minecraft's level render run over the traced world, with nothing of its own to draw, so that what other
      * mods draw into the world shows: schematics, selection boxes, waypoint beams, guides.
@@ -287,7 +299,12 @@ public class Options {
         bool("heldItemLight", () -> heldItemLight, v -> heldItemLight = v),
         bool("rainWetness", () -> rainWetness, v -> rainWetness = v),
         bool("snowAccumulation", () -> snowAccumulation, v -> snowAccumulation = v),
+        bool("waterFoam", () -> waterFoam, v -> waterFoam = v),
+        number("cloudThickness", () -> cloudThickness,
+            v -> cloudThickness = Math.max(MIN_CLOUD_THICKNESS, Math.min(MAX_CLOUD_THICKNESS, v))),
         bool("blockOutline", () -> blockOutline, v -> blockOutline = v),
+        number("backgroundFrameRate", () -> backgroundFrameRate,
+            v -> backgroundFrameRate = Math.max(0, Math.min(MAX_BACKGROUND_FRAME_RATE, v))),
         bool("modOverlays", () -> modOverlays, v -> modOverlays = v),
         bool("textBackgrounds", () -> textBackgrounds, v -> textBackgrounds = v),
         bool("parallaxTransparentEdges", () -> parallaxTransparentEdges, v -> parallaxTransparentEdges = v),
@@ -323,6 +340,25 @@ public class Options {
         number("hdrPeakNits", () -> hdrPeakNits, v -> hdrPeakNits = Math.max(200, Math.min(10000, v))),
         number("hdrPaperWhiteNits", () -> hdrPaperWhiteNits,
             v -> hdrPaperWhiteNits = Math.max(80, Math.min(500, v))));
+
+    /**
+     * Each setting's default, as the fields stand before the file is read. Only what differs from it is written
+     * down, so a default changed in a later release reaches everyone who never changed that setting, while what a
+     * player did change stays theirs.
+     */
+    private static final java.util.Map<String, String> DEFAULTS = defaults();
+
+    /** Written even at their defaults: loading a file without them takes it for one from an older release. */
+    private static final java.util.Set<String> ALWAYS_WRITTEN = java.util.Set.of("chunkBuildingAuto", "sunPathTilt",
+        "heldLightBrightness", "settingsDefaultsVersion");
+
+    private static java.util.Map<String, String> defaults() {
+        java.util.Map<String, String> values = new java.util.HashMap<>();
+        for (Entry entry : ENTRIES) {
+            values.put(entry.key(), entry.value().get());
+        }
+        return values;
+    }
 
     /**
      * Takes a saved output resolution. The fixed percentages of before (PERCENT_75 and the like) became the Custom
@@ -424,7 +460,10 @@ public class Options {
         Path path = RadianteClient.radianceDir.resolve(OPTION_PROPERTIES);
         Properties props = new Properties();
         for (Entry entry : ENTRIES) {
-            props.setProperty(entry.key(), entry.value().get());
+            String value = entry.value().get();
+            if (ALWAYS_WRITTEN.contains(entry.key()) || !value.equals(DEFAULTS.get(entry.key()))) {
+                props.setProperty(entry.key(), value);
+            }
         }
 
         try {

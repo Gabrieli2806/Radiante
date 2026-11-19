@@ -221,6 +221,12 @@ public final class HeldLight {
         if (stack.isEmpty()) {
             return 0;
         }
+        // An open flame goes out with the head under water: a torch, a candle, a campfire. A lantern, glowstone or a
+        // redstone torch keeps its light.
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player != null && isOpenFlame(stack) && player.isEyeInFluid(net.minecraft.tags.FluidTags.WATER)) {
+            return 0;
+        }
         if (stack.is(Items.LAVA_BUCKET)) {
             return 15;
         }
@@ -231,6 +237,17 @@ public final class HeldLight {
             return blockItem.getBlock().defaultBlockState().getLightEmission();
         }
         return 0;
+    }
+
+    private static boolean isOpenFlame(ItemStack stack) {
+        if (!(stack.getItem() instanceof BlockItem blockItem)) {
+            return false;
+        }
+        var block = blockItem.getBlock();
+        return (block instanceof net.minecraft.world.level.block.BaseTorchBlock
+                && !(block instanceof net.minecraft.world.level.block.RedstoneTorchBlock))
+            || block instanceof net.minecraft.world.level.block.CandleBlock
+            || block instanceof net.minecraft.world.level.block.CampfireBlock;
     }
 
     private static Vector3f tintOf(ItemStack stack) {

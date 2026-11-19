@@ -6,6 +6,7 @@
 
 | Control | Valores | Por defecto | Qué hace |
 |---|---|---|---|
+| **FPS en Segundo Plano** | Desactivado – 60 | 15 | Los fotogramas por segundo como máximo mientras Minecraft está en pantalla pero otra ventana tiene el foco, para que la tarjeta gráfica descanse en vez de trazar a plena carga. Desactivado quita el límite. |
 | **Contorno del Bloque** | Activado/Desactivado | Desactivado | El contorno alrededor del bloque bajo la mira. |
 | **Overlays de Otros Mods** | Activado / Desactivado | Activado | Deja que otros mods dibujen en el mundo trazado: esquemas y cajas de selección de Litematica, formas de MiniHUD, haces de waypoints, guías y marcadores. Se dibujan al modo de Minecraft, encima de la imagen trazada, tapados por el mundo donde deben. Apágalo si algún mod dibuja algo mal sobre el mundo. |
 | **Fondo de Textos Flotantes** | Activado / Desactivado | Activado | Dibuja la placa translúcida detrás de los textos flotantes (tablas de clasificación, hologramas, carteles de servidores) como hace Minecraft, para que se lean mejor. Apagado muestra solo las letras. |

@@ -187,6 +187,44 @@ public final class EntityBlockEntities {
         return Glow.ofLevel(excess);
     }
 
+    /** How near the camera a mob out of view is kept, and how many are kept a frame at most. */
+    private static final double NEAR_OUT_OF_VIEW = 20.0;
+    private static final int NEAR_OUT_OF_VIEW_BUDGET = 48;
+    private static long nearFrame = Long.MIN_VALUE;
+    private static int nearKept;
+
+    /**
+     * Whether a mob vanilla culled for being out of the view is kept anyway, near the camera: the one behind you is
+     * in the mirror, the water and the window, and casts its shadow into view. Vanilla drew only what was on screen,
+     * so those reflections and shadows were missing until you turned round. Mobs and the like only (not item frames,
+     * paintings or dropped items), at most NEAR_OUT_OF_VIEW_BUDGET a frame, so a crowded farm costs no more than
+     * that.
+     */
+    public static boolean keepsNearOutOfView(net.minecraft.world.entity.Entity entity, double cameraX, double cameraY,
+        double cameraZ) {
+        if (!(entity instanceof net.minecraft.world.entity.LivingEntity
+                || entity instanceof net.minecraft.world.entity.vehicle.VehicleEntity)
+            || entity.isRemoved() || entity.isInvisible()
+            || entity == Minecraft.getInstance().getCameraEntity()) {
+            return false;
+        }
+        if (entity.distanceToSqr(cameraX, cameraY, cameraZ) > NEAR_OUT_OF_VIEW * NEAR_OUT_OF_VIEW
+            || !entity.shouldRender(cameraX, cameraY, cameraZ)) {
+            return false;
+        }
+        // The renderer's own count of frames: the one the extraction is handed does not move from frame to frame.
+        long frame = RadianteRenderer.levelFrames();
+        if (frame != nearFrame) {
+            nearFrame = frame;
+            nearKept = 0;
+        }
+        if (nearKept >= NEAR_OUT_OF_VIEW_BUDGET) {
+            return false;
+        }
+        nearKept++;
+        return true;
+    }
+
     /**
      * Whether an entity vanilla culled (out of the view frustum, or in a section it would not draw) is kept anyway:
      * one that gives off light, within the Entity Light Reach of the camera. Its light reaches what is on screen

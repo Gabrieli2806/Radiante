@@ -69,6 +69,8 @@ body:
         Drag the files here (please do not paste them as text):
         - the newest file in `crash-reports/`, if there is one
         - `logs/latest.log`
-        - any `hs_err_pid*.log` in the game folder (a native crash)
+        - any `hs_err_pid*.log` in the game folder (a native crash). It holds the launcher's command line: start the game once
+          after the crash before attaching it, and Radiante blanks the sign-in token (`--accessToken`) in it, or delete that
+          value yourself.
     validations:
       required: true

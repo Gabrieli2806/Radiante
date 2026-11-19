@@ -4,6 +4,32 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Cloud Thickness (`Sky & Water`, 25% – 400%): how tall the Vanilla clouds are against Minecraft's 4 blocks, from thin sheets to towering blocks of cloud, still in Minecraft's cells.
+
+- A resource pack's animated LabPBR maps (`_s`, `_n` stacked in frames, as lava, fire, magma or the portal have them) follow the texture's animation frame by frame, instead of keeping their first frame while the colour moved on.
+
+- Water Foam & Mist (`Sky & Water`, on by default): splashes ride the current of flowing water, and spray and mist rise where a waterfall lands in water, with Minecraft's own particles. Still water stays calm.
+
+- A resource pack's LabPBR maps for particles (`_s`, `_n` next to a particle texture) are read, as they are for items and block entities.
+
+- Mobs out of view near you (within 20 blocks, up to 48 a frame) stay in the scene: the one behind you casts its shadow into view and shows in water, glass and mirrors, instead of appearing only once you turn round.
+
+- Fabric: blocks whose models draw themselves through Fabric's rendering API (connected textures from Continuity, models other mods make at run time) are built through it, tinted and lit as Minecraft builds them, instead of coming out plain or missing. Vanilla's models keep the quicker vanilla way.
+
+- `options.properties` keeps only the settings you changed, so a default improved in a later release reaches you unless you set that one yourself.
+
+- The Java runtime's native crash file (`hs_err_pid*.log`) carries the launcher's command line, sign-in token included; Radiante blanks the token in those files on the next start, before one is attached to a bug report.
+
+- The invisible light block of map makers lights the world: a white light at its middle, as strong as a torch's at its level. It lit nothing before, having no faces to glow.
+
+- Candles light from each wick without a Bedrock pack, warm and as strong as their light level, instead of only through the few glowing texels of their flames.
+
+- A torch, candle or campfire held in the hand goes out while your head is under water; a lantern, glowstone or a redstone torch keeps shining.
+
+- Toggle Held Item Light: a new key binding, unbound by default, switches the light of what you hold on and off.
+
+- Background Frame Rate (`Other`, 15 by default): while Minecraft is on screen but another window has the focus, the game draws at most that many frames a second, so the graphics card rests instead of path tracing at full load. Off removes the cap.
+
 - Footprints in snow: players and mobs leave prints where their feet come down in the walk animation, the square of the leg itself (four pixels across for a player's or a cow's, two for a chicken's or a wolf's): one foot at a time on two legs, the diagonal pair on four. Landing from a jump or a fall brings every foot down at once, side by side, and a slime prints the square of its whole body; things that fly, swim or have no legs leave none. The prints clear the snow that settles on the ground down to what is under it, and pack a snow block's own snow a little greyer. Falling snow fills them back in a pixel at a time, from the rim in, over about 45 seconds of snowfall; out of it they stay, settling away over 20 minutes. Feet still wet from the water tread the snow into grey slush for the first steps, and feet coming off the snow carry clumps of it onto the next floor, a house's, for a few steps, which melt into small wet spots that dry within half a minute; wet feet leave water on a floor the same way. Off with Snow & Frost in Cold Biomes.
 
 - Puddles ring under each foot that comes down, from the same steps as the snow's prints: two rings for a jump landing on both feet, four for a four-legged animal, instead of one ring every block or so under the middle of the body.

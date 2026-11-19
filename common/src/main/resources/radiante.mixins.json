@@ -10,6 +10,7 @@
     "compat.DistantHorizonsRenderBuildMixin",
     "compat.DistantHorizonsRenderSkipMixin",
     "compat.DistantHorizonsShutdownMixin",
+    "backend.BackgroundFramerateMixin",
     "backend.FailedStartFallbackMixin",
     "backend.HdrPresentMixin",
     "backend.PreferredGraphicsApiMixin",

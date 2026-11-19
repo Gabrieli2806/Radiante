@@ -24,7 +24,11 @@ public final class RadianteKeys {
     public static final KeyMapping COMPARE =
         new KeyMapping("key.radiante.compare", InputConstants.UNKNOWN.getValue(), CATEGORY);
 
-    public static final KeyMapping[] ALL = {OPEN_SETTINGS, PHOTO_MODE, TOGGLE_RAY_TRACING, COMPARE};
+    /** Switches Held Item Light on and off; unbound by default. */
+    public static final KeyMapping TOGGLE_HELD_LIGHT =
+        new KeyMapping("key.radiante.toggle_held_light", InputConstants.UNKNOWN.getValue(), CATEGORY);
+
+    public static final KeyMapping[] ALL = {OPEN_SETTINGS, PHOTO_MODE, TOGGLE_RAY_TRACING, COMPARE, TOGGLE_HELD_LIGHT};
 
     private RadianteKeys() {
     }
