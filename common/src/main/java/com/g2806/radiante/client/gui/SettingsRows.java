@@ -387,6 +387,11 @@ abstract class SettingsRows extends SettingsUpscalerRows {
                 (value > 0 ? "+" : "") + value),
             new OptionInstance.IntRange(Options.MIN_CLOUD_HEIGHT_OFFSET, Options.MAX_CLOUD_HEIGHT_OFFSET, false),
             staged("cloudHeightOffset", Options.cloudHeightOffset), value -> stage("cloudHeightOffset", value));
+        OptionInstance<Integer> cloudThickness = new OptionInstance<Integer>("options.radiante.cloud_thickness",
+            SettingsRows.<Integer>tooltip("options.radiante.cloud_thickness"),
+            (caption, value) -> Component.translatable("options.percent_value", caption, value),
+            new OptionInstance.IntRange(Options.MIN_CLOUD_THICKNESS, Options.MAX_CLOUD_THICKNESS, false),
+            staged("cloudThickness", Options.cloudThickness), value -> stage("cloudThickness", value));
         OptionInstance<Boolean> volumetricFog = null;
         OptionInstance<Integer> volumetricStrength = null;
         OptionInstance<Boolean> fogStyle = null;
@@ -443,7 +448,7 @@ abstract class SettingsRows extends SettingsUpscalerRows {
                     SEAMLESS_SCOPE + ".panes"), com.mojang.serialization.Codec.STRING),
                 this.pendingSeamlessScope, value -> this.pendingSeamlessScope = value);
         }
-        addRows(atmosphere, clouds, cloudHeight, cloudShadows, tunable(Tunable.CLOUD_COVERAGE, false),
+        addRows(atmosphere, clouds, cloudHeight, cloudThickness, cloudShadows, tunable(Tunable.CLOUD_COVERAGE, false),
             tunable(Tunable.CLOUD_DENSITY, false), tunable(Tunable.CLOUD_QUALITY, false), tunable(Tunable.STARS, false),
             brightnessSlider("options.radiante.star_altitude", staged("starAltitude", Options.starAltitude),
                 value -> stage("starAltitude", value)),
@@ -461,6 +466,9 @@ abstract class SettingsRows extends SettingsUpscalerRows {
             OptionInstance.createBoolean("options.radiante.snow_accumulation",
                 tooltip("options.radiante.snow_accumulation"), staged("snowAccumulation", Options.snowAccumulation),
                 value -> stage("snowAccumulation", value)),
+            OptionInstance.createBoolean("options.radiante.water_foam",
+                tooltip("options.radiante.water_foam"), staged("waterFoam", Options.waterFoam),
+                value -> stage("waterFoam", value)),
             tunable(Tunable.RAIN_WETNESS, false), tunable(Tunable.RAIN_WET_WALLS, false),
             tunable(Tunable.PUDDLES, false), tunable(Tunable.SNOW_FROST, false),
             tunable(Tunable.RAIN_WET_UP_TIME, false),
@@ -635,7 +643,13 @@ abstract class SettingsRows extends SettingsUpscalerRows {
     }
 
     private void addOtherOptions() {
-        addRows(OptionInstance.createBoolean("options.radiante.block_outline",
+        OptionInstance<Integer> backgroundFrameRate = new OptionInstance<Integer>("options.radiante.background_frame_rate",
+            SettingsRows.<Integer>tooltip("options.radiante.background_frame_rate"),
+            (caption, value) -> value == 0 ? Component.translatable("options.generic_value", caption,
+                Component.translatable("options.off")) : Component.translatable("options.generic_value", caption, value),
+            new OptionInstance.IntRange(0, Options.MAX_BACKGROUND_FRAME_RATE, false),
+            staged("backgroundFrameRate", Options.backgroundFrameRate), value -> stage("backgroundFrameRate", value));
+        addRows(backgroundFrameRate, OptionInstance.createBoolean("options.radiante.block_outline",
                 tooltip("options.radiante.block_outline"), staged("blockOutline", Options.blockOutline),
                 value -> stage("blockOutline", value)),
             OptionInstance.createBoolean("options.radiante.mod_overlays",

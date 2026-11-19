@@ -51,7 +51,8 @@ public class LevelExtractorMixin implements LevelExtractorAccess {
         net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
         boolean frozen = minecraft.level != null && minecraft.level.tickRateManager().isEntityFrozen(entity);
         float partialTick = minecraft.getDeltaTracker().getGameTimeDeltaPartialTick(!frozen);
-        if (EntityBlockEntities.keepsLightOutOfView(entity, cameraX, cameraY, cameraZ, partialTick)) {
+        if (EntityBlockEntities.keepsLightOutOfView(entity, cameraX, cameraY, cameraZ, partialTick)
+            || EntityBlockEntities.keepsNearOutOfView(entity, cameraX, cameraY, cameraZ)) {
             cir.setReturnValue(true);
         }
     }

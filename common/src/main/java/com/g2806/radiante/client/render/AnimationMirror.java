@@ -55,6 +55,8 @@ public final class AnimationMirror {
                 int index = (int) frameIndex.invoke(frames.get(frame));
                 int rowSize = animationRowSize.getInt(animation);
                 uploadFrame(atlas, sprite, index % rowSize, index / rowSize, maxMipLevel);
+                // The sprite's PBR maps go with the frame, when the pack animates them too.
+                PbrAtlases.showFrame(sprite, index);
             } catch (ReflectiveOperationException | RuntimeException e) {
                 RadianteRenderer.LOGGER.warn("Stopping sprite animation mirroring", e);
                 unavailable = true;

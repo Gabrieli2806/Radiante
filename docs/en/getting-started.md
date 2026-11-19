@@ -93,6 +93,7 @@ If something else shows up instead:
 | `F6` | Opens Radiante's settings (also: Options → Video Settings → Radiante). |
 | Unbound | Opens [Photo Mode](photo-mode.md) while in a world; bind it in Controls, under Radiante. |
 | Toggle Ray Tracing (unbound) | Turns ray tracing on or off at once. Give it a key in Minecraft's controls. |
+| Toggle Held Item Light (unbound) | Turns the light of a torch or lantern in your hand on or off. |
 
 ## Next
 

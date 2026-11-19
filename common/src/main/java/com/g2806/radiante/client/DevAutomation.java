@@ -29,6 +29,11 @@ public final class DevAutomation {
     private static int worldTicks = -1;
     private static int next;
     private static boolean active;
+
+    /** Whether a development script is driving the game, which must run as fast unfocused as focused. */
+    public static boolean isScripted() {
+        return active;
+    }
     /** A test world is being opened: its experimental-settings backup prompt is answered here, not by a person. */
     private static boolean openingTestWorld;
     private static net.minecraft.client.gui.screens.Screen answeredBackup;
