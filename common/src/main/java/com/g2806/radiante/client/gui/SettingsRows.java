@@ -305,7 +305,7 @@ abstract class SettingsRows extends SettingsUpscalerRows {
         addRows(style, method, tunable(Tunable.SATURATION, true), tunable(Tunable.TEXTURE_CONTRAST, false),
             tunable(Tunable.EXPOSURE_ADAPTATION, false),
             tunable(Tunable.EXPOSURE_SPEED, false), tunable(Tunable.EXPOSURE_BIAS, false),
-            tunable(Tunable.LOW_LIGHT_BOOST, false), tunable(Tunable.DAY_LOW_LIGHT_LIMIT, false),
+            tunable(Tunable.LOCAL_TONE_MAPPING, false), tunable(Tunable.LOW_LIGHT_BOOST, false), tunable(Tunable.DAY_LOW_LIGHT_LIMIT, false),
             tunable(Tunable.FSR_SHARPNESS, false));
         addHdrOptions();
         if (PipelineSettings.supportsShaderPackToggle(RtAttributes.MOTION_BLUR_ATTRIBUTE)

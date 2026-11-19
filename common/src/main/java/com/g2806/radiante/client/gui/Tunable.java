@@ -19,6 +19,10 @@ enum Tunable {
         "render_pipeline.module.tone_mapping.attribute.exposure_adaptation", 0.01, 0, 100, 100, Format.PERCENT),
     EXPOSURE_BIAS(Pipeline.TONE_MAPPING_MODULE_NAME, "render_pipeline.module.tone_mapping.attribute.exposure_bias",
         0.1, -30, 30, 0, Format.EV),
+    // How far the bright and the dark parts of one picture are brought together: the sky outside a cave or a window
+    // no longer white, the room or the cave no longer black (tone_mapping/local_tone.comp).
+    LOCAL_TONE_MAPPING(Pipeline.TONE_MAPPING_MODULE_NAME,
+        "render_pipeline.module.tone_mapping.attribute.local_tone_mapping", 0.01, 0, 100, 40, Format.PERCENT),
     // One slider for both directions: how fast the exposure follows going into the light and into the dark.
     EXPOSURE_SPEED(Pipeline.TONE_MAPPING_MODULE_NAME, "render_pipeline.module.tone_mapping.attribute.exposure_up_speed",
         "render_pipeline.module.tone_mapping.attribute.exposure_down_speed", 0.08, 5, 250, 100, Format.PERCENT),

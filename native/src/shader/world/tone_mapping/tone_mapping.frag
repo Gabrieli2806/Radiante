@@ -26,6 +26,17 @@ layout(std430, set = 0, binding = 4) readonly buffer BedrockCurveBuffer {
 }
 bedrock;
 
+// Local tone mapping (local_tone.comp): where it leaves the brightness as it is, and how far it moves the rest.
+layout(std430, set = 0, binding = 6) readonly buffer LocalToneBuffer {
+    float anchor;
+    float highlights;
+    float shadows;
+    float started;
+}
+localTone;
+// The guided filter's a and b, at an eighth of the picture's size (local_tone.comp, pass 3).
+layout(set = 0, binding = 7) uniform sampler2D localToneImage;
+
 // ToneMappingModulePushConstant (tone_mapping_module.hpp).
 layout(push_constant) uniform PushConstant {
     float log2Min;
@@ -61,6 +72,7 @@ layout(push_constant) uniform PushConstant {
     float balanceB;
     float filmicSaturation; // Bedrock's filmic saturation correction, 0 off
     float hdrPeak;          // display peak in paper whites (1.0 in SDR)
+    float localToneMapping; // Local Tone Mapping's strength; 0 is off, and local_tone.comp did not run
 }
 pc;
 
@@ -213,6 +225,27 @@ vec3 bedrockToneMap(vec3 color, float hdrPeak) {
     return mix(srgb, above, greaterThan(graded, vec3(1.0)));
 }
 
+// ---- Local tone mapping.
+
+// Must match local_tone.comp.
+const float LOCAL_TONE_MIN_LUMINANCE = 1.0 / 16384.0;
+// Within this many stops of the anchor the brightness is left nearly as it is: the midtones keep their contrast, and
+// only what is far brighter or far darker than the rest of the picture is moved.
+const float LOCAL_TONE_KNEE = 1.0;
+
+// What the radiance at this pixel is multiplied by: the brightness of its surroundings (the guided filter's base) is
+// brought towards the anchor, the pixel's own detail against that base kept.
+float localToneGain(vec3 radiance) {
+    vec2 ab = texture(localToneImage, texCoord).rg;
+    float l = log2(max(dot(radiance, LUMA), LOCAL_TONE_MIN_LUMINANCE));
+    float base = ab.x * l + ab.y;
+    float offset = clamp(base - localTone.anchor, -24.0, 24.0);
+    float beyond = offset - LOCAL_TONE_KNEE * tanh(clamp(offset / LOCAL_TONE_KNEE, -10.0, 10.0));
+    float strength = offset > 0.0 ? localTone.highlights : localTone.shadows;
+    float stops = clamp(-strength * beyond, -4.0, 2.0);
+    return isnan(stops) ? 1.0 : exp2(stops);
+}
+
 // ----
 
 float currentExposure() {
@@ -232,6 +265,7 @@ void main() {
     // Capped again after the exposure, which can lift a large value past what a float divides cleanly.
     vec3 exposed = clamp(hdr * max(currentExposure(), 0.0), vec3(0.0), vec3(1.0e6));
     if (pc.bloomIntensity > 0.0) { exposed += max(texture(bloomImage, texCoord).rgb, vec3(0.0)) * pc.bloomIntensity; }
+    if (pc.localToneMapping > 0.0) { exposed *= localToneGain(hdr); }
 
     float hdrPeak = max(pc.hdrPeak, 1.0);
     if (pc.toneMappingMethod == 6) {
