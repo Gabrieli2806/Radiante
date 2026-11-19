@@ -333,6 +333,25 @@ public class Options {
             v -> hdrPaperWhiteNits = Math.max(80, Math.min(500, v))));
 
     /**
+     * Each setting's default, as the fields stand before the file is read. Only what differs from it is written
+     * down, so a default changed in a later release reaches everyone who never changed that setting, while what a
+     * player did change stays theirs.
+     */
+    private static final java.util.Map<String, String> DEFAULTS = defaults();
+
+    /** Written even at their defaults: loading a file without them takes it for one from an older release. */
+    private static final java.util.Set<String> ALWAYS_WRITTEN = java.util.Set.of("chunkBuildingAuto", "sunPathTilt",
+        "heldLightBrightness", "settingsDefaultsVersion");
+
+    private static java.util.Map<String, String> defaults() {
+        java.util.Map<String, String> values = new java.util.HashMap<>();
+        for (Entry entry : ENTRIES) {
+            values.put(entry.key(), entry.value().get());
+        }
+        return values;
+    }
+
+    /**
      * Takes a saved output resolution. The fixed percentages of before (PERCENT_75 and the like) became the Custom
      * size with their share, so a player who chose one keeps the same picture.
      */
@@ -432,7 +451,10 @@ public class Options {
         Path path = RadianteClient.radianceDir.resolve(OPTION_PROPERTIES);
         Properties props = new Properties();
         for (Entry entry : ENTRIES) {
-            props.setProperty(entry.key(), entry.value().get());
+            String value = entry.value().get();
+            if (ALWAYS_WRITTEN.contains(entry.key()) || !value.equals(DEFAULTS.get(entry.key()))) {
+                props.setProperty(entry.key(), value);
+            }
         }
 
         try {

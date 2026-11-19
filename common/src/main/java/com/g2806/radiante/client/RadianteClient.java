@@ -296,6 +296,7 @@ public final class RadianteClient {
         }
 
         CacheTrim.run(radianceDir);
+        CrashLogScrub.run(RadiantePlatform.INSTANCE.gameDir());
 
         long unpackStart = System.nanoTime();
         loadInstalledNatives();

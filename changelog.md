@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- `options.properties` keeps only the settings you changed, so a default improved in a later release reaches you unless you set that one yourself.
+
+- The Java runtime's native crash file (`hs_err_pid*.log`) carries the launcher's command line, sign-in token included; Radiante blanks the token in those files on the next start, before one is attached to a bug report.
+
 - The invisible light block of map makers lights the world: a white light at its middle, as strong as a torch's at its level. It lit nothing before, having no faces to glow.
 
 - Candles light from each wick without a Bedrock pack, warm and as strong as their light level, instead of only through the few glowing texels of their flames.
