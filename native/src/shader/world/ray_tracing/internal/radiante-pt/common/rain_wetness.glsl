@@ -602,50 +602,123 @@ float vptSnowCover(vec3 position, float open) {
     return clamp(VPT_RAIN_PIXELS != 0 ? step(0.45, cover) * min(strength, 1.0) : cover, 0.0, 1.0);
 }
 
-/** The footprints in the snow (skyUBO.snowPrints, SnowPrints on the Java side) at a camera-relative point of an
- *  upward face. x: how deep a print is there, 1 fresh to 0 filled back in, which clears the blanket vptSnowCover
- *  lays. y: the same for the prints left in a snow layer's or snow block's own snow, which is packed greyer where
- *  it was stepped on (only those: a print kept to the blanket would grey a white floor it was left on). z: the
- *  print's rim, in the shade of the step. */
-vec3 vptSnowPrint(vec3 position) {
+// ---- Footprints (skyUBO.snowPrints, SnowPrints on the Java side)
+
+// What a print is, as SnowPrints packs it (its age, plus twice this, plus sixteen times its size in pixels): pressed
+// into the snow that settles on the
+// ground, pressed into a snow layer's or snow block's own snow, snow and water trodden together by feet still wet
+// from the water, snow carried off on the feet onto a floor, and water carried off onto one.
+const int SNOW_PRINT_PRESSED = 0;
+const int SNOW_PRINT_PACKED = 1;
+const int SNOW_PRINT_SLUSH = 2;
+const int SNOW_PRINT_CARRIED_SNOW = 3;
+const int SNOW_PRINT_WET = 4;
+
+/** How much of each kind of print is at a point, 0 none to 1 fresh: clear, how far the print clears the snow
+ *  vptSnowCover lays; packed, a snow layer's or block's snow packed greyer; rim, the print's outer pixels, in the
+ *  shade of the step; slush, snow and water trodden together; snow, snow left on a floor; wet, water left on one. */
+struct VptSnowPrints {
+    float clear;
+    float packed;
+    float rim;
+    float slush;
+    float snow;
+    float wet;
+};
+
+/** The prints at a camera-relative point of an upward face. */
+VptSnowPrints vptSnowPrints(vec3 position) {
+    VptSnowPrints prints = VptSnowPrints(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     int count = clamp(int(skyUBO.snowPrintControl.x + 0.5), 0, PRISM_SNOW_PRINT_MAX);
-    vec3 pressed = vec3(0.0);
+    vec2 cameraFraction = vec2(mod(worldUBO.cameraPos.xz, dvec2(1.0)));
     for (int i = 0; i < count; i++) {
         vec4 print = skyUBO.snowPrints[i];
         vec3 d = position - print.xyz;
-        if (abs(d.y) > 0.3 || dot(d.xz, d.xz) > 0.06) { continue; }
-        // The age, plus 2 for a print in a snow layer or block (SnowPrints.IN_SNOW_BLOCK).
+        if (abs(d.y) > 0.3 || dot(d.xz, d.xz) > 0.09) { continue; }
         float stamp = skyUBO.snowPrintAge[i / 4][i % 4];
-        bool inBlock = stamp >= 2.0;
-        float age = inBlock ? stamp - 2.0 : stamp;
-        float depth;
+        float size = floor(stamp / 16.0);
+        stamp -= 16.0 * size;
+        int kind = int(stamp * 0.5);
+        float age = stamp - 2.0 * float(kind);
+        float inside;
         float rim;
+        // Two numbers for each pixel of each print, for which pixels go first as it fills in, melts or dries.
+        vec2 cell = floor(vptRainWorldXZ(position) * RAIN_PIXELS_PER_BLOCK);
+        float h = vptRainHash(cell + vec2(17.0 + float(i), 5.0));
+        float h2 = vptRainHash(cell + vec2(3.0, 29.0 + float(i)));
         if (VPT_RAIN_PIXELS != 0) {
-            // A block of whole pixels, three across and five along, set square to the world's grid on the side the
-            // walker faced most nearly, as Minecraft would draw it; its outer pixels are the rim. It fills back in
-            // a pixel at a time as the snow drifts into it.
-            vec2 cameraFraction = vec2(mod(worldUBO.cameraPos.xz, dvec2(1.0)));
-            vec2 centre = (floor((print.xz + cameraFraction) * RAIN_PIXELS_PER_BLOCK) + 0.5) / RAIN_PIXELS_PER_BLOCK -
-                          cameraFraction;
-            float quarter = floor(print.w / 1.5707963 + 0.5) * 1.5707963;
-            vec2 across = vec2(cos(quarter), sin(quarter));
-            vec2 offset = (position.xz - centre) * RAIN_PIXELS_PER_BLOCK;
-            vec2 local = floor(abs(vec2(dot(offset, across), dot(offset, vec2(-across.y, across.x)))) + 0.5);
-            vec2 cell = floor(vptRainWorldXZ(position) * RAIN_PIXELS_PER_BLOCK);
-            depth = step(local.x, 1.0) * step(local.y, 2.0) *
-                    step(age, 0.1 + 0.85 * vptRainHash(cell + vec2(17.0 + float(i), 5.0)));
-            rim = depth * max(step(1.0, local.x), step(2.0, local.y));
+            // The square of the leg that came down, in whole pixels on the world's grid as Minecraft would draw it:
+            // four across for a player's leg. Its outer pixels are the rim.
+            float halfSize = 0.5 * size;
+            vec2 grid = (print.xz + cameraFraction) * RAIN_PIXELS_PER_BLOCK;
+            vec2 corner = mod(size, 2.0) == 0.0 ? floor(grid + 0.5) : floor(grid) + 0.5;
+            vec2 offset = (position.xz + cameraFraction) * RAIN_PIXELS_PER_BLOCK - corner;
+            vec2 local = abs(offset);
+            inside = step(local.x, halfSize) * step(local.y, halfSize);
+            rim = inside * step(halfSize - 1.0, max(local.x, local.y));
         } else {
-            // Across and along the way the walker faced: a boot's sole, a little longer than it is wide.
+            // The leg's square across and along the way the walker faced, its corners rounded.
             vec2 across = vec2(cos(print.w), sin(print.w));
-            vec2 local = vec2(dot(d.xz, across), dot(d.xz, vec2(-across.y, across.x)));
-            float e = length(local / vec2(0.10, 0.16));
-            depth = (1.0 - smoothstep(0.82, 1.04, e)) * (1.0 - smoothstep(0.55, 1.0, age));
-            rim = depth * smoothstep(0.55, 0.95, e);
+            vec2 local = abs(vec2(dot(d.xz, across), dot(d.xz, vec2(-across.y, across.x)))) * RAIN_PIXELS_PER_BLOCK;
+            float e = length(max(local - vec2(0.3 * size), vec2(0.0))) / (0.2 * size + 0.5);
+            inside = 1.0 - smoothstep(0.8, 1.05, e);
+            rim = inside * smoothstep(0.35, 0.85, max(local.x, local.y) / (0.5 * size));
         }
-        pressed = max(pressed, vec3(depth, inBlock ? depth : 0.0, rim));
+        if (inside <= 0.0) { continue; }
+        bool pixels = VPT_RAIN_PIXELS != 0;
+        if (kind <= SNOW_PRINT_SLUSH) {
+            // Pressed into snow, filled back in by the snow falling on it a pixel at a time, from the rim in.
+            float depth = inside * (pixels ? step(age, (rim > 0.0 ? 0.6 : 1.0) * (0.12 + 0.88 * h))
+                                           : 1.0 - smoothstep(0.0, 1.0, age + 0.3 * rim));
+            if (kind == SNOW_PRINT_SLUSH) {
+                // Wetter in some pixels than others: the water stands in the print in two tones.
+                prints.slush = max(prints.slush, depth * (pixels ? 0.7 + 0.3 * step(0.5, h2) : 0.85));
+            } else {
+                prints.clear = max(prints.clear, depth);
+                if (kind == SNOW_PRINT_PACKED) { prints.packed = max(prints.packed, depth); }
+            }
+            prints.rim = max(prints.rim, rim * depth);
+        } else if (kind == SNOW_PRINT_CARRIED_SNOW) {
+            // Clumps of snow off the boots, fewer as they melt, each leaving a little water where it was that dries
+            // in turn.
+            float snow = pixels ? step(h, 0.85 * pow(1.0 - age, 0.7)) : 1.0 - smoothstep(0.25, 0.75, age);
+            float water = pixels ? (1.0 - snow) * step(h, 0.8) * step(age, 0.75 + 0.25 * h2)
+                                 : smoothstep(0.15, 0.55, age) * (1.0 - smoothstep(0.7, 1.0, age));
+            prints.snow = max(prints.snow, inside * snow);
+            prints.wet = max(prints.wet, inside * water);
+        } else {
+            // Water off wet feet, drying a pixel at a time.
+            float water = pixels ? step(h, 0.92) * step(age, 0.2 + 0.8 * h2) : 1.0 - smoothstep(0.4, 1.0, age);
+            prints.wet = max(prints.wet, inside * water * 0.9);
+        }
     }
-    return pressed;
+    return prints;
+}
+
+/** Lays the prints on a material, after the snow (vptApplySnowFrost): the pressed prints have cleared its blanket
+ *  already. dryAlbedo is the material's own colour, before rain and snow. */
+void vptApplySnowPrints(inout LabPBRMat material, VptSnowPrints prints, vec3 dryAlbedo) {
+    if (material.transmission > 0.0) { return; }
+    // A snow layer's or snow block's own snow, packed down: a little greyer and bluer, smoother, its rim in the shade
+    // of the step. Only on white tops: the print may reach the next block.
+    if (prints.packed > 0.0 && dot(dryAlbedo, vec3(0.2126, 0.7152, 0.0722)) > 0.45) {
+        material.albedo *= mix(vec3(1.0), vec3(0.76, 0.81, 0.91), prints.packed) * (1.0 - 0.14 * prints.rim);
+        material.roughness = mix(material.roughness, max(material.roughness * 0.75, 0.3), prints.packed);
+    }
+    // Slush: grey-blue, glossy with the water in it, darker at the rim.
+    if (prints.slush > 0.0) {
+        material.albedo *= mix(vec3(1.0), vec3(0.47, 0.54, 0.66), prints.slush) * (1.0 - 0.10 * prints.rim);
+        material.roughness = mix(material.roughness, 0.22, prints.slush * 0.85);
+        material.f0 = mix(material.f0, max(material.f0, vec3(0.02)), prints.slush);
+    }
+    if (prints.snow > 0.0) {
+        const vec3 snowAlbedo = vec3(0.90, 0.93, 0.97);
+        material.albedo = mix(material.albedo, snowAlbedo, prints.snow * 0.9);
+        material.metallic *= 1.0 - prints.snow;
+        material.roughness = mix(material.roughness, 0.7, prints.snow);
+        material.f0 = mix(material.f0, vec3(0.028), prints.snow);
+    }
+    vptApplyGroundWetness(material, prints.wet, false);
 }
 
 void vptApplySnowFrost(inout LabPBRMat material, vec3 worldPos, float frost, float snowCover, bool upward) {
