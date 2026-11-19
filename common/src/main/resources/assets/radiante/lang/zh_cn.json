@@ -765,6 +765,8 @@
   "options.radiante.atmosphere_style.java_fallback": "Java（Bedrock 不可用）",
   "options.radiante.blocked.bedrock_files": "Bedrock 不可用：未找到 Bedrock 安装（Minecraft for Windows），radiante/bedrock 中也没有 Bedrock 文件。将使用 Java。",
   "options.radiante.cloud_height": "云层高度",
+  "options.radiante.cloud_thickness": "云层厚度",
+  "options.radiante.cloud_thickness.tooltip": "原版云的高度，相对于 Minecraft 的 4 格：更薄的云层或更高的云块，仍保持 Minecraft 的方格。",
   "options.radiante.cloud_height.tooltip": "升高或降低原版云层，单位为高于默认高度的方块数。",
   "options.radiante.rebuild_shaders": "重新编译着色器",
   "options.radiante.rebuild_shaders.tooltip": "应用更改并重新编译着色器。若更改设置后画面异常，可使用此项。",

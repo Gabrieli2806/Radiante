@@ -110,6 +110,10 @@ public class Options {
     public static volatile boolean snowAccumulation = true;
     /** The outline around the block under the crosshair. */
     public static volatile boolean blockOutline = false;
+    /** How thick the Vanilla clouds are, in percent of Minecraft's 4 blocks (CloudGeometry). */
+    public static volatile int cloudThickness = 100;
+    public static final int MIN_CLOUD_THICKNESS = 25;
+    public static final int MAX_CLOUD_THICKNESS = 400;
     /** Foam on flowing water and mist where a waterfall lands (WaterRapids). */
     public static volatile boolean waterFoam = true;
     /**
@@ -296,6 +300,8 @@ public class Options {
         bool("rainWetness", () -> rainWetness, v -> rainWetness = v),
         bool("snowAccumulation", () -> snowAccumulation, v -> snowAccumulation = v),
         bool("waterFoam", () -> waterFoam, v -> waterFoam = v),
+        number("cloudThickness", () -> cloudThickness,
+            v -> cloudThickness = Math.max(MIN_CLOUD_THICKNESS, Math.min(MAX_CLOUD_THICKNESS, v))),
         bool("blockOutline", () -> blockOutline, v -> blockOutline = v),
         number("backgroundFrameRate", () -> backgroundFrameRate,
             v -> backgroundFrameRate = Math.max(0, Math.min(MAX_BACKGROUND_FRAME_RATE, v))),

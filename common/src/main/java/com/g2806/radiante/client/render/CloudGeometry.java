@@ -14,7 +14,8 @@ import net.minecraft.world.phys.Vec3;
 final class CloudGeometry {
 
     private static final float CELL_SIZE = 12.0f;
-    private static final float CELL_HEIGHT = 4.0f;
+    /** Vanilla's 4 blocks, times Cloud Thickness (Options.cloudThickness); set when the mesh is built. */
+    private float cellHeight = 4.0f;
 
     private final PBRVertexWriter writer = new PBRVertexWriter(4096);
     private int prevCellX = Integer.MIN_VALUE;
@@ -53,9 +54,11 @@ final class CloudGeometry {
         float zInCell = (float) (cloudZ - cellZ * CELL_SIZE);
         int radiusCells = Mth.ceil(rangeChunks * 16 / CELL_SIZE);
 
+        float thickness = 4.0f * com.g2806.radiante.client.option.Options.cloudThickness / 100.0f;
         if (texture != this.prevTexture || cellX != this.prevCellX || cellZ != this.prevCellZ
             || status != this.prevStatus || color != this.prevColor
-            || radiusCells != this.prevRadius) {
+            || radiusCells != this.prevRadius || thickness != this.cellHeight) {
+            this.cellHeight = thickness;
             this.prevTexture = texture;
             this.prevCellX = cellX;
             this.prevCellZ = cellZ;
@@ -123,7 +126,7 @@ final class CloudGeometry {
      * cannot see from where it is; a ray tracer also sees clouds from reflections and shadow rays, from any angle.
      */
     private void extrudedCell(int x, int z, long cell, int color) {
-        this.quad(x, z, CELL_HEIGHT, 0, 1, 0, color);
+        this.quad(x, z, this.cellHeight, 0, 1, 0, color);
         this.quad(x, z, 0.0f, 0, -1, 0, color);
         if ((cell >> 3 & 1L) != 0L) {
             this.quad(x, z, 0.0f, 0, 0, -1, color);
@@ -151,13 +154,13 @@ final class CloudGeometry {
         } else if (ny < 0) {
             corners = new float[][] {{x1, y, z0}, {x1, y, z1}, {x0, y, z1}, {x0, y, z0}};
         } else if (nz < 0) {
-            corners = new float[][] {{x0, 0, z0}, {x0, CELL_HEIGHT, z0}, {x1, CELL_HEIGHT, z0}, {x1, 0, z0}};
+            corners = new float[][] {{x0, 0, z0}, {x0, this.cellHeight, z0}, {x1, this.cellHeight, z0}, {x1, 0, z0}};
         } else if (nz > 0) {
-            corners = new float[][] {{x1, 0, z1}, {x1, CELL_HEIGHT, z1}, {x0, CELL_HEIGHT, z1}, {x0, 0, z1}};
+            corners = new float[][] {{x1, 0, z1}, {x1, this.cellHeight, z1}, {x0, this.cellHeight, z1}, {x0, 0, z1}};
         } else if (nx < 0) {
-            corners = new float[][] {{x0, 0, z1}, {x0, CELL_HEIGHT, z1}, {x0, CELL_HEIGHT, z0}, {x0, 0, z0}};
+            corners = new float[][] {{x0, 0, z1}, {x0, this.cellHeight, z1}, {x0, this.cellHeight, z0}, {x0, 0, z0}};
         } else {
-            corners = new float[][] {{x1, 0, z0}, {x1, CELL_HEIGHT, z0}, {x1, CELL_HEIGHT, z1}, {x1, 0, z1}};
+            corners = new float[][] {{x1, 0, z0}, {x1, this.cellHeight, z0}, {x1, this.cellHeight, z1}, {x1, 0, z1}};
         }
         for (float[] corner : corners) {
             this.writer.addVertex(corner[0], corner[1], corner[2]).setColor(color).setNormal(nx, ny, nz);

@@ -64,6 +64,7 @@ enum OptionImpact {
         Map.entry("options.radiante.held_item_light", LOW),
         Map.entry("options.radiante.background_frame_rate", NONE),
         Map.entry("options.radiante.water_foam", LOW),
+        Map.entry("options.radiante.cloud_thickness", NONE),
         Map.entry("options.radiante.glowing_pixel_light", LOW),
         Map.entry("options.radiante.first_person_shadow", LOW),
         Map.entry("options.radiante.cache_deep_bounces", HIGH),

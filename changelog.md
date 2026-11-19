@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Cloud Thickness (`Sky & Water`, 25% – 400%): how tall the Vanilla clouds are against Minecraft's 4 blocks, from thin sheets to towering blocks of cloud, still in Minecraft's cells.
+
 - A resource pack's animated LabPBR maps (`_s`, `_n` stacked in frames, as lava, fire, magma or the portal have them) follow the texture's animation frame by frame, instead of keeping their first frame while the colour moved on.
 
 - Water Foam & Mist (`Sky & Water`, on by default): splashes ride the current of flowing water, and spray and mist rise where a waterfall lands in water, with Minecraft's own particles. Still water stays calm.

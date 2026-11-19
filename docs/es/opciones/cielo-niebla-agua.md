@@ -17,6 +17,7 @@ Los valores por defecto son los de radiante-pt, el aspecto Bedrock RTX ([bedrock
 | **Atmósfera** | Java · Bedrock | Bedrock | Bedrock: colores de cielo y luz solar de Bedrock RTX, leídos de una instalación de Bedrock en este PC (o de `radiante/bedrock/sky.png` y `look_up_tables.png`). Java: el cielo propio de Radiante. Sin esos archivos la opción sale en gris, muestra Java (Bedrock no disponible) y se usa el cielo Java. Detalle completo en [bedrock-rtx.md](../bedrock-rtx.md). |
 | **Nubes** | Apagado · Vanilla · Volumétrico | Vanilla | Cómo se dibujan las nubes. Volumétricas son nubes 3D reales que pueden proyectar sombras y cuestan más tiempo de GPU; Vanilla es más barato (la malla de nube plana de siempre, pero trazada e iluminada); Apagado es lo más rápido. |
 | **Altura de las Nubes** | -96 – +320 bloques | 0 | Sube o baja las nubes Vanilla sobre su altura normal. Solo con nubes Vanilla. |
+| **Grosor de las Nubes** | 25% – 400% | 100% | Qué tan altas son las nubes Vanilla, frente a los 4 bloques de Minecraft: capas más finas o bloques de nube más altos, siempre en las celdas de Minecraft. |
 | **Sombras de Nubes** | Activado / Desactivado | Desactivado | Las nubes volumétricas proyectan sombras suaves en el suelo. Solo con nubes Volumétricas, igual que los tres de abajo. |
 | **Cobertura de Nubes** | 0% – 100% | 50% | Cuánto cielo cubren las nubes volumétricas. |
 | **Densidad de Nubes** | 0% – 400% | 100% | Qué tan espesas son las nubes volumétricas. |

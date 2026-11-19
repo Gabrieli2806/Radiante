@@ -17,6 +17,7 @@ Defaults are radiante-pt's, the Bedrock RTX look ([bedrock-rtx.md](../bedrock-rt
 | **Atmosphere** | Java · Bedrock | Bedrock | Bedrock: Bedrock RTX's sky and sunlight colours, read from a Bedrock install on this PC (or from `radiante/bedrock/sky.png` and `look_up_tables.png`). Java: Radiante's own sky. Without those files the option is grey, shows Java (Bedrock not available) and the Java sky is used. Full detail in [bedrock-rtx.md](../bedrock-rtx.md). |
 | **Clouds** | Off · Vanilla · Volumetric | Vanilla | How clouds are drawn. Volumetric are real 3D clouds that can cast shadows and cost the most GPU time; Vanilla is cheaper (the usual flat cloud mesh, but traced and lit); Off is fastest. |
 | **Cloud Height** | -96 – +320 blocks | 0 | Raises or lowers the Vanilla clouds above their usual height. Vanilla clouds only. |
+| **Cloud Thickness** | 25% – 400% | 100% | How tall the Vanilla clouds are, against Minecraft's 4 blocks: thinner sheets or towering blocks of cloud, still in Minecraft's cells. |
 | **Cloud Shadows** | On / Off | Off | Volumetric clouds cast soft shadows on the ground. Volumetric clouds only, like the three below. |
 | **Cloud Coverage** | 0% – 100% | 50% | How much of the sky volumetric clouds cover. |
 | **Cloud Density** | 0% – 400% | 100% | How thick volumetric clouds are. |

@@ -387,6 +387,11 @@ abstract class SettingsRows extends SettingsUpscalerRows {
                 (value > 0 ? "+" : "") + value),
             new OptionInstance.IntRange(Options.MIN_CLOUD_HEIGHT_OFFSET, Options.MAX_CLOUD_HEIGHT_OFFSET, false),
             staged("cloudHeightOffset", Options.cloudHeightOffset), value -> stage("cloudHeightOffset", value));
+        OptionInstance<Integer> cloudThickness = new OptionInstance<Integer>("options.radiante.cloud_thickness",
+            SettingsRows.<Integer>tooltip("options.radiante.cloud_thickness"),
+            (caption, value) -> Component.translatable("options.percent_value", caption, value),
+            new OptionInstance.IntRange(Options.MIN_CLOUD_THICKNESS, Options.MAX_CLOUD_THICKNESS, false),
+            staged("cloudThickness", Options.cloudThickness), value -> stage("cloudThickness", value));
         OptionInstance<Boolean> volumetricFog = null;
         OptionInstance<Integer> volumetricStrength = null;
         OptionInstance<Boolean> fogStyle = null;
@@ -443,7 +448,7 @@ abstract class SettingsRows extends SettingsUpscalerRows {
                     SEAMLESS_SCOPE + ".panes"), com.mojang.serialization.Codec.STRING),
                 this.pendingSeamlessScope, value -> this.pendingSeamlessScope = value);
         }
-        addRows(atmosphere, clouds, cloudHeight, cloudShadows, tunable(Tunable.CLOUD_COVERAGE, false),
+        addRows(atmosphere, clouds, cloudHeight, cloudThickness, cloudShadows, tunable(Tunable.CLOUD_COVERAGE, false),
             tunable(Tunable.CLOUD_DENSITY, false), tunable(Tunable.CLOUD_QUALITY, false), tunable(Tunable.STARS, false),
             brightnessSlider("options.radiante.star_altitude", staged("starAltitude", Options.starAltitude),
                 value -> stage("starAltitude", value)),

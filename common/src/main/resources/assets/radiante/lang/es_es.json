@@ -765,6 +765,8 @@
   "options.radiante.atmosphere_style.java_fallback": "Java (Bedrock no disponible)",
   "options.radiante.blocked.bedrock_files": "Bedrock no disponible: no se encontró una instalación de Bedrock (Minecraft para Windows) ni archivos de Bedrock en radiante/bedrock. Se usa Java.",
   "options.radiante.cloud_height": "Altura de las Nubes",
+  "options.radiante.cloud_thickness": "Grosor de las Nubes",
+  "options.radiante.cloud_thickness.tooltip": "Qué tan altas son las nubes Vanilla, frente a los 4 bloques de Minecraft: capas más finas o bloques de nube más altos, siempre en las celdas de Minecraft.",
   "options.radiante.cloud_height.tooltip": "Sube o baja las nubes Vanilla, en bloques sobre su altura normal.",
   "options.radiante.rebuild_shaders": "Recompilar Shaders",
   "options.radiante.rebuild_shaders.tooltip": "Aplica los cambios y vuelve a compilar los shaders. Úsalo si la imagen se ve mal después de cambiar ajustes.",
