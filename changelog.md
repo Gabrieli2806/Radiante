@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
-- Footprints in snow: players and mobs walking on snow layers, snow blocks, powder snow or snowy ground leave prints, left and right in turn, three by five pixels square to the way they walked. They clear the snow that settles on the ground down to what is under it, and pack a snow block's own snow a little greyer; the snow fills them back in a pixel at a time over two and a half minutes, half that while it snows. Off with Snow & Frost in Cold Biomes.
+- Footprints in snow: players and mobs walking on snow layers, snow blocks, powder snow or snowy ground leave prints where their feet come down in the walk animation, left and right in turn: the square of the leg itself, four pixels across for a player's. They clear the snow that settles on the ground down to what is under it, and pack a snow block's own snow a little greyer. Falling snow fills them back in a pixel at a time, from the rim in, over about 45 seconds of snowfall; out of it they stay, settling away over 20 minutes. Feet still wet from the water tread the snow into grey slush for the first steps, and feet coming off the snow carry clumps of it onto the next floor, a house's, for a few steps, which melt into small wet spots that dry within half a minute; wet feet leave water on a floor the same way. Off with Snow & Frost in Cold Biomes.
 
 - Radiante PT draws the weather's marks in Minecraft's pixels only: puddles, rain rings, ripples and wakes, wet surfaces, snow, frost and footprints are always in sixteenths of a block, and the Pixel Rain setting is gone. The smooth, round, more realistic shapes moved to Aether, as its Pixel Weather setting (off there by default).
 

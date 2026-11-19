@@ -21,7 +21,7 @@ public class BufferProxy {
     private static final int OFF_HAND_LIGHT_OFFSET = 704;
     /** Where WorldUBO.windTime starts; windStrength and windWeather follow it, ending at the off hand's light. */
     private static final int WIND_OFFSET = 692;
-    private static final int SKY_UBO_SIZE = 1568;
+    private static final int SKY_UBO_SIZE = 3488;
     private static final int TEXTURE_MAPPING_ENTRIES = 4096;
 
     private static native void updateWorldUniform(long ptr);
