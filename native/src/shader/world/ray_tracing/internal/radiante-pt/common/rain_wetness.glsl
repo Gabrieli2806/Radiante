@@ -634,9 +634,12 @@ VptSnowPrints vptSnowPrints(vec3 position) {
     for (int i = 0; i < count; i++) {
         vec4 print = skyUBO.snowPrints[i];
         vec3 d = position - print.xyz;
-        if (abs(d.y) > 0.3 || dot(d.xz, d.xz) > 0.09) { continue; }
+        if (abs(d.y) > 0.3) { continue; }
         float stamp = skyUBO.snowPrintAge[i / 4][i % 4];
         float size = floor(stamp / 16.0);
+        // Out past the corners of the square (a slime's is up to a block and a half across).
+        float reach = (0.5 * size + 1.0) / RAIN_PIXELS_PER_BLOCK;
+        if (dot(d.xz, d.xz) > 2.0 * reach * reach) { continue; }
         stamp -= 16.0 * size;
         int kind = int(stamp * 0.5);
         float age = stamp - 2.0 * float(kind);
