@@ -1,6 +1,7 @@
 package com.g2806.radiante.client.render;
 
 import com.g2806.radiante.client.option.Options;
+import com.g2806.radiante.compat.VersionCompat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
@@ -8,7 +9,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.material.FlowingFluid;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.Vec3;
 
@@ -49,7 +49,7 @@ public final class WaterRapids {
             if (!fluid.is(FluidTags.WATER) || fluid.isSource()) {
                 continue;
             }
-            if (fluid.getValue(FlowingFluid.FALLING)) {
+            if (VersionCompat.isFalling(fluid)) {
                 waterfall(level, random);
             } else if (random.nextFloat() < 0.35f) {
                 current(level, fluid, random);
@@ -80,11 +80,11 @@ public final class WaterRapids {
         for (int i = 0; i < FALL_SCAN; i++) {
             BELOW.move(0, -1, 0);
             FluidState below = level.getFluidState(BELOW);
-            if (below.is(FluidTags.WATER) && below.getValue(FlowingFluid.FALLING)) {
+            if (below.is(FluidTags.WATER) && VersionCompat.isFalling(below)) {
                 continue;
             }
             // Landed: in water (a pool, a river) it foams; on dry ground the falling water just spreads out.
-            if (!below.is(FluidTags.WATER) || !level.getFluidState(BELOW.above()).getValue(FlowingFluid.FALLING)) {
+            if (!below.is(FluidTags.WATER) || !VersionCompat.isFalling(level.getFluidState(BELOW.above()))) {
                 return;
             }
             double surface = BELOW.getY() + below.getHeight(level, BELOW);
