@@ -53,7 +53,6 @@ public final class WaterRipples {
         double prevY;
         double prevZ;
         double waterHorizDist;
-        double puddleHorizDist;
         double lastBobTime;
         boolean atWaterSurface;
         boolean wasOnGround;
@@ -115,6 +114,10 @@ public final class WaterRipples {
         // Scan nearby entities only when simulation time moved forward.
         if (dt > 1e-5) {
             scanEntities(level, cameraPos, groundWetness, nowSec, dt, partialTick);
+        }
+        // The players' and mobs' steps on wet ground, each foot its own ring: the same steps that print the snow.
+        if (Options.rainWetness && groundWetness > 0.12f) {
+            stepRipples(level, cameraPos, nowSec);
         }
 
         // Periodically prune entities that left tracking range or despawned.
@@ -232,7 +235,9 @@ public final class WaterRipples {
                 }
             } else {
                 tracked.waterHorizDist = 0.0;
-                if (puddlesActive) {
+                // What walks steps in the puddles foot by foot (stepRipples); a thing that falls, a dropped item, a
+                // boat, rings it where it lands.
+                if (puddlesActive && !(entity instanceof net.minecraft.world.entity.LivingEntity)) {
                     boolean onGround = entity.onGround();
                     if (onGround) {
                         int bx = Mth.floor(x);
@@ -246,18 +251,8 @@ public final class WaterRipples {
                             if (!firstSeen && !tracked.wasOnGround && tracked.prevY - y > 0.02) {
                                 float amp = Math.clamp(0.55f + 0.24f * bbWidth, 0.48f, 1.05f);
                                 spawnRipple(cameraPos, nowSec, x, puddleY, z, 1.65f, amp, 1.7f, KIND_PUDDLE);
-                                tracked.puddleHorizDist = 0.0;
-                            } else {
-                                tracked.puddleHorizDist += moveHoriz;
-                                if (tracked.puddleHorizDist >= 0.88) {
-                                    float amp = Math.clamp(0.46f + 0.20f * bbWidth, 0.42f, 0.88f);
-                                    spawnRipple(cameraPos, nowSec, x, puddleY, z, 1.55f, amp, 1.5f, KIND_PUDDLE);
-                                    tracked.puddleHorizDist = 0.0;
-                                }
                             }
                         }
-                    } else {
-                        tracked.puddleHorizDist = 0.0;
                     }
                 }
             }
@@ -271,6 +266,26 @@ public final class WaterRipples {
     }
 
     /** Returns the world Y of the water surface near (x, y, z), or {@code Double.NaN} if no surface water is near. */
+    /** A ring for each foot that comes down this frame (Footsteps) on open ground that holds the rain's water. */
+    private static void stepRipples(ClientLevel level, Vec3 cameraPos, double nowSec) {
+        for (Footsteps.Footfall fall : Footsteps.footfalls()) {
+            int bx = Mth.floor(fall.x);
+            int bz = Mth.floor(fall.z);
+            int groundY = Mth.floor(fall.y - 0.05);
+            SCAN_POS.set(bx, groundY, bz);
+            if (level.getBlockState(SCAN_POS).isAir() || level.getFluidState(SCAN_POS).is(FluidTags.WATER)
+                || level.getHeight(Heightmap.Types.MOTION_BLOCKING, bx, bz) > groundY + 1) {
+                continue;
+            }
+            // A landing strikes harder than a step; a wide walker harder than a small one.
+            float width = Math.clamp(fall.width, 0.2f, 2.2f);
+            float amp = fall.landing ? Math.clamp(0.50f + 0.22f * width, 0.45f, 1.0f)
+                : Math.clamp(0.42f + 0.18f * width, 0.40f, 0.82f);
+            spawnRipple(cameraPos, nowSec, fall.x, groundY + 1.0, fall.z, fall.landing ? 1.65f : 1.55f, amp,
+                fall.landing ? 1.7f : 1.5f, KIND_PUDDLE);
+        }
+    }
+
     private static double findWaterSurfaceY(ClientLevel level, double x, double y, double z) {
         int bx = Mth.floor(x);
         int by = Mth.floor(y);
