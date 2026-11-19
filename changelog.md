@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Local Tone Mapping (`Image`, 40% by default): the bright and the dark parts of one picture are brought closer together, so the sky or the sunlit ground seen from a cave or through a window is no longer white and the sun keeps its shape at dusk, while every block keeps its pixels. The brightness around each pixel comes from an edge-aware filter at an eighth of the picture's size, so a bright opening casts no halo on the wall around it. Highlights are brought down further than shadows are lifted (`local_tone_mapping_shadows`, 0.5), which keeps caves and the night dark.
+
 - Cloud Thickness (`Sky & Water`, 25% – 400%): how tall the Vanilla clouds are against Minecraft's 4 blocks, from thin sheets to towering blocks of cloud, still in Minecraft's cells.
 
 - A resource pack's animated LabPBR maps (`_s`, `_n` stacked in frames, as lava, fire, magma or the portal have them) follow the texture's animation frame by frame, instead of keeping their first frame while the colour moved on.

@@ -34,6 +34,18 @@ constexpr uint32_t kHistogramBins = 256;
 // hist.comp and bedrock_hist.comp give a group 16 x 16 pixels.
 constexpr uint32_t kGroupSize = 16;
 
+// Local tone mapping (local_tone.comp) works on blocks of 8 x 8 pixels; local_tone.comp's BLOCK.
+constexpr uint32_t kLocalToneBlock = 8;
+constexpr VkFormat kLocalToneFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
+constexpr VkFormat kLocalToneSmoothedFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+// Edges of more than about sqrt(0.5) stops are kept sharp; finer contrast is detail, which is kept as it is.
+constexpr float kLocalToneEpsilon = 0.5f;
+// The window, in blocks, is a twelfth of the picture's height either side of a block: big enough to tell a room from
+// the sky outside its window, small enough to follow a cave's mouth.
+constexpr float kLocalToneWindowShare = 1.0f / 24.0f;
+constexpr int32_t kLocalToneMinRadius = 2;
+constexpr int32_t kLocalToneMaxRadius = 12;
+
 constexpr VkPipelineStageFlags2 kCompute = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
 constexpr VkPipelineStageFlags2 kFragment = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
 constexpr VkPipelineStageFlags2 kTransfer = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
@@ -279,6 +291,8 @@ bool ToneMappingModule::applyAttribute(std::string_view key, const std::string &
         {"color_balance_r", &s.colorBalance[0], 0.0f, 4.0f},
         {"color_balance_g", &s.colorBalance[1], 0.0f, 4.0f},
         {"color_balance_b", &s.colorBalance[2], 0.0f, 4.0f},
+        {"local_tone_mapping", &s.localToneMapping, 0.0f, 1.0f},
+        {"local_tone_mapping_shadows", &s.localToneShadows, 0.0f, 1.0f},
     };
     const SwitchSetting switches[] = {
         {"enable_auto_exposure", &s.autoExposure},
@@ -365,6 +379,7 @@ void ToneMappingModule::build() {
         framework->device(), (Renderer::folderPath / "shaders" / "world/tone_mapping/tone_mapping_vert.spv").string());
     createPipelines(*framework, vertexShader);
     createBloom(*framework, vertexShader);
+    createLocalTone(*framework);
 
     contexts_.resize(frames_.size());
     for (uint32_t i = 0; i < frames_.size(); i++) {
@@ -421,6 +436,7 @@ ToneMappingModulePushConstant ToneMappingModule::makePushConstants() const {
     constants.balanceB = s.colorBalance[2];
     constants.filmicSaturation = s.filmicSaturation;
     constants.hdrPeak = 1.0f;
+    constants.localToneMapping = std::clamp(s.localToneMapping, 0.0f, 1.0f);
     return constants;
 }
 
@@ -449,12 +465,15 @@ void ToneMappingModule::createBuffers(Framework &framework) {
                                                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     bedrockCurve_ = gpu::DeviceLocalBuffer::create(vma, device, false, 2 * kHistogramBins * sizeof(uint32_t),
                                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    localTone_ =
+        gpu::DeviceLocalBuffer::create(vma, device, false, 4 * sizeof(float), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     for (Frame &frame : frames_) {
         frame.histogram = gpu::DeviceLocalBuffer::create(vma, device, false, kHistogramBins * sizeof(uint32_t),
                                                          VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     }
     exposureNeedsReset_ = true;
     bedrockCurveNeedsReset_ = true;
+    localToneNeedsReset_ = true;
 }
 
 void ToneMappingModule::createDescriptorTables(Framework &framework) {
@@ -476,6 +495,9 @@ void ToneMappingModule::createDescriptorTables(Framework &framework) {
                 layoutBinding(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, kComputeAndFragment),
                 // The incident light meter the ray tracing writes.
                 layoutBinding(5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT),
+                // Local tone mapping's anchor and strengths, and its smoothed coefficients (createLocalTone).
+                layoutBinding(6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT),
+                layoutBinding(7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT),
             },
             {.stageFlags = kComputeAndFragment, .offset = 0, .size = sizeof(ToneMappingModulePushConstant)});
 
@@ -484,6 +506,7 @@ void ToneMappingModule::createDescriptorTables(Framework &framework) {
         frame.descriptors->bindBuffer(exposure_, 0, 2);
         frame.descriptors->bindBuffer(bedrockCurve_, 0, 4);
         frame.descriptors->bindBuffer(lightMeter, 0, 5);
+        frame.descriptors->bindBuffer(localTone_, 0, 6);
     }
 }
 
@@ -592,6 +615,48 @@ void ToneMappingModule::createBloom(Framework &framework, const std::shared_ptr<
     }
 }
 
+void ToneMappingModule::createLocalTone(Framework &framework) {
+    auto device = framework.device();
+    auto vma = framework.vma();
+    localToneSampler_ = gpu::Sampler::create(device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST,
+                                             VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+    const uint32_t blocksX = std::max(1u, (width_ + kLocalToneBlock - 1) / kLocalToneBlock);
+    const uint32_t blocksY = std::max(1u, (height_ + kLocalToneBlock - 1) / kLocalToneBlock);
+    auto makeImage = [&](VkFormat format, VkImageUsageFlags usage) {
+        return gpu::DeviceLocalImage::create(device, vma, false, blocksX, blocksY, 1, format, usage);
+    };
+
+    for (Frame &frame : frames_) {
+        frame.localReduced = makeImage(kLocalToneFormat, VK_IMAGE_USAGE_STORAGE_BIT);
+        frame.localCoefficients = makeImage(kLocalToneFormat, VK_IMAGE_USAGE_STORAGE_BIT);
+        frame.localSmoothed =
+            makeImage(kLocalToneSmoothedFormat, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+        frame.localDescriptors = makeDescriptorTable(
+            device,
+            {
+                layoutBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_COMPUTE_BIT),
+                layoutBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT),
+                layoutBinding(2, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT),
+                layoutBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT),
+                layoutBinding(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT),
+            },
+            {.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT, .offset = 0, .size = sizeof(ToneMappingLocalPushConstant)});
+        frame.localDescriptors->bindSamplerImageForShader(sampler_, frame.hdr, 0, 0);
+        frame.localDescriptors->bindImage(frame.localReduced, VK_IMAGE_LAYOUT_GENERAL, 0, 1);
+        frame.localDescriptors->bindImage(frame.localCoefficients, VK_IMAGE_LAYOUT_GENERAL, 0, 2);
+        frame.localDescriptors->bindImage(frame.localSmoothed, VK_IMAGE_LAYOUT_GENERAL, 0, 3);
+        frame.localDescriptors->bindBuffer(localTone_, 0, 4);
+        frame.descriptors->bindSamplerImageForShader(localToneSampler_, frame.localSmoothed, 0, 7);
+    }
+
+    auto shader = gpu::Shader::create(
+        device, (Renderer::folderPath / "shaders" / "world/tone_mapping/local_tone_comp.spv").string());
+    localTonePipeline_ = gpu::ComputePipelineBuilder{}
+                             .defineShader(shader)
+                             .definePipelineLayout(frames_[0].localDescriptors)
+                             .build(device);
+}
+
 std::shared_ptr<gpu::DeviceLocalImage> ToneMappingModule::bloomImage(uint32_t frameIndex) const {
     if (!runsBloom() || frameIndex >= frames_.size()) return nullptr;
     return frames_[frameIndex].bloomPasses[BLOOM_PASSES - 1].target;
@@ -682,8 +747,13 @@ void ToneMappingModule::record(uint32_t frameIndex, gpu::CommandBuffer &commandB
     bool bedrockCurve = pushConstants_.toneMappingMethod == TONE_MAPPING_METHOD_BEDROCK_PROVISIONAL;
     if (bedrockCurve) recordBedrockCurve(frame, commandBuffer);
     if (runsBloom()) recordBloom(frame, commandBuffer);
-    // The curve passes pushed constants of their own over these, and the bloom passes bound other layouts.
-    if (bedrockCurve || runsBloom()) pushToneMappingConstants();
+    bool localTone = constants.localToneMapping > 0.0f;
+    if (localTone) recordLocalTone(frame, commandBuffer, constants.dt);
+    // The tone mapping pass names the smoothed coefficients whether or not it reads them, so they are in the layout
+    // it would read them in. What they hold matters only once local tone mapping has run.
+    commandBuffer.sync({{frame.localSmoothed, gpu::ImageUsage::Sampled, kFragment}});
+    // The curve passes pushed constants of their own over these, and the bloom and local passes bound other layouts.
+    if (bedrockCurve || runsBloom() || localTone) pushToneMappingConstants();
 
     commandBuffer.beginRenderPass({
         .renderPass = renderPass_,
@@ -745,6 +815,49 @@ void ToneMappingModule::recordBloom(Frame &frame, gpu::CommandBuffer &commandBuf
     }
     // The tone mapping pass reads the last level drawn, the finest combined one.
     commandBuffer.sync({{frame.bloomPasses[BLOOM_PASSES - 1].target, gpu::ImageUsage::Sampled, kFragment}});
+}
+
+void ToneMappingModule::recordLocalTone(Frame &frame, gpu::CommandBuffer &commandBuffer, float dt) {
+    VkCommandBuffer cmd = commandBuffer.vkCommandBuffer();
+    ToneMappingLocalPushConstant constants{
+        .pass = 0,
+        .radius = std::clamp(static_cast<int32_t>(std::lround(frame.localReduced->height() * kLocalToneWindowShare)),
+                             kLocalToneMinRadius, kLocalToneMaxRadius),
+        .epsilon = kLocalToneEpsilon,
+        .highlights = std::clamp(settings_.localToneMapping, 0.0f, 1.0f),
+        .shadows = std::clamp(settings_.localToneMapping * settings_.localToneShadows, 0.0f, 1.0f),
+        .dt = dt,
+        .reset = localToneNeedsReset_ ? 1 : 0,
+        .padding0 = 0.0f,
+    };
+    if (localToneNeedsReset_) {
+        // A new buffer holds no anchor to ease from.
+        vkCmdFillBuffer(cmd, localTone_->vkBuffer(), 0, VK_WHOLE_SIZE, 0);
+        localToneNeedsReset_ = false;
+    }
+    // Each image is drawn over in full. The anchor is written over what the last frame's tone mapping pass read.
+    commandBuffer.sync({
+        {frame.localReduced, gpu::ImageUsage::Storage, kCompute, true},
+        {frame.localCoefficients, gpu::ImageUsage::Storage, kCompute, true},
+        {frame.localSmoothed, gpu::ImageUsage::StorageWrite, kCompute, true},
+    });
+    commandBuffer.memoryBarrier(kCompute | kTransfer | kFragment, kWrites, kCompute, kReadsAndWrites);
+    commandBuffer.bindDescriptorTable(frame.localDescriptors, VK_PIPELINE_BIND_POINT_COMPUTE)
+        ->bindComputePipeline(localTonePipeline_);
+
+    const uint32_t groupsX = groupsFor(frame.localReduced->width());
+    const uint32_t groupsY = groupsFor(frame.localReduced->height());
+    auto runPass = [&](int32_t pass, uint32_t x, uint32_t y) {
+        constants.pass = pass;
+        vkCmdPushConstants(cmd, frame.localDescriptors->vkPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT, 0,
+                           sizeof(constants), &constants);
+        vkCmdDispatch(cmd, x, y, 1);
+        commandBuffer.memoryBarrier(kCompute, kWrites, kCompute | kFragment, kReadsAndWrites);
+    };
+    runPass(0, groupsX, groupsY); // the block means
+    runPass(1, 1, 1);             // the anchor, from the block means
+    runPass(2, groupsX, groupsY); // the coefficients, from the block means
+    runPass(3, groupsX, groupsY); // the coefficients smoothed
 }
 
 ToneMappingModuleContext::ToneMappingModuleContext(std::shared_ptr<FrameworkContext> frameworkContext,
