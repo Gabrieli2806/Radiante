@@ -74,6 +74,7 @@ public final class PbrAtlases {
         int height = VersionCompat.gpuTexture(atlas).getHeight(0);
         int mipLevels = VersionCompat.gpuTexture(atlas).getMipLevels();
         ResourceManager resources = minecraft.getResourceManager();
+        forgetAnimations();
 
         // Emission Radiante derived from the albedo comes in as the seed, so a block whose map nobody authored -
         // a lit redstone lamp, say - keeps the glow that was worked out for it, and an authored map simply writes
@@ -116,6 +117,8 @@ public final class PbrAtlases {
                     EmissionMaps.softenMer(entry.getValue(), rawMer, width, height);
                     EmissionTiles.uploadFromMer(albedoTextureId, entry.getValue(), rawMer, width, height);
                 }
+                boolean animated = entry.getValue().isAnimated() && !merStitched;
+                int[] unstitched = animated ? region(specular, entry.getValue(), width) : null;
                 byte[] derivedGlow = EmissionMaps.derivedGlow(entry.getValue(), specular, width, height);
                 boolean any = stitch(resources, entry.getKey(), entry.getValue(), "_s", specular, width, height);
                 if (any) {
@@ -132,6 +135,10 @@ public final class PbrAtlases {
                 any |= stitch(resources, entry.getKey(), entry.getValue(), "_n", normal, width, height);
                 if (any) {
                     found++;
+                    if (animated) {
+                        animate(resources, entry.getKey(), entry.getValue(), specular, unstitched, normal, width,
+                            height, mipLevels);
+                    }
                 }
             }
 
@@ -289,16 +296,36 @@ public final class PbrAtlases {
     private static boolean stitchResource(Resource resource, TextureAtlasSprite sprite,
         ByteBuffer target, int width, int height, boolean rawMer, boolean average) {
         try (InputStream stream = resource.open(); NativeImage image = NativeImage.read(stream)) {
+            stitchFrame(image, sprite, target, width, height, rawMer, average, 0);
+            return true;
+        } catch (IOException | RuntimeException e) {
+            RadianteRenderer.LOGGER.warn("Could not read PBR map from {}", resource.sourcePackId(), e);
+            return false;
+        }
+    }
+
+    /** How tall one frame of a map is, in its own texels: as wide as the map, in the sprite's proportions. */
+    private static int frameHeightOf(NativeImage image, TextureAtlasSprite sprite) {
+        int frameHeight = Math.max(1, image.getWidth() * sprite.contents().height()
+            / Math.max(1, sprite.contents().width()));
+        return Math.min(frameHeight, image.getHeight());
+    }
+
+    /** One frame of a map (frames stacked downwards, as an animated texture's) brought to the sprite's size. */
+    private static void stitchFrame(NativeImage image, TextureAtlasSprite sprite, ByteBuffer target, int width,
+        int height, boolean rawMer, boolean average, int frame) {
+        {
             int spriteWidth = sprite.contents().width();
             int spriteHeight = sprite.contents().height();
-            int frameHeight = Math.max(1, image.getWidth() * spriteHeight / Math.max(1, spriteWidth));
-            frameHeight = Math.min(frameHeight, image.getHeight());
+            int frameHeight = frameHeightOf(image, sprite);
+            int frameTop = Math.min(frame * frameHeight, image.getHeight() - frameHeight);
 
             int originX = Math.round(sprite.getU0() * width);
             int originY = Math.round(sprite.getV0() * height);
             for (int y = 0; y < spriteHeight; y++) {
-                int sourceY = y * frameHeight / spriteHeight;
-                int endY = Math.max(sourceY + 1, Math.min(frameHeight, (y + 1) * frameHeight / spriteHeight));
+                int sourceY = frameTop + y * frameHeight / spriteHeight;
+                int endY = Math.max(sourceY + 1,
+                    Math.min(frameTop + frameHeight, frameTop + (y + 1) * frameHeight / spriteHeight));
                 for (int x = 0; x < spriteWidth; x++) {
                     int sourceX = x * image.getWidth() / spriteWidth;
                     int endX = Math.max(sourceX + 1, Math.min(image.getWidth(), (x + 1) * image.getWidth() / spriteWidth));
@@ -317,11 +344,216 @@ public final class PbrAtlases {
                     target.putInt(((targetY * width) + targetX) * 4, toRgba(pixel));
                 }
             }
-            return true;
-        } catch (IOException | RuntimeException e) {
-            RadianteRenderer.LOGGER.warn("Could not read PBR map from {}", resource.sourcePackId(), e);
-            return false;
         }
+    }
+
+    // ---- animated maps: the frames of a map follow the frames of its animated texture (lava, fire, the portal)
+
+    /** Memory the frames of every animated sprite's maps may take at most; past it the rest keep their first. */
+    private static final long ANIMATION_BUDGET = 64L * 1024 * 1024;
+    private static final int MAX_FRAMES = 128;
+
+    /** One sprite's maps, frame by frame, each frame a buffer per mip level (null for a map it has not). */
+    private record AnimatedMaps(int x, int y, int width, int height, ByteBuffer[][] specular, ByteBuffer[][] normal) {
+    }
+
+    private static final Map<TextureAtlasSprite, AnimatedMaps> ANIMATED = new java.util.IdentityHashMap<>();
+    private static long animationBytes;
+
+    private static void forgetAnimations() {
+        for (AnimatedMaps maps : ANIMATED.values()) {
+            for (ByteBuffer[][] frames : new ByteBuffer[][][] {maps.specular(), maps.normal()}) {
+                if (frames == null) {
+                    // The map that has a single frame.
+                    continue;
+                }
+                for (ByteBuffer[] levels : frames) {
+                    if (levels == null) {
+                        continue;
+                    }
+                    for (ByteBuffer level : levels) {
+                        if (level != null) {
+                            MemoryUtil.memFree(level);
+                        }
+                    }
+                }
+            }
+        }
+        ANIMATED.clear();
+        animationBytes = 0;
+    }
+
+    /**
+     * Keeps every frame of an animated sprite's maps, made exactly as the first was (the same glow kept, the same
+     * softening), for AnimationMirror to show with the texture's own frame. The atlas keeps the first frame.
+     */
+    private static void animate(ResourceManager resources, Identifier spriteId, TextureAtlasSprite sprite,
+        ByteBuffer specular, int[] unstitched, ByteBuffer normal, int width, int height, int mipLevels) {
+        NativeImage specularImage = null;
+        NativeImage normalImage = null;
+        try {
+            specularImage = readMap(resources, spriteId, "_s");
+            normalImage = readMap(resources, spriteId, "_n");
+            int specularFrames = framesOf(specularImage, sprite);
+            int normalFrames = framesOf(normalImage, sprite);
+            int frames = Math.min(MAX_FRAMES, Math.max(specularFrames, normalFrames));
+            if (frames <= 1) {
+                return;
+            }
+            int spriteWidth = sprite.contents().width();
+            int spriteHeight = sprite.contents().height();
+            long bytes = (long) frames * spriteWidth * spriteHeight * 4 * 4 / 3
+                * ((specularFrames > 1 ? 1 : 0) + (normalFrames > 1 ? 1 : 0));
+            if (animationBytes + bytes > ANIMATION_BUDGET) {
+                return;
+            }
+            animationBytes += bytes;
+            int[] firstSpecular = region(specular, sprite, width);
+            int[] firstNormal = region(normal, sprite, width);
+            ByteBuffer[][] specularLevels = specularFrames > 1 ? new ByteBuffer[frames][] : null;
+            ByteBuffer[][] normalLevels = normalFrames > 1 ? new ByteBuffer[frames][] : null;
+            for (int frame = 0; frame < frames; frame++) {
+                if (specularLevels != null) {
+                    if (frame > 0) {
+                        setRegion(specular, sprite, width, unstitched);
+                        byte[] derived = EmissionMaps.derivedGlow(sprite, specular, width, height);
+                        stitchFrame(specularImage, sprite, specular, width, height, false, false,
+                            frame % specularFrames);
+                        EmissionMaps.keepSetGlow(sprite, specular, width, height);
+                        EmissionMaps.keepVisibleGlow(sprite, specular, derived, width, height);
+                        EmissionMaps.softenSpecular(sprite, specular, width, height);
+                    }
+                    specularLevels[frame] = levels(frame == 0 ? firstSpecular : region(specular, sprite, width),
+                        spriteWidth, spriteHeight, mipLevels, MIPS_SPECULAR);
+                }
+                if (normalLevels != null) {
+                    if (frame > 0) {
+                        stitchFrame(normalImage, sprite, normal, width, height, false, true, frame % normalFrames);
+                    }
+                    normalLevels[frame] = levels(frame == 0 ? firstNormal : region(normal, sprite, width),
+                        spriteWidth, spriteHeight, mipLevels, MIPS_NORMAL);
+                }
+            }
+            setRegion(specular, sprite, width, firstSpecular);
+            setRegion(normal, sprite, width, firstNormal);
+            ANIMATED.put(sprite, new AnimatedMaps(Math.round(sprite.getU0() * width),
+                Math.round(sprite.getV0() * height), spriteWidth, spriteHeight, specularLevels, normalLevels));
+        } catch (IOException | RuntimeException e) {
+            RadianteRenderer.LOGGER.warn("Could not keep the animated PBR maps of {}", spriteId, e);
+        } finally {
+            if (specularImage != null) {
+                specularImage.close();
+            }
+            if (normalImage != null) {
+                normalImage.close();
+            }
+        }
+    }
+
+    /**
+     * Shows the frame of an animated sprite's maps that goes with the texture's frame {@code index}; called by
+     * AnimationMirror as the block atlas animates.
+     */
+    static void showFrame(TextureAtlasSprite sprite, int index) {
+        AnimatedMaps maps = ANIMATED.get(sprite);
+        if (maps == null) {
+            return;
+        }
+        upload(maps, maps.specular(), specularTextureId, index);
+        upload(maps, maps.normal(), normalTextureId, index);
+    }
+
+    private static void upload(AnimatedMaps maps, ByteBuffer[][] frames, int textureId, int index) {
+        if (frames == null || textureId < 0) {
+            return;
+        }
+        ByteBuffer[] levels = frames[Math.floorMod(index, frames.length)];
+        for (int level = 0; level < levels.length; level++) {
+            int levelWidth = Math.max(1, maps.width() >> level);
+            int levelHeight = Math.max(1, maps.height() >> level);
+            TextureProxy.queueUpload(MemoryUtil.memAddress(levels[level]), levelWidth * levelHeight * 4, levelWidth,
+                textureId, 0, 0, maps.x() >> level, maps.y() >> level, levelWidth, levelHeight, level);
+        }
+    }
+
+    private static NativeImage readMap(ResourceManager resources, Identifier spriteId, String suffix)
+        throws IOException {
+        Identifier mapId = Identifier.fromNamespaceAndPath(spriteId.getNamespace(),
+            "textures/" + spriteId.getPath() + suffix + ".png");
+        Optional<Resource> resource = resources.getResource(mapId);
+        if (resource.isEmpty()) {
+            return null;
+        }
+        try (InputStream stream = resource.get().open()) {
+            return NativeImage.read(stream);
+        }
+    }
+
+    private static int framesOf(NativeImage image, TextureAtlasSprite sprite) {
+        return image == null ? 0 : Math.max(1, image.getHeight() / frameHeightOf(image, sprite));
+    }
+
+    /** A sprite's texels in an atlas map, row by row. */
+    private static int[] region(ByteBuffer atlas, TextureAtlasSprite sprite, int atlasWidth) {
+        int width = sprite.contents().width();
+        int height = sprite.contents().height();
+        int originX = Math.round(sprite.getU0() * atlasWidth);
+        int originY = Math.round(sprite.getV0() * (atlas.capacity() / 4 / atlasWidth));
+        int[] texels = new int[width * height];
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                texels[y * width + x] = atlas.getInt(((originY + y) * atlasWidth + originX + x) * 4);
+            }
+        }
+        return texels;
+    }
+
+    private static void setRegion(ByteBuffer atlas, TextureAtlasSprite sprite, int atlasWidth, int[] texels) {
+        int width = sprite.contents().width();
+        int height = sprite.contents().height();
+        int originX = Math.round(sprite.getU0() * atlasWidth);
+        int originY = Math.round(sprite.getV0() * (atlas.capacity() / 4 / atlasWidth));
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                atlas.putInt(((originY + y) * atlasWidth + originX + x) * 4, texels[y * width + x]);
+            }
+        }
+    }
+
+    /** A frame's texels and their mip levels, made as upload makes the atlas's. */
+    private static ByteBuffer[] levels(int[] texels, int width, int height, int mipLevels, int mips) {
+        ByteBuffer[] out = new ByteBuffer[Math.max(1, mipLevels)];
+        ByteBuffer current = MemoryUtil.memAlloc(width * height * 4);
+        for (int i = 0; i < texels.length; i++) {
+            current.putInt(i * 4, texels[i]);
+        }
+        out[0] = current;
+        int levelWidth = width;
+        int levelHeight = height;
+        for (int level = 1; level < out.length; level++) {
+            int nextWidth = Math.max(1, levelWidth / 2);
+            int nextHeight = Math.max(1, levelHeight / 2);
+            ByteBuffer next = MemoryUtil.memAlloc(nextWidth * nextHeight * 4);
+            for (int y = 0; y < nextHeight; y++) {
+                for (int x = 0; x < nextWidth; x++) {
+                    int[] four = new int[4];
+                    for (int i = 0; i < 4; i++) {
+                        int sx = Math.min(levelWidth - 1, x * 2 + (i & 1));
+                        int sy = Math.min(levelHeight - 1, y * 2 + (i >> 1));
+                        four[i] = current.getInt((sy * levelWidth + sx) * 4);
+                    }
+                    int picked = current.getInt((Math.min(levelHeight - 1, y * 2) * levelWidth
+                        + Math.min(levelWidth - 1, x * 2)) * 4);
+                    next.putInt((y * nextWidth + x) * 4,
+                        mips == MIPS_NORMAL ? averageNormal(four) : averageSpecular(four, picked));
+                }
+            }
+            out[level] = next;
+            current = next;
+            levelWidth = nextWidth;
+            levelHeight = nextHeight;
+        }
+        return out;
     }
 
     /** The mean of a block of texels, channel by channel. */
