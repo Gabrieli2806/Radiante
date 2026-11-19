@@ -24,6 +24,7 @@
 // 16 KB every Vulkan device allows a uniform buffer.
 #define PRISM_PACK_PARAM_COUNT 256
 #define PRISM_WATER_RIPPLE_MAX 16
+#define PRISM_SNOW_PRINT_MAX 32
 
 #ifdef __cplusplus
 namespace gpu {
@@ -460,6 +461,14 @@ struct SkyUBO {
     T_VEC4 waterRippleControl;
     T_VEC4 waterRipplePos[PRISM_WATER_RIPPLE_MAX];
     T_VEC4 waterRippleData[PRISM_WATER_RIPPLE_MAX];
+
+    // ---- Footprints in snow (912..1567), SnowPrints on the Java side.
+    // snowPrintControl.x: how many prints there are (0..PRISM_SNOW_PRINT_MAX), yzw: unused.
+    // snowPrints[i]: xyz the print's centre relative to the camera (blocks), w the walker's yaw (radians).
+    // snowPrintAge[i / 4][i % 4]: how far the snow has filled the print back in, 0 fresh to 1 gone.
+    T_VEC4 snowPrintControl;
+    T_VEC4 snowPrints[PRISM_SNOW_PRINT_MAX];
+    T_VEC4 snowPrintAge[PRISM_SNOW_PRINT_MAX / 4];
 };
 
 // Per-texture lookup from an atlas texture to its PBR companions. specular, normal and rawMer are texture ids,

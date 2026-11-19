@@ -536,6 +536,9 @@ void sampleSurfaceState(bool useTexture,
 
         // Progressive rime frost and snow accumulation in snowy biomes, melted around heat sources.
         vec2 groundSnow = radianteIsHeld(g_hit.packedData) ? vec2(0.0) : vptGroundSnow(worldPos, baseGeoNormal);
+        // The footprints left in the snow (SnowPrints).
+        vec3 snowPrint = upward && skyUBO.snowPrintControl.x > 0.5 && !radianteIsHeld(g_hit.packedData)
+                             ? vptSnowPrint(rainPos) : vec3(0.0);
         float frost = 0.0;
         float snowCover = 0.0;
         if (groundSnow.x > 0.0 || groundSnow.y > 0.0) {
@@ -552,6 +555,8 @@ void sampleSurfaceState(bool useTexture,
             }
             float snowShare = upward ? (fullTop ? 1.0 : (solidFace ? 0.65 : 0.35)) : 0.0;
             snowCover = groundSnow.x > 0.0 && snowShare > 0.0 ? vptSnowCover(rainPos, groundSnow.x * snowShare) : 0.0;
+            // Stepped through to the ground in a footprint.
+            snowCover *= 1.0 - 0.85 * snowPrint.x;
             // The grass overlay on a grass block's sides whitens with the rime into the snowy grass block's fringe,
             // a step at a time as the snow builds, instead of taking the frost's film over its green.
             if (tintedFace && !upward && radianteIsLayer(g_hit.packedData)) {
@@ -564,6 +569,12 @@ void sampleSurfaceState(bool useTexture,
                                                clamp(snowCover * 0.80 + frost * 0.25, 0.0, 0.88)),
                                            geometricNormal);
             }
+        }
+        // A snow layer's or snow block's own snow, packed down where it was stepped on: a little greyer and bluer,
+        // smoother, and its rim in the shade of the step. Only on white tops: the print may reach the next block.
+        if (snowPrint.y > 0.0 && dot(dryAlbedo, vec3(0.2126, 0.7152, 0.0722)) > 0.45) {
+            mat.albedo *= mix(vec3(1.0), vec3(0.76, 0.81, 0.91), snowPrint.y) * (1.0 - 0.14 * snowPrint.z);
+            mat.roughness = mix(mat.roughness, max(mat.roughness * 0.75, 0.3), snowPrint.y);
         }
 #if defined(RADIANTE_DEBUG_VIEW) && RADIANTE_DEBUG_VIEW == 11
         g_radianteDebugRain = max(vec3(wetness, open, puddle), vec3(frost, groundSnow.x, snowCover));

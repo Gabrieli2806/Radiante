@@ -8,6 +8,14 @@
 // at radial group speed skyUBO.waterRipplePos[i].w. Consecutive impulses emitted along a moving swimmer's or boat's path
 // superpose by Huygens' principle into a natural V-shaped wake.
 
+// Minecraft's look for the weather's marks: puddles, the rings on them and on water, the wakes, the wetness of every
+// surface, the snow and the footprints in it go on in pixels of a sixteenth of a block, the size of a block
+// texture's, with hard edges, as a texture painted for the game would show them. Always in Radiante PT; a pack that
+// extends it may define VPT_RAIN_PIXELS 0 for smooth, round shapes (Aether's Pixel Weather).
+#ifndef VPT_RAIN_PIXELS
+#    define VPT_RAIN_PIXELS 1
+#endif
+
 #ifndef VPT_WATER_RIPPLES
 #    define VPT_WATER_RIPPLES 1.0
 #endif

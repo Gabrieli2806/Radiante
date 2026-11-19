@@ -311,6 +311,16 @@
             "description": "aether.desc.puddles"
         },
         {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_pixel_weather",
+            "type": "bool",
+            "default_value": "render_pipeline.false",
+            "runtime": true,
+            "define": "VPT_RAIN_PIXELS",
+            "group": "aether.group.light",
+            "order": 55,
+            "description": "aether.desc.pixel_weather"
+        },
+        {
             "name": "render_pipeline.module.ray_tracing.attribute.aether_water_tint",
             "type": "float_range:0.0-1.0",
             "default_value": "0.7",
