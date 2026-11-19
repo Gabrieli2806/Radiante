@@ -585,7 +585,7 @@ public final class RadianteRenderer {
         Vector4f rainWetness = LightningFlash.apply(
             RainExposure.update(minecraft, cameraState.pos.x(), cameraState.pos.z()), minecraft, cameraState.pos);
         // The steps of the players and mobs this frame, which the puddles and the snow both answer (Footsteps).
-        Footsteps.update(minecraft, cameraState.pos, levelRenderState.gameTime, levelRenderState.worldPartialTicks);
+        Footsteps.update(minecraft, cameraState.pos, levelRenderState.gameTime, PlayerFrame.worldPartialTicks());
         float[] waterRipples = WaterRipples.update(minecraft, cameraState.pos, rainWetness.x(),
             levelRenderState.gameTime, PlayerFrame.worldPartialTicks());
         // The footprints in snow follow the ripples in the sky uniform (SnowPrints).
