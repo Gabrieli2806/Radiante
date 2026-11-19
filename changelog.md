@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- The invisible light block of map makers lights the world: a white light at its middle, as strong as a torch's at its level. It lit nothing before, having no faces to glow.
+
+- Candles light from each wick without a Bedrock pack, warm and as strong as their light level, instead of only through the few glowing texels of their flames.
+
+- A torch, candle or campfire held in the hand goes out while your head is under water; a lantern, glowstone or a redstone torch keeps shining.
+
+- Toggle Held Item Light: a new key binding, unbound by default, switches the light of what you hold on and off.
+
+- Background Frame Rate (`Other`, 15 by default): while Minecraft is on screen but another window has the focus, the game draws at most that many frames a second, so the graphics card rests instead of path tracing at full load. Off removes the cap.
+
 - Footprints in snow: players and mobs leave prints where their feet come down in the walk animation, the square of the leg itself (four pixels across for a player's or a cow's, two for a chicken's or a wolf's): one foot at a time on two legs, the diagonal pair on four. Landing from a jump or a fall brings every foot down at once, side by side, and a slime prints the square of its whole body; things that fly, swim or have no legs leave none. The prints clear the snow that settles on the ground down to what is under it, and pack a snow block's own snow a little greyer. Falling snow fills them back in a pixel at a time, from the rim in, over about 45 seconds of snowfall; out of it they stay, settling away over 20 minutes. Feet still wet from the water tread the snow into grey slush for the first steps, and feet coming off the snow carry clumps of it onto the next floor, a house's, for a few steps, which melt into small wet spots that dry within half a minute; wet feet leave water on a floor the same way. Off with Snow & Frost in Cold Biomes.
 
 - Puddles ring under each foot that comes down, from the same steps as the snow's prints: two rings for a jump landing on both feet, four for a four-legged animal, instead of one ring every block or so under the middle of the body.

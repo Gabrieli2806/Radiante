@@ -102,6 +102,20 @@ final class BedrockPointLights {
             int[] berry = packColourOr(block, 255, 170, 70);
             writer.pointLight(x + 0.5f, y + 0.4f, z + 0.5f, berry[0], berry[1], berry[2], CAST_STRENGTH * BERRY_STRENGTH,
                 LANTERN_RADIUS);
+        } else if (block == Blocks.LIGHT) {
+            // Not Bedrock's: the invisible light block of map makers draws nothing, so nothing of it glowed and it lit
+            // nothing at all. A plain white light at its middle, as strong as a torch's at its level.
+            int level = state.getValue(net.minecraft.world.level.block.LightBlock.LEVEL);
+            if (level > 0) {
+                int[] white = packColourOr(block, 255, 244, 228);
+                writer.pointLight(x + 0.5f, y + 0.5f, z + 0.5f, white[0], white[1], white[2],
+                    CAST_STRENGTH * level / TORCH_LEVEL, LANTERN_RADIUS);
+            }
+        } else if (isCandle(block)) {
+            // Not Bedrock's without a pack: a candle lit only through the few glowing texels of its flame, which the
+            // search for lights rarely picked, so a room of candles stayed dark. A light at each wick (packPointLight),
+            // warm, as a pack's local lighting would give it.
+            packPointLight(state, packColourOr(block, 255, 165, 85), x, y, z, writer);
         } else if (block == Blocks.FIREFLY_BUSH) {
             // Not Bedrock's: the bush glows only in a few specks and lit nothing around it. A soft, greenish-yellow
             // light of its own, a quarter of what a berried vine gives.
@@ -364,6 +378,11 @@ final class BedrockPointLights {
             || block == Blocks.SOUL_CAMPFIRE;
     }
 
+    private static boolean isCandle(Block block) {
+        return block instanceof net.minecraft.world.level.block.CandleBlock
+            || block instanceof net.minecraft.world.level.block.CandleCakeBlock;
+    }
+
     private static boolean isBerryVine(BlockState state) {
         Block block = state.getBlock();
         return (block == Blocks.CAVE_VINES || block == Blocks.CAVE_VINES_PLANT) && state.getValue(CaveVines.BERRIES);
@@ -372,7 +391,7 @@ final class BedrockPointLights {
     /** Whether the block has one of these lights, in some state. */
     static boolean hasLight(Block block) {
         if (block == Blocks.CAVE_VINES || block == Blocks.CAVE_VINES_PLANT || block == Blocks.FIREFLY_BUSH
-            || isFlame(block) || colourOf(block) != null) {
+            || block == Blocks.LIGHT || isCandle(block) || isFlame(block) || colourOf(block) != null) {
             return true;
         }
         PackLight pack = packLights.get(block);

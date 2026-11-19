@@ -168,6 +168,16 @@ public final class RadianteClient {
             }
         }
 
+        while (RadianteKeys.TOGGLE_HELD_LIGHT.consumeClick()) {
+            if (minecraft.gui.screen() == null && !RadianteKeys.TOGGLE_HELD_LIGHT.isUnbound()) {
+                com.g2806.radiante.client.option.Options.heldItemLight =
+                    !com.g2806.radiante.client.option.Options.heldItemLight;
+                com.g2806.radiante.client.option.Options.overwriteConfig();
+                sendStatus(minecraft, com.g2806.radiante.client.option.Options.heldItemLight
+                    ? "message.radiante.held_light_on" : "message.radiante.held_light_off");
+            }
+        }
+
         while (RadianteKeys.TOGGLE_RAY_TRACING.consumeClick()) {
             // Unbound by default, and an unbound key still gets "pressed": every mapping without a key shares the
             // unknown key, so a mod that clicks one of its own unbound mappings (ImmersiveMC does) clicked this one

@@ -6,6 +6,7 @@
 
 | Control | Values | Default | What it does |
 |---|---|---|---|
+| **Background Frame Rate** | Off – 60 | 15 | The most frames a second while Minecraft is on screen but another window has the focus, so the graphics card rests instead of path tracing at full load. Off removes the cap. |
 | **Block Outline** | On/Off | Off | The outline around the block under the crosshair. |
 | **Other Mods' Overlays** | On / Off | On | Lets other mods draw into the traced world: Litematica schematics and selection boxes, MiniHUD shapes, waypoint beams, guides and markers. They are drawn Minecraft's way on top of the traced picture, hidden behind the world where they should be. Turn it off if a mod draws something wrong over the world. |
 | **Text Display Backgrounds** | On / Off | On | Draws the translucent plate behind text displays (leaderboards, holograms, server signs) as Minecraft does, so the text is easier to read. Off shows only the letters. |

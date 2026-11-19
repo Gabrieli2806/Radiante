@@ -635,7 +635,13 @@ abstract class SettingsRows extends SettingsUpscalerRows {
     }
 
     private void addOtherOptions() {
-        addRows(OptionInstance.createBoolean("options.radiante.block_outline",
+        OptionInstance<Integer> backgroundFrameRate = new OptionInstance<Integer>("options.radiante.background_frame_rate",
+            SettingsRows.<Integer>tooltip("options.radiante.background_frame_rate"),
+            (caption, value) -> value == 0 ? Component.translatable("options.generic_value", caption,
+                Component.translatable("options.off")) : Component.translatable("options.generic_value", caption, value),
+            new OptionInstance.IntRange(0, Options.MAX_BACKGROUND_FRAME_RATE, false),
+            staged("backgroundFrameRate", Options.backgroundFrameRate), value -> stage("backgroundFrameRate", value));
+        addRows(backgroundFrameRate, OptionInstance.createBoolean("options.radiante.block_outline",
                 tooltip("options.radiante.block_outline"), staged("blockOutline", Options.blockOutline),
                 value -> stage("blockOutline", value)),
             OptionInstance.createBoolean("options.radiante.mod_overlays",

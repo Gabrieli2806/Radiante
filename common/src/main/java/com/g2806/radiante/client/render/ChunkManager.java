@@ -671,6 +671,11 @@ public final class ChunkManager {
                     CutoutWalls.emit(scratch.panelQuads, sx, sy, sz,
                         scratch.writer(scratch.panelQuads.get(0).materialInfo().layer(), atlasId));
                 }
+            } else if (pointLights && blockState.is(Blocks.LIGHT)) {
+                // The light block has no model to draw, only its light (BedrockPointLights).
+                BedrockPointLights.emit(blockState, SectionPos.sectionRelative(pos.getX()),
+                    SectionPos.sectionRelative(pos.getY()), SectionPos.sectionRelative(pos.getZ()),
+                    scratch.pointLightWriter(atlasId));
             }
         }
 

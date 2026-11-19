@@ -111,6 +111,12 @@ public class Options {
     /** The outline around the block under the crosshair. */
     public static volatile boolean blockOutline = false;
     /**
+     * Frames a second at most while the window is on screen but another one has the focus, 0 for no cap
+     * (BackgroundFramerateMixin).
+     */
+    public static volatile int backgroundFrameRate = 15;
+    public static final int MAX_BACKGROUND_FRAME_RATE = 60;
+    /**
      * Lets Minecraft's level render run over the traced world, with nothing of its own to draw, so that what other
      * mods draw into the world shows: schematics, selection boxes, waypoint beams, guides.
      */
@@ -288,6 +294,8 @@ public class Options {
         bool("rainWetness", () -> rainWetness, v -> rainWetness = v),
         bool("snowAccumulation", () -> snowAccumulation, v -> snowAccumulation = v),
         bool("blockOutline", () -> blockOutline, v -> blockOutline = v),
+        number("backgroundFrameRate", () -> backgroundFrameRate,
+            v -> backgroundFrameRate = Math.max(0, Math.min(MAX_BACKGROUND_FRAME_RATE, v))),
         bool("modOverlays", () -> modOverlays, v -> modOverlays = v),
         bool("textBackgrounds", () -> textBackgrounds, v -> textBackgrounds = v),
         bool("parallaxTransparentEdges", () -> parallaxTransparentEdges, v -> parallaxTransparentEdges = v),
