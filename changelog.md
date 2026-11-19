@@ -4,7 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
-- Water ripples and wakes follow Pixel Rain: they are looked up per sixteenth of a block and lean in steps, rings of a few pixels like the rain's, instead of smooth realistic waves, and they no longer make a pack's rougher water glassy where they run.
+- Footprints in snow: players and mobs walking on snow layers, snow blocks, powder snow or snowy ground leave prints, left and right in turn, three by five pixels square to the way they walked. They clear the snow that settles on the ground down to what is under it, and pack a snow block's own snow a little greyer; the snow fills them back in a pixel at a time over two and a half minutes, half that while it snows. Off with Snow & Frost in Cold Biomes.
+
+- Radiante PT draws the weather's marks in Minecraft's pixels only: puddles, rain rings, ripples and wakes, wet surfaces, snow, frost and footprints are always in sixteenths of a block, and the Pixel Rain setting is gone. The smooth, round, more realistic shapes moved to Aether, as its Pixel Weather setting (off there by default).
+
+- Water ripples and wakes are drawn in pixels: they are looked up per sixteenth of a block and lean in steps, rings of a few pixels like the rain's, instead of smooth realistic waves, and they no longer make a pack's rougher water glassy where they run.
 
 - Snow: rime frost settles as a soft film in broad patches instead of white and dark specks texel by texel, and the grass overlay on a grass block's sides whitens into the snowy grass fringe as the snow builds instead of taking the frost.
 

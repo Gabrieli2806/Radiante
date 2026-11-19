@@ -586,6 +586,12 @@ public final class RadianteRenderer {
             RainExposure.update(minecraft, cameraState.pos.x(), cameraState.pos.z()), minecraft, cameraState.pos);
         float[] waterRipples = WaterRipples.update(minecraft, cameraState.pos, rainWetness.x(),
             levelRenderState.gameTime, PlayerFrame.worldPartialTicks());
+        // The footprints in snow follow the ripples in the sky uniform (SnowPrints).
+        float[] snowPrints = SnowPrints.update(minecraft, cameraState.pos, levelRenderState.gameTime,
+            PlayerFrame.worldPartialTicks());
+        float[] ripplesAndPrints = java.util.Arrays.copyOf(waterRipples, waterRipples.length + snowPrints.length);
+        System.arraycopy(snowPrints, 0, ripplesAndPrints, waterRipples.length, snowPrints.length);
+        waterRipples = ripplesAndPrints;
 
         BufferProxy.updateSkyUniform(new BufferProxy.SkyUniform(skyColor, horizonColor, sunDirection, skyType,
             Mth.sin(sunAngle) >= 0.0f && horizonColor.w() > 0.0f, VersionCompat.drawsDarkDisc(sky),

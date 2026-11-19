@@ -154,6 +154,13 @@ const float SPLASH_GLINT = 0.06;
 // the old raster packs refracted the screen behind a splash. Opaque white specks before; now the ground behind them
 // wobbles where they land. The camera's view only: any other ray goes straight through, and shadow rays never stop on
 // a drop (world/shadow.rahit).
+// Minecraft's look for the weather's marks: puddles, the rings on them and on water, the wakes, the wetness of every
+// surface, the snow and the footprints in it go on in pixels of a sixteenth of a block, the size of a block
+// texture's, with hard edges, as a texture painted for the game would show them. Always in Radiante PT; a pack that
+// extends it may define VPT_RAIN_PIXELS 0 for smooth, round shapes (Aether's Pixel Weather).
+#ifndef VPT_RAIN_PIXELS
+#    define VPT_RAIN_PIXELS 1
+#endif
 bool ptSplashPassThrough(uint textureID, vec2 textureUV, vec4 colorLayerValue, vec3 dPduWorld, vec3 dPdvWorld) {
     vec2 texel = 1.0 / vec2(textureSize(textures[nonuniformEXT(textureID)], 0));
     float coverage = clamp(sampleTexture(textures[nonuniformEXT(textureID)], textureUV, 0.0, false).a *
@@ -161,7 +168,7 @@ bool ptSplashPassThrough(uint textureID, vec2 textureUV, vec4 colorLayerValue, v
     vec3 incident = normalize(g_hit.rayDir);
     vec3 outgoing = incident;
     if (rayBounce(mainRay) == 0u || rayCameraPath(mainRay)) {
-        // With Pixel Rain the slope is read at the centre of the texel hit, so each pixel of the drop is a flat facet
+        // In pixels (VPT_RAIN_PIXELS) the slope is read at the centre of the texel hit, so each pixel of the drop is a flat facet
         // that bends the view one way: the world behind a splash breaks up into pixels, as the splash itself is drawn.
         vec2 at = VPT_RAIN_PIXELS != 0 ? (floor(textureUV / texel) + 0.5) * texel : textureUV;
         float du = sampleTexture(textures[nonuniformEXT(textureID)], at + vec2(texel.x, 0.0), 1.0, false).a -

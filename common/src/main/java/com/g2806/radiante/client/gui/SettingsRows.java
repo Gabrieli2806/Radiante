@@ -461,7 +461,6 @@ abstract class SettingsRows extends SettingsUpscalerRows {
             OptionInstance.createBoolean("options.radiante.snow_accumulation",
                 tooltip("options.radiante.snow_accumulation"), staged("snowAccumulation", Options.snowAccumulation),
                 value -> stage("snowAccumulation", value)),
-            packToggle(RtAttributes.RAIN_PIXELS_ATTRIBUTE, "options.radiante.rain_pixels"),
             tunable(Tunable.RAIN_WETNESS, false), tunable(Tunable.RAIN_WET_WALLS, false),
             tunable(Tunable.PUDDLES, false), tunable(Tunable.SNOW_FROST, false),
             tunable(Tunable.RAIN_WET_UP_TIME, false),
