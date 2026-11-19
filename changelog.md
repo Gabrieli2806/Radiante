@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
-- Snow: a block put down while it snows comes out bare and gathers its own snow in patches as the ground did, instead of appearing under as much snow as the ground round it; a top laid bare (a block taken off, water come and gone) fills back in the same way, no longer with the snow round it reaching in from its edges as a ragged white frame round every block. The floor of a pool or river holds no snow.
+- Snow settles evenly everywhere at once, a dusting of single pixels that thickens into the blanket, instead of growing in patches a few blocks across that spread and joined up the way puddles gather in the rain; it thins the same way after the storm. The floor of a pool or river holds no snow: it showed the snow that lay there before the water came.
 
 - Local Tone Mapping (`Image`, 40% by default): the bright and the dark parts of one picture are brought closer together, so the sky or the sunlit ground seen from a cave or through a window is no longer white and the sun keeps its shape at dusk, while every block keeps its pixels. The brightness around each pixel comes from an edge-aware filter at an eighth of the picture's size, so a bright opening casts no halo on the wall around it. Highlights are brought down further than shadows are lifted (`local_tone_mapping_shadows`, 0.5), which keeps caves and the night dark.
 
