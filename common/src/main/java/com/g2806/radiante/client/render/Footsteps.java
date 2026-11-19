@@ -209,7 +209,7 @@ public final class Footsteps {
                 foot(entity, x, y, z, yaw, -along, -side, size, true, wetLeft);
             }
             default -> foot(entity, x, y, z, yaw, 0.0, 0.0,
-                Mth.clamp(2 * Math.round(width * 6.4f), 4, 24), true, wetLeft);
+                Math.min(Math.max(2 * Math.round(width * 6.4f), 4), 24), true, wetLeft);
         }
     }
 
