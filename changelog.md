@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Mobs out of view near you (within 20 blocks, up to 48 a frame) stay in the scene: the one behind you casts its shadow into view and shows in water, glass and mirrors, instead of appearing only once you turn round.
+
 - Fabric: blocks whose models draw themselves through Fabric's rendering API (connected textures from Continuity, models other mods make at run time) are built through it, tinted and lit as Minecraft builds them, instead of coming out plain or missing. Vanilla's models keep the quicker vanilla way.
 
 - `options.properties` keeps only the settings you changed, so a default improved in a later release reaches you unless you set that one yourself.

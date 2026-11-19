@@ -45,7 +45,8 @@ public class LevelExtractorMixin implements LevelExtractorAccess {
     private void radiante$keepLightOutOfView(Entity entity, Frustum frustum, double cameraX, double cameraY,
         double cameraZ, float partialTick, long frame, CallbackInfoReturnable<Boolean> cir) {
         if (!cir.getReturnValueZ() && RadianteRenderer.isRayTracingEnabled()
-            && EntityBlockEntities.keepsLightOutOfView(entity, cameraX, cameraY, cameraZ, partialTick)) {
+            && (EntityBlockEntities.keepsLightOutOfView(entity, cameraX, cameraY, cameraZ, partialTick)
+                || EntityBlockEntities.keepsNearOutOfView(entity, cameraX, cameraY, cameraZ))) {
             cir.setReturnValue(true);
         }
     }
