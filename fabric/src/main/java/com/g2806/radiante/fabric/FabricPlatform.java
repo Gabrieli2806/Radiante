@@ -11,6 +11,14 @@ import net.fabricmc.loader.api.ModContainer;
 public final class FabricPlatform implements RadiantePlatform {
 
     @Override
+    public boolean tesselateModdedBlock(net.minecraft.client.renderer.block.BlockQuadOutput output, float x, float y,
+        float z, net.minecraft.client.renderer.block.BlockAndTintGetter level, net.minecraft.core.BlockPos pos,
+        net.minecraft.world.level.block.state.BlockState state,
+        net.minecraft.client.renderer.block.dispatch.BlockStateModel model, long seed) {
+        return FabricModelBlocks.tesselate(output, x, y, z, level, pos, state, model, seed);
+    }
+
+    @Override
     public String loaderName() {
         return "Fabric";
     }

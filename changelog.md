@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Fabric: blocks whose models draw themselves through Fabric's rendering API (connected textures from Continuity, models other mods make at run time) are built through it, tinted and lit as Minecraft builds them, instead of coming out plain or missing. Vanilla's models keep the quicker vanilla way.
+
 - `options.properties` keeps only the settings you changed, so a default improved in a later release reaches you unless you set that one yourself.
 
 - The Java runtime's native crash file (`hs_err_pid*.log`) carries the launcher's command line, sign-in token included; Radiante blanks the token in those files on the next start, before one is attached to a bug report.

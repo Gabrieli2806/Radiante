@@ -44,6 +44,18 @@ public interface RadiantePlatform {
         return new EntityCollector();
     }
 
+    /**
+     * Builds a block whose model draws itself through the loader's own rendering API (Fabric's: connected textures,
+     * models made at run time), into {@code output} as vanilla's ModelBlockRenderer would; false when the model is
+     * vanilla's and that renderer is to build it. Called on the section build threads.
+     */
+    default boolean tesselateModdedBlock(net.minecraft.client.renderer.block.BlockQuadOutput output, float x, float y,
+        float z, net.minecraft.client.renderer.block.BlockAndTintGetter level, net.minecraft.core.BlockPos pos,
+        net.minecraft.world.level.block.state.BlockState state,
+        net.minecraft.client.renderer.block.dispatch.BlockStateModel model, long seed) {
+        return false;
+    }
+
     private static RadiantePlatform load() {
         return ServiceLoader.load(RadiantePlatform.class, RadiantePlatform.class.getClassLoader()).findFirst()
             .orElseThrow(() -> new IllegalStateException("No RadiantePlatform implementation on the classpath"));
