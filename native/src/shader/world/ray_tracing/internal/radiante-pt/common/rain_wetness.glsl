@@ -541,6 +541,8 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
 
     int surfaceBlockY = cameraCell.y + int(floor(relativePosition.y - 0.001));
     ivec4 center = vptRainColumn(column, textureId);
+    bool laidBare = (center.b & 4) != 0;
+    g_vptSnowSoak = laidBare ? vptColumnSoak(center) : 1.0;
 
     if (vptRainColumnBlocks(center, surfaceBlockY)) {
         // The floor of a pool or a river: snow does not lie under water, nor drift in from the bank. It showed the
@@ -568,18 +570,23 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
         return vec2(snowOpen, frostOpen) * fade;
     }
 
-    // A new top, whether a block was put down or taken away (or water came and went), starts bare and gathers the
-    // snow as the ground did when it began to snow, in patches over the Wet-Up Time (vptSnowCover). A block put
-    // down came out under as much snow as the ground round it, and a top laid bare had the snow round it reaching
-    // in from its edges, which drew a ragged white frame round every block.
-    g_vptSnowSoak = vptColumnSince(center) >= 0.0 ? vptColumnSoak(center) : 1.0;
+    float since = laidBare ? vptColumnSince(center) : -1.0;
+    if (since >= 0.0) {
+        vec2 edge = min(withinColumn, vec2(1.0) - withinColumn);
+        float fromEdge = min(edge.x, edge.y);
+        float reach = mix(0.28, 0.65, clamp(since, 0.0, 1.0));
+        float creep = vptRainFray(vec2(column) + withinColumn, 1.0 - smoothstep(0.0, reach, fromEdge), 29.3);
+        g_vptSnowSoak = max(g_vptSnowSoak, creep);
+    }
 
     vec2 melt = vptSnowHeatMelt(column, textureId, withinColumn);
     return vec2(fade * (1.0 - melt.x), fade * (1.0 - melt.y));
 }
 
-/** Progressive snow blanket (0..1) on upward faces: forms in patches that join into a soft blanket as snowfall
- *  continues, and sublimates patch-by-patch over VPT_RAIN_DRYING_TIME after the storm clears. */
+/** Snow blanket (0..1) on upward faces: settles evenly everywhere at once as snowfall continues, a dusting of
+ *  single pixels that thickens into the whole blanket (a film that thickens without Pixel Rain), and thins the same
+ *  way over VPT_RAIN_DRYING_TIME after the storm clears. It grew in patches a few blocks across that spread and
+ *  joined up, the way puddles gather in the rain, which looked wrong for snow falling on everything alike. */
 float vptSnowCover(vec3 position, float open) {
     float strength = clamp(VPT_SNOW_FROST_STRENGTH, 0.0, 2.0);
     if (strength <= 0.0 || open <= 0.0) { return 0.0; }
@@ -593,11 +600,14 @@ float vptSnowCover(vec3 position, float open) {
                                  smoothstep(0.35, 0.90, soaked / ground);
     spread = clamp(spread * min(strength, 1.35), 0.0, 1.0);
     if (spread <= 0.0) { return 0.0; }
-    vec2 p = vptRainWorldXZ(position);
-    float n = 0.70 * vptRainValueNoise(p / 7.5 + 31.0) + 0.30 * vptRainValueNoise(p / 2.2 + 53.0);
-    float threshold = mix(0.88, 0.10, spread);
-    float cover = open * smoothstep(threshold, threshold + 0.08, n) * clamp(strength, 0.0, 1.5);
-    return clamp(VPT_RAIN_PIXELS != 0 ? step(0.45, cover) * min(strength, 1.0) : cover, 0.0, 1.0);
+    float cover = open * spread;
+    if (VPT_RAIN_PIXELS != 0) {
+        // Each pixel of a sixteenth of a block takes the snow at its own moment, spread evenly over the surface.
+        vec2 pixel = floor(vptRainWorldXZ(position) * RAIN_PIXELS_PER_BLOCK);
+        float h = vptRainHash(pixel + vec2(311.0, 977.0));
+        return step(h, cover * 1.02) * min(strength, 1.0);
+    }
+    return clamp(cover * clamp(strength, 0.0, 1.5), 0.0, 1.0);
 }
 
 // ---- Footprints (skyUBO.snowPrints, SnowPrints on the Java side)
