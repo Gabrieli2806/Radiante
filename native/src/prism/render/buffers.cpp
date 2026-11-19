@@ -22,7 +22,7 @@ static_assert(offsetof(gpu::Data::WorldUBO, entityLightPad) == offsetof(gpu::Dat
 static_assert(sizeof(gpu::Data::WorldUBO) == 736 + 16 * PRISM_PACK_PARAM_COUNT + 32);
 static_assert(offsetof(gpu::Data::SkyUBO, waterRippleControl) == 384);
 static_assert(offsetof(gpu::Data::SkyUBO, snowPrintControl) == 912);
-static_assert(sizeof(gpu::Data::SkyUBO) == 1568);
+static_assert(sizeof(gpu::Data::SkyUBO) == 3488);
 
 namespace {
 
