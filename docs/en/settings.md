@@ -28,12 +28,15 @@ nothing right now, and which other settings it replaces.
 
 ## Sections
 
+Each section starts with the few settings most players want, then groups under headings that fold (Clouds, Fog, Rain...). With **Advanced** off a group shows only its everyday settings; turning it on adds the tuning ones, a step in under the same heading, and the Debug section. The search finds every setting either way, and says how many it found that need Advanced.
+
 | Section | What is in it |
 |---|---|
 | [Quality](settings/quality-and-upscaling.md) | Ray tracing on/off, quality level, pipeline and upscaler, resolution, frame generation, Reflex |
 | [Image](settings/image.md) | Picture style, tone mapping, exposure, sharpness, HDR, motion blur, depth of field |
 | [Lighting](settings/lighting.md) | Brightness, translucency, block light sampling, ReSTIR, held light, entity light reach |
-| [Sky & Water](settings/sky-fog-water.md) | Atmosphere, clouds, stars, sun, rain, glass, biome ambiance, fog, water |
+| [Sky & Fog](settings/sky-fog-water.md) | Atmosphere, sun path, stars, clouds, fog, biome ambiance |
+| [Water & Weather](settings/sky-fog-water.md) | Rain, puddles, snow, water, wind |
 | [Performance](settings/performance.md) | Light bounces, reflections, cache, parallax, chunk building |
 | [Other and Debug](settings/other-and-debug.md) | Block outline, other mods' overlays; debug views and logs (Advanced) |
 | *A shader pack's name* | That pack's own settings, when one other than Radiante PT is in use |

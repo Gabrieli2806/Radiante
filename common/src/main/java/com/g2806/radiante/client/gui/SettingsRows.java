@@ -86,15 +86,56 @@ abstract class SettingsRows extends SettingsUpscalerRows {
             });
     }
 
-    /** Adds options two to a row, skipping the ones the pipeline lacks. */
+    /*
+     * How a section is laid out (docs/dev/settings-menu.md has the rules for adding a setting):
+     *   - a few rows at its top, with no heading: what most players come to the section for;
+     *   - then groups, each under a heading that folds (group()): the rows anyone may want (addRows) and, a step in
+     *     and only while Advanced is on, the ones for tuning (addAdvanced). A group with only advanced rows is not
+     *     there at all without Advanced, and a search still counts what it would have found there.
+     * The pipeline's own attributes (AdvancedOptions) follow as advanced groups of their own.
+     */
+    private final List<SettingsLayout.Block> pageGroups = new ArrayList<>();
+    private Category pageSection;
+    private String groupName;
+    private final List<OptionInstance<?>> groupRows = new ArrayList<>();
+    private final List<OptionInstance<?>> groupAdvanced = new ArrayList<>();
+
+    /** Starts a group of the section being built: the rows added from here on go under its heading. */
+    private void group(String name) {
+        endGroup();
+        this.groupName = name;
+    }
+
+    private void endGroup() {
+        if (this.groupName != null && !(this.groupRows.isEmpty() && this.groupAdvanced.isEmpty())) {
+            // Open until the player folds it; its state is kept by the section and the group's name.
+            this.pageGroups.add(new SettingsLayout.Block(
+                "radiante." + this.pageSection.name().toLowerCase(java.util.Locale.ROOT) + "." + this.groupName,
+                Component.translatable("options.radiante.group." + this.groupName), null,
+                List.copyOf(this.groupRows), null, List.copyOf(this.groupAdvanced), true));
+        }
+        this.groupName = null;
+        this.groupRows.clear();
+        this.groupAdvanced.clear();
+    }
+
+    /** Adds rows shown to everyone, to the group being built or the top of the section; skips the ones the pipeline lacks. */
     private void addRows(OptionInstance<?>... options) {
-        List<OptionInstance<?>> present = new ArrayList<>();
+        List<OptionInstance<?>> target = this.groupName != null ? this.groupRows : this.page;
         for (OptionInstance<?> option : options) {
             if (option != null) {
-                present.add(option);
+                target.add(option);
             }
         }
-        this.page.addAll(present);
+    }
+
+    /** Adds rows of the group being built that only show while Advanced is on. */
+    private void addAdvanced(OptionInstance<?>... options) {
+        for (OptionInstance<?> option : options) {
+            if (option != null) {
+                this.groupAdvanced.add(option);
+            }
+        }
     }
 
     /** Builds every section's options, in order, into {@link #sections}. */
@@ -145,6 +186,8 @@ abstract class SettingsRows extends SettingsUpscalerRows {
         this.packImpacts.clear();
         for (Category section : Category.values()) {
             this.page.clear();
+            this.pageGroups.clear();
+            this.pageSection = section;
             if (section == Category.DEBUG && !Options.advancedSettings) {
                 continue;
             }
@@ -176,7 +219,8 @@ abstract class SettingsRows extends SettingsUpscalerRows {
                 }
                 case IMAGE -> addImageOptions();
                 case LIGHTING -> addLightingOptions();
-                case SKY_AND_WATER -> addSkyAndWaterOptions(clouds);
+                case SKY -> addSkyOptions(clouds);
+                case WEATHER -> addWeatherOptions();
                 case PERFORMANCE -> addPerformanceOptions();
                 case OTHER -> addOtherOptions();
                 case DEBUG -> addDebugOptions();
@@ -186,13 +230,15 @@ abstract class SettingsRows extends SettingsUpscalerRows {
             // The Debug section only opens with Advanced on, so its attributes are plain rows (addDebugOptions).
             List<SettingsLayout.Group> groups = section == Category.DEBUG ? new ArrayList<>()
                 : new ArrayList<>(AdvancedOptions.groups(section, this.pendingAdvanced));
-            if (section == Category.SKY_AND_WATER) {
+            endGroup();
+            if (section == Category.SKY) {
                 groups.add(0, skyPathGroup());
             }
             if (section == Category.LIGHTING) {
                 groups.add(BlockEmissionSettings.group(this.pendingBlockEmissions));
             }
-            this.sections.add(new SettingsLayout.Section(section, List.copyOf(this.page), groups));
+            this.sections.add(new SettingsLayout.Section(section, List.copyOf(this.page), groups,
+                List.copyOf(this.pageGroups)));
         }
     }
 
@@ -271,8 +317,13 @@ abstract class SettingsRows extends SettingsUpscalerRows {
                     refreshQualityLater();
                 });
         }
-        addRows(preset, dlssMode, rayReconstructionOption(), upscalerModeOption(), renderScaleOption(),
-            outputResolutionOption(), outputScaleOption(), frameGenerationBackendOption(), frameGeneration, reflex);
+        group("upscaling");
+        addRows(preset, dlssMode, upscalerModeOption(), renderScaleOption());
+        addAdvanced(rayReconstructionOption(), outputResolutionOption(), outputScaleOption(),
+            tunable(Tunable.FSR_SHARPNESS, false));
+        group("frame_generation");
+        addRows(frameGeneration, reflex);
+        addAdvanced(frameGenerationBackendOption());
     }
 
     private void addImageOptions() {
@@ -302,12 +353,15 @@ abstract class SettingsRows extends SettingsUpscalerRows {
                     this.pendingToneMethod = value;
                     refreshQualityLater();
                 });
-        addRows(style, method, tunable(Tunable.SATURATION, true), tunable(Tunable.TEXTURE_CONTRAST, false),
-            tunable(Tunable.EXPOSURE_ADAPTATION, false),
-            tunable(Tunable.EXPOSURE_SPEED, false), tunable(Tunable.EXPOSURE_BIAS, false),
-            tunable(Tunable.LOCAL_TONE_MAPPING, false), tunable(Tunable.LOW_LIGHT_BOOST, false), tunable(Tunable.DAY_LOW_LIGHT_LIMIT, false),
-            tunable(Tunable.FSR_SHARPNESS, false));
+        addRows(style, tunable(Tunable.SATURATION, true), tunable(Tunable.EXPOSURE_BIAS, false));
+        group("tone");
+        addRows(tunable(Tunable.LOCAL_TONE_MAPPING, false));
+        addAdvanced(method, tunable(Tunable.TEXTURE_CONTRAST, false), tunable(Tunable.EXPOSURE_ADAPTATION, false),
+            tunable(Tunable.EXPOSURE_SPEED, false), tunable(Tunable.LOW_LIGHT_BOOST, false),
+            tunable(Tunable.DAY_LOW_LIGHT_LIMIT, false));
+        group("hdr");
         addHdrOptions();
+        group("camera");
         if (PipelineSettings.supportsShaderPackToggle(RtAttributes.MOTION_BLUR_ATTRIBUTE)
             && PipelineSettings.supportsShaderPackToggle(RtAttributes.DEPTH_OF_FIELD_ATTRIBUTE)) {
             if (this.pendingMotionBlur == null) {
@@ -321,8 +375,8 @@ abstract class SettingsRows extends SettingsUpscalerRows {
                     this.pendingMotionBlur, value -> this.pendingMotionBlur = value),
                 OptionInstance.createBoolean("options.radiante.depth_of_field",
                     tooltip("options.radiante.depth_of_field"), this.pendingDepthOfField,
-                    value -> this.pendingDepthOfField = value),
-                tunable(Tunable.MOTION_BLUR_STRENGTH, false),
+                    value -> this.pendingDepthOfField = value));
+            addAdvanced(tunable(Tunable.MOTION_BLUR_STRENGTH, false),
                 tunable(Tunable.DOF_STRENGTH, false), tunable(Tunable.DOF_RANGE, false),
                 packToggle(RtAttributes.DOF_AUTO_FOCUS_ATTRIBUTE, "options.radiante.dof_auto_focus"),
                 tunable(Tunable.DOF_FOCUS_DISTANCE, false));
@@ -337,8 +391,16 @@ abstract class SettingsRows extends SettingsUpscalerRows {
             brightnessSlider("options.radiante.emission_brightness", staged("emissionBrightness", Options.emissionBrightness),
                 value -> stage("emissionBrightness", value)),
             brightnessSlider("options.radiante.held_light_brightness", staged("heldLightBrightness", Options.heldLightBrightness),
-                value -> stage("heldLightBrightness", value)),
-            tunable(Tunable.TRANSLUCENCY, false),
+                value -> stage("heldLightBrightness", value)));
+        group("player_light");
+        addRows(OptionInstance.createBoolean("options.radiante.held_item_light",
+                tooltip("options.radiante.held_item_light"), staged("heldItemLight", Options.heldItemLight),
+                value -> stage("heldItemLight", value)),
+            OptionInstance.createBoolean("options.radiante.first_person_shadow",
+                OptionInstance.cachedConstantTooltip(Component.translatable("options.radiante.first_person_shadow.tooltip")),
+                this.pendingFirstPersonShadow, value -> this.pendingFirstPersonShadow = value));
+        group("light_sources");
+        addAdvanced(
             OptionInstance.createBoolean("options.radiante.block_light_sampling",
                 tooltip("options.radiante.block_light_sampling"), staged("blockLightSampling", Options.blockLightSampling),
                 value -> {
@@ -353,20 +415,15 @@ abstract class SettingsRows extends SettingsUpscalerRows {
             OptionInstance.createBoolean("options.radiante.unlit_block_light",
                 tooltip("options.radiante.unlit_block_light"),
                 staged("unlitBlockLight", Options.unlitBlockLight), value -> stage("unlitBlockLight", value)),
-            OptionInstance.createBoolean("options.radiante.held_item_light",
-                tooltip("options.radiante.held_item_light"), staged("heldItemLight", Options.heldItemLight),
-                value -> stage("heldItemLight", value)),
             new OptionInstance<Integer>("options.radiante.entity_light_reach",
                 SettingsRows.<Integer>tooltip("options.radiante.entity_light_reach"),
                 (caption, value) -> Component.translatable("options.radiante.blocks_value", caption, value),
                 new OptionInstance.IntRange(8, 256, false), this.pendingEntityLightReach,
                 value -> this.pendingEntityLightReach = value),
-            OptionInstance.createBoolean("options.radiante.first_person_shadow",
-                OptionInstance.cachedConstantTooltip(Component.translatable("options.radiante.first_person_shadow.tooltip")),
-                this.pendingFirstPersonShadow, value -> this.pendingFirstPersonShadow = value));
+            tunable(Tunable.TRANSLUCENCY, false));
     }
 
-    private void addSkyAndWaterOptions(OptionInstance<String> clouds) {
+    private void addSkyOptions(OptionInstance<String> clouds) {
         // Without Bedrock's sky tables the renderer draws the Java sky whatever this says: shown as Java, greyed,
         // with the reason, and the stored choice left alone for when the files turn up.
         boolean bedrockSky = bedrockFilesPresent("sky.png", "look_up_tables.png");
@@ -424,6 +481,66 @@ abstract class SettingsRows extends SettingsUpscalerRows {
                 tooltip("options.radiante.cloud_shadows"), this.pendingCloudShadows,
                 value -> this.pendingCloudShadows = value);
         }
+        group("sky");
+        addRows(atmosphere, sunPathOption(), tunable(Tunable.STARS, false));
+        addAdvanced(brightnessSlider("options.radiante.star_altitude", staged("starAltitude", Options.starAltitude),
+                value -> stage("starAltitude", value)),
+            tunable(Tunable.SUN_GLOW, false),
+            OptionInstance.createBoolean("options.radiante.vanilla_celestial_orientation",
+                OptionInstance.cachedConstantTooltip(
+                    Component.translatable("options.radiante.vanilla_celestial_orientation.tooltip")),
+                staged("vanillaCelestialOrientation", Options.vanillaCelestialOrientation), value -> stage("vanillaCelestialOrientation", value)));
+        group("clouds");
+        addRows(clouds, cloudHeight, cloudThickness, cloudShadows);
+        addAdvanced(tunable(Tunable.CLOUD_COVERAGE, false), tunable(Tunable.CLOUD_DENSITY, false),
+            tunable(Tunable.CLOUD_QUALITY, false));
+        group("fog");
+        addRows(volumetricFog, volumetricStrength,
+            OptionInstance.createBoolean("options.radiante.biome_ambiance",
+                OptionInstance.cachedConstantTooltip(Component.translatable("options.radiante.biome_ambiance.tooltip")),
+                this.pendingBiomeAmbiance, value -> this.pendingBiomeAmbiance = value));
+        addAdvanced(fogStyle, tunable(Tunable.FOG_DISTANCE, false),
+            new OptionInstance<>("options.radiante.biome_ambiance_strength",
+                tooltip("options.radiante.biome_ambiance_strength"),
+                (caption, value) -> Component.translatable("options.percent_value", caption, value),
+                new OptionInstance.IntRange(0, 400, false), this.pendingBiomeAmbianceStrength,
+                value -> this.pendingBiomeAmbianceStrength = value),
+            tunable(Tunable.LIGHT_SHAFTS, false), tunable(Tunable.FOG_VEIL_DIMMING, false),
+            tunable(Tunable.AERIAL_PERSPECTIVE, false), tunable(Tunable.AERIAL_PERSPECTIVE_START, false));
+    }
+
+    private void addWeatherOptions() {
+        group("rain");
+        addRows(OptionInstance.createBoolean("options.radiante.rain_wetness",
+                tooltip("options.radiante.rain_wetness"), staged("rainWetness", Options.rainWetness),
+                value -> stage("rainWetness", value)),
+            tunable(Tunable.PUDDLES, false));
+        addAdvanced(tunable(Tunable.RAIN_WETNESS, false), tunable(Tunable.RAIN_WET_WALLS, false),
+            tunable(Tunable.RAIN_WET_UP_TIME, false), tunable(Tunable.RAIN_DRYING_TIME, false),
+            tunable(Tunable.RAIN_OPACITY, false), tunable(Tunable.RAIN_STREAKS, false),
+            tunable(Tunable.LIGHTNING_FLASH, false));
+        group("snow");
+        addRows(OptionInstance.createBoolean("options.radiante.snow_accumulation",
+                tooltip("options.radiante.snow_accumulation"), staged("snowAccumulation", Options.snowAccumulation),
+                value -> stage("snowAccumulation", value)),
+            tunable(Tunable.SNOW_FROST, false),
+            OptionInstance.createBoolean("options.radiante.snow_on_paths",
+                tooltip("options.radiante.snow_on_paths"), staged("snowOnPaths", Options.snowOnPaths),
+                value -> stage("snowOnPaths", value)));
+        group("water");
+        addRows(OptionInstance.createBoolean("options.radiante.water_foam",
+                tooltip("options.radiante.water_foam"), staged("waterFoam", Options.waterFoam),
+                value -> stage("waterFoam", value)),
+            tunable(Tunable.WATER_WAVES, false));
+        addAdvanced(tunable(Tunable.WATER_RIPPLES, false), tunable(Tunable.WATER_DENSITY, false),
+            tunable(Tunable.WATER_GOD_RAYS, false), tunable(Tunable.WATER_TEXTURE, false),
+            tunable(Tunable.WATER_CLEAR_TEAL, false));
+        group("wind");
+        addRows(packToggle(RtAttributes.WIND_ATTRIBUTE, "options.radiante.wind"), tunable(Tunable.WIND_STRENGTH, false));
+    }
+
+    /** The Glass & Portals group of Other: seamless glass, which glass it joins, and how clear a portal is. */
+    private void addGlassOptions(OptionInstance<?> parallaxEdges) {
         OptionInstance<Boolean> seamlessGlass = null;
         if (PipelineSettings.supportsShaderPackToggle(RtAttributes.SEAMLESS_GLASS_ATTRIBUTE)) {
             if (this.pendingSeamlessGlass == null) {
@@ -448,47 +565,9 @@ abstract class SettingsRows extends SettingsUpscalerRows {
                     SEAMLESS_SCOPE + ".panes"), com.mojang.serialization.Codec.STRING),
                 this.pendingSeamlessScope, value -> this.pendingSeamlessScope = value);
         }
-        addRows(atmosphere, clouds, cloudHeight, cloudThickness, cloudShadows, tunable(Tunable.CLOUD_COVERAGE, false),
-            tunable(Tunable.CLOUD_DENSITY, false), tunable(Tunable.CLOUD_QUALITY, false), tunable(Tunable.STARS, false),
-            brightnessSlider("options.radiante.star_altitude", staged("starAltitude", Options.starAltitude),
-                value -> stage("starAltitude", value)),
-            tunable(Tunable.SUN_GLOW, false),
-            tunable(Tunable.LIGHT_SHAFTS, false), tunable(Tunable.FOG_VEIL_DIMMING, false),
-            tunable(Tunable.AERIAL_PERSPECTIVE, false), tunable(Tunable.AERIAL_PERSPECTIVE_START, false),
-            sunPathOption(),
-            OptionInstance.createBoolean("options.radiante.vanilla_celestial_orientation",
-                OptionInstance.cachedConstantTooltip(
-                    Component.translatable("options.radiante.vanilla_celestial_orientation.tooltip")),
-                staged("vanillaCelestialOrientation", Options.vanillaCelestialOrientation), value -> stage("vanillaCelestialOrientation", value)),
-            OptionInstance.createBoolean("options.radiante.rain_wetness",
-                tooltip("options.radiante.rain_wetness"), staged("rainWetness", Options.rainWetness),
-                value -> stage("rainWetness", value)),
-            OptionInstance.createBoolean("options.radiante.snow_accumulation",
-                tooltip("options.radiante.snow_accumulation"), staged("snowAccumulation", Options.snowAccumulation),
-                value -> stage("snowAccumulation", value)),
-            OptionInstance.createBoolean("options.radiante.snow_on_paths",
-                tooltip("options.radiante.snow_on_paths"), staged("snowOnPaths", Options.snowOnPaths),
-                value -> stage("snowOnPaths", value)),
-            OptionInstance.createBoolean("options.radiante.water_foam",
-                tooltip("options.radiante.water_foam"), staged("waterFoam", Options.waterFoam),
-                value -> stage("waterFoam", value)),
-            tunable(Tunable.RAIN_WETNESS, false), tunable(Tunable.RAIN_WET_WALLS, false),
-            tunable(Tunable.PUDDLES, false), tunable(Tunable.SNOW_FROST, false),
-            tunable(Tunable.RAIN_WET_UP_TIME, false),
-            tunable(Tunable.RAIN_DRYING_TIME, false), tunable(Tunable.LIGHTNING_FLASH, false),
-            packToggle(RtAttributes.WIND_ATTRIBUTE, "options.radiante.wind"), tunable(Tunable.WIND_STRENGTH, false),
-            seamlessGlass, seamlessScope,
-            OptionInstance.createBoolean("options.radiante.biome_ambiance",
-                OptionInstance.cachedConstantTooltip(Component.translatable("options.radiante.biome_ambiance.tooltip")),
-                this.pendingBiomeAmbiance, value -> this.pendingBiomeAmbiance = value),
-            new OptionInstance<>("options.radiante.biome_ambiance_strength",
-                tooltip("options.radiante.biome_ambiance_strength"),
-                (caption, value) -> Component.translatable("options.percent_value", caption, value),
-                new OptionInstance.IntRange(0, 400, false), this.pendingBiomeAmbianceStrength,
-                value -> this.pendingBiomeAmbianceStrength = value),
-            volumetricFog, fogStyle, volumetricStrength, tunable(Tunable.FOG_DISTANCE, false),
-            tunable(Tunable.WATER_WAVES, false), tunable(Tunable.WATER_RIPPLES, false),
-            tunable(Tunable.WATER_DENSITY, false), tunable(Tunable.WATER_GOD_RAYS, false));
+        group("glass");
+        addRows(seamlessGlass);
+        addAdvanced(seamlessScope, tunable(Tunable.PORTAL_TRANSPARENCY, false), parallaxEdges);
     }
 
     /** The Sun Path choices: vanilla's path, the one leaning south, or what the Sun & Moon Path group sets. */
@@ -609,16 +688,17 @@ abstract class SettingsRows extends SettingsUpscalerRows {
                 this.pendingFogSamples = value;
                 refreshQualityLater();
             });
-        addRows(bounces, tunable(Tunable.MIRROR_BOUNCES, false), tunable(Tunable.MIRROR_SMOOTHNESS, false),
-            tunable(Tunable.WATER_TEXTURE, false),
-            tunable(Tunable.WATER_CLEAR_TEAL, false),
-            tunable(Tunable.PORTAL_TRANSPARENCY, false),
-            tunable(Tunable.RAIN_OPACITY, false), tunable(Tunable.RAIN_STREAKS, false),
+        group("materials");
+        addRows(parallax, textureDetailOption());
+        addAdvanced(packToggle(RtAttributes.BEDROCK_MATERIALS_ATTRIBUTE, "options.radiante.bedrock_materials"));
+        group("tracing");
+        addAdvanced(bounces, tunable(Tunable.MIRROR_BOUNCES, false), tunable(Tunable.MIRROR_SMOOTHNESS, false),
             packToggle(RtAttributes.CACHE_DEEP_BOUNCES_ATTRIBUTE, "options.radiante.cache_deep_bounces"),
             packToggle(RtAttributes.BEDROCK_ONE_BOUNCE_ATTRIBUTE, "options.radiante.bedrock_one_bounce"),
             packToggle(RtAttributes.TRANSPARENT_CHECKERBOARD_ATTRIBUTE, "options.radiante.transparent_checkerboard"),
-            parallax, packToggle(RtAttributes.BEDROCK_MATERIALS_ATTRIBUTE, "options.radiante.bedrock_materials"),
-            textureDetailOption(), fogSamples,
+            fogSamples);
+        group("world");
+        addRows(
             OptionInstance.createBoolean("options.radiante.chunk_building_auto",
                 OptionInstance.cachedConstantTooltip(Component.translatable("options.radiante.chunk_building_auto.tooltip",
                     Runtime.getRuntime().availableProcessors(), Options.autoChunkBuilding()[0],
@@ -639,7 +719,8 @@ abstract class SettingsRows extends SettingsUpscalerRows {
             this.pendingChunkAuto ? null : slider("options.radiante.chunk_building_batch_size", 1, 64,
                 this.pendingChunkBatchSize, value -> this.pendingChunkBatchSize = value),
             this.pendingChunkAuto ? null : slider("options.radiante.chunk_building_total_batches", 1, 64,
-                this.pendingChunkTotalBatches, value -> this.pendingChunkTotalBatches = value),
+                this.pendingChunkTotalBatches, value -> this.pendingChunkTotalBatches = value));
+        addAdvanced(
             OptionInstance.createBoolean("options.radiante.collect_chunk_emission",
                 tooltip("options.radiante.collect_chunk_emission"), this.pendingCollectEmission,
                 value -> this.pendingCollectEmission = value));
@@ -660,10 +741,10 @@ abstract class SettingsRows extends SettingsUpscalerRows {
                 value -> stage("modOverlays", value)),
             OptionInstance.createBoolean("options.radiante.text_backgrounds",
                 tooltip("options.radiante.text_backgrounds"), staged("textBackgrounds", Options.textBackgrounds),
-                value -> stage("textBackgrounds", value)),
-            OptionInstance.createBoolean("options.radiante.parallax_transparent_edges",
-                tooltip("options.radiante.parallax_transparent_edges"), staged("parallaxTransparentEdges", Options.parallaxTransparentEdges),
-                value -> stage("parallaxTransparentEdges", value)));
+                value -> stage("textBackgrounds", value)));
+        addGlassOptions(OptionInstance.createBoolean("options.radiante.parallax_transparent_edges",
+            tooltip("options.radiante.parallax_transparent_edges"), staged("parallaxTransparentEdges", Options.parallaxTransparentEdges),
+            value -> stage("parallaxTransparentEdges", value)));
     }
 
     /**

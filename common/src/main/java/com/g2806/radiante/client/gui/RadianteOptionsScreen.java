@@ -30,7 +30,7 @@ public class RadianteOptionsScreen extends SettingsRows {
 
     /** The part of the settings shown; kept while the game runs, so the screen reopens where it was left. */
     enum Category {
-        QUALITY, IMAGE, LIGHTING, SKY_AND_WATER, PERFORMANCE, OTHER,
+        QUALITY, IMAGE, LIGHTING, SKY, WEATHER, PERFORMANCE, OTHER,
         /** The settings of the shader pack in use (PackSettingsPage), named after it; only with a pack other than Radiante PT. */
         PACK,
         /** Other mods' options (RadianteAddons); only there when one registered. */

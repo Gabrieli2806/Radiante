@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Settings menu, reordered: each section opens with the few settings most players want, then groups under headings that fold (Upscaling, Clouds, Fog, Rain, Snow...). Without Advanced a group shows only its everyday settings and every section fits on one screen; Advanced adds the tuning ones under the same heading. Sky & Water became Sky & Fog and Water & Weather; the water, rain and portal settings left Performance for the sections they belong to, and glass has a group in Other. No setting was removed, and the search still finds them all.
+
+- Snow under a roof: a block put down or taken away under a roof built a moment ago starts bare too (the roof's own recent change no longer comes first).
+
 - Lights set down light the world again. Since the settings file holds only what differs from the defaults, a setting never changed was never handed to the renderer, whose own copy starts unset: the block lights were not collected at all, so no torch, lantern, lamp or glowing block lit anything (only its own glow showed), houses were dark inside by day and by night, and the eye sat at its widest. The light held in the hand needs no list and went on working, which is why it lit so much more than the same light set down. Settings the file leaves out are now loaded at their defaults.
 
 - Snow under roofs and fences: the snow falls past fences, walls, fence gates and panes onto the block they stand on, which takes it on its top and the band along its sides (the rim of a well with its posts, a wall topped with a fence); before, the fence was taken for the top of its column and the block under it stayed bare. A block under a roof or an overhang with open air over it carries the band on the side facing the open, where the snow blown in under the roof lies along its top, and one swapped for another there starts bare and gathers that snow again instead of keeping the old block's.

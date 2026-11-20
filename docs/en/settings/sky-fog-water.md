@@ -1,8 +1,10 @@
 [← Settings](../settings.md) · [Index](../README.md)
 
-# Sky & Water
+# Sky & Fog, Water & Weather
 
-![Radiante settings: Sky & Water](../../images/ui/settings-sky.png)
+Two sections of the menu, on one page: **Sky & Fog** (groups Sky, Clouds, Fog) and **Water & Weather** (groups Rain, Snow, Water, Wind). Seamless Glass and Portal Transparency are in **Other**, under Glass & Portals.
+
+![Radiante settings: Sky & Fog](../../images/ui/settings-sky.png)
 
 **Volumetric fog.** Fog off and on at noon.
 
