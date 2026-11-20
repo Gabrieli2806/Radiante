@@ -310,7 +310,7 @@ void main() {
     float progress = skyUBO.rainGradient;
     float celestialSeen = rayCrossedCloud(mainRay) ? CLOUD_DISC_SEEN : 1.0;
     mainRay.directLightRadiance.x *= celestialSeen;
-    vec3 rainyRadiance = mix(vec3(0.0), vec3(0.1), smoothstep(-0.3, 0.3, sunDir.y));
+    vec3 rainyRadiance = celestialOvercastRadiance();
     // The overcast is heavier overhead than at the horizon, where the light comes in under the clouds, and darker
     // still in a thunderstorm; over the whole sky it gives about the light the flat grey did, less in a storm.
     rainyRadiance *= mix(1.25, 0.85, clamp(rayDir.y, 0.0, 1.0)) * mix(1.0, RAIN_STORM_SKY, skyUBO.thunderGradient);

@@ -163,7 +163,7 @@ vec3 aerialHazeRadiance(vec3 rayDir) {
     float rise = max(rayDir.y, 0.04);
     vec3 dir = vec3(bearing.x * sqrt(1.0 - rise * rise), rise, bearing.y * sqrt(1.0 - rise * rise));
     vec3 sky = max(texture(skyFull, dir).rgb, vec3(0.0));
-    vec3 rainy = mix(vec3(0.0), vec3(0.1), smoothstep(-0.3, 0.3, celestialSunDirection().y));
+    vec3 rainy = celestialOvercastRadiance();
     return mix(sky, rainy, clamp(skyUBO.rainGradient, 0.0, 1.0));
 }
 
