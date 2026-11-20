@@ -591,8 +591,9 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
             // The cursor is hidden and held where it was pressed while the view turns, as the game holds it while
             // playing: it used to run to the edge of the window, where the turn stopped, or out of it.
             if (this.minecraft != null) {
-                this.pressPixelX = this.minecraft.mouseHandler.xpos();
-                this.pressPixelY = this.minecraft.mouseHandler.ypos();
+                var mouse = (com.g2806.radiante.mixin.gui.MouseHandlerAccessor) this.minecraft.mouseHandler;
+                this.pressPixelX = mouse.radiante$x();
+                this.pressPixelY = mouse.radiante$y();
                 VersionCompat.showCursor(false);
             }
             return true;
