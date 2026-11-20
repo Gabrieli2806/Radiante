@@ -68,7 +68,7 @@ attributeConfigs:
     runtime: true
   - name: "render_pipeline.module.tone_mapping.attribute.exposure_bias"
     type: "float_range:-8.0-8.0"
-    value: "0.0"
+    value: "-0.5"
     runtime: true
   - name: "render_pipeline.module.tone_mapping.attribute.white_point"
     type: "float_range:0.0-64.0"
@@ -115,11 +115,11 @@ attributeConfigs:
     runtime: true
   - name: "render_pipeline.module.tone_mapping.attribute.contrast"
     type: "float_range:0.25-4.0"
-    value: "1.0"
+    value: "1.06"
     runtime: true
   - name: "render_pipeline.module.tone_mapping.attribute.shadow_contrast"
     type: "float_range:-2.0-2.0"
-    value: "0.0"
+    value: "0.12"
     runtime: true
   - name: "render_pipeline.module.tone_mapping.attribute.shadow_contrast_end"
     type: "float_range:-8.0-4.0"
@@ -135,7 +135,7 @@ attributeConfigs:
     runtime: true
   - name: "render_pipeline.module.tone_mapping.attribute.curve_shift"
     type: "float_range:-4.0-4.0"
-    value: "0.05"
+    value: "-0.15"
     runtime: true
   - name: "render_pipeline.module.tone_mapping.attribute.curve_max_exposure_increase"
     type: "float_range:0.0-16.0"
@@ -163,7 +163,7 @@ attributeConfigs:
     runtime: true
   - name: "render_pipeline.module.tone_mapping.attribute.local_tone_mapping"
     type: "float_range:0.0-1.0"
-    value: "0.4"
+    value: "0.15"
     runtime: true
   - name: "render_pipeline.module.tone_mapping.attribute.local_tone_mapping_shadows"
     type: "float_range:0.0-1.0"

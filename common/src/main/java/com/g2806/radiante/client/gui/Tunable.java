@@ -18,11 +18,22 @@ enum Tunable {
     EXPOSURE_ADAPTATION(Pipeline.TONE_MAPPING_MODULE_NAME,
         "render_pipeline.module.tone_mapping.attribute.exposure_adaptation", 0.01, 0, 100, 100, Format.PERCENT),
     EXPOSURE_BIAS(Pipeline.TONE_MAPPING_MODULE_NAME, "render_pipeline.module.tone_mapping.attribute.exposure_bias",
-        0.1, -30, 30, 0, Format.EV),
+        0.1, -30, 30, -5, Format.EV),
     // How far the bright and the dark parts of one picture are brought together: the sky outside a cave or a window
     // no longer white, the room or the cave no longer black (tone_mapping/local_tone.comp).
     LOCAL_TONE_MAPPING(Pipeline.TONE_MAPPING_MODULE_NAME,
-        "render_pipeline.module.tone_mapping.attribute.local_tone_mapping", 0.01, 0, 100, 40, Format.PERCENT),
+        "render_pipeline.module.tone_mapping.attribute.local_tone_mapping", 0.01, 0, 100, 15, Format.PERCENT),
+    // How bright the picture comes out of the tone curve, in stops. The Exposure above goes in before Bedrock's
+    // curve, which is fitted to the picture again each frame and gave most of it back: half a stop down there was
+    // a tenth of a stop on the screen. This one is after the curve, and shows in full.
+    TONE_BRIGHTNESS(Pipeline.TONE_MAPPING_MODULE_NAME, "render_pipeline.module.tone_mapping.attribute.curve_shift",
+        0.05, -40, 40, -3, Format.EV),
+    // The contrast of the finished picture round middle grey.
+    CONTRAST(Pipeline.TONE_MAPPING_MODULE_NAME, "render_pipeline.module.tone_mapping.attribute.contrast", 0.01, 50,
+        200, 106, Format.PERCENT),
+    // How much deeper the darkest parts of the picture are taken: shadows that read as shadows, not as a dim grey.
+    SHADOW_DEPTH(Pipeline.TONE_MAPPING_MODULE_NAME, "render_pipeline.module.tone_mapping.attribute.shadow_contrast",
+        0.01, 0, 100, 12, Format.PERCENT),
     // One slider for both directions: how fast the exposure follows going into the light and into the dark.
     EXPOSURE_SPEED(Pipeline.TONE_MAPPING_MODULE_NAME, "render_pipeline.module.tone_mapping.attribute.exposure_up_speed",
         "render_pipeline.module.tone_mapping.attribute.exposure_down_speed", 0.08, 5, 250, 100, Format.PERCENT),

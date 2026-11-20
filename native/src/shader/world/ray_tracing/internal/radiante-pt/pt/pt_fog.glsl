@@ -102,9 +102,11 @@
 // stays a dim cavern with a dark red haze. Lava is kept orange by holding down what it shows (NETHER_GLOW_SCALE,
 // pt_material.glsl), not by the eye: held as low as lava asked (0.15), torchlit rock was near black. At 0.25 the
 // rock beside a sea of lava was still a few dark reds against one bright sheet; lava shows by its own rule
-// whatever the eye does (ptShapeLava), so the eye is opened to 0.35 for the rock alone.
+// whatever the eye does (ptShapeLava), so the eye was opened to 0.35 for the rock alone. With Local Tone Mapping
+// lifting the dark rock on its own, 0.35 left the Nether one flat, bright red from the lava to the far walls: at 0.28,
+// with the lifting kept low in the Nether (tone_mapping.frag), the lava stands out of a dark, red cavern.
 #ifndef NETHER_EXPOSURE_SCALE
-#    define NETHER_EXPOSURE_SCALE 0.35
+#    define NETHER_EXPOSURE_SCALE 0.28
 #endif
 
 // Radiante PT's picture by day, against what the meter would bring it to.
