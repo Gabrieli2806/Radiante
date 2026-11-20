@@ -8,6 +8,13 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 @Mixin(MouseHandler.class)
 public interface MouseHandlerAccessor {
 
+    /** Read through here too: the handler's own getters are not in every version. */
+    @Accessor("xpos")
+    double radiante$x();
+
+    @Accessor("ypos")
+    double radiante$y();
+
     @Accessor("xpos")
     void radiante$setX(double x);
 
