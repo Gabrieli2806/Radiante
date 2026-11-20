@@ -130,7 +130,7 @@ final class AdvancedOptions {
             return new String[] {"IMAGE", "exposure"};
         }
         if (module.equals(Pipeline.POST_RENDER_MODULE_NAME)) {
-            return new String[] {"SKY_AND_WATER", "stars"};
+            return new String[] {"SKY", "stars"};
         }
         if (module.equals("render_pipeline.module.nrd.name")) {
             return new String[] {"PERFORMANCE", "denoiser"};
@@ -142,17 +142,17 @@ final class AdvancedOptions {
             return new String[] {"DEBUG", "debug"};
         }
         if (name.contains("cloud")) {
-            return new String[] {"SKY_AND_WATER", "clouds"};
+            return new String[] {"SKY", "clouds"};
         }
         if (name.contains("water")) {
-            return new String[] {"SKY_AND_WATER", "water"};
+            return new String[] {"WEATHER", "water"};
         }
         if (name.contains("fog") || name.contains("volumetric")) {
-            return new String[] {"SKY_AND_WATER", "fog"};
+            return new String[] {"SKY", "fog"};
         }
         if (name.contains("atmosphere") || name.contains("rayleigh") || name.contains("mie_") || name.contains("sky")
             || name.startsWith("sun_") || name.startsWith("moon_") || name.contains("view_cosine")) {
-            return new String[] {"SKY_AND_WATER", "atmosphere"};
+            return new String[] {"SKY", "atmosphere"};
         }
         if (name.startsWith("post_")) {
             return new String[] {"IMAGE", "camera"};

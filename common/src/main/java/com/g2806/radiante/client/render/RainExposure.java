@@ -485,9 +485,11 @@ public final class RainExposure {
                         lowered[column] = y < before || fluidTop[column] && !fluid;
                         fluidChange[column] = fluid || fluidTop[column];
                         underStamp[column] = false;
-                    } else if (underReplaced && (Float.isNaN(exposedAt[column]) || underStamp[column])) {
-                        // A block under the top swapped: the stamp is its own while the top's has run out (the top's
-                        // own change comes first).
+                    } else if (underReplaced) {
+                        // A block under the top swapped: the stamp is its own from now on, the latest change's. While
+                        // the top still held its own (a roof built a moment ago), the block put down or taken away
+                        // under it kept or showed at once the snow blown in there: the player under a roof looks at
+                        // what is under it, not at the roof's top, which reads as settled from here on.
                         exposedAt[column] = clock;
                         lowered[column] = false;
                         fluidChange[column] = false;

@@ -59,7 +59,7 @@ Algunas filas salen en gris con los valores por defecto, y el panel de la derech
 |---|---|---|
 | ![Natural](../../images/compare/styles-natural.webp) | ![Bedrock](../../images/compare/styles-bedrock.webp) | ![Vívido](../../images/compare/styles-vivid.webp) |
 
-El Estilo de Imagen y la **Atmósfera** (en [Cielo y Agua](cielo-niebla-agua.md)) son independientes: la Atmósfera
+El Estilo de Imagen y la **Atmósfera** (en [Cielo y Niebla](cielo-niebla-agua.md)) son independientes: la Atmósfera
 elige de dónde salen los colores del cielo, el Estilo cómo se procesa la imagen final.
 
 La Salida HDR y sus controles de brillo se explican en [HDR](../hdr.md).
