@@ -589,6 +589,18 @@ void Chunks::allocateChunkPackedDataBuffers() {
         buffer = gpu::DeviceLocalBuffer::create(framework->vma(), framework->device(), false, bytes,
                                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     }
+    // Every copy is written before any frame reads it. A slot's copy was written only when that slot opened
+    // (resetFrame), and a reset comes between frames, after the next slot has opened: that frame traced a table
+    // never written, memory just freed by the old grid, holding the addresses of its light buffers. The light grid
+    // followed one into freed memory and the device was lost (turning ray tracing back on, the Before / After
+    // comparison, more often in a world with many lights).
+    auto buffers = Renderer::instance().buffers();
+    if (buffers == nullptr) return;
+    for (size_t frame = 0; frame < chunkPackedDataBuffers_.size(); frame++) {
+        chunkPackedDataBuffers_[frame]->uploadToStagingBuffer(chunkPackedData_.data(), bytes, 0);
+        buffers->queueImportantWorldUpload(chunkPackedDataBuffers_[frame]);
+        chunkPackedDataUploaded_[frame] = chunkPackedDataRevision_;
+    }
 }
 
 void Chunks::releaseEmissionResources() {
