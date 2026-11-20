@@ -3,6 +3,7 @@ package com.g2806.radiante.client.render;
 import com.g2806.radiante.client.option.Options;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
@@ -31,6 +32,19 @@ public final class SnowPrints {
     private static final int SLUSH = 2;
     private static final int CARRIED_SNOW = 3;
     private static final int WET = 4;
+    private static final int MELT = 5;
+
+    /** Seconds standing still with a heat source before the snow melts, how fast its round grows (blocks a second),
+     * and how far the player may sway without having moved (blocks). */
+    private static final double MELT_DELAY = 2.0;
+    private static final double MELT_GROWTH = 0.5;
+    private static final double MELT_STILL = 0.3;
+    /** The print the held heat source is melting now (-1 none), how long the player has stood still, and where. */
+    private static int meltSlot = -1;
+    private static double meltStill;
+    private static double meltX;
+    private static double meltY;
+    private static double meltZ;
 
     /** Seconds of snowfall that fill a print back in, and of no snowfall that settle one away. */
     private static final double FILL_SECONDS = 45.0;
@@ -115,6 +129,7 @@ public final class SnowPrints {
         if (SNOW_ON_FEET.size() > 256) {
             SNOW_ON_FEET.values().removeIf(state -> state[0] == 0);
         }
+        heldMelt(minecraft, level, now, dt);
 
         int packed = 0;
         for (int i = 0; i < count; i++) {
@@ -140,6 +155,54 @@ public final class SnowPrints {
         }
         PACKED_FLOATS[0] = packed;
         return PACKED_FLOATS;
+    }
+
+    /**
+     * A torch, lantern, campfire, lava bucket or bright light held standing still on the snow: after MELT_DELAY
+     * seconds a round melts out from the feet, growing at MELT_GROWTH blocks a second up to what the block would melt
+     * set down. Walked off or put away, the round stays and fills back in from its rim as the snow falls on it, as a
+     * footprint does. It was the column under the feet warmed like a block, which put the melted ground back at once
+     * and left the columns it had reached bare as squares when the player walked on.
+     */
+    private static void heldMelt(Minecraft minecraft, ClientLevel level, double now, double dt) {
+        LocalPlayer player = minecraft.player;
+        int heat = 0;
+        if (player != null && player.onGround() && !player.isSpectator()) {
+            heat = Math.max(RainExposure.heldHeatOf(player.getMainHandItem()),
+                RainExposure.heldHeatOf(player.getOffhandItem()));
+        }
+        boolean moved = player == null || Math.abs(player.getX() - meltX) > MELT_STILL
+            || Math.abs(player.getZ() - meltZ) > MELT_STILL || Math.abs(player.getY() - meltY) > 0.3;
+        if (heat == 0 || moved) {
+            meltSlot = -1;
+            meltStill = 0.0;
+            if (player != null) {
+                meltX = player.getX();
+                meltY = player.getY();
+                meltZ = player.getZ();
+            }
+            return;
+        }
+        meltStill += dt;
+        BlockPos feet = BlockPos.containing(meltX, meltY + 0.05, meltZ);
+        boolean snowyGround = now - lastSnowfall < SNOW_LINGERS && level.canSeeSky(feet)
+            && level.getBiome(feet).value().getPrecipitationAt(feet, level.getSeaLevel()) == Biome.Precipitation.SNOW;
+        if (meltStill < MELT_DELAY || !snowyGround) {
+            return;
+        }
+        if (meltSlot < 0 || KIND[meltSlot] != MELT) {
+            meltSlot = freeSlot();
+            X[meltSlot] = meltX;
+            Y[meltSlot] = meltY;
+            Z[meltSlot] = meltZ;
+            YAW[meltSlot] = 0.0f;
+            KIND[meltSlot] = MELT;
+            SNOWED_ON[meltSlot] = true;
+        }
+        double reach = heat >= 3 ? 2.4 : 1.5;
+        double radius = Math.min(reach, 0.3 + (meltStill - MELT_DELAY) * MELT_GROWTH);
+        SIZE[meltSlot] = (int) Math.round(radius * 2.0 * 16.0);
+        AGE[meltSlot] = 0.0;
     }
 
     /** A slot for a new print: a free one, else the one most nearly gone (filled in, melted or dried). */

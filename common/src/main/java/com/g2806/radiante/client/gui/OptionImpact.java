@@ -92,6 +92,7 @@ enum OptionImpact {
         Map.entry("options.radiante.tunable.rain_wetness", LOW),
         Map.entry("options.radiante.tunable.rain_wet_walls", LOW),
         Map.entry("options.radiante.snow_accumulation", LOW),
+        Map.entry("options.radiante.snow_on_paths", LOW),
         Map.entry("options.radiante.tunable.snow_frost", LOW),
         Map.entry("options.radiante.tunable.lightning_flash", LOW),
         Map.entry("options.radiante.wind", LOW),

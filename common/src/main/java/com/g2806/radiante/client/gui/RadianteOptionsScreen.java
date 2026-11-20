@@ -512,7 +512,7 @@ public class RadianteOptionsScreen extends SettingsRows {
                 : blockLights ? null : needs(O + "block_light_sampling");
             case "held_light_brightness" ->
                 staged("heldItemLight", Options.heldItemLight) ? null : needs(O + "held_item_light");
-            case "tunable.snow_frost" ->
+            case "tunable.snow_frost", "snow_on_paths" ->
                 staged("snowAccumulation", Options.snowAccumulation) ? null : needs(O + "snow_accumulation");
             case "biome_ambiance_strength" -> this.pendingBiomeAmbiance ? null : needs(O + "biome_ambiance");
             case "atmosphere_style" -> bedrockFilesPresent("sky.png", "look_up_tables.png") ? null
