@@ -871,7 +871,6 @@
   "options.radiante.emission_colour.blue": "Blue",
   "options.radiante.emission_colour.exposure": "Exposure",
   "options.radiante.emission_colour.hint": "Linear RGB multipliers for cast light · visible glow comes from the resource pack",
-  "options.radiante.emission_colour.texture": "Texture",
   "options.radiante.emission_colour.light": "Light it casts",
   "options.radiante.emission_colour.textures": "Applies to its %s textures",
   "key.radiante.photo_mode": "Photo Mode",
