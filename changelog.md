@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Block Emission settings: one row per light block, its textures under one colour, where each texture had a row of its own (a crafter took eleven, a command block four, a lit furnace front one more), named by its face. Each row shows the block's texture, and the editor shows it too with a preview of the pool of light it casts, its colour and brightness following the sliders. Textures no block owns are named by their item (the glow item frame) or in plain words instead of their texture path.
+
 - New default look, Cinematic: a little darker, crisper and deeper in its shadows, with little lifting of the dark parts, so caves and rooms stay dark round their lights and a bright patch is not evened out with the rest. Light Style now sets five sliders: Exposure, Local Tone Mapping and three new ones in Tone & Exposure, Brightness (after the tone curve, where it shows; Exposure goes in before it, and the curve took most of it back), Contrast and Shadow Depth. Balanced keeps the look of before. Settings saved by an earlier version keep their values: pick Cinematic to have the new look.
 
 - The Nether is darker and more dramatic: the eye held lower (0.28 of the meter, from 0.35) and the dark parts lifted far less there, so the lava stands out of a deep red cavern instead of the whole Nether being one bright red; lava shows its texture (its brightest texels no longer pinned at white, in every dimension), and looking away from it the eye opens to the rock.

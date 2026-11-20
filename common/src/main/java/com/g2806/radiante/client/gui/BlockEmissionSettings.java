@@ -13,29 +13,54 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
-/** All emission profiles share the existing staged, searchable Advanced controls. */
+/**
+ * The Block Emission group: one row per light block, its textures under one colour. Each texture of a block was a row
+ * of its own (a crafter's east, south and top, a command block's four faces, a furnace's lit front), named by its
+ * face, so one block took several rows that set the same light piece by piece. A texture no block owns keeps its own
+ * row. Each row shows the block's texture, and its editor a preview of the light.
+ */
 final class BlockEmissionSettings {
     static final String PREFIX = "options.radiante.emission_profile.";
+    /** The textures each row stands for, the first one drawn as its icon (SettingsLayoutDraw). */
+    static final Map<OptionInstance<?>, List<String>> ROW_SPRITES = new java.util.IdentityHashMap<>();
 
     private BlockEmissionSettings() {
     }
 
     static SettingsLayout.Group group(Map<String, EmissionColor> staged) {
-        List<String> profiles = new ArrayList<>(BlockEmissionControls.profiles());
-        profiles.sort(Comparator.comparing(id -> title(id).getString()));
+        Map<String, List<String>> byBlock = new java.util.TreeMap<>();
+        for (String id : BlockEmissionControls.profiles()) {
+            byBlock.computeIfAbsent(blockKey(id), k -> new ArrayList<>()).add(id);
+        }
+        List<Map.Entry<String, List<String>>> blocks = new ArrayList<>(byBlock.entrySet());
+        blocks.sort(Comparator.comparing(entry -> blockTitle(entry.getKey(), entry.getValue()).getString()));
+        ROW_SPRITES.clear();
         List<OptionInstance<?>> rows = new ArrayList<>();
-        for (String id : profiles) {
-            String key = PREFIX + id;
+        for (Map.Entry<String, List<String>> block : blocks) {
+            List<String> ids = List.copyOf(block.getValue());
+            String key = PREFIX + block.getKey();
+            Component name = blockTitle(block.getKey(), ids);
+            EmissionColor current = EmissionColor.WHITE;
+            for (String id : ids) {
+                EmissionColor colour = EmissionOverrides.color(staged, id);
+                if (!colour.equals(EmissionColor.WHITE)) {
+                    current = colour;
+                    break;
+                }
+            }
             var row = new OptionInstance<EmissionColor>(key,
-                OptionInstance.cachedConstantTooltip(Component.translatable(PREFIX + "tooltip", id)),
+                OptionInstance.cachedConstantTooltip(Component.translatable(PREFIX + "tooltip", name)),
                 (caption, colour) -> Component.empty().append(caption).append(": " + colour.display()),
-                new ColourValues(), EmissionOverrides.color(staged, id), value -> {
-                    if (value.equals(EmissionColor.WHITE)) staged.remove(id);
-                    else staged.put(id, value);
+                new ColourValues(), current, value -> {
+                    for (String id : ids) {
+                        if (value.equals(EmissionColor.WHITE)) staged.remove(id);
+                        else staged.put(id, value);
+                    }
                 });
             // A unique key retains focus when captions share a block name; the fallback follows Minecraft's language.
             ((OptionInstanceAccessor) (Object) row).radiante$setCaption(
-                Component.translatableWithFallback(key, title(id).getString()));
+                Component.translatableWithFallback(key, name.getString()));
+            ROW_SPRITES.put(row, ids);
             rows.add(row);
         }
         return new SettingsLayout.Group("options.radiante.advanced.group.block_emission", rows);
@@ -46,7 +71,53 @@ final class BlockEmissionSettings {
         var minecraft = net.minecraft.client.Minecraft.getInstance();
         var colour = (OptionInstance<EmissionColor>) option;
         minecraft.gui.setScreen(new HdrEmissionScreen(minecraft.gui.screen(),
-            ((OptionInstanceAccessor) (Object) option).radiante$caption(), colour.get(), colour::set));
+            ((OptionInstanceAccessor) (Object) option).radiante$caption(), colour.get(), colour::set,
+            ROW_SPRITES.getOrDefault(option, List.of())));
+    }
+
+    /** The texture id as a block atlas sprite, or null before the atlas is there. */
+    static net.minecraft.client.renderer.texture.TextureAtlasSprite sprite(String id) {
+        Identifier name = Identifier.tryParse(id);
+        var minecraft = net.minecraft.client.Minecraft.getInstance();
+        if (name == null || minecraft.getAtlasManager() == null) return null;
+        try {
+            return minecraft.getAtlasManager().getAtlasOrThrow(net.minecraft.data.AtlasIds.BLOCKS).getSprite(name);
+        } catch (RuntimeException missing) {
+            return null;
+        }
+    }
+
+    /** The block a texture belongs to ("minecraft:crafter" for "minecraft:block/crafter_east"), or the texture. */
+    private static String blockKey(String name) {
+        Identifier sprite = Identifier.tryParse(name);
+        if (sprite == null) return name;
+        String blockPath = blockPath(sprite);
+        while (!blockPath.isEmpty()) {
+            Identifier blockId = Identifier.fromNamespaceAndPath(sprite.getNamespace(), blockPath);
+            if (BuiltInRegistries.BLOCK.containsKey(blockId)) return blockId.toString();
+            int split = blockPath.lastIndexOf('_');
+            if (split < 0) break;
+            blockPath = blockPath.substring(0, split);
+        }
+        return name;
+    }
+
+    private static Component blockTitle(String blockKey, List<String> ids) {
+        Identifier blockId = Identifier.tryParse(blockKey);
+        if (blockId != null && BuiltInRegistries.BLOCK.containsKey(blockId)) {
+            return BuiltInRegistries.BLOCK.getValue(blockId).getName();
+        }
+        return title(ids.get(0));
+    }
+
+    private static String blockPath(Identifier sprite) {
+        String path = sprite.getPath().replaceFirst("^block/", "");
+        return switch (path) {
+            case "magma" -> "magma_block";
+            case "pumpkin_face_on" -> "jack_o_lantern";
+            // Redstone dust's sprites, by power (RedstoneGlow's redstone_1 to redstone_15 among them).
+            default -> path.startsWith("redstone_dust") || path.matches("redstone_\\d+") ? "redstone_wire" : path;
+        };
     }
 
     private static final class ColourValues implements OptionInstance.ValueSet<EmissionColor> {
@@ -74,11 +145,7 @@ final class BlockEmissionSettings {
         Identifier sprite = Identifier.tryParse(name);
         if (sprite == null) return Component.literal(name);
         String path = sprite.getPath().replaceFirst("^block/", "");
-        String blockPath = switch (path) {
-            case "magma" -> "magma_block";
-            case "pumpkin_face_on" -> "jack_o_lantern";
-            default -> path.startsWith("redstone_dust") ? "redstone_wire" : path;
-        };
+        String blockPath = blockPath(sprite);
         while (!blockPath.isEmpty()) {
             Identifier blockId = Identifier.fromNamespaceAndPath(sprite.getNamespace(), blockPath);
             if (BuiltInRegistries.BLOCK.containsKey(blockId)) {
@@ -91,6 +158,13 @@ final class BlockEmissionSettings {
             if (split < 0) break;
             blockPath = blockPath.substring(0, split);
         }
-        return Component.translatable(PREFIX + "texture", name);
+        // Not a block's: an item's (the glow item frame), or the texture's own name, written out.
+        Identifier itemId = Identifier.fromNamespaceAndPath(sprite.getNamespace(), path);
+        if (BuiltInRegistries.ITEM.containsKey(itemId)) {
+            return BuiltInRegistries.ITEM.getValue(itemId).getDefaultInstance().getHoverName();
+        }
+        String words = path.replace('/', ' ').replace('_', ' ');
+        return Component.literal(words.isEmpty() ? name
+            : Character.toUpperCase(words.charAt(0)) + words.substring(1));
     }
 }
