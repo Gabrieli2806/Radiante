@@ -113,6 +113,16 @@ float vptLightRangeFade(float distance) {
     return 1.0 - smoothstep(10.0, 16.0, distance);
 }
 
+/**
+ * Whether the player's own model (PLAYER_MASK) stops a block light's shadow ray: in third person, yes; in first
+ * person, no, as for the held light. The model the first person shadow submits stood in the way of the lights round
+ * the player: a torch set down at the feet lit a room a thirtieth of what the same torch held did, and a room lit by
+ * torches went dark as soon as the player stood among them. The sun still casts the player's shadow (pt_direct.glsl).
+ */
+uint vptBlockLightPlayerMask() {
+    return worldUBO.isFirstPerson > 0u ? 0u : g_shadowPlayerMask;
+}
+
 vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, vec3 viewDir, LabPBRMat mat,
                       bool lean) {
     if (worldUBO.blockLightSampling == 0u) { return vec3(0.0); }
@@ -210,7 +220,7 @@ vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, v
     float rayLength = max(chosenDistance - 0.02 - 0.7 * chosenRadius, 0.0002);
     vec3 estimate = chosenContribution / chosenTarget * (weightSum / float(candidates));
     if (g_deferShadowRays) {
-        ptDeferShadowRay(PT_SHADOW_BLOCK, origin, chosenDir, rayLength, WORLD_MASK | g_shadowPlayerMask, BLOCK_LIGHT_QUERY,
+        ptDeferShadowRay(PT_SHADOW_BLOCK, origin, chosenDir, rayLength, WORLD_MASK | vptBlockLightPlayerMask(), BLOCK_LIGHT_QUERY,
                          VPT_INDIRECT_LIGHT_STRENGTH * worldUBO.emissionBrightness * estimate * mainRay.throughput);
         if (recordGrid) {
             g_shadowLightGridCell = gridCell.cellIndex;
@@ -226,7 +236,7 @@ vec3 sampleBlockLight(vec3 worldPos, vec3 geometricNormal, vec3 shadingNormal, v
     shadowRay.throughput = vec3(1.0);
     shadowRay.insideBoat = rayInsideBoat(mainRay) ? 1u : 0u;
     shadowRay.pad0 = BLOCK_LIGHT_QUERY;
-    traceRayEXT(topLevelAS, VPT_SHADOW_RAY_FLAGS, WORLD_MASK | g_shadowPlayerMask, 0, 0, 0, origin, 0.0001, chosenDir,
+    traceRayEXT(topLevelAS, VPT_SHADOW_RAY_FLAGS, WORLD_MASK | vptBlockLightPlayerMask(), 0, 0, 0, origin, 0.0001, chosenDir,
                 rayLength, 1);
     shadowRay.pad0 = 0u;
     vec3 visibility = shadowRay.radiance * shadowRay.throughput;
@@ -551,7 +561,7 @@ vec3 sampleBlockLightRestir(vec3 worldPos, vec3 geometricNormal, vec3 shadingNor
             float rayLength = max(chosenDistance - 0.02, 0.0002);
             if (g_deferShadowRays) {
                 // Stored now with the winner's weight; the deferred ray clears it should the winner be occluded.
-                ptDeferShadowRay(PT_SHADOW_BLOCK, origin, chosenDir, rayLength, WORLD_MASK | g_shadowPlayerMask,
+                ptDeferShadowRay(PT_SHADOW_BLOCK, origin, chosenDir, rayLength, WORLD_MASK | vptBlockLightPlayerMask(),
                                  BLOCK_LIGHT_QUERY,
                                  VPT_INDIRECT_LIGHT_STRENGTH * worldUBO.emissionBrightness *
                                      (chosenContribution * combined.W) * mainRay.throughput);
@@ -571,7 +581,7 @@ vec3 sampleBlockLightRestir(vec3 worldPos, vec3 geometricNormal, vec3 shadingNor
             shadowRay.throughput = vec3(1.0);
             shadowRay.insideBoat = rayInsideBoat(mainRay) ? 1u : 0u;
             shadowRay.pad0 = BLOCK_LIGHT_QUERY;
-            traceRayEXT(topLevelAS, VPT_SHADOW_RAY_FLAGS, WORLD_MASK | g_shadowPlayerMask, 0, 0, 0, origin, 0.0001,
+            traceRayEXT(topLevelAS, VPT_SHADOW_RAY_FLAGS, WORLD_MASK | vptBlockLightPlayerMask(), 0, 0, 0, origin, 0.0001,
                         chosenDir, rayLength, 1);
             shadowRay.pad0 = 0u;
             vec3 visibility = shadowRay.radiance * shadowRay.throughput;

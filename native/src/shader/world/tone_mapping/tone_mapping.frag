@@ -232,14 +232,20 @@ const float LOCAL_TONE_MIN_LUMINANCE = 1.0 / 16384.0;
 // Within this many stops of the anchor the brightness is left nearly as it is: the midtones keep their contrast, and
 // only what is far brighter or far darker than the rest of the picture is moved.
 const float LOCAL_TONE_KNEE = 1.0;
+// Highlights are brought down from where their surroundings, exposed, pass this (log2 of the exposed luminance): white.
+const float LOCAL_TONE_WHITE = 0.0;
 
 // What the radiance at this pixel is multiplied by: the brightness of its surroundings (the guided filter's base) is
-// brought towards the anchor, the pixel's own detail against that base kept.
-float localToneGain(vec3 radiance) {
+// brought back where it would go past white once exposed, and lifted where it is far darker than the anchor; the
+// pixel's own detail against that base kept. Highlights were measured from the anchor, the picture's mean, so at night
+// or in a storm, with the picture's mean low, a room lit by torches stood stops above it and was darkened as if it
+// were the sky through a window: interiors went dark, darker than the ground a held torch lit, which fills the view.
+float localToneGain(vec3 radiance, float exposure) {
     vec2 ab = texture(localToneImage, texCoord).rg;
     float l = log2(max(dot(radiance, LUMA), LOCAL_TONE_MIN_LUMINANCE));
     float base = ab.x * l + ab.y;
-    float offset = clamp(base - localTone.anchor, -24.0, 24.0);
+    float overWhite = base + log2(max(exposure, 1e-12)) - LOCAL_TONE_WHITE;
+    float offset = clamp(overWhite > 0.0 ? overWhite : min(base - localTone.anchor, 0.0), -24.0, 24.0);
     float beyond = offset - LOCAL_TONE_KNEE * tanh(clamp(offset / LOCAL_TONE_KNEE, -10.0, 10.0));
     float strength = offset > 0.0 ? localTone.highlights : localTone.shadows;
     float stops = clamp(-strength * beyond, -4.0, 2.0);
@@ -263,9 +269,10 @@ void main() {
                isnan(hdr.b) ? 0.0 : min(hdr.b, 60000.0));
 
     // Capped again after the exposure, which can lift a large value past what a float divides cleanly.
-    vec3 exposed = clamp(hdr * max(currentExposure(), 0.0), vec3(0.0), vec3(1.0e6));
+    float exposure = max(currentExposure(), 0.0);
+    vec3 exposed = clamp(hdr * exposure, vec3(0.0), vec3(1.0e6));
     if (pc.bloomIntensity > 0.0) { exposed += max(texture(bloomImage, texCoord).rgb, vec3(0.0)) * pc.bloomIntensity; }
-    if (pc.localToneMapping > 0.0) { exposed *= localToneGain(hdr); }
+    if (pc.localToneMapping > 0.0) { exposed *= localToneGain(hdr, exposure); }
 
     float hdrPeak = max(pc.hdrPeak, 1.0);
     if (pc.toneMappingMethod == 6) {
