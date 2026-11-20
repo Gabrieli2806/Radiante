@@ -28,7 +28,9 @@ las manos conservan su historial.
 
 ## Emisión HDR por bloque (Avanzado)
 
-Abre **Iluminación → Avanzado → Emisión de bloques** y pulsa el color del bloque. El selector ofrece RGB,
+Abre **Iluminación → Avanzado → Emisión de bloques**: una fila por bloque de luz, con su textura, y el color se aplica
+a todas sus texturas (cada cara de un crafter, un bloque de comandos o un horno). Pulsa una fila para editarla: el
+selector muestra la textura del bloque y una vista previa de la luz que proyecta, y ofrece RGB,
 exposición y campos numéricos **RGB HDR lineales**. **(1,1,1)** conserva la luz muestreada; **(0,0,0)** apaga la luz proyectada;
 **(10,10,10)** multiplica por diez la luz proyectada. Cada canal admite hasta 65408. El tinte multiplica el color muestreado
 de la textura. El brillo visible conserva el color y la intensidad del paquete, también en espejos y a través del

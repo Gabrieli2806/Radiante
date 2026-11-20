@@ -23,12 +23,16 @@ final class HdrEmissionScreen extends VersionCompat.DrawnScreen {
     private final ChannelSlider[] sliders = new ChannelSlider[4];
     private Button done;
     private boolean updating;
+    /** The block's textures, all of which the colour applies to; the first is the preview. */
+    private final java.util.List<String> sprites;
 
-    HdrEmissionScreen(Screen parent, Component title, EmissionColor colour, Consumer<EmissionColor> save) {
+    HdrEmissionScreen(Screen parent, Component title, EmissionColor colour, Consumer<EmissionColor> save,
+        java.util.List<String> sprites) {
         super(title);
         this.parent = parent;
         this.save = save;
         this.colour = colour;
+        this.sprites = sprites;
         decompose();
     }
 
@@ -124,7 +128,46 @@ final class HdrEmissionScreen extends VersionCompat.DrawnScreen {
         int top = Math.max(45, height / 2 - 78);
         g.centeredText(font, title, width / 2, top - 34, 0xFFFFFFFF);
         g.centeredText(font, Component.translatable(KEY + "hint"), width / 2, top - 20, 0xFFB0B8B4);
-        g.fill(width / 2 + 158, top, width / 2 + 178, top + 76, colour.preview());
+        // The preview: the block's texture as it is, and the light it casts with this colour, a pool of it on a
+        // grey floor that fades with the distance as the light does, brighter with the exposure.
+        int px = width / 2 + 158;
+        int previewW = 76;
+        var sprite = sprites.isEmpty() ? null : BlockEmissionSettings.sprite(sprites.get(0));
+        if (sprite != null) {
+            VersionCompat.blitAtlasSprite(g, sprite, px, top, 32, 32, 0xFFFFFFFF);
+        } else {
+            g.fill(px, top, px + 32, top + 32, 0xFF303030);
+        }
+        g.text(font, Component.translatable(KEY + "texture"), px + 36, top + 12, 0xFFB0B8B4);
+        int floorY = top + 40;
+        g.fill(px, floorY, px + previewW, floorY + 36, 0xFF202020);
+        // The pool brighter with the exposure, and its colour as the light's own (not scaled to white), so a
+        // stronger light reads stronger here too.
+        float gain = (float) Math.min(Math.pow(2.0, exposure), 4.0);
+        for (int ring = 6; ring >= 1; ring--) {
+            float falloff = ring / 6.0f;
+            float strength = Math.min(1.0f, (1.0f - falloff * 0.8f) * gain * 0.9f);
+            int w = Math.round(previewW * falloff);
+            int h = Math.round(36 * falloff);
+            int x0 = px + (previewW - w) / 2;
+            int y0 = floorY + (36 - h) / 2;
+            g.fill(x0, y0, x0 + w, y0 + h, scaled(colour.preview(), strength));
+        }
+        if (sprite != null) {
+            VersionCompat.blitAtlasSprite(g, sprite, px + previewW / 2 - 8, floorY + 10, 16, 16, 0xFFFFFFFF);
+        }
+        g.text(font, Component.translatable(KEY + "light"), px, floorY + 40, 0xFFB0B8B4);
+        if (sprites.size() > 1) {
+            g.text(font, Component.translatable(KEY + "textures", sprites.size()), px, floorY + 52, 0xFF808888);
+        }
+    }
+
+    /** An opaque colour darkened towards black by strength (0 black, 1 as it is). */
+    private static int scaled(int argb, float strength) {
+        int r = Math.round(((argb >> 16) & 255) * strength);
+        int gr = Math.round(((argb >> 8) & 255) * strength);
+        int b = Math.round((argb & 255) * strength);
+        return 0xFF000000 | r << 16 | gr << 8 | b;
     }
 
     @Override public void onClose() { minecraft.gui.setScreen(parent); }
