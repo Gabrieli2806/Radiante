@@ -368,7 +368,8 @@ abstract class SettingsRows extends SettingsUpscalerRows {
                 });
         addRows(style, lightStyle, tunable(Tunable.SATURATION, true), tunable(Tunable.EXPOSURE_BIAS, true));
         group("tone");
-        addRows(tunable(Tunable.LOCAL_TONE_MAPPING, true));
+        addRows(tunable(Tunable.LOCAL_TONE_MAPPING, true), tunable(Tunable.TONE_BRIGHTNESS, true),
+            tunable(Tunable.CONTRAST, true), tunable(Tunable.SHADOW_DEPTH, true));
         addAdvanced(method, tunable(Tunable.TEXTURE_CONTRAST, false), tunable(Tunable.EXPOSURE_ADAPTATION, false),
             tunable(Tunable.EXPOSURE_SPEED, false), tunable(Tunable.LOW_LIGHT_BOOST, false),
             tunable(Tunable.DAY_LOW_LIGHT_LIMIT, false));

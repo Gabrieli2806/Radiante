@@ -58,8 +58,9 @@ public final class BedrockRtxValues {
             ParameterStatus.BEDROCK_VALUE,
             "Bedrock's light meter; the exposure range and the speed it adapts at are the metering mode's own "
                 + "(tone_mapping/exposure.comp)"),
-        new CompatParameter("exposure", TONE, A + "exposure_bias", "0.0", ParameterStatus.BEDROCK_VALUE,
-            "Radiante's brightness control on top of the curve; Bedrock has none, so it is neutral"),
+        new CompatParameter("exposure", TONE, A + "exposure_bias", "-0.5", ParameterStatus.APPROXIMATE,
+            "Radiante's brightness control on top of the curve; Bedrock has none (neutral, 0). Radiante's Cinematic "
+                + "Light Style holds it half a stop down"),
 
         // ---- tone mapping: Bedrock RTX's own values (its frame constants and its tone mapping material's uniforms,
         // the same at every time of day)
@@ -69,18 +70,20 @@ public final class BedrockRtxValues {
                 + "material's grade"),
         new CompatParameter("toneMapping", TONE, A + "curve_dynamic_range", "15.0", ParameterStatus.BEDROCK_VALUE,
             "toneMappingDynamicRange: stops from white to black of the curve"),
-        new CompatParameter("toneMapping", TONE, A + "curve_shift", "0.05", ParameterStatus.BEDROCK_VALUE,
-            "toneMappingCurveShift: added to the curve, in stops"),
+        new CompatParameter("toneMapping", TONE, A + "curve_shift", "-0.15", ParameterStatus.APPROXIMATE,
+            "toneMappingCurveShift: added to the curve, in stops; Bedrock's 0.05, a fifth of a stop down for the "
+                + "Cinematic Light Style"),
         new CompatParameter("toneMapping", TONE, A + "curve_max_exposure_increase", "0.0", ParameterStatus.BEDROCK_VALUE,
             "toneMappingMaxExposureIncrease: the exposure alone brightens"),
         new CompatParameter("toneMapping", TONE, A + "curve_shadow_min_slope", "0.38", ParameterStatus.BEDROCK_VALUE,
             "toneMappingShadowMinSlope: the least contrast kept below -2.45 stops"),
         new CompatParameter("toneMapping", TONE, A + "filmic_saturation", "1.0", ParameterStatus.BEDROCK_VALUE,
             "the filmic saturation correction's strength"),
-        new CompatParameter("toneMapping", TONE, A + "contrast", "1.0", ParameterStatus.BEDROCK_VALUE,
-            "the contrast control, neutral"),
-        new CompatParameter("toneMapping", TONE, A + "shadow_contrast", "0.0", ParameterStatus.BEDROCK_VALUE,
-            "toneMappingShadowContrast: stops taken off per stop below shadow_contrast_end"),
+        new CompatParameter("toneMapping", TONE, A + "contrast", "1.06", ParameterStatus.APPROXIMATE,
+            "the contrast control; Bedrock's is neutral (1.0), a little more for the Cinematic Light Style"),
+        new CompatParameter("toneMapping", TONE, A + "shadow_contrast", "0.12", ParameterStatus.APPROXIMATE,
+            "toneMappingShadowContrast: stops taken off per stop below shadow_contrast_end; Bedrock's 0, deeper "
+                + "shadows for the Cinematic Light Style"),
         new CompatParameter("toneMapping", TONE, A + "shadow_contrast_end", "-4.0", ParameterStatus.BEDROCK_VALUE,
             "toneMappingShadowContrastEnd, in log2 luminance"),
         new CompatParameter("toneMapping", TONE, A + "gamma", "1.0", ParameterStatus.BEDROCK_VALUE,
