@@ -42,6 +42,8 @@ The panel on the left:
 - **Frame**: the shape the photo is cut to: the screen, `16:9`, the cinema ratios `2.39:1` and `1.85:1`, `4:3`, `1:1` or `9:16` upright. Bars show what is left out, and the saved PNG and EXR are cut the same way.
 - **Guides**: composition lines over the frame (rule of thirds, golden ratio, centre with a safe area, diagonals). They are never in the saved photo.
 - **Lens**: steps through full-frame lenses (14, 24, 35, 50, 85, 135 mm) by setting the Field of View, which also shows its focal length.
+- **Scene** (singleplayer only): ready-made times and weathers in turn: Sunrise, Morning, Noon, Golden Hour, Sunset, Blue Hour, Moonlight, Rainy Day, Storm and Stormy Night.
+- **Look**: ready-made camera settings in turn, the lens, the depth of field and the exposure together: Natural, Landscape, Portrait, Macro, Cinematic, Night and Dramatic. The sliders fine-tune whichever is set.
 - **Time of Day** and **Weather** (singleplayer only): change the world's time and weather for golden hour, blue hour, night, rain or a storm. The world runs on for a moment so the sky and the rain follow, then the picture starts over.
 
 ## Saving PNG and HDR OpenEXR

@@ -80,6 +80,7 @@ abstract class SettingsRows extends SettingsUpscalerRows {
             },
             new OptionInstance.IntRange(tunable.min, tunable.max, false), current, value -> {
                 this.pendingTunables.put(tunable, value);
+                previewLive(tunable, value);
                 if (affectsStyle) {
                     refreshQualityLater();
                 }
@@ -347,13 +348,20 @@ abstract class SettingsRows extends SettingsUpscalerRows {
         OptionInstance<LightStyle> lightStyle = !this.pendingTunables.containsKey(Tunable.EXPOSURE_BIAS) ? null
             : new OptionInstance<>("options.radiante.light_style", tooltip("options.radiante.light_style"),
                 (caption, value) -> Component.translatable(value.key),
-                new OptionInstance.Enum<>(List.of(LightStyle.values()),
+                // Custom is only listed while the sliders hold something else; clicked through, it changed nothing.
+                new OptionInstance.Enum<>(LightStyle.of(this.pendingTunables) == LightStyle.CUSTOM
+                    ? List.of(LightStyle.values())
+                    : List.of(LightStyle.BRIGHT, LightStyle.BALANCED, LightStyle.CINEMATIC),
                     Codec.STRING.xmap(LightStyle::valueOf, LightStyle::name)),
                 LightStyle.of(this.pendingTunables), value -> {
                     if (value == LightStyle.CUSTOM || value == LightStyle.of(this.pendingTunables)) {
                         return;
                     }
                     value.applyTo(this.pendingTunables);
+                    for (Tunable tunable : Tunable.ALL) {
+                        Integer steps = this.pendingTunables.get(tunable);
+                        if (steps != null) previewLive(tunable, steps);
+                    }
                     // The sliders below show the values just set.
                     refreshQualityLater();
                 });

@@ -20,13 +20,24 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
- * The three lang files say the same things: every text is in all of them, and a text that takes values ({@code %s})
- * takes as many in each language. A key added to one file only shows as its raw name in the others, and a missing
- * {@code %s} drops a value the player was meant to see.
+ * The lang files say the same things: every text is in all of them, a text that takes values ({@code %s}) takes as
+ * many in each language, and every key the code names in full is there. A key added to one file only shows as its
+ * raw name in the others (English text in the Spanish menu), and a missing {@code %s} drops a value the player was
+ * meant to see. Every file in the lang folder is checked, so a language added later is held to the same.
  */
 class LangFilesTest {
 
-    private static final List<String> LANGUAGES = List.of("en_us", "es_es", "zh_cn");
+    private static final java.nio.file.Path LANG_FOLDER = java.nio.file.Path.of("src/main/resources/assets/radiante/lang");
+    private static final List<String> LANGUAGES = languages();
+
+    private static List<String> languages() {
+        try (var files = java.nio.file.Files.list(LANG_FOLDER)) {
+            return files.map(file -> file.getFileName().toString()).filter(name -> name.endsWith(".json"))
+                .map(name -> name.substring(0, name.length() - ".json".length())).sorted().toList();
+        } catch (IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+    }
     private static final Pattern PLACEHOLDER = Pattern.compile("%(\\d+\\$)?[sd]");
 
     private static JsonObject load(String language) throws IOException {
@@ -58,6 +69,39 @@ class LangFilesTest {
             assertEquals(Set.of(), missing, language + " lacks texts en_us has");
             assertEquals(Set.of(), extra, language + " has texts en_us lacks");
         }
+    }
+
+    @Test
+    void theLanguagesAreFound() {
+        org.junit.jupiter.api.Assertions.assertTrue(LANGUAGES.contains("en_us") && LANGUAGES.size() >= 2,
+            "lang files found: " + LANGUAGES);
+    }
+
+    /**
+     * Every key the code writes out in full ("options.radiante.light_style", not a prefix the code adds to) is in
+     * en_us, as a text or as the start of texts (a group of values under it). A key typed in the code and never added
+     * shows as its raw name in every language.
+     */
+    @Test
+    void everyKeyTheCodeNamesExists() throws IOException {
+        Set<String> english = load("en_us").keySet();
+        Pattern literal = Pattern.compile("\"((?:options|gui)\\.radiante\\.[a-z0-9_.]+)\"(\\s*\\+)?");
+        Set<String> missing = new TreeSet<>();
+        try (var sources = java.nio.file.Files.walk(java.nio.file.Path.of("src/main/java"))) {
+            for (java.nio.file.Path file : sources.filter(path -> path.toString().endsWith(".java")).toList()) {
+                Matcher matcher = literal.matcher(java.nio.file.Files.readString(file));
+                while (matcher.find()) {
+                    String key = matcher.group(1);
+                    if (matcher.group(2) != null || key.endsWith(".")) {
+                        continue;
+                    }
+                    if (!english.contains(key) && english.stream().noneMatch(text -> text.startsWith(key + "."))) {
+                        missing.add(key + " (" + file.getFileName() + ")");
+                    }
+                }
+            }
+        }
+        assertEquals(Set.of(), missing, "keys the code names that en_us lacks");
     }
 
     @Test

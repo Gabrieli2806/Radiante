@@ -55,7 +55,7 @@ final class BlockEmissionSettings {
             }
             var row = new OptionInstance<EmissionColor>(key,
                 OptionInstance.cachedConstantTooltip(Component.translatable(PREFIX + "tooltip", name)),
-                (caption, colour) -> Component.empty().append(caption).append(": " + colour.display()),
+                (caption, colour) -> Component.empty().append(caption).append(": ").append(valueLabel(colour)),
                 new ColourValues(), current, value -> {
                     for (String id : ids) {
                         if (value.equals(EmissionColor.WHITE)) staged.remove(id);
@@ -80,6 +80,17 @@ final class BlockEmissionSettings {
         minecraft.gui.setScreen(new HdrEmissionScreen(minecraft.gui.screen(),
             ((OptionInstanceAccessor) (Object) option).radiante$caption(), colour.get(), colour::set,
             ROW_SPRITES.getOrDefault(option, List.of()), ROW_ITEMS.get(option)));
+    }
+
+    /**
+     * What a row's value reads: "Pack colour" while untouched, the colour the pack and its texture give the light
+     * (white is no tint, not a white light); otherwise the tint as multipliers of each channel.
+     */
+    static Component valueLabel(EmissionColor colour) {
+        if (colour.equals(EmissionColor.WHITE)) return Component.translatable(PREFIX + "pack_colour");
+        if (colour.peak() <= 0.0f) return Component.translatable(PREFIX + "off");
+        return Component.literal(String.format(java.util.Locale.ROOT, "×%.2f ×%.2f ×%.2f", colour.red(), colour.green(),
+            colour.blue()));
     }
 
     /** The item a row stands for: its block's, or the item a texture is named for (the glow item frame). */

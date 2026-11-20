@@ -27,7 +27,7 @@ new frame can be noisier while accumulation resumes. Walking, hand animations an
 
 ## Per-block HDR emission (Advanced)
 
-Open **Lighting → Advanced → Block Emission**: one row per light block, drawn as in the inventory, the colour covering all of
+Open **Lighting → Advanced → Block Emission**: one row per light block, drawn as in the inventory, its value reading **Pack colour** while untouched (the light keeps the colour its texture and pack give it; white means no change, not a white light), the colour covering all of
 its textures (every face of a crafter, a command block or a furnace). Click a row to edit it: the picker shows the
 block and a preview of the light it casts, and has RGB controls,
 exposure, and numeric **linear HDR RGB** fields. **(1,1,1)** preserves the sampled light's colour and brightness;

@@ -473,6 +473,24 @@ void sampleSurfaceState(bool useTexture,
     // Rain soaks the ground under open sky: darker, glossy, and the bumps of the normal map drown.
     if (!useWaterMaterial && !isFftWaterSurface && !g_hitIsGlass && !isRainStreak) {
         vec3 dryAlbedo = mat.albedo;
+        // An upward face inside its block, under more of the same block: the seat of a chair under its back, the inside
+        // of a cauldron's rim, a modded table's shelf under its top. The columns know only the block's height, so the
+        // rain and the snow took every upward face of the column's top block for its top, under a lid or not; a short
+        // ray straight up, to just over the block, tells. Faces at the block's top or half a block up are left alone.
+        bool insideCovered = false;
+        if (baseGeoNormal.y >= 0.5 && (skyUBO.rainWetness.x > 0.0 || skyUBO.rainGradient > 0.01)) {
+            float inBlock = float(fract(worldUBO.cameraPos.y + double(worldPos.y)));
+            if (inBlock > 0.002 && inBlock < 0.998 && abs(inBlock - 0.5) > 0.002) {
+                shadowRay.radiance = vec3(0.0);
+                shadowRay.throughput = vec3(1.0);
+                shadowRay.insideBoat = 0u;
+                shadowRay.pad0 = BLOCK_LIGHT_QUERY;
+                traceRayEXT(topLevelAS, VPT_SHADOW_RAY_FLAGS, WORLD_MASK, 0, 0, 0, worldPos + vec3(0.0, 0.001, 0.0),
+                            0.0, vec3(0.0, 1.0, 0.0), 1.0 - inBlock + 0.02, 1);
+                shadowRay.pad0 = 0u;
+                insideCovered = shadowRay.radiance.x <= 0.5;
+            }
+        }
         // Under a roof, near its edge: can the weather come in from the open column beside, or is there a wall
         // between (g_vptShelterNearest)? A ray a third of a block over the floor, towards that column, tells: through
         // a doorway or under an eave it gets there, through a wall it does not.
@@ -495,7 +513,7 @@ void sampleSurfaceState(bool useTexture,
                 g_vptShelterNearest = shelterNearest;
             }
         }
-        vec2 groundRain = vptGroundRain(worldPos, baseGeoNormal);
+        vec2 groundRain = insideCovered ? vec2(0.0) : vptGroundRain(worldPos, baseGeoNormal);
         float open = groundRain.x;
         // Water stands on the flat top of a full block, and on a slab's and a stair's half a block up, which took
         // only a little darkening before. Not on a path block or farmland, a sixteenth lower, nor on leaves.
@@ -550,7 +568,7 @@ void sampleSurfaceState(bool useTexture,
         // Nor on the top of a dirt path or farmland (a sixteenth lower than a block) unless Snow on Paths & Farmland is
         // on, wherever it is: told by the block's column only, the snow drifting in under a roof lay on them.
         bool pathTop = upward && alphaMode == ALPHA_MODE_OPAQUE && abs(topHeight - 0.9375) < 0.002;
-        bool snowFree = radianteIsHeld(g_hit.packedData) || useOverlay || (pathTop && !vptSnowOnPaths());
+        bool snowFree = radianteIsHeld(g_hit.packedData) || useOverlay || (pathTop && !vptSnowOnPaths()) || insideCovered;
         g_vptSnowFootprint = mainRay.coneWidth + g_hit.hitT * mainRay.coneSpread;
         // The top edge of the face hit, from its triangle (chunk geometry is only moved, never turned or scaled).
         float faceTopY = max(max(g_hit.p0.pos.y, g_hit.p1.pos.y), g_hit.p2.pos.y);

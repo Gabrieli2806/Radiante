@@ -4,6 +4,16 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Settings, Image: Light Style, Exposure, Saturation, Local Tone Mapping, Brightness, Contrast and Shadow Depth show on the picture behind the screen as they move, before Apply; Undo puts them back.
+
+- Block Emission rows read **Pack colour** while untouched, with no swatch: the light keeps its pack's colour, and the white "1.00 / 1.00 / 1.00" read as a white light. A tinted one reads its multipliers (×1.00 ×0.50 ×0.50), a black one No light; the description is in plain words.
+
+- Rain and snow stay off upward faces inside a block with more of it above (a chair's seat, a shelf under a table top, from mods too): the map of the ground knows only a block's height, and every upward face of the top block took the weather as its top. A short ray up tells.
+
+- Photo Mode: Scene, ten ready-made times and weathers (Sunrise to Stormy Night), and Look, seven ready-made camera settings (Natural, Landscape, Portrait, Macro, Cinematic, Night, Dramatic) setting the lens, depth of field and exposure together.
+
+- The lang test checks every language file in the folder (a language added later included), and that every key the code names in full is in English.
+
 - Block Emission settings: one row per light block, its textures under one colour, where each texture had a row of its own (a crafter took eleven, a command block four, a lit furnace front one more), named by its face. Each row shows the block as the inventory and the creative menu draw it (no icon before a world is loaded, when there are no items to draw yet), and the editor shows it too with a preview of the pool of light it casts, its colour and brightness following the sliders. Textures no block owns are named by their item (the glow item frame) or in plain words instead of their texture path.
 
 - New default look, Cinematic: a little darker, crisper and deeper in its shadows, with little lifting of the dark parts, so caves and rooms stay dark round their lights and a bright patch is not evened out with the rest. Light Style now sets five sliders: Exposure, Local Tone Mapping and three new ones in Tone & Exposure, Brightness (after the tone curve, where it shows; Exposure goes in before it, and the curve took most of it back), Contrast and Shadow Depth. Balanced keeps the look of before. Settings saved by an earlier version keep their values: pick Cinematic to have the new look.
