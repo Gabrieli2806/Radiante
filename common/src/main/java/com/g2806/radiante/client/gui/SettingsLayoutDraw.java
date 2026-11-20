@@ -238,8 +238,17 @@ final class SettingsLayoutDraw {
         // Grey all over while another setting keeps it from doing anything; its description says which.
         boolean blocked = layout.blocked(option);
         // Advanced options sit a step in and a shade dimmer than the everyday ones above them.
-        g.text(layout.font, caption(option), layout.listX + PAD + (advanced ? 14 : 4), y + 6,
-            blocked ? TEXT_BLOCKED : advanced ? TEXT_DIM : TEXT);
+        int captionX = layout.listX + PAD + (advanced ? 14 : 4);
+        // A light block's row shows its texture before its name (BlockEmissionSettings).
+        java.util.List<String> sprites = BlockEmissionSettings.ROW_SPRITES.get(option);
+        if (sprites != null && !sprites.isEmpty()) {
+            var sprite = BlockEmissionSettings.sprite(sprites.get(0));
+            if (sprite != null) {
+                com.g2806.radiante.compat.VersionCompat.blitAtlasSprite(g, sprite, captionX, y + 2, 16, 16, 0xFFFFFFFF);
+            }
+            captionX += 20;
+        }
+        g.text(layout.font, caption(option), captionX, y + 6, blocked ? TEXT_BLOCKED : advanced ? TEXT_DIM : TEXT);
         if (layout.restart.needsRestart(option)) {
             // Marked on the row itself, amber once the choice differs from what the running game uses.
             boolean pending = layout.restart.pending(option);
