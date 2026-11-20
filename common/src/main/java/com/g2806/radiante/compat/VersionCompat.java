@@ -103,7 +103,7 @@ public final class VersionCompat {
     /** A sprite of any atlas (a block's texture), tinted by argb; the same pipeline difference as blit. */
     public static void blitAtlasSprite(GuiGraphicsExtractor graphics,
         net.minecraft.client.renderer.texture.TextureAtlasSprite sprite, int x, int y, int width, int height, int argb) {
-        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, x, y, width, height, argb);
+        graphics.blitSprite(GuiPipeline.TEXTURED, sprite, x, y, width, height, argb);
     }
 
     /** A sprite of the GUI atlas; the same pipeline difference as blit. */
