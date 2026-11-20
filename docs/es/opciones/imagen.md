@@ -9,6 +9,7 @@ Los valores por defecto son los de radiante-pt, el aspecto Bedrock RTX ([bedrock
 | Control | Rango / Valores | Por defecto | Qué hace |
 |---|---|---|---|
 | **Estilo de Imagen** | Natural · Bedrock · Vívido · Personalizado | Bedrock | Ajusta la curva de tonos y la Saturación a la vez. Bedrock es el aspecto por defecto. Ver [Estilos de imagen](#estilos-de-imagen) abajo. |
+| **Estilo de Luz** | Brillante · Equilibrado · Cinemático · Personalizado | Equilibrado | Ajusta a la vez Exposición y Tone Mapping Local. Brillante (+0,7 pasos, más luz en las partes oscuras) es para jugar: cuevas y habitaciones se ven bien. Cinemático (−1 paso, poca luz añadida) deja las cuevas oscuras alrededor de sus luces, y mirar lava oscurece la imagen hasta que miras a otro lado. |
 | **Mapeo de Tonos** | Bedrock RTX · PBR Neutral · ACES · Reinhard | Bedrock RTX | Cómo se ajusta la luz intensa a lo que la pantalla puede mostrar. Bedrock RTX es la curva propia de Bedrock, construida con el histograma de la imagen; PBR Neutral mantiene los colores fieles; ACES es más cinematográfico y con más contraste; Reinhard es suave y plano. |
 | **Saturación** | 50% – 200% | 100% | Qué tan colorida es la imagen. |
 | **Contraste de Texturas** | 46% – 109% | 100% | Qué tan profundos y contrastados se ven los colores de bloques y entidades bajo la luz. 100% coincide con Bedrock RTX; menos da el aspecto más pálido y plano de versiones anteriores. En gris mientras Texturas sRGB Exactas (Avanzado) está activado, el valor por defecto. |

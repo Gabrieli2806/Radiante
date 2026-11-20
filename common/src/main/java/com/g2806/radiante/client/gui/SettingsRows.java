@@ -344,6 +344,19 @@ abstract class SettingsRows extends SettingsUpscalerRows {
                     refreshQualityLater();
                 });
         }
+        OptionInstance<LightStyle> lightStyle = !this.pendingTunables.containsKey(Tunable.EXPOSURE_BIAS) ? null
+            : new OptionInstance<>("options.radiante.light_style", tooltip("options.radiante.light_style"),
+                (caption, value) -> Component.translatable(value.key),
+                new OptionInstance.Enum<>(List.of(LightStyle.values()),
+                    Codec.STRING.xmap(LightStyle::valueOf, LightStyle::name)),
+                LightStyle.of(this.pendingTunables), value -> {
+                    if (value == LightStyle.CUSTOM || value == LightStyle.of(this.pendingTunables)) {
+                        return;
+                    }
+                    value.applyTo(this.pendingTunables);
+                    // The sliders below show the values just set.
+                    refreshQualityLater();
+                });
         OptionInstance<PictureStyle.ToneMethod> method = this.pendingToneMethod == null ? null
             : new OptionInstance<>("options.radiante.tone_method", tooltip("options.radiante.tone_method"),
                 (caption, value) -> Component.translatable(value.key()),
@@ -353,9 +366,9 @@ abstract class SettingsRows extends SettingsUpscalerRows {
                     this.pendingToneMethod = value;
                     refreshQualityLater();
                 });
-        addRows(style, tunable(Tunable.SATURATION, true), tunable(Tunable.EXPOSURE_BIAS, false));
+        addRows(style, lightStyle, tunable(Tunable.SATURATION, true), tunable(Tunable.EXPOSURE_BIAS, true));
         group("tone");
-        addRows(tunable(Tunable.LOCAL_TONE_MAPPING, false));
+        addRows(tunable(Tunable.LOCAL_TONE_MAPPING, true));
         addAdvanced(method, tunable(Tunable.TEXTURE_CONTRAST, false), tunable(Tunable.EXPOSURE_ADAPTATION, false),
             tunable(Tunable.EXPOSURE_SPEED, false), tunable(Tunable.LOW_LIGHT_BOOST, false),
             tunable(Tunable.DAY_LOW_LIGHT_LIMIT, false));
