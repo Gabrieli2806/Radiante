@@ -26,4 +26,9 @@ public class SpriteContentsMixin implements SpriteContentsAccess {
     public int radiante$mipWidth(int level) {
         return level < this.byMipLevel.length && this.byMipLevel[level] != null ? this.byMipLevel[level].getWidth() : 1;
     }
+
+    @Override
+    public NativeImage radiante$fullImage() {
+        return this.byMipLevel.length > 0 ? this.byMipLevel[0] : null;
+    }
 }
