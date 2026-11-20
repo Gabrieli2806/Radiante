@@ -487,6 +487,20 @@ public final class ChunkManager {
             SectionPos.sectionToBlockCoord(SectionPos.y(node)), SectionPos.sectionToBlockCoord(SectionPos.z(node)));
     }
 
+    /**
+     * The layer a block's quad is traced in: Minecraft's, but a cut-out texture with smoothed edges (a high
+     * resolution pack's leaves), which Minecraft puts with the translucent ones, as the cut-out it is
+     * (BlockKinds.cutoutWithSmoothedEdges). Glass and the blended blocks keep theirs.
+     */
+    static ChunkSectionLayer layerOf(BakedQuad quad, SectionCompileScratch scratch) {
+        ChunkSectionLayer layer = quad.materialInfo().layer();
+        if (layer == ChunkSectionLayer.TRANSLUCENT && !scratch.blockIsGlass && !scratch.blockIsBlend
+            && BlockKinds.cutoutWithSmoothedEdges(quad.materialInfo().sprite().contents())) {
+            return ChunkSectionLayer.CUTOUT;
+        }
+        return layer;
+    }
+
     static double distanceSqr(long sectionNode, BlockPos cameraBlock) {
         return SectionPos.of(sectionNode).center().distSqr(cameraBlock);
     }
@@ -560,7 +574,7 @@ public final class ChunkManager {
                     .castColor(RedstoneGlow.castColor(scratch.dustPower))
                     .castLight(facesInward(quad) ? RedstoneGlow.castLight(scratch.dustPower, quad.materialInfo().sprite())
                         : 0.0f)
-                : scratch.writer(quad.materialInfo().layer(), atlasId);
+                : scratch.writer(layerOf(quad, scratch), atlasId);
             // A second face on the plane of one already written (the grass block's tinted side overlay over its side
             // texture) would tie with it for every ray: the tracer showed the untinted base on some blocks and the
             // overlay on others. Lifted a hair, the overlay always wins, as it is drawn over the base in vanilla.

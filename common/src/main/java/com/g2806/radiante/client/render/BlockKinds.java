@@ -78,6 +78,52 @@ final class BlockKinds {
             && !(block instanceof net.minecraft.world.level.block.TransparentBlock);
     }
 
+    /** How many of a sprite's visible texels may be partly transparent and it still be a cut-out texture. */
+    private static final double SMOOTHED_EDGE_SHARE = 0.1;
+    private static final Map<net.minecraft.client.renderer.texture.SpriteContents, Boolean> SMOOTHED_EDGES =
+        java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
+
+    /**
+     * Whether a sprite Minecraft put in the translucent layer is a cut-out texture with smoothed edges: its texels
+     * solid or clear but for a few along its edges. Minecraft makes any sprite with one partly transparent texel
+     * translucent, and a pack of 128 or 512 pixels a block draws its leaves, grass and doors smoothed that way. In
+     * the translucent layer the tracer shades a texture as clear glass, and those leaves came out as dark, mirroring
+     * glass (black trees far off). A texture meant to be seen through (stained glass, ice, a mod's) is partly
+     * transparent all over and stays translucent.
+     */
+    static boolean cutoutWithSmoothedEdges(net.minecraft.client.renderer.texture.SpriteContents contents) {
+        Boolean known = SMOOTHED_EDGES.get(contents);
+        if (known != null) {
+            return known;
+        }
+        boolean smoothed = false;
+        try {
+            com.mojang.blaze3d.platform.NativeImage image = ((SpriteContentsAccess) (Object) contents).radiante$fullImage();
+            if (image == null) {
+                return false;
+            }
+            long visible = 0;
+            long partial = 0;
+            for (int y = 0; y < image.getHeight(); y++) {
+                for (int x = 0; x < image.getWidth(); x++) {
+                    int alpha = image.getPixel(x, y) >>> 24;
+                    if (alpha == 0) {
+                        continue;
+                    }
+                    visible++;
+                    if (alpha < 255) {
+                        partial++;
+                    }
+                }
+            }
+            smoothed = visible > 0 && partial <= visible * SMOOTHED_EDGE_SHARE;
+        } catch (RuntimeException closed) {
+            // The image was already freed (a reload in between): left as Minecraft has it.
+        }
+        SMOOTHED_EDGES.put(contents, smoothed);
+        return smoothed;
+    }
+
     /** Glass panes (plain and stained), as opposed to glass blocks: seamless glass can treat them apart. */
     static boolean isGlassPane(BlockState state) {
         return state.getBlock() instanceof net.minecraft.world.level.block.StainedGlassPaneBlock
