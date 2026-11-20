@@ -58,6 +58,30 @@ public final class BeforeAfterPreview {
     /** How long the game's own renderer gets to build the world again before its picture is taken. */
     private static final long OFF_SETTLE_NANOS = 2_000_000_000L;
 
+    /**
+     * Before taken with another shader pack (its label's menu): the pack is put on and built, the picture left to
+     * settle and taken, and the pack the live picture had put back.
+     */
+    private enum PackCapture { NONE, BUILDING, SETTLING, CAPTURING, RETURNING }
+
+    private static PackCapture packCapture = PackCapture.NONE;
+    private static String packCaptureTarget;
+    private static String packCaptureReturn;
+    /** BUILDING: when to give up (nanoTime); SETTLING: when to take the picture. */
+    private static long packCaptureAt;
+    private static final long PACK_BUILD_TIMEOUT_NANOS = 60_000_000_000L;
+    /** The denoiser's history and the eye's adaptation after a pack change, before the picture is taken. */
+    private static final long PACK_SETTLE_NANOS = 1_500_000_000L;
+
+    /** The label whose menu is open: 0 none, 1 Before's, 2 After's. */
+    private static int menuSide;
+    private static java.util.List<Choice> menu = java.util.List.of();
+    private static final int MENU_ROW = 14;
+
+    /** One entry of a label's menu: the game without Radiante (pack null), or a shader pack. */
+    private record Choice(Component label, String pack) {
+    }
+
     private static Identifier textureId;
     private static int generation;
     private static int captureCount;
@@ -149,9 +173,103 @@ public final class BeforeAfterPreview {
         draggingSplit = false;
         peeking = false;
         offOnEnter = false;
+        menuSide = 0;
         capturedLevel = null;
         releaseTexture();
         finishOffCapture();
+        // Left in the middle of a picture with another pack: the live picture's pack goes back on.
+        if (packCapture == PackCapture.BUILDING || packCapture == PackCapture.SETTLING
+            || packCapture == PackCapture.CAPTURING) {
+            returnPack();
+        }
+        packCapture = PackCapture.NONE;
+    }
+
+    /** A picture is being taken (Radiante Off, or another pack): the halves are covered and clicks wait. */
+    private static boolean capturing() {
+        return offCapturePending || packCapture != PackCapture.NONE;
+    }
+
+    /**
+     * Takes Before with a shader pack other than the live one, so the halves compare two packs. The same pack as
+     * the live picture takes the live picture as it is.
+     */
+    static void requestPackBaseline(String pack) {
+        Minecraft mc = Minecraft.getInstance();
+        if (capturing() || mc.level == null || !RadianteRenderer.isRayTracingEnabled()) {
+            return;
+        }
+        String live = com.g2806.radiante.client.pipeline.PipelineShaderPack.shaderPackPath();
+        if (ShaderPackLibrary.samePack(pack, live)) {
+            requestRebaseline();
+            return;
+        }
+        if (!com.g2806.radiante.client.pipeline.PipelineShaderPack.selectShaderPack(pack)) {
+            return;
+        }
+        RadianteClient.LOGGER.info("Before / After: taking Before with shader pack {}", pack);
+        packCaptureTarget = pack;
+        packCaptureReturn = live;
+        packCapture = PackCapture.BUILDING;
+        packCaptureAt = System.nanoTime() + PACK_BUILD_TIMEOUT_NANOS;
+        BackgroundRebuild.apply(mc);
+    }
+
+    /** Each traced frame: moves a picture with another pack on, step by step. */
+    private static void advancePackCapture() {
+        if (packCapture == PackCapture.NONE) {
+            return;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        long now = System.nanoTime();
+        switch (packCapture) {
+            case BUILDING, RETURNING -> {
+                if (BackgroundRebuild.busy()) {
+                    // A pack that cannot compile in the background is built behind the wait screen now: the wait
+                    // screen would otherwise open only once the settings closed, and this would wait for ever.
+                    BackgroundRebuild.showWaitScreenNow(mc);
+                    if (packCapture == PackCapture.BUILDING && now > packCaptureAt) {
+                        RadianteClient.LOGGER.warn("Before / After: {} took too long to build", packCaptureTarget);
+                        returnPack();
+                    }
+                    return;
+                }
+                if (!(mc.gui.screen() instanceof RadianteOptionsScreen)) {
+                    // The wait screen is still up.
+                    return;
+                }
+                if (packCapture == PackCapture.BUILDING) {
+                    packCapture = PackCapture.SETTLING;
+                    packCaptureAt = now + PACK_SETTLE_NANOS;
+                } else {
+                    packCapture = PackCapture.NONE;
+                    coverUntil = now + ON_SETTLE_NANOS;
+                }
+            }
+            case SETTLING -> {
+                if (now < packCaptureAt || baselineRequested) {
+                    return;
+                }
+                packCapture = PackCapture.CAPTURING;
+                afterBaselineCallback = () -> {
+                    beforeIsOff = false;
+                    returnPack();
+                };
+                baselineRequested = true;
+                waitFrames = 0;
+            }
+            default -> {
+            }
+        }
+    }
+
+    /** The live picture's pack back on, built in the background as a change from the pack list is. */
+    private static void returnPack() {
+        packCapture = PackCapture.RETURNING;
+        if (packCaptureReturn != null
+            && com.g2806.radiante.client.pipeline.PipelineShaderPack.selectShaderPack(packCaptureReturn)) {
+            BackgroundRebuild.apply(Minecraft.getInstance());
+        }
     }
 
     /** Ray tracing back on after an Off / On capture, whichever way it ended. */
@@ -218,6 +336,7 @@ public final class BeforeAfterPreview {
      * {@code mainTarget}. Inert unless a baseline capture was requested.
      */
     public static void onWorldFrameRendered(RenderTarget mainTarget) {
+        advancePackCapture();
         // Entering Before / After: Before is the game without Radiante, taken once the comparison is on screen (the
         // settings applied and their pipeline built), not in the middle of the build.
         if (offOnEnter && active && !offCapturePending
@@ -328,29 +447,113 @@ public final class BeforeAfterPreview {
         }
     }
 
-    private record TopBarRects(int backX, int backW, int resetX, int resetW, int setBeforeX, int setBeforeW,
-                               int offX, int offW, int packX, int packW, int barY) {
+    /** The two small buttons at the top, back to the settings and the divider to the middle, as icons. */
+    private record TopBarRects(int backX, int centerX, int barY) {
     }
 
-    private static Component packLabel() {
-        return Component.translatable("options.radiante.compare.pack",
-            packName(com.g2806.radiante.client.pipeline.PipelineShaderPack.shaderPackPath()));
+    private static final int ICON_BUTTON = 18;
+
+    private static TopBarRects topBar(int screenW) {
+        int x = (screenW - (ICON_BUTTON * 2 + 4)) / 2;
+        return new TopBarRects(x, x + ICON_BUTTON + 4, 8);
     }
 
-    private static TopBarRects topBar(Font font, int screenW) {
-        int backW = font.width(Component.translatable("options.radiante.compare.exit")) + 16;
-        int resetW = font.width(Component.literal("50%")) + 14;
-        // Before is always the game without Radiante, taken as the comparison opens: no Set Before any more.
-        int setBeforeW = 0;
-        int offW = 0;
-        int packW = Math.min(font.width(packLabel()) + 16, 160);
-        int totalW = backW + 4 + resetW + 4 + packW;
-        int x = Math.max(4, (screenW - totalW) / 2);
-        int resetX = x + backW + 4;
-        int setBeforeX = resetX + resetW + 4;
-        int offX = setBeforeX + setBeforeW;
-        int packX = setBeforeX;
-        return new TopBarRects(x, backW, resetX, resetW, setBeforeX, setBeforeW, offX, offW, packX, packW, 10);
+    /** Where the two labels along the bottom are, and whether each fits beside the divider. */
+    private record Badges(int beforeX, int beforeW, boolean beforeShown, int afterX, int afterW, boolean afterShown,
+                          int y) {
+    }
+
+    private static Badges badges(Font font, int screenW, int screenH) {
+        int splitX = peeking ? screenW : splitPixel(screenW);
+        int margin = Math.max(8, screenW / 32);
+        // Text, and the small triangle that says the label opens a menu.
+        int beforeW = font.width(beforeLabel()) + 24;
+        int afterW = font.width(afterLabel()) + 24;
+        int afterX = screenW - margin - afterW;
+        return new Badges(margin, beforeW, splitX > margin + beforeW + 6, afterX, afterW,
+            screenW - splitX > margin + afterW + 6, screenH - 28);
+    }
+
+    private static boolean packsDiffer() {
+        String livePack = com.g2806.radiante.client.pipeline.PipelineShaderPack.shaderPackPath();
+        return !beforeIsOff && beforePack != null && !ShaderPackLibrary.samePack(beforePack, livePack);
+    }
+
+    /** What the left side is: Radiante off, the pack it was taken with, or the settings before. */
+    private static Component beforeLabel() {
+        return (beforeIsOff ? Component.translatable("options.radiante.compare.off")
+            : packsDiffer() ? Component.literal(packName(beforePack))
+            : Component.translatable("options.radiante.compare.before")).copy().withStyle(ChatFormatting.BOLD);
+    }
+
+    private static Component afterLabel() {
+        String livePack = com.g2806.radiante.client.pipeline.PipelineShaderPack.shaderPackPath();
+        return (beforeIsOff || packsDiffer() ? Component.literal(packName(livePack))
+            : Component.translatable("options.radiante.compare.after")).copy().withStyle(ChatFormatting.BOLD);
+    }
+
+    /** The packs that can run, the built-in one among them. */
+    private static java.util.List<ShaderPackLibrary.Entry> usablePacks() {
+        java.util.List<ShaderPackLibrary.Entry> usable = new java.util.ArrayList<>();
+        for (ShaderPackLibrary.Entry entry : ShaderPackLibrary.scan()) {
+            if (entry.problem() == null
+                && !com.g2806.radiante.client.pipeline.PipelineShaderPack.shaderPackUnavailable(entry.path())) {
+                usable.add(entry);
+            }
+        }
+        return usable;
+    }
+
+    /** Opens a label's menu: Before chooses Radiante off or a pack to be pictured with, After the live pack. */
+    private static void openMenu(int side) {
+        java.util.List<Choice> choices = new java.util.ArrayList<>();
+        if (side == 1) {
+            choices.add(new Choice(Component.translatable("options.radiante.compare.menu.off"), null));
+        }
+        for (ShaderPackLibrary.Entry entry : usablePacks()) {
+            choices.add(new Choice(Component.literal(entry.displayName() != null ? entry.displayName()
+                : entry.path()), entry.path()));
+        }
+        menu = choices;
+        menuSide = side;
+    }
+
+    /** Whether a menu entry is what its side shows now. */
+    private static boolean chosen(Choice choice) {
+        if (menuSide == 1) {
+            return choice.pack() == null ? beforeIsOff
+                : !beforeIsOff && beforePack != null && ShaderPackLibrary.samePack(choice.pack(), beforePack);
+        }
+        return ShaderPackLibrary.samePack(choice.pack(),
+            com.g2806.radiante.client.pipeline.PipelineShaderPack.shaderPackPath());
+    }
+
+    private record MenuRect(int x, int y, int w) {
+    }
+
+    /** Above its label, as wide as its longest entry. */
+    private static MenuRect menuRect(Font font, Badges badges, int screenW) {
+        int w = 0;
+        for (Choice choice : menu) {
+            w = Math.max(w, font.width(choice.label()) + 20);
+        }
+        w = Math.min(w, Math.max(80, screenW / 2));
+        int x = menuSide == 1 ? badges.beforeX() : badges.afterX() + badges.afterW() - w;
+        x = Math.clamp(x, 4, Math.max(4, screenW - w - 4));
+        int y = Math.max(4, badges.y() - 4 - menu.size() * MENU_ROW);
+        return new MenuRect(x, y, w);
+    }
+
+    private static void choose(Choice choice) {
+        if (menuSide == 1) {
+            if (choice.pack() == null) {
+                requestOffBaseline();
+            } else {
+                requestPackBaseline(choice.pack());
+            }
+        } else if (!chosen(choice)) {
+            selectAfterPack(choice.pack());
+        }
     }
 
     /** A pack's name as the pack list shows it. */
@@ -360,35 +563,16 @@ public final class BeforeAfterPreview {
     }
 
     /**
-     * Switches the live picture (After) to the next pack that can run, keeping Before: one pack against another,
-     * or Radiante PT against a pack. The pack builds in the background as it does from the pack list.
+     * Switches the live picture (After) to a pack, keeping Before: one pack against another, or Radiante off against
+     * a pack. The pack builds in the background as it does from the pack list, and stays chosen.
      */
-    private static void cyclePack() {
+    private static void selectAfterPack(String path) {
         Minecraft mc = Minecraft.getInstance();
-        String current = com.g2806.radiante.client.pipeline.PipelineShaderPack.shaderPackPath();
-        java.util.List<ShaderPackLibrary.Entry> usable = new java.util.ArrayList<>();
-        for (ShaderPackLibrary.Entry entry : ShaderPackLibrary.scan()) {
-            if (entry.problem() == null
-                && !com.g2806.radiante.client.pipeline.PipelineShaderPack.shaderPackUnavailable(entry.path())) {
-                usable.add(entry);
-            }
-        }
-        if (usable.size() < 2) {
+        if (!com.g2806.radiante.client.pipeline.PipelineShaderPack.selectShaderPack(path)) {
             return;
         }
-        int at = 0;
-        for (int i = 0; i < usable.size(); i++) {
-            if (ShaderPackLibrary.samePack(usable.get(i).path(), current)) {
-                at = i;
-                break;
-            }
-        }
-        ShaderPackLibrary.Entry next = usable.get((at + 1) % usable.size());
-        if (!com.g2806.radiante.client.pipeline.PipelineShaderPack.selectShaderPack(next.path())) {
-            return;
-        }
-        RadianteClient.LOGGER.info("Before / After: After now with shader pack {}", next.path());
-        ShaderPackTrial.begin(next.path(), next.displayName());
+        RadianteClient.LOGGER.info("Before / After: After now with shader pack {}", path);
+        ShaderPackTrial.begin(path, packName(path));
         BackgroundRebuild.open(mc, mc.gui.screen(), true);
     }
 
@@ -407,17 +591,19 @@ public final class BeforeAfterPreview {
             g.disableScissor();
         }
 
-        if (offCapturePending || System.nanoTime() < coverUntil) {
-            // The live world is the game without ray tracing for these two seconds: shown on the right, the halves
-            // looked swapped (Off on the right, On on the left) until the picture was taken. The screen is covered
-            // instead, with the picture from before.
+        if (capturing() || System.nanoTime() < coverUntil) {
+            // The live world is not yet what the right side shows (the game without ray tracing, or the pack Before
+            // is being taken with): shown, the halves looked swapped until the picture was taken. The screen is
+            // covered instead, with the picture from before.
             if (hasBaseline()) {
                 VersionCompat.blit(g, textureId, 0, 0, 0.0f, 0.0f, screenW, screenH, texWidth, texHeight, texWidth,
                     texHeight);
             } else {
                 g.fill(0, 0, screenW, screenH, 0xFF0E1010);
             }
-            Component wait = Component.translatable("options.radiante.compare.capturing_off");
+            Component wait = packCapture != PackCapture.NONE && packCapture != PackCapture.RETURNING
+                ? Component.translatable("options.radiante.compare.capturing_pack", packName(packCaptureTarget))
+                : Component.translatable("options.radiante.compare.capturing_off");
             int w = font.width(wait) + 24;
             g.fill((screenW - w) / 2, screenH / 2 - 12, (screenW + w) / 2, screenH / 2 + 12, 0xD0101413);
             g.outline((screenW - w) / 2, screenH / 2 - 12, w, 24, Theme.ACCENT);
@@ -428,98 +614,136 @@ public final class BeforeAfterPreview {
         boolean nearLine = draggingSplit || Math.abs(mouseX - splitX) <= 14;
         int lineColor = nearLine ? Theme.ACCENT : 0xFFE6FAF5;
         if (!peeking) {
-            // A line two pixels wide with a dark edge each side, so it reads against bright sky and dark caves alike.
-            g.fill(splitX - 3, 0, splitX - 1, screenH, 0x70000000);
-            g.fill(splitX + 1, 0, splitX + 3, screenH, 0x70000000);
+            // A thin line with a dark edge each side, so it reads against bright sky and dark caves alike, and a
+            // small grip in its middle: the arrows and the knob round them hid the middle of the view.
+            g.fill(splitX - 2, 0, splitX - 1, screenH, 0x60000000);
+            g.fill(splitX + 1, 0, splitX + 2, screenH, 0x60000000);
             g.fill(splitX - 1, 0, splitX + 1, screenH, lineColor);
-
-            // The grab handle: a knob with rounded corners and an arrow each way, drawn rather than taken from the
-            // font, whose arrow characters some resource packs leave out.
-            int handleW = 28;
-            int handleH = 40;
-            int hx = splitX - handleW / 2;
-            int hy = screenH / 2 - handleH / 2;
-            int fillColor = nearLine ? Theme.PANEL_DARK : Theme.PANEL;
-            g.fill(hx + 2, hy, hx + handleW - 2, hy + handleH, fillColor);
-            g.fill(hx, hy + 2, hx + handleW, hy + handleH - 2, fillColor);
-            g.fill(hx + 2, hy, hx + handleW - 2, hy + 1, lineColor);
-            g.fill(hx + 2, hy + handleH - 1, hx + handleW - 2, hy + handleH, lineColor);
-            g.fill(hx, hy + 2, hx + 1, hy + handleH - 2, lineColor);
-            g.fill(hx + handleW - 1, hy + 2, hx + handleW, hy + handleH - 2, lineColor);
-            int cy = hy + handleH / 2;
-            for (int i = 0; i < 5; i++) {
-                g.fill(hx + 5 + i, cy - i, hx + 6 + i, cy + i + 1, lineColor);
-                g.fill(hx + handleW - 6 - i, cy - i, hx + handleW - 5 - i, cy + i + 1, lineColor);
-            }
+            int gripH = 24;
+            int gy = screenH / 2 - gripH / 2;
+            g.fill(splitX - 4, gy, splitX + 4, gy + gripH, 0x90000000);
+            g.fill(splitX - 3, gy + 1, splitX + 3, gy + gripH - 1, lineColor);
             if (draggingSplit) {
                 Component percent = Component.literal(Math.round(splitFraction * 100.0f) + "%");
                 int pw = font.width(percent) + 10;
-                g.fill(splitX - pw / 2, hy - 18, splitX + pw / 2, hy - 4, 0xC0101413);
-                g.centeredText(font, percent, splitX, hy - 15, Theme.ACCENT);
+                g.fill(splitX - pw / 2, gy - 18, splitX + pw / 2, gy - 4, 0xC0101413);
+                g.centeredText(font, percent, splitX, gy - 15, Theme.ACCENT);
             }
         }
 
-        // What each side is: the settings before and after, or Radiante off and on.
-        int margin = Math.max(8, screenW / 32);
-        String livePack = com.g2806.radiante.client.pipeline.PipelineShaderPack.shaderPackPath();
-        boolean packsDiffer = !beforeIsOff && beforePack != null && !ShaderPackLibrary.samePack(beforePack, livePack);
-        Component beforeText = (beforeIsOff ? Component.translatable("options.radiante.compare.off")
-            : packsDiffer ? Component.literal(packName(beforePack))
-            : Component.translatable("options.radiante.compare.before")).copy().withStyle(ChatFormatting.BOLD);
-        Component afterText = (beforeIsOff ? Component.literal(packName(livePack))
-            : packsDiffer ? Component.literal(packName(livePack))
-            : Component.translatable("options.radiante.compare.after")).copy().withStyle(ChatFormatting.BOLD);
-        int beforeW = font.width(beforeText) + 14;
-        int afterW = font.width(afterText) + 14;
-        int badgeY = screenH - 28;
-        if (splitX > margin + beforeW + 6) {
-            g.fill(margin, badgeY, margin + beforeW, badgeY + 18, Theme.PANEL);
-            g.outline(margin, badgeY, beforeW, 18, 0x60FFFFFF);
-            g.centeredText(font, beforeText, margin + beforeW / 2, badgeY + 5, Theme.TEXT);
+        // What each side is, each a label that opens a menu to choose it.
+        Badges badges = badges(font, screenW, screenH);
+        boolean menuOpen = menuSide != 0;
+        if (badges.beforeShown()) {
+            drawBadge(g, font, beforeLabel(), badges.beforeX(), badges.y(), badges.beforeW(), mouseX, mouseY,
+                menuSide == 1, false);
         }
-        if (screenW - splitX > margin + afterW + 6) {
-            int ax = screenW - margin - afterW;
-            g.fill(ax, badgeY, ax + afterW, badgeY + 18, Theme.PANEL);
-            g.outline(ax, badgeY, afterW, 18, Theme.ACCENT);
-            g.centeredText(font, afterText, ax + afterW / 2, badgeY + 5, Theme.ACCENT);
+        if (badges.afterShown()) {
+            drawBadge(g, font, afterLabel(), badges.afterX(), badges.y(), badges.afterW(), mouseX, mouseY,
+                menuSide == 2, true);
         }
         if (peeking) {
             return;
         }
 
-        TopBarRects bar = topBar(font, screenW);
-        drawPillButton(g, font, Component.translatable("options.radiante.compare.exit"), bar.backX(), bar.barY(),
-            bar.backW(), mouseX, mouseY, false);
-        drawPillButton(g, font, Component.literal("50%"), bar.resetX(), bar.barY(), bar.resetW(), mouseX, mouseY,
-            false);
-        drawPillButton(g, font, packLabel(), bar.packX(), bar.barY(), bar.packW(), mouseX, mouseY, packsDiffer);
+        TopBarRects bar = topBar(screenW);
+        boolean overBack = drawIconButton(g, bar.backX(), bar.barY(), mouseX, mouseY, false);
+        drawBackIcon(g, bar.backX() + ICON_BUTTON / 2, bar.barY() + ICON_BUTTON / 2, overBack);
+        boolean overCenter = drawIconButton(g, bar.centerX(), bar.barY(), mouseX, mouseY, false);
+        drawCenterIcon(g, bar.centerX() + ICON_BUTTON / 2, bar.barY() + ICON_BUTTON / 2, overCenter);
 
         Component hint = Component.translatable("options.radiante.compare.hint");
         int hintW = font.width(hint) + 16;
-        if (hintW + beforeW + afterW + margin * 4 < screenW) {
+        if (!menuOpen && hintW + badges.beforeW() + badges.afterW() + Math.max(8, screenW / 32) * 4 < screenW) {
             int hx = (screenW - hintW) / 2;
-            g.fill(hx, badgeY + 1, hx + hintW, badgeY + 17, 0xA8101413);
-            g.centeredText(font, hint, screenW / 2, badgeY + 5, Theme.TEXT_DIM);
+            g.fill(hx, badges.y() + 1, hx + hintW, badges.y() + 17, 0xA8101413);
+            g.centeredText(font, hint, screenW / 2, badges.y() + 5, Theme.TEXT_DIM);
+        }
+
+        if (menuOpen) {
+            MenuRect rect = menuRect(font, badges, screenW);
+            g.fill(rect.x() - 1, rect.y() - 1, rect.x() + rect.w() + 1, rect.y() + menu.size() * MENU_ROW + 1,
+                Theme.ACCENT);
+            for (int i = 0; i < menu.size(); i++) {
+                Choice choice = menu.get(i);
+                int ry = rect.y() + i * MENU_ROW;
+                boolean hover = mouseX >= rect.x() && mouseX < rect.x() + rect.w() && mouseY >= ry
+                    && mouseY < ry + MENU_ROW;
+                g.fill(rect.x(), ry, rect.x() + rect.w(), ry + MENU_ROW, hover ? Theme.PANEL_DARK : 0xF0101413);
+                boolean current = chosen(choice);
+                String text = font.plainSubstrByWidth(choice.label().getString(), rect.w() - 16);
+                if (current) {
+                    g.fill(rect.x() + 4, ry + 5, rect.x() + 8, ry + 9, Theme.ACCENT);
+                }
+                g.text(font, Component.literal(text), rect.x() + 12, ry + 3,
+                    current || hover ? Theme.ACCENT : Theme.TEXT);
+            }
+            return;
+        }
+
+        // What the icons and labels do, in words, as the mouse rests on them.
+        Component tip = null;
+        if (overBack) {
+            tip = Component.translatable("options.radiante.compare.exit.tooltip");
+        } else if (overCenter) {
+            tip = Component.translatable("options.radiante.compare.center.tooltip");
+        } else if (badges.beforeShown() && inside(mouseX, mouseY, badges.beforeX(), badges.y(), badges.beforeW())) {
+            tip = Component.translatable("options.radiante.compare.before.tooltip");
+        } else if (badges.afterShown() && inside(mouseX, mouseY, badges.afterX(), badges.y(), badges.afterW())) {
+            tip = Component.translatable("options.radiante.compare.after.tooltip");
+        }
+        if (tip != null) {
+            g.setTooltipForNextFrame(font.split(tip, 200), mouseX, mouseY);
         }
     }
 
-    private static void drawPillButton(GuiGraphicsExtractor g, Font font, Component label, int x, int y, int w,
-                                       int mouseX, int mouseY, boolean selected) {
-        boolean hover = mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + 18;
-        boolean lit = hover || selected;
+    private static boolean inside(int mouseX, int mouseY, int x, int y, int w) {
+        return mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + 18;
+    }
+
+    /** A label along the bottom: its text, and a small triangle pointing up to the menu it opens. */
+    private static void drawBadge(GuiGraphicsExtractor g, Font font, Component text, int x, int y, int w, int mouseX,
+                                  int mouseY, boolean open, boolean live) {
+        boolean lit = open || inside(mouseX, mouseY, x, y, w);
+        int color = live || lit ? Theme.ACCENT : Theme.TEXT;
         g.fill(x, y, x + w, y + 18, lit ? Theme.PANEL_DARK : Theme.PANEL);
-        g.outline(x, y, w, 18, lit ? Theme.ACCENT : 0x55FFFFFF);
-        // A long pack name is cut to the pill instead of running over the next one.
-        Component shown = label;
-        if (font.width(label) > w - 8) {
-            shown = Component.literal(font.plainSubstrByWidth(label.getString(), w - 14) + "...");
+        g.outline(x, y, w, 18, live || lit ? Theme.ACCENT : 0x60FFFFFF);
+        g.text(font, text, x + 7, y + 5, color);
+        int tx = x + w - 11;
+        for (int i = 0; i < 3; i++) {
+            g.fill(tx + i, y + 8 + i, tx + 6 - i, y + 9 + i, color);
         }
-        g.centeredText(font, shown, x + w / 2, y + 5, lit ? Theme.ACCENT : Theme.TEXT);
     }
 
-    static boolean mouseClicked(double mouseX, double mouseY, int button, Font font, int screenW,
-                                Runnable onExit, Runnable onRebaseline) {
-        if (offCapturePending) {
+    /** An icon's square button; true while the mouse is over it. */
+    private static boolean drawIconButton(GuiGraphicsExtractor g, int x, int y, int mouseX, int mouseY,
+                                          boolean selected) {
+        boolean hover = inside(mouseX, mouseY, x, y, ICON_BUTTON);
+        boolean lit = hover || selected;
+        g.fill(x, y, x + ICON_BUTTON, y + ICON_BUTTON, lit ? Theme.PANEL_DARK : Theme.PANEL);
+        g.outline(x, y, ICON_BUTTON, ICON_BUTTON, lit ? Theme.ACCENT : 0x55FFFFFF);
+        return hover;
+    }
+
+    /** A chevron pointing left: back to the settings. */
+    private static void drawBackIcon(GuiGraphicsExtractor g, int cx, int cy, boolean lit) {
+        int c = lit ? Theme.ACCENT : Theme.TEXT;
+        for (int i = 0; i < 4; i++) {
+            g.fill(cx - 2 + i, cy - i - 1, cx + i, cy - i, c);
+            g.fill(cx - 2 + i, cy + i, cx + i, cy + i + 1, c);
+        }
+    }
+
+    /** A frame split down its middle: the divider to the middle. */
+    private static void drawCenterIcon(GuiGraphicsExtractor g, int cx, int cy, boolean lit) {
+        int c = lit ? Theme.ACCENT : Theme.TEXT;
+        g.outline(cx - 5, cy - 4, 10, 8, c);
+        g.fill(cx - 1, cy - 6, cx + 1, cy + 6, c);
+    }
+
+    static boolean mouseClicked(double mouseX, double mouseY, int button, Font font, int screenW, int screenH,
+                                Runnable onExit) {
+        if (capturing()) {
             return true;
         }
         // The left button's number differs between versions (0 up to 26.2, 1 from 26.3 on): the check took 0, and
@@ -527,20 +751,35 @@ public final class BeforeAfterPreview {
         if (button != InputConstants.MOUSE_BUTTON_LEFT) {
             return false;
         }
-        TopBarRects bar = topBar(font, screenW);
-        if (mouseY >= bar.barY() && mouseY < bar.barY() + 18) {
-            if (mouseX >= bar.backX() && mouseX < bar.backX() + bar.backW()) {
-                onExit.run();
-                return true;
+        int x = (int) mouseX;
+        int y = (int) mouseY;
+        Badges badges = badges(font, screenW, screenH);
+        if (menuSide != 0) {
+            // A click picks an entry, or closes the menu anywhere else.
+            MenuRect rect = menuRect(font, badges, screenW);
+            int row = (y - rect.y()) / MENU_ROW;
+            if (x >= rect.x() && x < rect.x() + rect.w() && y >= rect.y() && row >= 0 && row < menu.size()) {
+                choose(menu.get(row));
             }
-            if (mouseX >= bar.resetX() && mouseX < bar.resetX() + bar.resetW()) {
-                setSplitFraction(0.5f);
-                return true;
-            }
-            if (mouseX >= bar.packX() && mouseX < bar.packX() + bar.packW()) {
-                cyclePack();
-                return true;
-            }
+            menuSide = 0;
+            return true;
+        }
+        if (badges.beforeShown() && inside(x, y, badges.beforeX(), badges.y(), badges.beforeW())) {
+            openMenu(1);
+            return true;
+        }
+        if (badges.afterShown() && inside(x, y, badges.afterX(), badges.y(), badges.afterW())) {
+            openMenu(2);
+            return true;
+        }
+        TopBarRects bar = topBar(screenW);
+        if (inside(x, y, bar.backX(), bar.barY(), ICON_BUTTON)) {
+            onExit.run();
+            return true;
+        }
+        if (inside(x, y, bar.centerX(), bar.barY(), ICON_BUTTON)) {
+            setSplitFraction(0.5f);
+            return true;
         }
         draggingSplit = true;
         dragTo((float) (mouseX / Math.max(1, screenW)));
@@ -566,7 +805,11 @@ public final class BeforeAfterPreview {
 
     static boolean keyPressed(KeyEvent event, Runnable onExit) {
         if (event.key() == InputConstants.KEY_ESCAPE) {
-            onExit.run();
+            if (menuSide != 0) {
+                menuSide = 0;
+            } else if (!capturing()) {
+                onExit.run();
+            }
             return true;
         }
         if (event.key() == InputConstants.KEY_SPACE) {
