@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Fixed the game crashing (VK_ERROR_DEVICE_LOST) when ray tracing was turned back on, which Before / After does each time it opens to take its Radiante Off picture, more often in a world with many lights. The table of each section's lights was made anew whenever the sections were (turning ray tracing on or off, rejoining, changing the render distance) and first written only when the next frame after it began, so the frame in between read memory the old table had just freed, with the addresses of light buffers that were gone. Every copy is now written before any frame reads it.
+
 - Settings, Image: Light Style, Exposure, Saturation, Local Tone Mapping, Brightness, Contrast and Shadow Depth show on the picture behind the screen as they move, before Apply; Undo puts them back.
 
 - Block Emission rows read **Pack colour** while untouched, with no swatch: the light keeps its pack's colour, and the white "1.00 / 1.00 / 1.00" read as a white light. A tinted one reads its multipliers (×1.00 ×0.50 ×0.50), a black one No light; the description is in plain words.
