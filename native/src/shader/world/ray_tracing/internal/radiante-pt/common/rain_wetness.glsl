@@ -68,6 +68,14 @@ float vptRainFray(vec2 world, float amount, float salt) {
     return VPT_RAIN_PIXELS != 0 ? step(n, amount) : smoothstep(n - 0.15, n + 0.15, amount);
 }
 
+/** Where in its column (0..1 each way) the pixel of a point lies, at the pixel's centre with Pixel Rain: what is
+ *  measured from it (how far to a fire, to the edge of a roof, to the open) is then one value over the whole pixel.
+ *  Measured at the point itself, a ring round a lantern cut through the pixels on its edge along its curve: pixels
+ *  sliced in two on a slant, like little triangles, at the rim of the melt and of the rime round it. */
+vec2 vptRainPixelWithin(vec2 within) {
+    return VPT_RAIN_PIXELS != 0 ? (floor(within * RAIN_PIXELS_PER_BLOCK) + 0.5) / RAIN_PIXELS_PER_BLOCK : within;
+}
+
 float vptHeatDryness(ivec2 column, uint textureId, vec2 withinColumn) {
     float dry = 0.0;
     for (int dz = -1; dz <= 1; dz++) {
@@ -114,9 +122,13 @@ const float SHELTER_DAMP = 0.45;
 const float SHELTER_REACH = 2.0;
 // Ground under leaves: the rain drips through them, so it is never quite dry there.
 const float LEAF_DAMP = 0.3;
-// How far apart the columns are that are read to blend the rain across a biome's edge, in blocks: the wetness fades
-// over about twice that.
-const float BIOME_BLEND_STEP = 4.0;
+// How far apart the columns are that are read to blend the rain and the snow across a biome's edge, in blocks: the
+// weather changes over about twice that. At 4 the edge of a snowy biome by a rainy one was a strip eight blocks wide
+// of wet ground and snow sprinkled together, with rain running down walls under the snow.
+const float BIOME_BLEND_STEP = 2.0;
+// The fray both the rain and the snow cross a biome's edge by (vptRainFray), so that where they meet each pixel takes
+// the one or the other: frayed apart, a pixel could be both wet and snowy, or neither.
+const float BIOME_FRAY_SALT = 13.7;
 
 #ifndef VPT_RAIN_WET_WALLS
 #    define VPT_RAIN_WET_WALLS 0.8
@@ -155,8 +167,9 @@ vec2 vptGroundRain(vec3 position, vec3 outwardNormal) {
     ivec2 column = cameraCell.xz + ivec2(floor(relativePosition.xz));
     float biome = vptRainBiome(column, textureId);
     if (biome <= 0.0) { return vec2(0.0); }
-    // Across a biome's edge the wet ground frays out into the dry instead of thinning evenly.
-    biome = vptRainFray(vec2(column) + fract(relativePosition.xz), biome, 7.7);
+    // Across a biome's edge the wet ground frays out into the dry instead of thinning evenly: the pixels the snow of a
+    // snowy biome beside does not take (vptGroundSnow), and only those.
+    biome = 1.0 - vptRainFray(vec2(column) + fract(relativePosition.xz), 1.0 - biome, BIOME_FRAY_SALT);
     if (biome <= 0.0) { return vec2(0.0); }
     float fade = (1.0 - smoothstep(220.0, 238.0, max(abs(position.x), abs(position.z)))) * biome;
 
@@ -178,14 +191,14 @@ vec2 vptGroundRain(vec3 position, vec3 outwardNormal) {
         // leaves the wall above it as wet as it was. Taking that soaking for every change, the whole strip of wall
         // over a block put against it went dry at once.
         g_vptColumnSoak = (frontData.b & 4) != 0 ? vptColumnSoak(frontData) : 1.0;
-        float heatDry = vptHeatDryness(column, textureId, fract(relativePosition.xz));
+        float heatDry = vptHeatDryness(column, textureId, vptRainPixelWithin(fract(relativePosition.xz)));
         return vec2(0.0, clamp(VPT_RAIN_WET_WALLS, 0.0, 1.0) * fade * (1.0 - heatDry));
     }
     fade *= smoothstep(0.5, 0.95, outwardNormal.y);
 
     int surfaceBlockY = cameraCell.y + int(floor(relativePosition.y - 0.001));
     ivec4 center = vptRainColumn(column, textureId);
-    vec2 withinColumn = fract(relativePosition.xz);
+    vec2 withinColumn = vptRainPixelWithin(fract(relativePosition.xz));
 
     // Only a top that a block taken away laid bare (RainExposure's bit 2) starts dry: it was covered until then. A
     // block put down in the rain comes out as wet as the ground around, where it showed a dry top that soaked in.
@@ -598,19 +611,23 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
     ivec2 column = cameraCell.xz + ivec2(floor(relativePosition.xz));
     float biome = vptSnowBiome(column, textureId);
     if (biome <= 0.0) { return vec2(0.0); }
-    vec2 withinColumn = fract(relativePosition.xz);
-    biome = vptRainFray(vec2(column) + withinColumn, biome, 13.7);
+    vec2 withinColumn = vptRainPixelWithin(fract(relativePosition.xz));
+    biome = vptRainFray(vec2(column) + withinColumn, biome, BIOME_FRAY_SALT);
     if (biome <= 0.0) { return vec2(0.0); }
     float fade = (1.0 - smoothstep(220.0, 238.0, max(abs(position.x), abs(position.z)))) * biome;
 
     if (outwardNormal.y < 0.5) {
-        ivec2 front = cameraCell.xz + ivec2(floor(relativePosition.xz + outwardNormal.xz * 0.5));
+        // The columns a hair either side of the face: a face on a column's edge has its block behind and the next
+        // column in front, and one inside its block (the riser of a stair, between its two steps) has its own column
+        // on both sides. Half a block either side put that riser's own column exactly on the edge, so it was taken
+        // for the column behind or the one in front from one frame to the next: the band flickered or was missing.
+        ivec2 front = cameraCell.xz + ivec2(floor(relativePosition.xz + outwardNormal.xz * 0.02));
+        ivec2 own = cameraCell.xz + ivec2(floor(relativePosition.xz - outwardNormal.xz * 0.02));
         int faceBlockY = cameraCell.y + int(floor(relativePosition.y));
-        ivec4 frontData = vptRainColumn(front, textureId);
-        // Under an overhang, or against a block in front: no snow reaches it.
-        if (vptRainColumnBlocks(frontData, faceBlockY)) { return vec2(0.0); }
+        // Under an overhang, or against a block in front: no snow reaches it. A face inside its block has open air
+        // in front once its column's top is this block (below).
+        if (front != own && vptRainColumnBlocks(vptRainColumn(front, textureId), faceBlockY)) { return vec2(0.0); }
         // Only the side of the top block of its column, whose top the snow lies on, and not where water is the top.
-        ivec2 own = cameraCell.xz + ivec2(floor(relativePosition.xz - outwardNormal.xz * 0.5));
         ivec4 ownData = vptRainColumn(own, textureId);
         if (ownData.a == 0 || vptColumnHeight(ownData) != faceBlockY || (ownData.b & 8) != 0) {
             return vec2(0.0);
@@ -632,8 +649,9 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
         if (!topEdge) { return vec2(0.0); }
         float fringe = vptSnowSideFringe(faceTop - relativePosition.y, along, spread, salt);
         if (fringe <= 0.0) { return vec2(0.0); }
-        vec2 melt = vptSnowHeatMelt(own, textureId, clamp(relativePosition.xz - vec2(own - cameraCell.xz),
-                                                          vec2(0.0), vec2(1.0)));
+        vec2 melt = vptSnowHeatMelt(own, textureId, vptRainPixelWithin(clamp(relativePosition.xz -
+                                                                                 vec2(own - cameraCell.xz),
+                                                                             vec2(0.0), vec2(0.9999))));
         return vec2(fringe * fade * (1.0 - melt.x), 0.0);
     }
     fade *= smoothstep(0.5, 0.95, outwardNormal.y);

@@ -199,7 +199,7 @@
                     vec3 sunDir = celestialSunDirection();
                     vec3 rayDir = orgDirection;
                     float progress = skyUBO.rainGradient;
-                    vec3 rainyRadiance = mix(vec3(0.0), vec3(0.1), smoothstep(-0.3, 0.3, sunDir.y));
+                    vec3 rainyRadiance = celestialOvercastRadiance();
                     vec3 sunnyRadiance = texture(skyFull, rayDir).rgb;
                     vec3 fogRadiance = mix(sunnyRadiance, rainyRadiance, progress);
 

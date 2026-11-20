@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Rain and snow at night: the overcast sky gives a faint light of its own, about half what a clear night gives the ground (scaled by Night Brightness). It went to nothing before, so on a rainy or snowy night only the lamps lit anything and the eye, open as far as it goes, still showed the ground a few blocks from a lantern black; a lantern held lit all round and made the night look a different place from one with nothing in the hand.
+
+- Snow at the edge of a rainy biome: each pixel takes the snow or the rain, never both or neither, and the change runs over about four blocks instead of eight, so the strip where the two met (wet ground under specks of snow, rain running down walls under their snow) is gone.
+
+- Snow keeps to whole pixels at the rim of the melt round a lantern, a torch or a fire, of the rime round it and of the edges under roofs: they were measured at the point rather than at its pixel, so a pixel on the rim was cut in two along the curve, like a little triangle.
+
+- Snow on stairs: the riser between the two steps carries the band along its top as the other sides do, and no longer flickers or goes missing (it lay on the edge between its own column and the next, and was read as either from one frame to the next).
+
 - Lights: a torch, lantern or other light set down lights the room as the same light held does. In first person the player's own model, which is there for the sun's shadow, stopped the shadow rays of the lights round the player, so a torch at the feet lit a room about a thirtieth of the held one; block lights now leave that model out in first person, as the held light always did.
 
 - Local Tone Mapping brings down only what would go past white once exposed, instead of everything brighter than the picture's mean: at night or in a storm a room lit by torches stood stops above the mean and was darkened as if it were the sky through a window.
