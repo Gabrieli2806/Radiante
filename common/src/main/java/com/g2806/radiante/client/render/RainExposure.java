@@ -18,6 +18,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SlabBlock;
+import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -33,8 +34,8 @@ import org.lwjgl.system.MemoryUtil;
 /**
  * Where rain reaches the ground, for wet surfaces. A 512 by 512 texture
  * wraps around the camera, one texel per block column: the height of the column's top rain-blocking block (red and
- * green's low 13 bits, offset by 4096; green's top bit says the last change was water or lava coming or going, the
- * next that the top is a dirt path or farmland, which keeps no snow, the next that it is a bottom slab),
+ * green's low 12 bits, offset by 2048; green's top bit says the last change was water or lava coming or going, the
+ * next three what the top has half a block up, see halfTopOf),
  * whether it rains there rather than snows (blue), and in alpha whether the column is known
  * (0 not) and how long its top has been out in the rain. The shader wets upward faces that are the top of their
  * column. Wetness itself follows the rain slowly, drying well after it stops.
@@ -141,7 +142,6 @@ public final class RainExposure {
     private static int nearRefresh;
     private static boolean lastRainEnabled = true;
     private static boolean lastSnowEnabled = true;
-    private static boolean lastSnowOnPaths;
 
     static {
         Arrays.fill(heights, Integer.MIN_VALUE);
@@ -176,10 +176,9 @@ public final class RainExposure {
             wetness = 0.0f;
             return new Vector4f(0.0f);
         }
-        if (rainEnabled != lastRainEnabled || snowEnabled != lastSnowEnabled || Options.snowOnPaths != lastSnowOnPaths) {
+        if (rainEnabled != lastRainEnabled || snowEnabled != lastSnowEnabled) {
             lastRainEnabled = rainEnabled;
             lastSnowEnabled = snowEnabled;
-            lastSnowOnPaths = Options.snowOnPaths;
             Arrays.fill(tileX, Integer.MIN_VALUE);
             centerX = Integer.MIN_VALUE;
         }
@@ -271,7 +270,9 @@ public final class RainExposure {
         }
         // y carries the rain clock too, under the texture's id: id * 256 + the clock in steps (0..STAMPS).
         float clockSteps = (float) ((rainClock / CLOCK_UNIT) % STAMPS);
-        return new Vector4f(wetness, texture * 256.0f + clockSteps, 0.0f, 0.0f);
+        // Negative with Snow on Paths & Farmland on (rain_wetness.glsl vptSnowOnPaths).
+        float idAndClock = texture * 256.0f + clockSteps;
+        return new Vector4f(wetness, Options.snowOnPaths ? -idAndClock : idAndClock, 0.0f, 0.0f);
     }
 
     /** The tile's columns start over unknown: a tile that comes into the ring is not ground that just changed. */
@@ -321,6 +322,26 @@ public final class RainExposure {
     private static int heatOf(LevelChunk chunk, BlockPos.MutableBlockPos pos) {
         int heat = heatOf(chunk.getBlockState(pos));
         return heat == 3 ? 3 : Math.max(heat, heatOf(chunk.getBlockState(pos.move(0, 1, 0))));
+    }
+
+    /**
+     * What a top that is not a whole block has half a block up, as rain_wetness.glsl reads green's bits 4 to 6: 0
+     * nothing, 1 a bottom slab (its sides' top edge all open), 2 to 5 a bottom stair facing north, east, south or west
+     * (the edge open on the step's half, away from where it faces).
+     */
+    private static int halfTopOf(BlockState state) {
+        if (state.getBlock() instanceof SlabBlock) {
+            return state.getValue(SlabBlock.TYPE) == SlabType.BOTTOM ? 1 : 0;
+        }
+        if (state.getBlock() instanceof StairBlock && state.getValue(StairBlock.HALF) == Half.BOTTOM) {
+            return switch (state.getValue(StairBlock.FACING)) {
+                case NORTH -> 2;
+                case EAST -> 3;
+                case SOUTH -> 4;
+                default -> 5;
+            };
+        }
+        return 0;
     }
 
     /** The brightest light of the column's top and the block standing on it. */
@@ -385,17 +406,12 @@ public final class RainExposure {
                     fluidTop[column] = fluid;
                     pos.set(tileX[slot] * 16 + x, y + 1, tileZ[slot] * 16 + z);
                     // Green's top bit: the top changed lately with water or lava coming or going (see fluidChange);
-                    // the next: a dirt path, which keeps no snow, as in Minecraft.
-                    // A dirt path or farmland keeps no snow unless Snow on Paths & Farmland is on; the next bit: a
-                    // bottom slab, whose sides carry their band of snow half a block up.
+                    // the next three: what is half a block up on a top that is not a whole block, for the band of
+                    // snow along the top edge of its sides (halfTopOf).
                     BlockState topState = chunk.getBlockState(pos.set(tileX[slot] * 16 + x, y, tileZ[slot] * 16 + z));
-                    boolean path = !Options.snowOnPaths
-                        && (topState.is(Blocks.DIRT_PATH) || topState.is(Blocks.FARMLAND));
-                    boolean halfTop = topState.getBlock() instanceof SlabBlock
-                        && topState.getValue(SlabBlock.TYPE) == SlabType.BOTTOM;
-                    int height = Math.clamp(y + 4096, 0, 8191)
-                        | (fluidChange[column] && !Float.isNaN(exposedAt[column]) ? 32768 : 0) | (path ? 16384 : 0)
-                        | (halfTop ? 8192 : 0);
+                    int height = Math.clamp(y + 2048, 0, 4095)
+                        | (fluidChange[column] && !Float.isNaN(exposedAt[column]) ? 32768 : 0)
+                        | (halfTopOf(topState) << 12);
                     int offset = (z * 16 + x) * 4;
                     pixels.put(offset, (byte) height);
                     pixels.put(offset + 1, (byte) (height >>> 8));
