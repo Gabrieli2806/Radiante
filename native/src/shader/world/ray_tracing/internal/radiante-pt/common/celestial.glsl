@@ -33,12 +33,12 @@ float celestialOvercastLevel() {
 // and the one the camera sees (a view ray, or its mirror image), darker than its light as a sheet of cloud is, so it
 // reads as a sky and not as a white card.
 //   rain    a slate blue, lighter and greyer towards the horizon, and a cool light on the land;
-//   storm   near indigo overhead over a pale, slightly green horizon, with banks of darker cloud, and less light;
+//   storm   near indigo overhead over a pale, slightly green horizon, and less light;
 //   snow    a bright, pale blue-white, nearly even: the high-key sky of a snowfall (skyUBO.biomeClimate.z, how snowy
 //           the camera's biome is, eased across a border).
-// All three carry banks of cloud in vanilla's blocky cells that drift with the wind, a brighter patch where the sun
-// or the moon stands behind the cloud (which gives the land a soft side to its light, with no hard shadows), and at
-// dawn and dusk a muted warm band along the horizon under it.
+// All three carry a brighter patch where the sun or the moon stands behind the cloud (which gives the land a soft side
+// to its light, with no hard shadows), and at dawn and dusk a muted warm band along the horizon under it. (Banks of
+// blocky cloud drawn into it read as squares stamped on the sky, not as weather, and were taken out.)
 const vec3 OVERCAST_RAIN_ZENITH = vec3(0.31, 0.37, 0.49);
 const vec3 OVERCAST_RAIN_HORIZON = vec3(0.56, 0.63, 0.70);
 const vec3 OVERCAST_STORM_ZENITH = vec3(0.13, 0.16, 0.24);
@@ -52,29 +52,6 @@ const vec3 OVERCAST_SNOW_LIGHT = vec3(1.04, 1.07, 1.12);
 // The warm band of dawn and dusk under the cloud, and the tint of an overcast night.
 const vec3 OVERCAST_DUSK = vec3(1.0, 0.62, 0.36);
 const vec3 OVERCAST_NIGHT_TINT = vec3(0.62, 0.80, 1.25);
-
-float celestialHash(vec2 p) {
-    vec3 q = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
-    q += dot(q, q.yzx + 33.33);
-    return fract((q.x + q.y) * q.z);
-}
-
-// The banks of cloud, 0..1 in a direction above the horizon: two sizes of blocky cells on a flat deck, drifting
-// with the wind's clock; flat (0.5) towards the horizon, where the cells would be a pixel wide.
-float celestialOvercastBanks(vec3 dir) {
-    if (dir.y <= 0.03) { return 0.5; }
-    vec2 deck = dir.xz / max(dir.y, 0.03) + vec2(worldUBO.windTime * 0.004, worldUBO.windTime * 0.0015);
-    vec2 cell = floor(deck * 9.0);
-    // The large shapes soft-edged (value noise over cells three wide), the single cells on top of them.
-    vec2 coarse = cell / 3.0;
-    vec2 base = floor(coarse);
-    vec2 f = smoothstep(vec2(0.0), vec2(1.0), fract(coarse));
-    float large = mix(mix(celestialHash(base), celestialHash(base + vec2(1.0, 0.0)), f.x),
-                      mix(celestialHash(base + vec2(0.0, 1.0)), celestialHash(base + vec2(1.0, 1.0)), f.x), f.y);
-    float small = celestialHash(cell + 17.0);
-    float bank = 0.75 * large + 0.25 * small;
-    return mix(0.5, bank, smoothstep(0.12, 0.45, dir.y));
-}
 
 /** The overcast sky in a direction: as the camera sees it (seen), or as it lights the world. */
 vec3 celestialOvercastSky(vec3 dir, bool seen) {
@@ -105,9 +82,6 @@ vec3 celestialOvercastSky(vec3 dir, bool seen) {
     vec3 horizon = mix(mix(OVERCAST_RAIN_HORIZON, OVERCAST_SNOW_HORIZON, snow),
                        mix(OVERCAST_STORM_HORIZON, OVERCAST_SNOW_HORIZON * 0.72, snow), storm);
     vec3 sky = mix(zenith, horizon, toHorizon);
-    // The banks: faint in snow, plain in rain, heavy in a storm.
-    float contrast = mix(mix(0.12, 0.04, snow), mix(0.26, 0.10, snow), storm);
-    sky *= 1.0 + contrast * (celestialOvercastBanks(dir) - 0.5) * 2.0;
     sky *= 1.0 + 0.45 * glow;
     return level * nightTint * (sky + OVERCAST_DUSK * duskBand * 0.9);
 }

@@ -4,7 +4,7 @@
 
 Two sections of the menu, on one page: **Sky & Fog** (groups Sky, Clouds, Fog) and **Water & Weather** (groups Rain, Snow, Water, Wind). Seamless Glass and Portal Transparency are in **Other**, under Glass & Portals.
 
-**Weather skies.** Rain, thunderstorms and snow each have their own sky and light: rain a slate blue with a cool light, a thunderstorm near indigo with heavy banks of cloud and a darker picture, snow a bright pale blue-white. The cloud banks are blocky and drift with the wind; dawn and dusk leave a muted warm band on the horizon, and an overcast night is a deep blue. Under a roof the rain and the snow come in through doorways and under eaves, not through walls.
+**Weather skies.** Rain, thunderstorms and snow each have their own sky and light: rain a slate blue with a cool light, a thunderstorm near indigo with a much darker picture, snow a bright pale blue-white. Dawn and dusk leave a muted warm band on the horizon, and an overcast night is a deep blue. Under a roof the rain and the snow come in through doorways and under eaves, not through walls.
 
 ![Radiante settings: Sky & Fog](../../images/ui/settings-sky.png)
 

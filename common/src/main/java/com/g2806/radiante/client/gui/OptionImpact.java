@@ -44,6 +44,7 @@ enum OptionImpact {
         Map.entry("options.radiante.depth_of_field", LOW),
         Map.entry("options.radiante.tunable.dof_strength", LOW),
         Map.entry("options.radiante.tunable.local_tone_mapping", LOW),
+        Map.entry("options.radiante.light_style", LOW),
         Map.entry("options.radiante.tunable.cloud_quality", HIGH),
         Map.entry("options.radiante.tunable.mirror_bounces", VARIES),
         Map.entry("options.radiante.tunable.fog_distance", MEDIUM),

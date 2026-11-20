@@ -9,6 +9,7 @@ Defaults are radiante-pt's, the Bedrock RTX look ([bedrock-rtx.md](../bedrock-rt
 | Control | Range / Values | Default | What it does |
 |---|---|---|---|
 | **Picture Style** | Natural · Bedrock · Vivid · Custom | Bedrock | Sets the tone curve and Saturation at once. Bedrock is the default look. See [Picture styles](#picture-styles) below. |
+| **Light Style** | Bright · Balanced · Cinematic · Custom | Balanced | Sets Exposure and Local Tone Mapping at once. Bright (+0.7 stops, more lifting of the dark parts) is for play: caves and rooms read clearly. Cinematic (−1 stop, little lifting) keeps caves dark round their lights and lets looking at lava darken the picture until you look away. |
 | **Tone Mapping** | Bedrock RTX · PBR Neutral · ACES · Reinhard | Bedrock RTX | How bright light is fitted to what the screen can show. Bedrock RTX is Bedrock's own curve, built from the picture's histogram; PBR Neutral keeps colours true; ACES is more filmic with more contrast; Reinhard is soft and flat. |
 | **Saturation** | 50% – 200% | 100% | How colourful the image is. |
 | **Texture Contrast** | 46% – 109% | 100% | How deep and contrasted block and entity colours look under the light. 100% matches Bedrock RTX; lower gives the paler, flatter look of earlier versions. Grey while Exact sRGB Textures (Advanced) is on, the default. |

@@ -111,12 +111,15 @@
 #ifndef BEDROCK_DAY_EXPOSURE_SCALE
 #    define BEDROCK_DAY_EXPOSURE_SCALE 0.85
 #endif
-// How the picture is held against the meter's in each weather (main_light_meter.glsl): rain, a thunderstorm, snow.
+// How the picture is held against the meter's in each weather (main_light_meter.glsl): rain, a thunderstorm (on top
+// of the rain's), snow. The eye adapts to whatever light there is, so a darker sky alone came out as bright as a clear
+// day after a moment: the weather's mood has to be held here. At 0.9 and 0.72 (and at 0.7) rain still looked about as
+// bright as a clear day once the eye had settled.
 #ifndef WEATHER_RAIN_EXPOSURE
-#    define WEATHER_RAIN_EXPOSURE 0.9
+#    define WEATHER_RAIN_EXPOSURE 0.55
 #endif
 #ifndef WEATHER_STORM_EXPOSURE
-#    define WEATHER_STORM_EXPOSURE 0.72
+#    define WEATHER_STORM_EXPOSURE 0.5
 #endif
 #ifndef WEATHER_SNOW_EXPOSURE
 #    define WEATHER_SNOW_EXPOSURE 1.05
