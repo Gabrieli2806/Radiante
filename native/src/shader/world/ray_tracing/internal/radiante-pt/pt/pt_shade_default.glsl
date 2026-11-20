@@ -122,6 +122,8 @@ layout(location = 1) rayPayloadEXT ShadowRay shadowRay;
 #include "pt/pt_hit_context.glsl"
 #include "pt/pt_sampling.glsl"
 #include "pt/pt_side_channels.glsl"
+// A pack's rain and snow on surfaces (hooks/weather_surface.glsl), called by pt_material.glsl; nothing in radiante-pt.
+#include "hooks/weather_surface.glsl"
 #include "pt/pt_material.glsl"
 #include "pt/pt_parallax.glsl"
 #include "pt/pt_deferred_shadow.glsl"
