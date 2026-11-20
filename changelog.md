@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Snow under roofs and fences: the snow falls past fences, walls, fence gates and panes onto the block they stand on, which takes it on its top and the band along its sides (the rim of a well with its posts, a wall topped with a fence); before, the fence was taken for the top of its column and the block under it stayed bare. A block under a roof or an overhang with open air over it carries the band on the side facing the open, where the snow blown in under the roof lies along its top, and one swapped for another there starts bare and gathers that snow again instead of keeping the old block's.
+
 - Snow: a block broken and put back at once (a stair swapped for another) comes out bare, as any block put down does. The map of the ground read only how high each column was, so a top replaced between two of its reads kept the old block's snow; it now hears of every block that changes on a column's top.
 
 - Snow and rain at the edge of a biome: one line that follows the biome's own edge, wandering a little and frayed a pixel or two either way as the melt round a campfire is, instead of a strip several blocks wide of scattered specks in block-sized steps.
