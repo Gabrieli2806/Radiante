@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Snow: a block put down comes out bare at once. For the moment before the snow's map of the ground read it, it was taken for the open top of the ground under it and showed that ground's snow, gone again a second later. The band along the sides of a block that is gathering its snow comes in pixel by pixel with the flakes on its top, where it stayed away until the top was nearly white, so a stair put down lately had a speckled top over bare sides.
+
 - Rain and snow at night: the overcast sky gives a faint light of its own, about half what a clear night gives the ground (scaled by Night Brightness). It went to nothing before, so on a rainy or snowy night only the lamps lit anything and the eye, open as far as it goes, still showed the ground a few blocks from a lantern black; a lantern held lit all round and made the night look a different place from one with nothing in the hand.
 
 - Snow at the edge of a rainy biome: each pixel takes the snow or the rain, never both or neither, and the change runs over about four blocks instead of eight, so the strip where the two met (wet ground under specks of snow, rain running down walls under their snow) is gone.
