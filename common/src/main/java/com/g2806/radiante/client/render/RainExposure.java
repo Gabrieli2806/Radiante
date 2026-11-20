@@ -7,9 +7,21 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.BlockParticleOption;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.tags.FluidTags;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.TrapDoorBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.Half;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -20,7 +32,8 @@ import org.lwjgl.system.MemoryUtil;
 /**
  * Where rain reaches the ground, for wet surfaces. A 512 by 512 texture
  * wraps around the camera, one texel per block column: the height of the column's top rain-blocking block (red and
- * green, offset by 32768), whether it rains there rather than snows (blue), and in alpha whether the column is known
+ * green's low 15 bits, offset by 16384; the top bit says the last change was water or lava coming or going),
+ * whether it rains there rather than snows (blue), and in alpha whether the column is known
  * (0 not) and how long its top has been out in the rain. The shader wets upward faces that are the top of their
  * column. Wetness itself follows the rain slowly, drying well after it stops.
  *
@@ -35,7 +48,8 @@ import org.lwjgl.system.MemoryUtil;
  * campfire, furnace, blast furnace or smoker, 2 for a torch or a lantern standing on it, 0 for nothing. The ground round
  * such a block stays drier in the rain and dries sooner after (rain_wetness.glsl).
  *
- * <p>Where it snows, blue's bit 3 says the column's top is water: the floor under it holds no snow.
+ * <p>Where it snows, blue's bit 3 says the column's top is water: the floor under it holds no snow; bit 4 says a
+ * bright light is on the top, which melts the snow round it as a torch does.
  */
 public final class RainExposure {
 
@@ -111,6 +125,28 @@ public final class RainExposure {
     private static final boolean[] lowered = new boolean[SIZE * SIZE];
     private static final long[] heatSince = new long[SIZE * SIZE];
     private static final float HEAT_STEP_SECONDS = 15.0f;
+    /**
+     * Per column: whether its top was water or lava when last read, and whether its last change was water or lava
+     * coming or going. Snow comes back on such a top evenly, where a block put down or taken away keeps its own way.
+     */
+    private static final boolean[] fluidTop = new boolean[SIZE * SIZE];
+    private static final boolean[] fluidChange = new boolean[SIZE * SIZE];
+    /** Per column: 0 when its top is not a trapdoor (or not read yet), 1 a shut one, 2 an open one. */
+    private static final byte[] trapdoorState = new byte[SIZE * SIZE];
+
+    /**
+     * A torch, lantern, campfire, lava bucket or bright light held by the player standing still: after
+     * HELD_HEAT_DELAY seconds the column under their feet warms a step every HELD_HEAT_STEP seconds up to what the
+     * block would give set down, melting the snow round them as it would. heldColumn is -1 while nothing is held.
+     */
+    private static final float HELD_HEAT_DELAY = 2.0f;
+    private static final float HELD_HEAT_STEP = 1.5f;
+    private static int heldColumn = -1;
+    private static int heldHeat;
+    private static int heldX;
+    private static int heldY;
+    private static int heldZ;
+    private static float heldStill;
     /** Tiles whose chunk was not loaded when they were read: read again every frame until it is. */
     private static final boolean[] missing = new boolean[TILES * TILES];
     private static int nearRefresh;
@@ -139,6 +175,9 @@ public final class RainExposure {
             Arrays.fill(heights, Integer.MIN_VALUE);
             Arrays.fill(exposedAt, Float.NaN);
             Arrays.fill(missing, false);
+            Arrays.fill(trapdoorState, (byte) 0);
+            heldColumn = -1;
+            heldHeat = 0;
         }
         long now = System.nanoTime();
         float dt = Math.min((now - lastTime) * 1e-9f, 0.1f);
@@ -173,6 +212,7 @@ public final class RainExposure {
         if (wetness == 0.0f) {
             return new Vector4f(0.0f);
         }
+        updateHeld(minecraft, dt);
 
         if (texture < 0) {
             texture = TextureProxy.generateTextureId();
@@ -254,6 +294,94 @@ public final class RainExposure {
             int row = (baseZ + z) * SIZE + baseX;
             Arrays.fill(heights, row, row + 16, Integer.MIN_VALUE);
             Arrays.fill(exposedAt, row, row + 16, Float.NaN);
+            Arrays.fill(trapdoorState, row, row + 16, (byte) 0);
+        }
+    }
+
+    /** Follows what the player holds and how long they have stood on the same column (see heldColumn). */
+    private static void updateHeld(Minecraft minecraft, float dt) {
+        LocalPlayer player = minecraft.player;
+        int target = 0;
+        if (player != null && player.onGround() && !player.isSpectator()) {
+            target = Math.max(heldHeatOf(player.getMainHandItem()), heldHeatOf(player.getOffhandItem()));
+        }
+        BlockPos at = player == null ? null : player.blockPosition();
+        boolean moved = at == null || at.getX() != heldX || at.getZ() != heldZ || at.getY() != heldY;
+        if (target == 0 || moved) {
+            release();
+            heldStill = 0.0f;
+            if (at != null) {
+                heldX = at.getX();
+                heldY = at.getY();
+                heldZ = at.getZ();
+            }
+            if (target == 0) {
+                return;
+            }
+        }
+        if (minecraft.isPaused()) {
+            return;
+        }
+        heldStill += dt;
+        int heat = heldStill < HELD_HEAT_DELAY ? 0
+            : Math.min(target, 1 + (int) ((heldStill - HELD_HEAT_DELAY) / HELD_HEAT_STEP));
+        if (heat != heldHeat) {
+            // Shows at the next refresh of the tiles round the camera.
+            nearRefresh = 8;
+        }
+        heldHeat = heat;
+        heldColumn = heat > 0 ? (heldZ & (SIZE - 1)) * SIZE + (heldX & (SIZE - 1)) : -1;
+    }
+
+    /**
+     * The player walked off or put the heat source away: the ground it melted starts bare, as a top laid bare does,
+     * and the snow gathers on it again over the Wet-Up Time, instead of the whole blanket coming back at once.
+     */
+    private static void release() {
+        if (heldHeat > 0 && heldColumn >= 0) {
+            float clock = (float) (rainClock / CLOCK_UNIT);
+            int reach = heldHeat >= 3 ? 2 : heldHeat >= 2 ? 1 : 0;
+            for (int dz = -reach; dz <= reach; dz++) {
+                for (int dx = -reach; dx <= reach; dx++) {
+                    int column = ((heldZ + dz) & (SIZE - 1)) * SIZE + ((heldX + dx) & (SIZE - 1));
+                    exposedAt[column] = clock;
+                    lowered[column] = true;
+                }
+            }
+            nearRefresh = 8;
+        }
+        heldHeat = 0;
+        heldColumn = -1;
+    }
+
+    /** How hot an item is in the hand: as its block would be set down, a lava bucket as lava, a bright light as a torch. */
+    private static int heldHeatOf(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return 0;
+        }
+        if (stack.is(Items.LAVA_BUCKET)) {
+            return 3;
+        }
+        if (!(stack.getItem() instanceof BlockItem blockItem)) {
+            return 0;
+        }
+        BlockState state = blockItem.getBlock().defaultBlockState();
+        int heat = heatOf(state);
+        return heat == 0 && state.getLightEmission() > 11 ? 2 : heat;
+    }
+
+    /** Snow sliding off a trapdoor swung open: clumps of it falling from where its top was, and a little powder. */
+    private static void shakeOffSnow(ClientLevel world, BlockState trapdoor, int x, int y, int z) {
+        double top = y + (trapdoor.getValue(BlockStateProperties.HALF) == Half.TOP ? 1.0 : 0.1875);
+        BlockParticleOption snow = new BlockParticleOption(ParticleTypes.BLOCK, Blocks.SNOW_BLOCK.defaultBlockState());
+        RandomSource random = world.getRandom();
+        for (int i = 0; i < 14; i++) {
+            world.addParticle(snow, x + 0.1 + random.nextDouble() * 0.8, top + 0.02, z + 0.1 + random.nextDouble() * 0.8,
+                random.nextGaussian() * 0.02, -0.05, random.nextGaussian() * 0.02);
+        }
+        for (int i = 0; i < 4; i++) {
+            world.addParticle(ParticleTypes.SNOWFLAKE, x + random.nextDouble(), top, z + random.nextDouble(),
+                random.nextGaussian() * 0.01, -0.02, random.nextGaussian() * 0.01);
         }
     }
 
@@ -261,6 +389,12 @@ public final class RainExposure {
     private static int heatOf(LevelChunk chunk, BlockPos.MutableBlockPos pos) {
         int heat = heatOf(chunk.getBlockState(pos));
         return heat == 3 ? 3 : Math.max(heat, heatOf(chunk.getBlockState(pos.move(0, 1, 0))));
+    }
+
+    /** The brightest light of the column's top and the block standing on it. */
+    private static int lightOf(LevelChunk chunk, BlockPos.MutableBlockPos pos) {
+        int light = chunk.getBlockState(pos).getLightEmission();
+        return Math.max(light, chunk.getBlockState(pos.move(0, 1, 0)).getLightEmission());
     }
 
     private static int heatOf(net.minecraft.world.level.block.state.BlockState state) {
@@ -305,15 +439,22 @@ public final class RainExposure {
                     int column = (baseZ + z) * SIZE + baseX + x;
                     int before = heights[column];
                     heights[column] = y;
-                    if (before != Integer.MIN_VALUE && before != y) {
+                    // Water or lava on top: water poured on or drained off, lava flowing in or out.
+                    boolean fluid = !chunk.getFluidState(pos.set(tileX[slot] * 16 + x, y, tileZ[slot] * 16 + z))
+                        .isEmpty();
+                    if (before != Integer.MIN_VALUE && (before != y || fluid != fluidTop[column])) {
                         // A new top: dry, from now on the rain clock.
                         exposedAt[column] = clock;
-                        lowered[column] = y < before;
+                        lowered[column] = y < before || fluidTop[column] && !fluid;
+                        fluidChange[column] = fluid || fluidTop[column];
                     } else if (!Float.isNaN(exposedAt[column]) && (clock - exposedAt[column]) * CLOCK_UNIT > SOAKED) {
                         exposedAt[column] = Float.NaN;
                     }
+                    fluidTop[column] = fluid;
                     pos.set(tileX[slot] * 16 + x, y + 1, tileZ[slot] * 16 + z);
-                    int height = Math.clamp(y + 32768, 0, 65535);
+                    // Green's top bit: the top changed lately with water or lava coming or going (see fluidChange).
+                    int height = Math.clamp(y + 16384, 0, 32767)
+                        | (fluidChange[column] && !Float.isNaN(exposedAt[column]) ? 32768 : 0);
                     int offset = (z * 16 + x) * 4;
                     pixels.put(offset, (byte) height);
                     pixels.put(offset + 1, (byte) (height >>> 8));
@@ -341,6 +482,27 @@ public final class RainExposure {
                             heat = steps;
                         }
                     }
+                    // A heat source held by the player standing still on this column (see updateHeld).
+                    if (column == heldColumn && heldHeat > heat && y <= heldY && (rains || snows)) {
+                        heat = heldHeat;
+                    }
+                    // A trapdoor on top opened or shut: whichever face is now on top was out of the weather, so it
+                    // starts bare like a top laid bare, and the snow on a trapdoor swung open falls off it. The snow
+                    // stayed on the face as it turned, and on the top it showed again when shut.
+                    BlockState top = chunk.getBlockState(pos.set(tileX[slot] * 16 + x, y, tileZ[slot] * 16 + z));
+                    byte trapdoor = top.getBlock() instanceof TrapDoorBlock
+                        ? (byte) (top.getValue(BlockStateProperties.OPEN) ? 2 : 1) : 0;
+                    if (trapdoor != 0 && trapdoorState[column] != 0 && trapdoor != trapdoorState[column]
+                        && before == y && (rains || snows)) {
+                        boolean snowLay = snows && trapdoor == 2 && wetness > 0.2f && (Float.isNaN(exposedAt[column])
+                            || (clock - exposedAt[column]) * CLOCK_UNIT > 0.7f);
+                        exposedAt[column] = clock;
+                        lowered[column] = true;
+                        if (snowLay) {
+                            shakeOffSnow(world, top, tileX[slot] * 16 + x, y, tileZ[slot] * 16 + z);
+                        }
+                    }
+                    trapdoorState[column] = trapdoor;
                     // Bit 2: the column's recent change lowered its top (see lowered), for the faces it opened.
                     int down = lowered[column] && !Float.isNaN(exposedAt[column]) ? 4 : 0;
                     int kind = rains ? (leaves ? 128 : 248) : snows ? (leaves ? 32 : 96) : 0;
@@ -348,6 +510,13 @@ public final class RainExposure {
                     if (snows && chunk.getFluidState(pos.set(tileX[slot] * 16 + x, y, tileZ[slot] * 16 + z))
                         .is(FluidTags.WATER)) {
                         kind |= 8;
+                    }
+                    // Bit 4 where it snows: a bright light on the top or standing on it (glowstone, a froglight, a
+                    // sea lantern), which Minecraft melts snow beside too (block light over 11); without it the snow
+                    // stopped dead at the light's edge, as only the light's own face kept clear.
+                    if (snows && heat == 0 && (lightOf(chunk, pos.set(tileX[slot] * 16 + x, y, tileZ[slot] * 16 + z))
+                        > 11)) {
+                        kind |= 16;
                     }
                     pixels.put(offset + 2, (byte) (kind == 0 ? 0 : kind | down | heat));
                     float stamp = exposedAt[column];

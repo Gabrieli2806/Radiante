@@ -509,32 +509,13 @@ void sampleSurfaceState(bool useTexture,
             }
             wetness = vptRainPixelWetness(wetness, texel, row, seed, !upward, soak);
         }
-        if (wetness > 0.0) {
-            vptApplyGroundWetness(mat, wetness, !upward);
-            shadingNormal = normalizeF(mix(shadingNormal, geometricNormal, wetness * 0.7), geometricNormal);
-        }
         // A film of standing water over it all while it rains, drying up in patches after (vptPuddle).
         vec3 rainPos = vptRainSurfacePosition(worldPos);
         // Grass and earth: the surfaces the biome tints.
         float porous = any(lessThan(colorLayer, vec3(0.98))) ? 1.0 : 0.0;
         float puddle = open > 0.0 && fullTop ? vptRainPuddleEdge(vptPuddle(rainPos, open, porous)) : 0.0;
-        if (puddle > 0.0) {
-            vptApplyPuddle(mat, puddle, porous);
-            // Flat water, so the mirror image is sharp: the rings are kept faint on it, as their changing slope
-            // from frame to frame left the denoiser only a blurred image of the sky to show.
-            shadingNormal = vptApplyRainRipples(normalizeF(mix(shadingNormal, geometricNormal, puddle),
-                                                           geometricNormal),
-                                                vptRainRippleSlope(rainPos), puddle * PUDDLE_RIPPLES);
-            float rippleFootprint = mainRay.coneWidth + g_hit.hitT * mainRay.coneSpread;
-            vec2 stepRippleSlope = vptInteractiveRippleSlope(rainPos, 1.0, rippleFootprint) * puddle;
-            if (dot(stepRippleSlope, stepRippleSlope) > 0.0) {
-                vec3 faceUp = dot(baseGeoNormal, viewDir) < 0.0 ? -baseGeoNormal : baseGeoNormal;
-                shadingNormal = keepReflectionOutOfFace(
-                    vptApplyInteractiveRippleNormal(shadingNormal, baseGeoNormal, stepRippleSlope), faceUp, viewDir);
-            }
-        }
 
-        // Progressive rime frost and snow accumulation in snowy biomes, melted around heat sources.
+        // Rime frost and snow in snowy biomes, melted around heat sources and bright lights.
         vec2 groundSnow = radianteIsHeld(g_hit.packedData) ? vec2(0.0) : vptGroundSnow(worldPos, baseGeoNormal);
         // The footprints left in the snow (SnowPrints).
         VptSnowPrints prints = upward && skyUBO.snowPrintControl.x > 0.5 && !radianteIsHeld(g_hit.packedData)
@@ -553,22 +534,54 @@ void sampleSurfaceState(bool useTexture,
                 float rimePatch = vptRainValueNoise(rimeAt.xz * 0.45 + rimeAt.y * 0.37 + 19.0);
                 frost *= 0.65 + 0.35 * smoothstep(0.2, 0.8, rimePatch);
             }
-            float snowShare = upward ? (fullTop ? 1.0 : (solidFace ? 0.65 : 0.35)) : 0.0;
-            snowCover = groundSnow.x > 0.0 && snowShare > 0.0 ? vptSnowCover(rainPos, groundSnow.x * snowShare) : 0.0;
+            // Slabs, stairs, path blocks and trapdoors take the whole blanket like a full block: they took less, so
+            // the snow on them stopped at their edge, thinner than on the ground beside. Leaves and plants take less.
+            float snowShare = solidFace ? 1.0 : 0.35;
+            if (upward) {
+                snowCover = groundSnow.x > 0.0 ? vptSnowCover(rainPos, groundSnow.x * snowShare) : 0.0;
+            } else {
+                // The band of snow along a side's top edge (vptSnowSideFringe), on the grass overlay of a grass
+                // block's side as on the earth under it, the way the snowy grass block draws its sides.
+                snowCover = groundSnow.x * min(snowStrength, 1.0) * snowShare;
+            }
             // Stepped through to the ground in a footprint.
             snowCover *= 1.0 - 0.85 * prints.clear;
-            // The grass overlay on a grass block's sides whitens with the rime into the snowy grass block's fringe,
-            // a step at a time as the snow builds, instead of taking the frost's film over its green.
-            if (tintedFace && !upward && radianteIsLayer(g_hit.packedData)) {
-                snowCover = max(snowCover, clamp(frost * 1.6, 0.0, 1.0));
-                frost = 0.0;
+        }
+#ifndef RADIANTE_HOOK_WEATHER_SURFACE_DEFAULT
+        // A pack's own rain and snow (hooks/weather_surface.glsl), before any of it is laid on the material.
+        hookWeatherSurface(wetness, puddle, frost, snowCover, worldPos, baseGeoNormal, g_hit.packedData,
+                           vec2(open, groundSnow.x));
+        wetness = clamp(wetness, 0.0, 1.0);
+        puddle = clamp(puddle, 0.0, 1.0);
+        frost = clamp(frost, 0.0, 2.0);
+        snowCover = clamp(snowCover, 0.0, 1.0);
+#endif
+
+        if (wetness > 0.0) {
+            vptApplyGroundWetness(mat, wetness, !upward);
+            shadingNormal = normalizeF(mix(shadingNormal, geometricNormal, wetness * 0.7), geometricNormal);
+        }
+        if (puddle > 0.0) {
+            vptApplyPuddle(mat, puddle, porous);
+            // Flat water, so the mirror image is sharp: the rings are kept faint on it, as their changing slope
+            // from frame to frame left the denoiser only a blurred image of the sky to show.
+            shadingNormal = vptApplyRainRipples(normalizeF(mix(shadingNormal, geometricNormal, puddle),
+                                                           geometricNormal),
+                                                vptRainRippleSlope(rainPos), puddle * PUDDLE_RIPPLES);
+            float rippleFootprint = mainRay.coneWidth + g_hit.hitT * mainRay.coneSpread;
+            vec2 stepRippleSlope = vptInteractiveRippleSlope(rainPos, 1.0, rippleFootprint) * puddle;
+            if (dot(stepRippleSlope, stepRippleSlope) > 0.0) {
+                vec3 faceUp = dot(baseGeoNormal, viewDir) < 0.0 ? -baseGeoNormal : baseGeoNormal;
+                shadingNormal = keepReflectionOutOfFace(
+                    vptApplyInteractiveRippleNormal(shadingNormal, baseGeoNormal, stepRippleSlope), faceUp, viewDir);
             }
-            if (frost > 0.0 || snowCover > 0.0) {
-                vptApplySnowFrost(mat, rainPos, frost, snowCover, upward);
-                shadingNormal = normalizeF(mix(shadingNormal, geometricNormal,
-                                               clamp(snowCover * 0.80 + frost * 0.25, 0.0, 0.88)),
-                                           geometricNormal);
-            }
+        }
+
+        if (frost > 0.0 || snowCover > 0.0) {
+            vptApplySnowFrost(mat, rainPos, frost, snowCover, upward);
+            shadingNormal = normalizeF(mix(shadingNormal, geometricNormal,
+                                           clamp(snowCover * 0.80 + frost * 0.25, 0.0, 0.88)),
+                                       geometricNormal);
         }
         // Packed snow, slush, and snow or water carried in on the feet (vptApplySnowPrints): the water and the snow
         // smooth the bumps of the surface under them.
