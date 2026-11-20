@@ -111,6 +111,16 @@
 #ifndef BEDROCK_DAY_EXPOSURE_SCALE
 #    define BEDROCK_DAY_EXPOSURE_SCALE 0.85
 #endif
+// How the picture is held against the meter's in each weather (main_light_meter.glsl): rain, a thunderstorm, snow.
+#ifndef WEATHER_RAIN_EXPOSURE
+#    define WEATHER_RAIN_EXPOSURE 0.9
+#endif
+#ifndef WEATHER_STORM_EXPOSURE
+#    define WEATHER_STORM_EXPOSURE 0.72
+#endif
+#ifndef WEATHER_SNOW_EXPOSURE
+#    define WEATHER_SNOW_EXPOSURE 1.05
+#endif
 
 #ifndef END_EXPOSURE_SCALE
 #    define END_EXPOSURE_SCALE 0.4

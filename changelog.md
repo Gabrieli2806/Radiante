@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Weather skies: rain, a thunderstorm and snow each have a sky and a light of their own, where all three shared one flat grey that the land took too. Rain: a slate blue, lighter towards the horizon, and a cool light. A thunderstorm: near indigo overhead over a pale horizon, with heavier banks of cloud, and a darker picture. Snow: a bright, pale blue-white, a little brighter than a clear day. All of them carry banks of cloud in blocky cells that drift with the wind, a brighter patch where the sun or the moon stands behind the cloud (a soft side to the light, without hard shadows), a muted warm band along the horizon at dawn and dusk, and a blue cast by night. The sky the camera sees is darker than the light it gives, as a sheet of cloud is, so it reads as a sky instead of a white card.
+
+- Rain and snow under cover stop at walls: the damp blown in, the specks of water, the drifted snow and the rime came in from any open column within two blocks, through an outside wall as through a doorway, so the floor along the inside of a house's walls and in its corners was damp or frosted. A short ray over the floor now tells a wall from an opening.
+
 - Snow on plants: grass, tall grass and ferns catch a dusting of snow on their tips, whole texels of their own texture, as the ground round them whitens; flowers, crops, saplings and berry bushes keep their colours. A snowy field kept its grass a summer green.
 
 - Settings menu, reordered: each section opens with the few settings most players want, then groups under headings that fold (Upscaling, Clouds, Fog, Rain, Snow...). Without Advanced a group shows only its everyday settings and every section fits on one screen; Advanced adds the tuning ones under the same heading. Sky & Water became Sky & Fog and Water & Weather; the water, rain and portal settings left Performance for the sections they belong to, and glass has a group in Other. No setting was removed, and the search still finds them all.

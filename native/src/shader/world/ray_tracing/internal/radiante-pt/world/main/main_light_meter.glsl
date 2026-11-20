@@ -101,6 +101,14 @@
             // By day a little under Bedrock's: with the sun's light cut (shadow.rmiss) the meter alone opened the eye
             // back up and the picture came out as bright as before, only flatter; held under, daylight is softer.
             darkness *= mix(1.0, BEDROCK_DAY_EXPOSURE_SCALE, day);
+            // The weather's own mood, which the meter would otherwise even out (it brings any light to the same
+            // picture): rain a little under a clear day, a thunderstorm well under it, a snowfall a little over.
+            if (worldUBO.skyType == 1) {
+                float rain = clamp(skyUBO.rainGradient, 0.0, 1.0);
+                float snowy = clamp(skyUBO.biomeClimate.z, 0.0, 1.0);
+                darkness *= mix(1.0, mix(WEATHER_RAIN_EXPOSURE, WEATHER_SNOW_EXPOSURE, snowy), rain) *
+                            mix(1.0, WEATHER_STORM_EXPOSURE, clamp(skyUBO.thunderGradient, 0.0, 1.0) * rain);
+            }
             // In lava or powder snow the eye is held below what the medium meters (cameraMedium), by day or night and
             // in any dimension alike.
             if (cameraInMedium) { darkness = cameraMediumExposure; }
