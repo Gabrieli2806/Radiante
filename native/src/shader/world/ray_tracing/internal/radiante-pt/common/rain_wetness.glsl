@@ -581,6 +581,10 @@ float vptSnowSideFringe(float below, float along, float spread, float salt) {
     if (VPT_RAIN_PIXELS != 0) {
         float column = floor(along * RAIN_PIXELS_PER_BLOCK);
         float depth = spread * mix(1.0, 4.6, vptRainHash(vec2(column, salt)));
+        // Each column of the band comes in with a pixel of its own once the snow has settled that far, as the flakes
+        // come in on the top: under a light snow the band stayed away altogether (no column a pixel deep yet) while
+        // the top over it was already speckled, so a stair or a block put down lately had a white top and bare sides.
+        depth = spread >= 0.8 * vptRainHash(vec2(column, salt + 23.0)) ? max(depth, 1.0) : 0.0;
         float straight = smoothstep(0.7, 1.6, footprint * RAIN_PIXELS_PER_BLOCK);
         if (vptRainHash(vec2(column, salt + 57.0)) < straight) { depth = max(floor(spread * 2.8 + 0.5), 1.0); }
         return floor(below * RAIN_PIXELS_PER_BLOCK) < floor(depth) ? 1.0 : 0.0;
@@ -664,6 +668,11 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
     // its edges. Only a top a block taken away laid bare has the snow round it reach in from its edges too.
     bool fluidChange = vptColumnFluidChange(center) && vptColumnSince(center) >= 0.0;
     g_vptSnowSoak = vptColumnSince(center) >= 0.0 ? vptColumnSoak(center) : 1.0;
+
+    // A top above the one its column holds: a block just put down, before RainExposure has read it (that takes a
+    // moment). It is bare, as it will be once read; taken for the open top of its column it came out under the snow
+    // of the ground it was put on, and lost it a second or two later.
+    if (center.a != 0 && vptColumnHeight(center) < surfaceBlockY) { return vec2(0.0); }
 
     if (vptRainColumnBlocks(center, surfaceBlockY)) {
         // The floor of a pool or a river: snow does not lie under water, nor drift in from the bank. It showed the
