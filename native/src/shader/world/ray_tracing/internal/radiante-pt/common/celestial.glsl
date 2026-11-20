@@ -15,6 +15,18 @@ vec3 celestialSunDirection() {
     return celestialNormalize(skyUBO.sunDirection, vec3(0.0, 1.0, 0.0));
 }
 
+// The radiance of an overcast sky (rain, snow) before the horizon and a storm shape it: 0.1 by day, and by night
+// OVERCAST_NIGHT_RADIANCE at the default Night Brightness (35), about half the light a clear night's moon and sky
+// give the ground. It went to nothing at night before: in rain or snow the only light left was the lamps', and the
+// ground a few blocks from a lantern was black at the brightest the eye opens to, where a clear night showed it all.
+#ifndef OVERCAST_NIGHT_RADIANCE
+#    define OVERCAST_NIGHT_RADIANCE 0.001
+#endif
+vec3 celestialOvercastRadiance() {
+    float night = OVERCAST_NIGHT_RADIANCE * max(worldUBO.moonBrightness, 0.0) / 0.35;
+    return vec3(mix(night, 0.1, smoothstep(-0.3, 0.3, celestialSunDirection().y)));
+}
+
 // End sky flash (Minecraft 26.x): a violet glare that shows up roughly every 30 s, lasts 5 to 19 s on a sine
 // envelope and comes from a new random direction each time. In the End the uploaded sunDirection is that flash
 // direction scaled by its strength (zero with no flash), so the flash lights and shadows the islands like a sun.
