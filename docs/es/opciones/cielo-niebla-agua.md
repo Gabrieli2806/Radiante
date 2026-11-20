@@ -4,6 +4,8 @@
 
 Dos secciones del menú, en una página: **Cielo y Niebla** (grupos Cielo, Nubes, Niebla) y **Agua y Clima** (grupos Lluvia, Nieve, Agua, Viento). Vidrio sin Bordes y Transparencia del Portal están en **Otros**, en Vidrio y Portales.
 
+**Cielos del clima.** La lluvia, la tormenta y la nieve tienen cada una su cielo y su luz: la lluvia, un azul pizarra con luz fría; la tormenta, casi índigo con bancos de nubes pesados y una imagen más oscura; la nieve, un blanco azulado claro y luminoso. Los bancos de nubes son de bloques y se mueven con el viento; el amanecer y el atardecer dejan una franja cálida apagada en el horizonte, y una noche nublada es de un azul profundo. Bajo un techo, la lluvia y la nieve entran por las puertas y bajo los aleros, no a través de las paredes.
+
 ![Ajustes de Radiante: Cielo y Niebla](../../images/ui/settings-sky.png)
 
 **Niebla volumétrica.** Niebla apagada y encendida al mediodía.
