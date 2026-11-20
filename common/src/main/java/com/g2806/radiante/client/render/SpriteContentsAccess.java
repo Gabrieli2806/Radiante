@@ -8,4 +8,7 @@ public interface SpriteContentsAccess {
     ByteBuffer[] radiante$mipImages();
 
     int radiante$mipWidth(int level);
+
+    /** The full-size image, every frame of an animated sprite in it; null once freed. */
+    com.mojang.blaze3d.platform.NativeImage radiante$fullImage();
 }
