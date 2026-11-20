@@ -10,12 +10,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /**
  * Photo Mode sets a time of day for the photo alone (PhotoCinema): the clocks this client reads answer with it, on
  * the day they are in, so the moon keeps its phase. Nothing is sent to the server and nothing changes for anyone
- * else, which is what lets it work on a server too.
+ * else, which is what lets it work on a server too. (On 26.2 the manager answers for its clocks itself; later
+ * versions ask each clock, and the mixin is on the clock.)
  */
-@Mixin(ClientClockManager.ClientClockInstance.class)
+@Mixin(ClientClockManager.class)
 public class ClientClockInstanceMixin {
 
-    @Inject(method = "totalTicks", at = @At("RETURN"), cancellable = true)
+    @Inject(method = "getTotalTicks", at = @At("RETURN"), cancellable = true)
     private void radiante$photoTime(CallbackInfoReturnable<Long> cir) {
         long photo = PhotoCinema.timeOverride();
         if (photo >= 0L) {
