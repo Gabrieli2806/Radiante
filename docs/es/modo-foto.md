@@ -17,7 +17,7 @@ El modo foto no tiene tecla hasta que le asignes una: en **Opciones → Controle
 |---|---|
 | `WASD` / `Espacio` / `Shift` | Volar con la cámara del modo foto (mantén `Ctrl` para ir más rápido) |
 | Rueda del ratón (en la escena) | Ajustar la velocidad de vuelo (`Shift` + rueda ajusta el campo de visión) |
-| Arrastrar ratón (en la escena) | Orientar la cámara |
+| Mantener un botón del ratón (en la escena) | Orientar la cámara; el cursor queda sujeto mientras gira, como al jugar |
 | Clic izquierdo (en la escena) | Enfocar la lente en el bloque o entidad bajo el cursor |
 | `H` o `F1` | Ocultar o mostrar la interfaz del modo foto |
 | `F2` | Guardar un PNG al alcanzar las muestras objetivo |
@@ -42,9 +42,9 @@ El panel de la izquierda:
 - **Encuadre**: el formato al que se recorta la foto: la pantalla, `16:9`, los formatos de cine `2.39:1` y `1.85:1`, `4:3`, `1:1` o `9:16` vertical. Las barras muestran lo que queda fuera, y el PNG y el EXR guardados se recortan igual.
 - **Guías**: líneas de composición sobre el encuadre (tercios, proporción áurea, centro con zona segura, diagonales). Nunca salen en la foto guardada.
 - **Lente**: recorre objetivos full frame (14, 24, 35, 50, 85, 135 mm) ajustando el campo de visión, que también muestra su distancia focal.
-- **Escena** (solo un jugador): horas y climas preparados por turnos: Amanecer, Mañana, Mediodía, Hora Dorada, Atardecer, Hora Azul, Luz de Luna, Día Lluvioso, Tormenta y Noche de Tormenta.
+- **Escena**: horas y climas preparados por turnos: Amanecer, Mañana, Mediodía, Hora Dorada, Atardecer, Hora Azul, Luz de Luna, Día Lluvioso, Tormenta y Noche de Tormenta. El clic derecho vuelve atrás, igual que en Estilo, Lente, Marco, Guías y Clima.
 - **Estilo**: ajustes de cámara preparados por turnos, el objetivo, la profundidad de campo y la exposición a la vez: Natural, Paisaje, Retrato, Macro, Cinemático, Nocturno y Dramático. Los controles los afinan.
-- **Hora del día** y **Clima** (solo un jugador): cambian la hora y el clima del mundo para la hora dorada, la hora azul, la noche, la lluvia o una tormenta. El mundo avanza un momento para que el cielo y la lluvia se actualicen, y luego la imagen empieza de nuevo.
+- **Hora del día** y **Clima**: la hora y el clima propios de la foto, para la hora dorada, la hora azul, la noche, la lluvia o una tormenta. Solo los ves tú, en un servidor igual que en tu mundo, y terminan con el Modo Foto: la hora y el clima del mundo no se cambian nunca. **La del mundo** vuelve a los del mundo. El mundo avanza un momento para que el cielo y el suelo mojado los sigan.
 
 ## Guardar PNG y OpenEXR HDR
 

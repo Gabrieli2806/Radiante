@@ -1,5 +1,6 @@
 package com.g2806.radiante.client.gui;
 
+import com.g2806.radiante.client.photo.PhotoCinema;
 import com.g2806.radiante.client.photo.PhotoMode;
 import com.g2806.radiante.compat.VersionCompat;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -18,9 +19,12 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 /**
- * Interactive Photo Mode overlay screen: leaves the live reference path-traced viewport unobstructed on the left,
- * lets the player fly with WASD / Space / Shift, drag to aim, click in the world to pull focus, and adjust the
- * physical thin-lens camera, FOV, roll, exposure and PNG / HDR OpenEXR capture in a compact panel on the right.
+ * Interactive Photo Mode overlay screen: the live path-traced view between two panels. The player flies with WASD /
+ * Space / Shift, holds a mouse button to look round (the cursor is held where it was pressed, as the game holds it
+ * while playing) and clicks in the world to pull focus. The left panel is the photo: its frame, its scene (a time
+ * of day and a weather of its own), how it is rendered and saved. The right panel is the camera: the look, the lens,
+ * the focus and the exposure. Each panel is in named groups, and a button that steps through choices steps back with
+ * the right button.
  */
 public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
 
@@ -45,7 +49,7 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
     private int panelY;
     private int panelW;
     private int panelH;
-    // The Cinematic panel, on the left: framing and, in singleplayer, the time of day and the weather.
+    // The photo's panel, on the left: framing, the scene, rendering and saving.
     private int cinemaX;
     private int cinemaY;
     private int cinemaW;
@@ -55,19 +59,30 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
     private final List<ButtonBox> buttons = new ArrayList<>();
     private SliderRow activeSlider;
 
+    private final List<Header> headers = new ArrayList<>();
+
     private boolean viewportDragging;
     private boolean viewportMoved;
-    private double pressX;
-    private double pressY;
+    /** Where the drag began, in the window's pixels: the cursor is put back there as it moves, and shown there after. */
+    private double pressPixelX;
+    private double pressPixelY;
+    private double draggedDistance;
+
+    /** A group's name over its controls. */
+    private record Header(String key, int x, int y, int w) {
+    }
 
     private record SliderRow(String labelKey, String tooltipKey, int x, int y, int w,
                              Supplier<Float> normGetter, Consumer<Float> normSetter,
                              Supplier<Component> valueText, Supplier<Boolean> enabled) {
     }
 
+    /** back: what the right button does on a button that steps through choices (the one before), or null. */
     private record ButtonBox(Supplier<Component> label, String tooltipKey, int x, int y, int w, int h,
-                             Runnable action, Supplier<Boolean> enabled, boolean accent) {
+                             Runnable action, Runnable back, Supplier<Boolean> enabled, boolean accent) {
     }
+
+    private static final int HEADER_H = 11;
 
     public PhotoModeScreen(Screen parent) {
         super(TITLE);
@@ -99,39 +114,49 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
     protected void init() {
         this.sliders.clear();
         this.buttons.clear();
+        this.headers.clear();
         this.activeSlider = null;
 
         this.panelW = Math.min(212, Math.max(180, this.width / 4));
         int margin = 6;
         this.panelX = this.width - this.panelW - margin;
         this.panelY = margin;
+        // On a short screen the groups lose their names so the panels still fit.
+        boolean named = this.height >= 320;
 
         int innerX = this.panelX + PAD;
         int innerW = this.panelW - PAD * 2;
-        int y = this.panelY + 38;
-
-        // Target samples & Blades cycle row
         int halfW = (innerW - 4) / 2;
-        this.buttons.add(new ButtonBox(
-            () -> Component.translatable("gui.radiante.photo.target_samples", PhotoMode.targetSamples()),
-            "gui.radiante.photo.target_samples.tooltip", innerX, y, halfW, BUTTON_H,
-            PhotoMode::cycleTargetSamples, () -> true, false));
-        this.buttons.add(new ButtonBox(
-            () -> PhotoMode.blades() < 3
-                ? Component.translatable("gui.radiante.photo.blades.round")
-                : Component.translatable("gui.radiante.photo.blades.count", PhotoMode.blades()),
-            "gui.radiante.photo.blades.tooltip", innerX + halfW + 4, y, innerW - halfW - 4, BUTTON_H,
-            PhotoMode::cycleBlades, () -> true, false));
+        int y = this.panelY + 18;
+
+        // The camera: a look sets the lens, the depth of field and the exposure together, and the groups below
+        // fine-tune each.
+        button(() -> Component.translatable("gui.radiante.photo.look", PhotoCinema.look() == null
+                ? Component.translatable("gui.radiante.photo.preset.pick")
+                : Component.translatable(PhotoCinema.look().key())),
+            "gui.radiante.photo.look.tooltip", innerX, y, innerW,
+            () -> PhotoCinema.cycleLook(1), () -> PhotoCinema.cycleLook(-1), () -> true, false);
         y += BUTTON_H + 4;
 
-        this.buttons.add(new ButtonBox(
-            () -> Component.translatable(PhotoMode.denoise()
-                ? "gui.radiante.photo.denoiser.on" : "gui.radiante.photo.denoiser.off"),
-            "gui.radiante.photo.denoiser.tooltip", innerX, y, innerW, BUTTON_H,
-            () -> PhotoMode.setDenoise(!PhotoMode.denoise()), () -> true, false));
+        y = header(named, "gui.radiante.photo.group.lens", innerX, y, innerW);
+        button(() -> Component.translatable("gui.radiante.photo.lens", PhotoCinema.focalLabel()),
+            "gui.radiante.photo.lens.tooltip", innerX, y, innerW,
+            () -> PhotoCinema.cycleLens(1), () -> PhotoCinema.cycleLens(-1), () -> true, false);
         y += BUTTON_H + 4;
+        addSlider("gui.radiante.photo.fov", "gui.radiante.photo.fov.tooltip", innerX, y, innerW,
+            () -> (PhotoMode.fovDegrees() - 15.0f) / (120.0f - 15.0f),
+            t -> PhotoMode.setFovDegrees(15.0f + t * (120.0f - 15.0f)),
+            () -> Component.literal(Math.round(PhotoMode.fovDegrees()) + "° · " + PhotoCinema.focalLabel()),
+            () -> true);
+        y += ROW_H;
+        addSlider("gui.radiante.photo.roll", "gui.radiante.photo.roll.tooltip", innerX, y, innerW,
+            () -> (PhotoMode.rollDegrees() + 45.0f) / 90.0f,
+            t -> PhotoMode.setRollDegrees(-45.0f + t * 90.0f),
+            () -> Component.literal(String.format(Locale.ROOT, "%+.1f°", PhotoMode.rollDegrees())),
+            () -> true);
+        y += ROW_H + 2;
 
-        // Physical thin-lens & camera sliders
+        y = header(named, "gui.radiante.photo.group.focus", innerX, y, innerW);
         addSlider("gui.radiante.photo.aperture", "gui.radiante.photo.aperture.tooltip", innerX, y, innerW,
             () -> PhotoMode.apertureRadius() / 0.40f,
             t -> PhotoMode.setApertureRadius(t * 0.40f),
@@ -140,178 +165,160 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
                 : Component.literal(String.format(Locale.ROOT, "%.3f", PhotoMode.apertureRadius())),
             () -> true);
         y += ROW_H;
-
         addSlider("gui.radiante.photo.focus_distance", "gui.radiante.photo.focus_distance.tooltip", innerX, y, innerW,
             () -> focusToNorm(PhotoMode.focusDistance()),
             t -> PhotoMode.setFocusDistance(normToFocus(t)),
             () -> Component.translatable("gui.radiante.photo.blocks_value",
                 String.format(Locale.ROOT, "%.2f", PhotoMode.focusDistance())),
             () -> PhotoMode.apertureRadius() >= 1.0e-4f);
-        y += ROW_H;
-
+        y += ROW_H + 2;
+        button(() -> PhotoMode.blades() < 3
+                ? Component.translatable("gui.radiante.photo.blades.round")
+                : Component.translatable("gui.radiante.photo.blades.count", PhotoMode.blades()),
+            "gui.radiante.photo.blades.tooltip", innerX, y, innerW,
+            PhotoMode::cycleBlades, null, () -> true, false);
+        y += BUTTON_H + 4;
         addSlider("gui.radiante.photo.blade_angle", "gui.radiante.photo.blade_angle.tooltip", innerX, y, innerW,
             () -> PhotoMode.bladeRotationDegrees() / 180.0f,
             t -> PhotoMode.setBladeRotationDegrees(t * 180.0f),
             () -> Component.literal(Math.round(PhotoMode.bladeRotationDegrees()) + "°"),
             () -> PhotoMode.blades() >= 3 && PhotoMode.apertureRadius() >= 1.0e-4f);
-        y += ROW_H;
-
-        addSlider("gui.radiante.photo.fov", "gui.radiante.photo.fov.tooltip", innerX, y, innerW,
-            () -> (PhotoMode.fovDegrees() - 15.0f) / (120.0f - 15.0f),
-            t -> PhotoMode.setFovDegrees(15.0f + t * (120.0f - 15.0f)),
-            () -> Component.literal(Math.round(PhotoMode.fovDegrees()) + "° · "
-                + com.g2806.radiante.client.photo.PhotoCinema.focalLabel()),
-            () -> true);
-        y += ROW_H;
-
-        addSlider("gui.radiante.photo.roll", "gui.radiante.photo.roll.tooltip", innerX, y, innerW,
-            () -> (PhotoMode.rollDegrees() + 45.0f) / 90.0f,
-            t -> PhotoMode.setRollDegrees(-45.0f + t * 90.0f),
-            () -> Component.literal(String.format(Locale.ROOT, "%+.1f°", PhotoMode.rollDegrees())),
-            () -> true);
-        y += ROW_H;
+        y += ROW_H + 2;
 
         addSlider("gui.radiante.photo.exposure", "gui.radiante.photo.exposure.tooltip", innerX, y, innerW,
             () -> (PhotoMode.exposureBias() + 4.0f) / 8.0f,
             t -> PhotoMode.setExposureBias(-4.0f + t * 8.0f),
             () -> Component.literal(String.format(Locale.ROOT, "%+.2f EV", PhotoMode.exposureBias())),
             () -> true);
-        y += ROW_H + 3;
-
-        // Hide Hands toggle + Folder button
-        this.buttons.add(new ButtonBox(
-            () -> Component.translatable(PhotoMode.hideHands()
-                ? "gui.radiante.photo.hands.hidden" : "gui.radiante.photo.hands.shown"),
-            "gui.radiante.photo.hands.tooltip", innerX, y, halfW, BUTTON_H,
-            () -> PhotoMode.setHideHands(!PhotoMode.hideHands()), () -> true, false));
-        this.buttons.add(new ButtonBox(
-            () -> Component.translatable("gui.radiante.photo.open_folder"),
-            "gui.radiante.photo.open_folder.tooltip", innerX + halfW + 4, y, innerW - halfW - 4, BUTTON_H,
-            () -> {
-                if (this.minecraft != null) {
-                    Path dir = this.minecraft.gameDirectory.toPath().resolve("screenshots");
-                    VersionCompat.openFolder(dir);
-                }
-            }, () -> true, false));
-        y += BUTTON_H + 4;
-
-        // Save PNG / Save EXR
-        this.buttons.add(new ButtonBox(
-            () -> Component.translatable("gui.radiante.photo.save_png"),
-            "gui.radiante.photo.save_png.tooltip", innerX, y, halfW, BUTTON_H,
-            () -> {
-                if (this.minecraft != null) {
-                    PhotoMode.requestSave(this.minecraft, true, false, true);
-                }
-            }, () -> !PhotoMode.isCapturePending(), true));
-        this.buttons.add(new ButtonBox(
-            () -> Component.translatable("gui.radiante.photo.save_exr"),
-            "gui.radiante.photo.save_exr.tooltip", innerX + halfW + 4, y, innerW - halfW - 4, BUTTON_H,
-            () -> {
-                if (this.minecraft != null) {
-                    PhotoMode.requestSave(this.minecraft, false, true, true);
-                }
-            }, () -> !PhotoMode.isCapturePending(), true));
-        y += BUTTON_H + 3;
-
-        // Save PNG + EXR
-        this.buttons.add(new ButtonBox(
-            () -> Component.translatable("gui.radiante.photo.save_both"),
-            "gui.radiante.photo.save_both.tooltip", innerX, y, innerW, BUTTON_H,
-            () -> {
-                if (this.minecraft != null) {
-                    PhotoMode.requestSave(this.minecraft, true, true, true);
-                }
-            }, () -> !PhotoMode.isCapturePending(), true));
-        y += BUTTON_H + 4;
+        y += ROW_H + 4;
 
         // Reset / Hide UI / Close
         int thirdW = (innerW - 8) / 3;
-        this.buttons.add(new ButtonBox(
-            () -> Component.translatable("gui.radiante.photo.reset"),
-            "gui.radiante.photo.reset.tooltip", innerX, y, thirdW, BUTTON_H,
-            () -> PhotoMode.resetParameters(this.minecraft), () -> true, false));
-        this.buttons.add(new ButtonBox(
-            () -> Component.translatable("gui.radiante.photo.hide_ui"),
-            "gui.radiante.photo.hide_ui.tooltip", innerX + thirdW + 4, y, thirdW, BUTTON_H,
-            () -> this.hudHidden = true, () -> true, false));
+        button(() -> Component.translatable("gui.radiante.photo.reset"), "gui.radiante.photo.reset.tooltip",
+            innerX, y, thirdW, () -> PhotoMode.resetParameters(this.minecraft), null, () -> true, false);
+        button(() -> Component.translatable("gui.radiante.photo.hide_ui"), "gui.radiante.photo.hide_ui.tooltip",
+            innerX + thirdW + 4, y, thirdW, () -> this.hudHidden = true, null, () -> true, false);
         int closeX = innerX + (thirdW + 4) * 2;
-        this.buttons.add(new ButtonBox(
-            () -> Component.translatable("gui.done"),
-            null, closeX, y, innerX + innerW - closeX, BUTTON_H,
-            this::onClose, () -> true, false));
+        button(() -> Component.translatable("gui.done"), null, closeX, y, innerX + innerW - closeX, this::onClose,
+            null, () -> true, false);
         y += BUTTON_H + PAD;
 
         this.panelH = y - this.panelY;
-        initCinema(margin);
+        initCinema(margin, named);
     }
 
-    private void initCinema(int margin) {
+    /** The photo's panel: the frame, the scene, how it is rendered and where it is saved. */
+    private void initCinema(int margin, boolean named) {
         this.cinemaW = this.panelW;
         this.cinemaX = margin;
         this.cinemaY = margin;
         int innerX = this.cinemaX + PAD;
         int innerW = this.cinemaW - PAD * 2;
         int halfW = (innerW - 4) / 2;
-        int y = this.cinemaY + 18;
-        this.buttons.add(new ButtonBox(
-            () -> Component.translatable("gui.radiante.photo.frame",
-                Component.translatable(com.g2806.radiante.client.photo.PhotoCinema.frame().label())),
-            "gui.radiante.photo.frame.tooltip", innerX, y, innerW, BUTTON_H,
-            com.g2806.radiante.client.photo.PhotoCinema::cycleFrame, () -> true, false));
+        // Under the title, the sample count and its bar.
+        int y = this.cinemaY + 36;
+        Supplier<Boolean> inWorld = () -> this.minecraft != null && PhotoCinema.ownsWorld(this.minecraft);
+
+        y = header(named, "gui.radiante.photo.group.framing", innerX, y, innerW);
+        button(() -> Component.translatable("gui.radiante.photo.frame",
+                Component.translatable(PhotoCinema.frame().label())),
+            "gui.radiante.photo.frame.tooltip", innerX, y, halfW,
+            () -> PhotoCinema.cycleFrame(1), () -> PhotoCinema.cycleFrame(-1), () -> true, false);
+        button(() -> Component.translatable("gui.radiante.photo.guides."
+                + PhotoCinema.guides().name().toLowerCase(Locale.ROOT)),
+            "gui.radiante.photo.guides.tooltip", innerX + halfW + 4, y, innerW - halfW - 4,
+            () -> PhotoCinema.cycleGuides(1), () -> PhotoCinema.cycleGuides(-1), () -> true, false);
         y += BUTTON_H + 4;
-        this.buttons.add(new ButtonBox(
-            () -> Component.translatable("gui.radiante.photo.guides." + com.g2806.radiante.client.photo.PhotoCinema
-                .guides().name().toLowerCase(java.util.Locale.ROOT)),
-            "gui.radiante.photo.guides.tooltip", innerX, y, halfW, BUTTON_H,
-            com.g2806.radiante.client.photo.PhotoCinema::cycleGuides, () -> true, false));
-        this.buttons.add(new ButtonBox(
-            () -> Component.translatable("gui.radiante.photo.lens",
-                com.g2806.radiante.client.photo.PhotoCinema.focalLabel()),
-            "gui.radiante.photo.lens.tooltip", innerX + halfW + 4, y, innerW - halfW - 4, BUTTON_H,
-            com.g2806.radiante.client.photo.PhotoCinema::nextLens, () -> true, false));
-        y += BUTTON_H + 4;
-        // Ready-made scenes (time and weather) and camera looks (lens, depth of field, exposure).
-        this.buttons.add(new ButtonBox(
-            () -> Component.translatable("gui.radiante.photo.scene", com.g2806.radiante.client.photo.PhotoCinema.scene() == null
+
+        // A time of day and a weather for the photo alone, on a server as well (PhotoCinema).
+        y = header(named, "gui.radiante.photo.group.scene", innerX, y, innerW);
+        button(() -> Component.translatable("gui.radiante.photo.scene", PhotoCinema.scene() == null
                 ? Component.translatable("gui.radiante.photo.preset.pick")
-                : Component.translatable(com.g2806.radiante.client.photo.PhotoCinema.scene().key())),
-            "gui.radiante.photo.scene.tooltip", innerX, y, halfW, BUTTON_H,
-            () -> com.g2806.radiante.client.photo.PhotoCinema.nextScene(this.minecraft),
-            () -> this.minecraft != null && com.g2806.radiante.client.photo.PhotoCinema.ownsWorld(this.minecraft), false));
-        this.buttons.add(new ButtonBox(
-            () -> Component.translatable("gui.radiante.photo.look", com.g2806.radiante.client.photo.PhotoCinema.look() == null
-                ? Component.translatable("gui.radiante.photo.preset.pick")
-                : Component.translatable(com.g2806.radiante.client.photo.PhotoCinema.look().key())),
-            "gui.radiante.photo.look.tooltip", innerX + halfW + 4, y, innerW - halfW - 4, BUTTON_H,
-            com.g2806.radiante.client.photo.PhotoCinema::nextLook, () -> true, false));
+                : Component.translatable(PhotoCinema.scene().key())),
+            "gui.radiante.photo.scene.tooltip", innerX, y, innerW,
+            () -> PhotoCinema.cycleScene(this.minecraft, 1), () -> PhotoCinema.cycleScene(this.minecraft, -1),
+            inWorld, false);
         y += BUTTON_H + 4;
         addSlider("gui.radiante.photo.time", "gui.radiante.photo.time.tooltip", innerX, y, innerW,
-            () -> Math.max(0L, com.g2806.radiante.client.photo.PhotoCinema.dayTime(this.minecraft)) / 24000.0f,
+            () -> Math.max(0L, PhotoCinema.dayTime(this.minecraft)) / 24000.0f,
             t -> {
-                // Only a change of a quarter of an hour or more: dragging sent a command a frame otherwise.
+                // In quarters of an hour: every step starts the picture over.
                 long ticks = Math.round(t * 24000.0) / 250L * 250L;
-                if (Math.abs(ticks - com.g2806.radiante.client.photo.PhotoCinema.dayTime(this.minecraft)) >= 250L) {
-                    com.g2806.radiante.client.photo.PhotoCinema.setDayTime(this.minecraft, ticks);
+                if (Math.abs(ticks - PhotoCinema.dayTime(this.minecraft)) >= 250L) {
+                    PhotoCinema.setDayTime(this.minecraft, ticks);
                 }
             },
-            () -> Component.literal(com.g2806.radiante.client.photo.PhotoCinema.clock(
-                Math.max(0L, com.g2806.radiante.client.photo.PhotoCinema.dayTime(this.minecraft)))),
-            () -> this.minecraft != null && com.g2806.radiante.client.photo.PhotoCinema.ownsWorld(this.minecraft));
+            () -> Component.literal(PhotoCinema.clock(Math.max(0L, PhotoCinema.dayTime(this.minecraft)))),
+            inWorld);
         y += ROW_H + 2;
-        this.buttons.add(new ButtonBox(
-            () -> Component.translatable(com.g2806.radiante.client.photo.PhotoCinema.weatherKey(this.minecraft)),
-            "gui.radiante.photo.weather.tooltip", innerX, y, innerW, BUTTON_H,
-            () -> com.g2806.radiante.client.photo.PhotoCinema.cycleWeather(this.minecraft),
-            () -> this.minecraft != null && com.g2806.radiante.client.photo.PhotoCinema.ownsWorld(this.minecraft),
-            false));
+        button(() -> Component.translatable(PhotoCinema.weatherKey(this.minecraft)),
+            "gui.radiante.photo.weather.tooltip", innerX, y, halfW,
+            () -> PhotoCinema.cycleWeather(this.minecraft, 1), () -> PhotoCinema.cycleWeather(this.minecraft, -1),
+            inWorld, false);
+        button(() -> Component.translatable("gui.radiante.photo.scene.world"),
+            "gui.radiante.photo.scene.world.tooltip", innerX + halfW + 4, y, innerW - halfW - 4,
+            () -> PhotoCinema.resetScene(this.minecraft), null, PhotoCinema::sceneChanged, false);
+        y += BUTTON_H + 4;
+
+        y = header(named, "gui.radiante.photo.group.render", innerX, y, innerW);
+        button(() -> Component.translatable("gui.radiante.photo.target_samples", PhotoMode.targetSamples()),
+            "gui.radiante.photo.target_samples.tooltip", innerX, y, halfW,
+            PhotoMode::cycleTargetSamples, null, () -> true, false);
+        button(() -> Component.translatable(PhotoMode.hideHands()
+                ? "gui.radiante.photo.hands.hidden" : "gui.radiante.photo.hands.shown"),
+            "gui.radiante.photo.hands.tooltip", innerX + halfW + 4, y, innerW - halfW - 4,
+            () -> PhotoMode.setHideHands(!PhotoMode.hideHands()), null, () -> true, false);
+        y += BUTTON_H + 4;
+        button(() -> Component.translatable(PhotoMode.denoise()
+                ? "gui.radiante.photo.denoiser.on" : "gui.radiante.photo.denoiser.off"),
+            "gui.radiante.photo.denoiser.tooltip", innerX, y, innerW,
+            () -> PhotoMode.setDenoise(!PhotoMode.denoise()), null, () -> true, false);
+        y += BUTTON_H + 4;
+
+        y = header(named, "gui.radiante.photo.group.save", innerX, y, innerW);
+        Supplier<Boolean> idle = () -> !PhotoMode.isCapturePending();
+        button(() -> Component.translatable("gui.radiante.photo.save_png"), "gui.radiante.photo.save_png.tooltip",
+            innerX, y, halfW, () -> save(true, false), null, idle, true);
+        button(() -> Component.translatable("gui.radiante.photo.save_exr"), "gui.radiante.photo.save_exr.tooltip",
+            innerX + halfW + 4, y, innerW - halfW - 4, () -> save(false, true), null, idle, true);
+        y += BUTTON_H + 3;
+        button(() -> Component.translatable("gui.radiante.photo.save_both"), "gui.radiante.photo.save_both.tooltip",
+            innerX, y, halfW, () -> save(true, true), null, idle, true);
+        button(() -> Component.translatable("gui.radiante.photo.open_folder"),
+            "gui.radiante.photo.open_folder.tooltip", innerX + halfW + 4, y, innerW - halfW - 4,
+            () -> {
+                if (this.minecraft != null) {
+                    Path dir = this.minecraft.gameDirectory.toPath().resolve("screenshots");
+                    VersionCompat.openFolder(dir);
+                }
+            }, null, () -> true, false);
         y += BUTTON_H + PAD;
         this.cinemaH = y - this.cinemaY;
     }
 
+    private void save(boolean png, boolean exr) {
+        if (this.minecraft != null) {
+            PhotoMode.requestSave(this.minecraft, png, exr, true);
+        }
+    }
+
+    private void button(Supplier<Component> label, String tooltipKey, int x, int y, int w, Runnable action,
+        Runnable back, Supplier<Boolean> enabled, boolean accent) {
+        this.buttons.add(new ButtonBox(label, tooltipKey, x, y, w, BUTTON_H, action, back, enabled, accent));
+    }
+
+    /** A group's name at y; the y its first control starts at. */
+    private int header(boolean named, String key, int x, int y, int w) {
+        if (!named) {
+            return y;
+        }
+        this.headers.add(new Header(key, x, y, w));
+        return y + HEADER_H;
+    }
+
     /** The part of the screen inside the chosen frame (Photo Mode's Frame), as x, y, width, height. */
     private int[] frameRect() {
-        float aspect = com.g2806.radiante.client.photo.PhotoCinema.frame().aspect();
+        float aspect = PhotoCinema.frame().aspect();
         float screen = (float) this.width / Math.max(1, this.height);
         if (!(aspect > 0.0f) || Math.abs(aspect - screen) < 0.01f) {
             return new int[] {0, 0, this.width, this.height};
@@ -344,7 +351,7 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
         int y = r[1];
         int w = r[2];
         int h = r[3];
-        switch (com.g2806.radiante.client.photo.PhotoCinema.guides()) {
+        switch (PhotoCinema.guides()) {
             case THIRDS -> {
                 g.fill(x + w / 3, y, x + w / 3 + 1, y + h, line);
                 g.fill(x + w * 2 / 3, y, x + w * 2 / 3 + 1, y + h, line);
@@ -418,12 +425,13 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
         g.outline(this.panelX, this.panelY, this.panelW, this.panelH, 0x40FFFFFF);
         g.fill(this.cinemaX, this.cinemaY, this.cinemaX + this.cinemaW, this.cinemaY + this.cinemaH, PANEL);
         g.outline(this.cinemaX, this.cinemaY, this.cinemaW, this.cinemaH, 0x40FFFFFF);
-        g.text(this.font, Component.translatable("gui.radiante.photo.cinematic").withStyle(ChatFormatting.BOLD),
-            this.cinemaX + PAD, this.cinemaY + 5, TEXT);
+        g.text(this.font, Component.translatable("gui.radiante.photo.camera").withStyle(ChatFormatting.BOLD),
+            this.panelX + PAD, this.panelY + 5, TEXT);
 
-        int innerX = this.panelX + PAD;
-        int innerW = this.panelW - PAD * 2;
-        int headerY = this.panelY + 5;
+        // The photo's panel carries the title and how far the picture has come.
+        int innerX = this.cinemaX + PAD;
+        int innerW = this.cinemaW - PAD * 2;
+        int headerY = this.cinemaY + 5;
         g.text(this.font, TITLE.copy().withStyle(ChatFormatting.BOLD), innerX, headerY, TEXT);
 
         int current = PhotoMode.sampleCount();
@@ -438,6 +446,16 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
         int fillW = Math.round(innerW * Math.clamp((float) shownSamples / (float) target, 0.0f, 1.0f));
         if (fillW > 0) {
             g.fill(innerX, barY, innerX + fillW, barY + 3, ACCENT);
+        }
+
+        // The groups' names, each with a line running on to the panel's edge.
+        for (Header header : this.headers) {
+            Component name = Component.translatable(header.key());
+            g.text(this.font, name, header.x(), header.y() + 1, TEXT_DIM);
+            int lineX = header.x() + this.font.width(name) + 4;
+            if (lineX < header.x() + header.w()) {
+                g.fill(lineX, header.y() + 5, header.x() + header.w(), header.y() + 6, 0x30FFFFFF);
+            }
         }
 
         Component activeTip = null;
@@ -484,7 +502,8 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
         }
 
         // Bottom viewport hint & capture banner
-        int maxHintRoom = this.panelX - 16;
+        int hintLeft = this.cinemaX + this.cinemaW + 6;
+        int maxHintRoom = this.panelX - 6 - hintLeft;
         if (maxHintRoom > 80) {
             String rawHint = Component.translatable("gui.radiante.photo.controls_hint").getString();
             if (this.font.width(rawHint) > maxHintRoom - 12) {
@@ -492,8 +511,8 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
             }
             int hintW = this.font.width(rawHint) + 12;
             int hintY = this.height - 18;
-            g.fill(6, hintY, 6 + hintW, hintY + 13, PANEL);
-            g.text(this.font, Component.literal(rawHint), 12, hintY + 3, TEXT_DIM);
+            g.fill(hintLeft, hintY, hintLeft + hintW, hintY + 13, PANEL);
+            g.text(this.font, Component.literal(rawHint), hintLeft + 6, hintY + 3, TEXT_DIM);
         }
 
         if (PhotoMode.isCapturePending()) {
@@ -521,8 +540,9 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
     }
 
     private void drawBanner(GuiGraphicsExtractor g, Component text, int color) {
+        // Top centre, clear of both panels.
         int w = this.font.width(text) + 16;
-        int x = 8;
+        int x = (this.width - w) / 2;
         int y = 8;
         g.fill(x, y, x + w, y + 16, PANEL_DARK);
         g.outline(x, y, w, 16, color);
@@ -552,19 +572,29 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
             }
             for (ButtonBox button : this.buttons) {
                 if (button.enabled().get() && inside(mx, my, button.x(), button.y(), button.w(), button.h())) {
-                    button.action().run();
+                    boolean right = event.button() == InputConstants.MOUSE_BUTTON_RIGHT;
+                    if (right && button.back() != null) {
+                        button.back().run();
+                    } else if (!right) {
+                        button.action().run();
+                    }
                     return true;
                 }
             }
             return true;
         }
 
-        if (event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT
-            || event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT || event.button() == InputConstants.MOUSE_BUTTON_RIGHT) {
             this.viewportDragging = true;
             this.viewportMoved = false;
-            this.pressX = mx;
-            this.pressY = my;
+            this.draggedDistance = 0.0;
+            // The cursor is hidden and held where it was pressed while the view turns, as the game holds it while
+            // playing: it used to run to the edge of the window, where the turn stopped, or out of it.
+            if (this.minecraft != null) {
+                this.pressPixelX = this.minecraft.mouseHandler.xpos();
+                this.pressPixelY = this.minecraft.mouseHandler.ypos();
+                VersionCompat.showCursor(false);
+            }
             return true;
         }
         return super.mouseClicked(event, doubleClick);
@@ -577,13 +607,15 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
             return true;
         }
         if (this.viewportDragging) {
-            double distSq = (event.x() - this.pressX) * (event.x() - this.pressX)
-                + (event.y() - this.pressY) * (event.y() - this.pressY);
-            if (distSq > 9.0) {
+            this.draggedDistance += Math.abs(dragX) + Math.abs(dragY);
+            if (this.draggedDistance > 3.0) {
                 this.viewportMoved = true;
             }
             float sensitivity = 0.22f * (PhotoMode.fovDegrees() / 70.0f);
             PhotoMode.rotateCamera((float) dragX * sensitivity, (float) dragY * sensitivity);
+            if (this.minecraft != null) {
+                VersionCompat.warpCursor(this.minecraft, this.pressPixelX, this.pressPixelY);
+            }
             return true;
         }
         return super.mouseDragged(event, dragX, dragY);
@@ -596,9 +628,9 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
             return true;
         }
         if (this.viewportDragging) {
-            boolean clickedToFocus = !this.viewportMoved && event.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT
+            boolean clickedToFocus = !this.viewportMoved && event.button() == InputConstants.MOUSE_BUTTON_LEFT
                 && this.minecraft != null;
-            this.viewportDragging = false;
+            releaseView();
             if (clickedToFocus) {
                 PhotoMode.focusAtScreenPoint(this.minecraft, event.x(), event.y(), this.width, this.height);
             }
@@ -618,6 +650,14 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    /** The cursor shown again, where the drag began. */
+    private void releaseView() {
+        if (this.viewportDragging) {
+            this.viewportDragging = false;
+            VersionCompat.showCursor(true);
+        }
     }
 
     private static void applySliderMouse(SliderRow slider, double mouseX) {
@@ -652,6 +692,7 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
 
     @Override
     public void removed() {
+        releaseView();
         PhotoMode.exit();
         super.removed();
     }

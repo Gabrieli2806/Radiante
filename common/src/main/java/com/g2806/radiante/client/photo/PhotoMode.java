@@ -164,6 +164,12 @@ public final class PhotoMode {
         frozenSunAngle = Float.NaN;
         statusBanner = "";
         PhotoProxy.setActive(false);
+        // The photo's own time and weather end with it: the world's are read again from the next frame.
+        boolean sceneChanged = PhotoCinema.sceneChanged();
+        PhotoCinema.clearScene();
+        if (sceneChanged && minecraft != null && minecraft.level != null) {
+            minecraft.level.environmentAttributes().invalidateTickCache();
+        }
     }
 
     /** Exits when leaving a world, and restarts progressive accumulation when switching worlds or reloading chunks. */
