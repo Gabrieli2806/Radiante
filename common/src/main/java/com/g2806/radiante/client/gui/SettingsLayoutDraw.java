@@ -210,12 +210,24 @@ final class SettingsLayoutDraw {
             if (hover) {
                 g.fill(button.x(), button.y() + 15, button.x() + button.w(), button.y() + 16, ACCENT);
             }
-            g.centeredText(layout.font, button.shownLabel(), button.x() + button.w() / 2, button.y() + 4,
-                button.enabled() ? (hover ? ACCENT : TEXT) : 0xFF606060);
+            if (button.shownLabel() == SettingsLayout.COMPARE_ICON) {
+                drawCompareIcon(g, button.x() + button.w() / 2, button.y() + 8, hover ? ACCENT : TEXT);
+            } else {
+                g.centeredText(layout.font, button.shownLabel(), button.x() + button.w() / 2, button.y() + 4,
+                    button.enabled() ? (hover ? ACCENT : TEXT) : 0xFF606060);
+            }
             if (button.shownTooltip() != null && inside(mouseX, mouseY, button.x(), button.y(), button.w(), 16)) {
                 g.setTooltipForNextFrame(layout.font.split(button.shownTooltip(), 200), mouseX, mouseY);
             }
         }
+    }
+
+    /** Before / After's icon: a frame, its left half dim and its right half lit, split down the middle. */
+    private static void drawCompareIcon(GuiGraphicsExtractor g, int cx, int cy, int color) {
+        g.fill(cx - 6, cy - 4, cx, cy + 4, 0xFF3A403E);
+        g.fill(cx, cy - 4, cx + 6, cy + 4, color);
+        g.outline(cx - 7, cy - 5, 14, 10, color);
+        g.fill(cx - 1, cy - 6, cx + 1, cy + 6, 0xFFFFFFFF);
     }
 
     /** An icon fitted into a square of {@link SettingsLayout#ICON} at its own proportions. */

@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Before / After: each side's label opens a menu to choose what it shows, the left Radiante off or a shader pack to take the picture with (put on, pictured and taken off again), the right the live picture's pack; the hands are no longer in either picture; the divider is a thin line with a small grip, without the arrows and knob that hid the middle of the view; its buttons, and the one that opens it in the settings, are small icons named in their tooltips.
+
 - High resolution packs: leaves (and other cut-out textures) no longer turn dark and mirror-like, black from afar. Minecraft puts a texture with a single partly transparent texel in the translucent layer, and a pack of 128 or 512 pixels a block smooths its leaves' edges that way; the tracer shaded them as clear glass. A texture solid or clear but for its edges is traced as the cut-out it is; stained glass, ice and the like stay translucent.
 
 - Fixed the game crashing (VK_ERROR_DEVICE_LOST) when ray tracing was turned back on, which Before / After does each time it opens to take its Radiante Off picture, more often in a world with many lights. The table of each section's lights was made anew whenever the sections were (turning ray tracing on or off, rejoining, changing the render distance) and first written only when the next frame after it began, so the frame in between read memory the old table had just freed, with the addresses of light buffers that were gone. Every copy is now written before any frame reads it.

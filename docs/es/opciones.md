@@ -12,13 +12,15 @@ Se abren con `F6` dentro de un mundo, o desde Opciones → Ajustes de vídeo →
 - **Aplicar** aplica los cambios y deja la pantalla abierta; **Listo** aplica y cierra; **Deshacer** descarta lo
   cambiado desde el último Aplicar. Los cambios se compilan en segundo plano con un aviso de progreso arriba a la
   derecha.
-- **Antes / Después** (arriba, dentro de un mundo con trazado activo, o con su propia tecla en Controles, sin asignar)
-  aplica los cambios, oculta los paneles y divide la pantalla: a la izquierda el juego sin Radiante (**RADIANTE NO**,
-  tomado al abrir la comparación: el trazado se apaga dos segundos mientras se toma), a la derecha el mundo trazado en
-  vivo, con el nombre de su shader pack. **Pack** cambia el shader pack del lado derecho, para ver Radiante PT o
-  cualquier pack instalado contra vanilla. El divisor se arrastra, se mueve con la rueda o con Izquierda / Derecha (Inicio / Fin para los
-  bordes), **50%** lo centra y manteniendo **Espacio** se ve el lado izquierdo en toda la pantalla. **Esc** o
-  **← Ajustes** vuelve.
+- **Antes / Después** (el icono del marco partido arriba, dentro de un mundo con trazado activo, o con su propia
+  tecla en Controles, sin asignar) aplica los cambios, oculta los paneles y las manos y divide la pantalla: a la
+  izquierda el juego sin Radiante (**RADIANTE NO**, tomado al abrir la comparación: el trazado se apaga dos segundos
+  mientras se toma), a la derecha el mundo trazado en vivo, con el nombre de su shader pack. Pulsa cualquiera de las
+  dos etiquetas para elegir qué muestra: la izquierda, Radiante apagado o un shader pack con el que tomar la imagen
+  (el pack se pone, se fotografía y se quita), y la derecha, el shader pack de la imagen en vivo, que queda elegido.
+  El divisor se arrastra, se mueve con la rueda o con Izquierda / Derecha (Inicio / Fin para los bordes), el icono del
+  marco partido de arriba lo centra y manteniendo **Espacio** se ve el lado izquierdo en toda la pantalla. **Esc** o
+  el icono de la flecha vuelve.
 - **Buscar** encuentra un ajuste en cualquier sección por su nombre.
 - **Avanzado** (abajo) muestra los controles finos de cada sección en grupos plegables, y añade la sección
   Depuración.
