@@ -242,10 +242,7 @@ final class SettingsLayoutDraw {
         // A light block's row shows its texture before its name (BlockEmissionSettings).
         java.util.List<String> sprites = BlockEmissionSettings.ROW_SPRITES.get(option);
         if (sprites != null && !sprites.isEmpty()) {
-            var sprite = BlockEmissionSettings.sprite(sprites.get(0));
-            if (sprite != null) {
-                com.g2806.radiante.compat.VersionCompat.blitAtlasSprite(g, sprite, captionX, y + 2, 16, 16, 0xFFFFFFFF);
-            }
+            BlockEmissionSettings.drawIcon(g, BlockEmissionSettings.ROW_ITEMS.get(option), sprites, captionX, y + 2, 16);
             captionX += 20;
         }
         g.text(layout.font, caption(option), captionX, y + 6, blocked ? TEXT_BLOCKED : advanced ? TEXT_DIM : TEXT);
