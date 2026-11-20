@@ -4,7 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
-- Snow settles evenly everywhere at once, a dusting of single pixels that thickens into the blanket, instead of growing in patches a few blocks across that spread and joined up the way puddles gather in the rain; it thins the same way after the storm. The floor of a pool or river holds no snow: it showed the snow that lay there before the water came.
+- Snow settles evenly everywhere at once, in flakes of one, two and three pixels that fill the blanket in within about a minute, instead of growing in patches a few blocks across that spread and joined up the way puddles gather in the rain; it thins the same way after the storm. The floor of a pool or river holds no snow: it showed the snow that lay there before the water came. Where water or lava drains away the ground starts bare and the snow settles on it again the same even way; a block put down or taken away keeps its own way.
+
+- Snow ends in a ragged pixel edge everywhere, as round a campfire: slabs, stairs, path blocks and trapdoors take the whole blanket (they took less, and the snow stopped at their edge), and bright lights (glowstone, froglights, sea lanterns, any block light over 11, as Minecraft melts snow by) melt a ring round them like a torch, where the snow stopped dead at the light's edge. The sides of a block the snow lies on carry a band of it a few pixels deep along their top edge with a ragged lower edge, like the snowy grass block, instead of a pale film of rime over the whole wall.
+
+- A torch, lantern, campfire, lava bucket or bright light held while standing still for two seconds melts the snow round your feet, a step at a time as one set down does; walk off and the snow gathers on the spot again. A trapdoor swung open shakes its snow off in falling clumps, and whichever face it turns up starts bare.
+
+- Shader packs: `hooks/weather_surface.glsl` (`hookWeatherSurface`) gets how wet, how much standing water, rime and snow Radiante PT is about to lay on every surface, in any weather, to change them, put them in other places and conditions, or replace them with the pack's own.
 
 - Local Tone Mapping (`Image`, 40% by default): the bright and the dark parts of one picture are brought closer together, so the sky or the sunlit ground seen from a cave or through a window is no longer white and the sun keeps its shape at dusk, while every block keeps its pixels. The brightness around each pixel comes from an edge-aware filter at an eighth of the picture's size, so a bright opening casts no halo on the wall around it. Highlights are brought down further than shadows are lifted (`local_tone_mapping_shadows`, 0.5), which keeps caves and the night dark.
 

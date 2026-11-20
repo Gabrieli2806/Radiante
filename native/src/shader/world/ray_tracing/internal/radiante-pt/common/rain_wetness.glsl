@@ -84,8 +84,13 @@ float vptHeatDryness(ivec2 column, uint textureId, vec2 withinColumn) {
     return max(edge * HEAT_DRYING, dry * dry * HEAT_DRYING);
 }
 
+// The height of the column's top block (red and green's low 7 bits, offset by 16384), and green's top bit: whether its
+// last change was water or lava coming or going (RainExposure).
+int vptColumnHeight(ivec4 data) { return data.r + 256 * (data.g & 127) - 16384; }
+bool vptColumnFluidChange(ivec4 data) { return (data.g & 128) != 0; }
+
 bool vptRainColumnBlocks(ivec4 data, int surfaceBlockY) {
-    return data.a == 0 || (data.r + 256 * data.g - 32768) > surfaceBlockY;
+    return data.a == 0 || vptColumnHeight(data) > surfaceBlockY;
 }
 
 // How damp sheltered ground gets at most (beside a wall, at the rim of a tree's shade), against open ground, and how
@@ -429,12 +434,12 @@ vec3 vptWallRainPlace(vec3 position, vec3 outwardNormal) {
     vec2 inside = world.xz - outwardNormal.xz * 0.5;
     ivec2 column = cameraCell.xz + ivec2(floor(inside));
     ivec4 data = vptRainColumn(column, textureId);
-    float top = float(data.r + 256 * data.g - 32768 + 1);
+    float top = float(vptColumnHeight(data) + 1);
     float worldY = float(cameraCell.y) + world.y;
     // The wall's height over the ground in front of it (six blocks at most): the runs are spread over it, so with the
     // rain going on the longest of them reach the ground.
     ivec4 front = vptRainColumn(cameraCell.xz + ivec2(floor(world.xz + outwardNormal.xz * 0.5)), textureId);
-    float ground = float(front.r + 256 * front.g - 32768 + 1);
+    float ground = float(vptColumnHeight(front) + 1);
     float height = clamp(top - max(ground, top - 6.0), 1.0, 6.0);
     vec2 along = vec2(-outwardNormal.z, outwardNormal.x);
     vec2 absXZ = vec2(cameraCell.xz) + world.xz;
@@ -481,13 +486,16 @@ float vptSnowBiome(ivec2 column, uint textureId) {
     return smoothstep(0.0, 1.0, snows / 9.0);
 }
 
-/** Heat melting around torches, lanterns, campfires, furnaces and lava: x melts the snow blanket, y melts the thinner
- *  rime frost further out, both frayed with vptRainFray instead of stopping at a clean circle. */
+/** Heat melting around torches, lanterns, campfires, furnaces and lava, and bright lights (glowstone, froglights,
+ *  sea lanterns: RainExposure's bit 4 where it snows, melting as a torch does): x melts the snow blanket, y melts the
+ *  thinner rime frost further out, both frayed with vptRainFray instead of stopping at a clean circle. A light's own
+ *  face keeps clear (vptApplySnowFrost), and the snow round it stopped dead at its edge before. */
 vec2 vptSnowHeatMelt(ivec2 column, uint textureId, vec2 withinColumn) {
     float melt = 0.0;
     for (int dz = -2; dz <= 2; dz++) {
         for (int dx = -2; dx <= 2; dx++) {
-            int heat = vptColumnHeat(vptRainColumn(column + ivec2(dx, dz), textureId));
+            ivec4 data = vptRainColumn(column + ivec2(dx, dz), textureId);
+            int heat = max(vptColumnHeat(data), data.b > 0 && (data.b & 16) != 0 ? 2 : 0);
             if (heat == 0) { continue; }
             vec2 away = max(abs(withinColumn - (vec2(dx, dz) + 0.5)) - 0.5, vec2(0.0));
             float reach = heat == 3 ? 2.2 : 1.25;
@@ -501,9 +509,43 @@ vec2 vptSnowHeatMelt(ivec2 column, uint textureId, vec2 withinColumn) {
     return clamp(vec2(snowMelt, frostMelt), vec2(0.0), vec2(1.0));
 }
 
+/** How far the snow has settled on a top that has soaked this far (g_vptSnowSoak), 0..1: evenly over the Wet-Up
+ *  Time while it snows, thinning over VPT_RAIN_DRYING_TIME after it stops; times the Snow & Frost Cover setting. */
+float vptSnowSpread(float topSoak) {
+    float strength = clamp(VPT_SNOW_FROST_STRENGTH, 0.0, 2.0);
+    if (strength <= 0.0) { return 0.0; }
+    bool snowing = skyUBO.rainGradient > 0.2;
+    float ground = max(skyUBO.rainWetness.x, 1e-4);
+    float soaked = min(ground, topSoak);
+    float dryingTime = max(VPT_RAIN_DRYING_TIME, 1.0) * 1.35;
+    if (!snowing && skyUBO.rainStoppedFor > dryingTime) { return 0.0; }
+    // While it snows the blanket is whole by about half the ground's soaking (a minute or so at the default Wet-Up
+    // Time): it took nearly all of it, which left the surface half-covered in flakes for minutes.
+    float spread = snowing ? smoothstep(0.05, 0.5, soaked) :
+                             (1.0 - smoothstep(dryingTime * 0.12, dryingTime, skyUBO.rainStoppedFor)) *
+                                 smoothstep(0.35, 0.90, soaked / ground);
+    return clamp(spread * min(strength, 1.35), 0.0, 1.0);
+}
+
+/** The snow on the side of a block whose top carries it, 0..1: a band a few pixels deep along the top edge with a
+ *  ragged lower edge, deeper as the snow on the top builds, the way Minecraft's snowy grass block draws its sides.
+ *  below: how far under the block's top the point is, in blocks; along: across the face, in blocks. The walls took a
+ *  pale film of rime over their whole height before, which read as a washed-out wall more than as snow. */
+float vptSnowSideFringe(float below, float along, float spread, float salt) {
+    if (spread <= 0.0 || below > 0.3) { return 0.0; }
+    if (VPT_RAIN_PIXELS != 0) {
+        float column = floor(along * RAIN_PIXELS_PER_BLOCK);
+        float depth = spread * mix(1.0, 4.6, vptRainHash(vec2(column, salt)));
+        return floor(below * RAIN_PIXELS_PER_BLOCK) < floor(depth) ? 1.0 : 0.0;
+    }
+    float depth = spread * mix(1.0, 4.6, vptRainValueNoise(vec2(along * 4.0, salt))) / RAIN_PIXELS_PER_BLOCK;
+    return 1.0 - smoothstep(depth - 0.015, depth + 0.015, below);
+}
+
 /** How snowfall and frost reach a surface in a snowy biome.
- *  x: openness to falling snow (0..1) on upward faces, melted near heat sources and frayed under roof eaves.
- *  y: rime frost reach (0..1), including windward walls, tree trunks and ground under leaves. */
+ *  On upward faces, x: openness to falling snow (0..1), melted near heat sources and frayed under roof eaves; y: rime
+ *  frost reach (0..1), including the ground under leaves and by the eaves. On upright faces, x: the snow along the top
+ *  edge of a block whose top carries it, already as far as it has settled (vptSnowSideFringe); y: none. */
 vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
     g_vptSnowSoak = 1.0;
     // Nothing falling and the last snow long gone (as vptSnowCover reads it): every hit in a snowy biome on a clear
@@ -528,21 +570,34 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
         ivec2 front = cameraCell.xz + ivec2(floor(relativePosition.xz + outwardNormal.xz * 0.5));
         int faceBlockY = cameraCell.y + int(floor(relativePosition.y));
         ivec4 frontData = vptRainColumn(front, textureId);
-        if (vptRainColumnBlocks(frontData, faceBlockY)) {
-            float since = vptColumnSince(frontData);
-            float covered = since >= 0.0 && (frontData.b & 4) == 0 ? exp(-since * 1.5) : 0.0;
-            return vec2(0.0, 0.45 * fade * covered);
+        // Under an overhang, or against a block in front: no snow reaches it.
+        if (vptRainColumnBlocks(frontData, faceBlockY)) { return vec2(0.0); }
+        // Only the side of the top block of its column, whose top the snow lies on, and not where water is the top.
+        ivec2 own = cameraCell.xz + ivec2(floor(relativePosition.xz - outwardNormal.xz * 0.5));
+        ivec4 ownData = vptRainColumn(own, textureId);
+        if (ownData.a == 0 || vptColumnHeight(ownData) != faceBlockY || (ownData.b & 8) != 0) {
+            return vec2(0.0);
         }
-        g_vptSnowSoak = (frontData.b & 4) != 0 ? vptColumnSoak(frontData) : 1.0;
-        vec2 melt = vptSnowHeatMelt(column, textureId, withinColumn);
-        return vec2(0.0, 0.45 * fade * (1.0 - melt.y));
+        float spread = vptSnowSpread((ownData.b & 4) != 0 ? vptColumnSoak(ownData) : 1.0);
+        vec2 sideWorld = vptRainWorldXZ(position);
+        float along = abs(outwardNormal.z) > abs(outwardNormal.x) ? sideWorld.x : sideWorld.y;
+        float salt = float(faceBlockY & 255) + (abs(outwardNormal.x) > 0.5 ? 17.0 : 0.0) +
+                     (outwardNormal.x + outwardNormal.z > 0.0 ? 41.0 : 0.0);
+        float fringe = vptSnowSideFringe(1.0 - fract(relativePosition.y), along, spread, salt);
+        if (fringe <= 0.0) { return vec2(0.0); }
+        vec2 melt = vptSnowHeatMelt(own, textureId, clamp(relativePosition.xz - vec2(own - cameraCell.xz),
+                                                          vec2(0.0), vec2(1.0)));
+        return vec2(fringe * fade * (1.0 - melt.x), 0.0);
     }
     fade *= smoothstep(0.5, 0.95, outwardNormal.y);
 
     int surfaceBlockY = cameraCell.y + int(floor(relativePosition.y - 0.001));
     ivec4 center = vptRainColumn(column, textureId);
     bool laidBare = (center.b & 4) != 0;
-    g_vptSnowSoak = laidBare ? vptColumnSoak(center) : 1.0;
+    // Water or lava came or went here lately: the top starts bare and gathers the snow again evenly, as the ground did
+    // when it began to snow, with no snow reaching in from its edges (a block put down or taken away keeps that).
+    bool fluidChange = vptColumnFluidChange(center) && vptColumnSince(center) >= 0.0;
+    g_vptSnowSoak = laidBare || fluidChange ? vptColumnSoak(center) : 1.0;
 
     if (vptRainColumnBlocks(center, surfaceBlockY)) {
         // The floor of a pool or a river: snow does not lie under water, nor drift in from the bank. It showed the
@@ -570,7 +625,7 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
         return vec2(snowOpen, frostOpen) * fade;
     }
 
-    float since = laidBare ? vptColumnSince(center) : -1.0;
+    float since = laidBare && !fluidChange ? vptColumnSince(center) : -1.0;
     if (since >= 0.0) {
         vec2 edge = min(withinColumn, vec2(1.0) - withinColumn);
         float fromEdge = min(edge.x, edge.y);
@@ -590,22 +645,19 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
 float vptSnowCover(vec3 position, float open) {
     float strength = clamp(VPT_SNOW_FROST_STRENGTH, 0.0, 2.0);
     if (strength <= 0.0 || open <= 0.0) { return 0.0; }
-    bool snowing = skyUBO.rainGradient > 0.2;
-    float ground = max(skyUBO.rainWetness.x, 1e-4);
-    float soaked = min(ground, g_vptSnowSoak);
-    float dryingTime = max(VPT_RAIN_DRYING_TIME, 1.0) * 1.35;
-    if (!snowing && skyUBO.rainStoppedFor > dryingTime) { return 0.0; }
-    float spread = snowing ? smoothstep(0.08, 0.88, soaked) :
-                             (1.0 - smoothstep(dryingTime * 0.12, dryingTime, skyUBO.rainStoppedFor)) *
-                                 smoothstep(0.35, 0.90, soaked / ground);
-    spread = clamp(spread * min(strength, 1.35), 0.0, 1.0);
+    float spread = vptSnowSpread(g_vptSnowSoak);
     if (spread <= 0.0) { return 0.0; }
     float cover = open * spread;
     if (VPT_RAIN_PIXELS != 0) {
-        // Each pixel of a sixteenth of a block takes the snow at its own moment, spread evenly over the surface.
+        // Flakes of a few sizes settle at their own moments, spread evenly over the surface: single pixels of a
+        // sixteenth of a block, and clumps of two and three pixels a side that come down sooner, so the blanket
+        // fills in fewer, larger steps. Single pixels alone, the surface fizzed with tiny flakes while it filled.
         vec2 pixel = floor(vptRainWorldXZ(position) * RAIN_PIXELS_PER_BLOCK);
-        float h = vptRainHash(pixel + vec2(311.0, 977.0));
-        return step(h, cover * 1.02) * min(strength, 1.0);
+        float small = vptRainHash(pixel + vec2(311.0, 977.0));
+        float medium = vptRainHash(floor(pixel / 2.0) + vec2(613.0, 151.0));
+        float large = vptRainHash(floor((pixel + vec2(1.0, 2.0)) / 3.0) + vec2(887.0, 433.0));
+        float settled = max(step(small, cover * 1.02), max(step(medium, cover * 0.75), step(large, cover * 0.5)));
+        return settled * min(strength, 1.0);
     }
     return clamp(cover * clamp(strength, 0.0, 1.5), 0.0, 1.0);
 }
