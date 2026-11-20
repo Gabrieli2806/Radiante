@@ -871,7 +871,6 @@
   "options.radiante.emission_colour.blue": "Azul",
   "options.radiante.emission_colour.exposure": "Exposición",
   "options.radiante.emission_colour.hint": "Multiplicadores RGB lineales para la luz emitida · el brillo visible lo define el paquete",
-  "options.radiante.emission_colour.texture": "Textura",
   "options.radiante.emission_colour.light": "Luz que emite",
   "options.radiante.emission_colour.textures": "Se aplica a sus %s texturas",
   "key.radiante.photo_mode": "Modo foto",

@@ -871,7 +871,6 @@
   "options.radiante.emission_colour.blue": "蓝",
   "options.radiante.emission_colour.exposure": "曝光",
   "options.radiante.emission_colour.hint": "投射光的线性 RGB 倍率 · 可见辉光由资源包决定",
-  "options.radiante.emission_colour.texture": "纹理",
   "options.radiante.emission_colour.light": "发出的光",
   "options.radiante.emission_colour.textures": "应用于其 %s 个纹理",
   "key.radiante.photo_mode": "拍照模式",
