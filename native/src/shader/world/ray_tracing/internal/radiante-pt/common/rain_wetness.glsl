@@ -459,8 +459,15 @@ float vptRainPixelWetness(float wetness, ivec2 texel, float row, uint seed, bool
         float speck = vptRainHash(vec2(texel) + vec2(float(seed & 0xFFFu), 911.0)) < 0.12 * soak ? 1.0 : 0.0;
         return wetness * max(row < reach ? 1.0 : WET_PIXEL_DAMP, speck);
     }
-    float h = vptRainHash(vec2(texel) + vec2(float(seed & 0xFFFu) * 17.0, float(seed >> 12u) * 5.0));
-    return wetness * (h < 0.35 + 0.65 * soak ? 1.0 : WET_PIXEL_DAMP);
+    // Drops of a few sizes, as the snow's flakes (vptSnowCover): single texels and clumps of two and three a side,
+    // wet at their own moments evenly over the face, the clumps sooner. Single texels alone fizzed.
+    vec2 salt = vec2(float(seed & 0xFFFu) * 17.0, float(seed >> 12u) * 5.0);
+    float cover = 0.2 + 0.8 * soak;
+    float small = vptRainHash(vec2(texel) + salt);
+    float medium = vptRainHash(floor(vec2(texel) / 2.0) + salt + vec2(613.0, 151.0));
+    float large = vptRainHash(floor((vec2(texel) + vec2(1.0, 2.0)) / 3.0) + salt + vec2(887.0, 433.0));
+    bool wet = small < cover * 1.02 || medium < cover * 0.75 || large < cover * 0.5;
+    return wetness * (wet ? 1.0 : WET_PIXEL_DAMP);
 }
 
 /** The normal turned by the ripples (slope from vptRainRippleSlope), on an upward face. */
@@ -541,18 +548,20 @@ float g_vptSnowFaceTop = 1e9;
 
 float vptSnowSideFringe(float below, float along, float spread, float salt) {
     if (spread <= 0.0 || below > 0.3) { return 0.0; }
-    // Where a screen pixel covers more than a pixel of the texture the band is drawn as its average depth, a soft
-    // edge as wide as the ray: one pixel tall and one apart, the steps of its lower edge flickered from frame to frame
-    // as the ray landed on one or the next.
-    float average = spread * 2.8 / RAIN_PIXELS_PER_BLOCK;
+    // Where a screen pixel covers more than a pixel of the texture, more and more of the columns take the band's
+    // average depth, so its lower edge goes straight: one pixel wide and one apart, its steps flickered from frame to
+    // frame as the ray landed on one or the next. Each pixel stays snow or no snow: blending the two, the band went
+    // half see-through in a stretch of every wall at middle distance.
     float footprint = max(g_vptSnowFootprint, 0.004);
-    float smoothBand = 1.0 - smoothstep(average - footprint, average + footprint, below);
     if (VPT_RAIN_PIXELS != 0) {
         float column = floor(along * RAIN_PIXELS_PER_BLOCK);
         float depth = spread * mix(1.0, 4.6, vptRainHash(vec2(column, salt)));
-        float pixelBand = floor(below * RAIN_PIXELS_PER_BLOCK) < floor(depth) ? 1.0 : 0.0;
-        return mix(pixelBand, smoothBand, smoothstep(0.6, 1.4, footprint * RAIN_PIXELS_PER_BLOCK));
+        float straight = smoothstep(0.7, 1.6, footprint * RAIN_PIXELS_PER_BLOCK);
+        if (vptRainHash(vec2(column, salt + 57.0)) < straight) { depth = max(floor(spread * 2.8 + 0.5), 1.0); }
+        return floor(below * RAIN_PIXELS_PER_BLOCK) < floor(depth) ? 1.0 : 0.0;
     }
+    float average = spread * 2.8 / RAIN_PIXELS_PER_BLOCK;
+    float smoothBand = 1.0 - smoothstep(average - footprint, average + footprint, below);
     float depth = spread * mix(1.0, 4.6, vptRainValueNoise(vec2(along * 4.0, salt))) / RAIN_PIXELS_PER_BLOCK;
     float band = 1.0 - smoothstep(depth - 0.015, depth + 0.015, below);
     return mix(band, smoothBand, smoothstep(0.03, 0.09, footprint));
@@ -753,15 +762,14 @@ VptSnowPrints vptSnowPrints(vec3 position) {
         }
         if (VPT_RAIN_PIXELS != 0) {
             // The square of the leg that came down, in whole pixels on the world's grid as Minecraft would draw it:
-            // four across for a player's leg, turned the way the walker faced, so a step taken diagonally is a
-            // diamond of pixels where the foot came down instead of a square set to the grid. Its outer pixels are
-            // the rim.
+            // four across for a player's leg, the same square whichever way the walker faced, where the foot came
+            // down. Turned with the walker, the pixels of a diagonal step made a different blob each time, some
+            // nearly round. Its outer pixels are the rim.
             float halfSize = 0.5 * size;
             vec2 grid = (print.xz + cameraFraction) * RAIN_PIXELS_PER_BLOCK;
             vec2 corner = mod(size, 2.0) == 0.0 ? floor(grid + 0.5) : floor(grid) + 0.5;
             vec2 offset = (position.xz + cameraFraction) * RAIN_PIXELS_PER_BLOCK - corner;
-            vec2 facing = vec2(cos(print.w), sin(print.w));
-            vec2 local = abs(vec2(dot(offset, facing), dot(offset, vec2(-facing.y, facing.x))));
+            vec2 local = abs(offset);
             inside = step(local.x, halfSize) * step(local.y, halfSize);
             rim = inside * step(halfSize - 1.0, max(local.x, local.y));
         } else {
