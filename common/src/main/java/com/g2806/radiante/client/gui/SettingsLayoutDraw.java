@@ -255,8 +255,11 @@ final class SettingsLayoutDraw {
                 pending ? 0xFFF0B040 : 0xFF808080);
         }
         Object value = option.get();
-        if (value instanceof com.g2806.radiante.client.option.EmissionColor colour) {
-            int boxX = right - layout.font.width(colour.display()) - 18;
+        if (value instanceof com.g2806.radiante.client.option.EmissionColor colour
+            && !colour.equals(com.g2806.radiante.client.option.EmissionColor.WHITE)) {
+            // A swatch only once the light is tinted: untouched, the light keeps the pack's own colour, and a white
+            // swatch read as "this block casts white light".
+            int boxX = right - layout.font.width(valueText(option)) - 18;
             g.fill(boxX, y + 4, boxX + 12, y + 16, colour.preview());
             g.outline(boxX, y + 4, 12, 12, TEXT_DIM);
         }

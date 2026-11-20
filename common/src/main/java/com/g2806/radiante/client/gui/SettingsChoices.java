@@ -88,6 +88,39 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
     PictureStyle.ToneMethod pendingToneMethod;
     Component autoTuneNotice;
     boolean applied;
+    /**
+     * The values the picture's sliders (the tone mapping module's, which the renderer takes live) had before they
+     * were shown live on this visit: moved, they are written and pushed at once, so the picture behind the screen
+     * shows them; Undo puts these back. Shared by the screens of one visit, as the staged values are.
+     */
+    java.util.Map<Tunable, Integer> previewOriginals = new java.util.EnumMap<>(Tunable.class);
+
+    /** Shows a picture slider's value now, behind the screen (previewOriginals). */
+    void previewLive(Tunable tunable, int steps) {
+        if (!Pipeline.TONE_MAPPING_MODULE_NAME.equals(tunable.module)) {
+            return;
+        }
+        if (!this.previewOriginals.containsKey(tunable)) {
+            this.previewOriginals.put(tunable, tunable.read());
+        }
+        if (tunable.write(steps)) {
+            com.g2806.radiante.client.pipeline.PipelineBuild.pushRuntimeChanges();
+        }
+    }
+
+    /** Puts back what previewLive changed, for Undo. */
+    void revertPreview() {
+        boolean changed = false;
+        for (var entry : this.previewOriginals.entrySet()) {
+            if (entry.getValue() != null) {
+                changed |= entry.getKey().write(entry.getValue());
+            }
+        }
+        this.previewOriginals.clear();
+        if (changed) {
+            com.g2806.radiante.client.pipeline.PipelineBuild.pushRuntimeChanges();
+        }
+    }
 
     /** Reset to Defaults was pressed: the stored pipeline and shader pack settings go too, on apply. */
     private boolean forgetStoredSettings;
@@ -187,6 +220,7 @@ abstract class SettingsChoices extends VersionCompat.DrawnScreen {
         this.pendingGpuTimings = previous.pendingGpuTimings;
         this.pendingTunables = previous.pendingTunables;
         this.pendingToneMethod = previous.pendingToneMethod;
+        this.previewOriginals = previous.previewOriginals;
         this.autoTuneNotice = previous.autoTuneNotice;
     }
 
