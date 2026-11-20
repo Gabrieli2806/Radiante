@@ -34,6 +34,12 @@ struct SampledSurface {
 #    define LAVA_LIT_SHARE 0.1
 #endif
 
+// The most of a grass blade's or a fern's texels the snow whitens, once the ground round it is white: enough to read
+// as snow caught on the plant, and few enough that it still reads as grass.
+#ifndef PLANT_SNOW
+#    define PLANT_SNOW 0.4
+#endif
+
 // Lava as a self-lit sheet; see pt_shade_default.glsl. Radiante PT has the meter that tells the
 // exposure here, so the others keep lava's fixed glow.
 void ptShapeLava(inout SampledSurface surface) {
@@ -572,6 +578,20 @@ void sampleSurfaceState(bool useTexture,
             // Stepped through to the ground in a footprint, or melted round a heat source held standing still.
             snowCover *= 1.0 - max(0.85 * prints.clear, prints.melt);
             frost *= 1.0 - prints.melt;
+        }
+        // Grass, ferns and the bushes tinted like them take a dusting of snow on their blades: whole texels of their
+        // own texture, more of them towards the tips, at most PLANT_SNOW of them once the ground round them is white.
+        // Told by the plant flag and the biome's tint, which flowers, crops, saplings and berry bushes do not have:
+        // they keep their colours, as a flower in vanilla's snow does. A snowy field kept its grass a summer green.
+        if (!upward && !snowFree && useTexture && radianteIsPlant(g_hit.packedData) && porous > 0.5) {
+            float settled = vptPlantSnowSettled(worldPos);
+            if (settled > 0.0) {
+                vec2 texel = floor(uv * vec2(textureSize(textures[nonuniformEXT(textureID)], 0)));
+                float rowInBlock = floor(float(fract(worldUBO.cameraPos.y + double(worldPos.y))) * 16.0) / 16.0;
+                float tip = smoothstep(0.1, 0.95, rowInBlock);
+                float dusting = settled * tip * PLANT_SNOW * min(clamp(VPT_SNOW_FROST_STRENGTH, 0.0, 2.0), 1.0);
+                snowCover = max(snowCover, step(vptRainHash(texel + vec2(53.0, 91.0)), dusting));
+            }
         }
 #ifndef RADIANTE_HOOK_WEATHER_SURFACE_DEFAULT
         // A pack's own rain and snow (hooks/weather_surface.glsl), before any of it is laid on the material.

@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Snow on plants: grass, tall grass and ferns catch a dusting of snow on their tips, whole texels of their own texture, as the ground round them whitens; flowers, crops, saplings and berry bushes keep their colours. A snowy field kept its grass a summer green.
+
 - Settings menu, reordered: each section opens with the few settings most players want, then groups under headings that fold (Upscaling, Clouds, Fog, Rain, Snow...). Without Advanced a group shows only its everyday settings and every section fits on one screen; Advanced adds the tuning ones under the same heading. Sky & Water became Sky & Fog and Water & Weather; the water, rain and portal settings left Performance for the sections they belong to, and glass has a group in Other. No setting was removed, and the search still finds them all.
 
 - Snow under a roof: a block put down or taken away under a roof built a moment ago starts bare too (the roof's own recent change no longer comes first).

@@ -609,6 +609,32 @@ float vptSnowSideFringe(float below, float along, float spread, float salt) {
  *  On upward faces, x: openness to falling snow (0..1), melted near heat sources and frayed under roof eaves; y: rime
  *  frost reach (0..1), including the ground under leaves and by the eaves. On upright faces, x: the snow along the top
  *  edge of a block whose top carries it, already as far as it has settled (vptSnowSideFringe); y: none. */
+/** How far the snow has settled round a plant at position, 0..1, for the dusting on grass and ferns (pt_material.glsl):
+ *  as on the open ground it grows from (the top of its column, one or two blocks under it), frayed at a biome's edge
+ *  and melted round heat as that ground is; none under leaves or over water, where the ground takes none either. */
+float vptPlantSnowSettled(vec3 position) {
+    if (skyUBO.rainGradient <= 0.2 && skyUBO.rainStoppedFor > max(VPT_RAIN_DRYING_TIME, 1.0) * 1.35) { return 0.0; }
+    uint textureId = vptRainTextureId();
+    if (textureId == 0u || max(abs(position.x), abs(position.z)) > 238.0) { return 0.0; }
+    ivec3 cameraCell = ivec3(floor(worldUBO.cameraPos.xyz));
+    vec3 relativePosition = position + vec3(worldUBO.cameraPos.xyz - dvec3(cameraCell));
+    ivec2 column = cameraCell.xz + ivec2(floor(relativePosition.xz));
+    ivec4 data = vptRainColumn(column, textureId);
+    int plantY = cameraCell.y + int(floor(relativePosition.y));
+    int height = vptColumnHeight(data);
+    if (data.a == 0 || plantY <= height || plantY > height + 2 || (data.b & 224) != 96 || (data.b & 8) != 0) {
+        return 0.0;
+    }
+    vec2 within = vptRainPixelWithin(fract(relativePosition.xz));
+    float biome = vptBiomeShares(column, within, textureId).y;
+    if (biome <= 0.0) { return 0.0; }
+    biome = vptRainFray(vec2(column) + within, biome, BIOME_FRAY_SALT);
+    if (biome <= 0.0) { return 0.0; }
+    float spread = vptSnowSpread(vptColumnSince(data) >= 0.0 ? vptColumnSoak(data) : 1.0);
+    vec2 melt = vptSnowHeatMelt(column, textureId, within);
+    return spread * (1.0 - melt.x) * (1.0 - smoothstep(220.0, 238.0, max(abs(position.x), abs(position.z))));
+}
+
 /** Whether a side is that of a block under a roof in a snowy column, facing a column open at its height: the one case
  *  vptGroundSnow needs to know about the air over the block's top for (g_vptSnowAboveOpen), told by the columns. */
 bool vptSnowSideUnderCover(vec3 position, vec3 outwardNormal) {
