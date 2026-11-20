@@ -617,7 +617,7 @@ public class RadianteOptionsScreen extends SettingsRows {
         this.refreshKey = -1;
         if (BeforeAfterPreview.isActive()) {
             return BeforeAfterPreview.mouseClicked(event.x(), event.y(), event.button(), this.font, this.width,
-                this::exitCompare, BeforeAfterPreview::requestRebaseline);
+                this.height, this::exitCompare);
         }
         if (super.mouseClicked(event, doubleClick)) {
             return true;

@@ -11,12 +11,14 @@ Open them with `F6` in a world, or from Options → Video Settings → Radiante 
 - **Sections** are on the left; the panel on the right describes the setting under the mouse.
 - **Apply** applies your changes and keeps the screen open; **Done** applies and closes; **Undo** drops what changed
   since the last Apply. Changes compile in the background with a progress popup at the top right.
-- **Before / After** (top bar, while in a traced world, or its own key in Controls, unbound by default) applies your
-  changes, hides the panels and splits the screen: on the left the game without Radiante (**RADIANTE OFF**, taken as
-  the comparison opens: ray tracing goes off for two seconds while it is taken), on the right the live traced world,
-  named by its shader pack. **Pack** changes the right side's shader pack, to see Radiante PT or any installed pack
-  against vanilla. Drag the divider, move it with the mouse wheel or Left / Right (Home / End for the edges), **50%** centres
-  it, and holding **Space** shows the left side on the whole screen. **Esc** or **← Settings** returns.
+- **Before / After** (the split-frame icon in the top bar, while in a traced world, or its own key in Controls,
+  unbound by default) applies your changes, hides the panels and the hands and splits the screen: on the left the game
+  without Radiante (**RADIANTE OFF**, taken as the comparison opens: ray tracing goes off for two seconds while it is
+  taken), on the right the live traced world, named by its shader pack. Click either label to choose what it shows:
+  the left one Radiante off or a shader pack to take the picture with (the pack is put on, pictured and taken off
+  again), the right one the live picture's shader pack, which stays chosen. Drag the divider, move it with the mouse
+  wheel or Left / Right (Home / End for the edges), the split-frame icon at the top centres it, and holding **Space**
+  shows the left side on the whole screen. **Esc** or the arrow icon returns.
 - **Search** finds a setting in any section by name.
 - **Advanced** (bottom) shows the fine-tuning controls of each section in folding groups, and adds the Debug section.
 - **Reset to Defaults** (bottom left) returns everything to a fresh install. Hold **Ctrl** to turn it into **Rebuild

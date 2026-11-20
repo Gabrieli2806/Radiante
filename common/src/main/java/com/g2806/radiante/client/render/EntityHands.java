@@ -65,10 +65,9 @@ public final class EntityHands {
         }
         PlayerRenderState playerState = levelRenderState.playerRenderState;
         CameraRenderState cameraState = levelRenderState.cameraRenderState;
-        boolean compareAllowsHands = com.g2806.radiante.client.gui.BeforeAfterPreview.isActive()
-            && !com.g2806.radiante.client.gui.BeforeAfterPreview.wasHudHiddenBeforeCompare();
-        boolean hudAllowsHands = photo || compareAllowsHands
-            || !minecraft.gameRenderer.gameRenderState().guiRenderState.isHudHidden;
+        // Before / After hides the HUD, and the hands with it: in a comparison they only covered the view, and the
+        // halves taken a moment apart showed them in different places.
+        boolean hudAllowsHands = photo || !minecraft.gameRenderer.gameRenderState().guiRenderState.isHudHidden;
         return playerState.hasPlayer && hudAllowsHands
             && minecraft.options.getCameraType().isFirstPerson() && !cameraState.entityRenderState.isSleeping
             && minecraft.gameMode != null && minecraft.gameMode.getPlayerMode() != GameType.SPECTATOR

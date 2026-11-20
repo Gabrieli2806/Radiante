@@ -54,6 +54,25 @@ public final class BackgroundRebuild {
         return true;
     }
 
+    /** Whether a change is still being applied: compiling in the background, or waiting for the wait screen. */
+    static boolean busy() {
+        return active || fallbackPending;
+    }
+
+    /**
+     * The wait screen at once over the settings, for a change that could not be compiled in the background while
+     * Before / After waits for it: the wait screen otherwise opens only once the settings close.
+     */
+    static void showWaitScreenNow(Minecraft minecraft) {
+        if (!fallbackPending || minecraft.level == null) {
+            return;
+        }
+        fallbackPending = false;
+        if (PipelineBuild.takeStructuralChange()) {
+            minecraft.gui.setScreen(new ApplyingSettingsScreen(minecraft.gui.screen()));
+        }
+    }
+
     /** Opens the screen next, through the wait screen only when the change cannot be applied in the background. */
     static void open(Minecraft minecraft, Screen next, boolean rebuild) {
         if (rebuild && !start()) {
