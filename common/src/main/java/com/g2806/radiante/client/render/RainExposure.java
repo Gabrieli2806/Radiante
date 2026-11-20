@@ -7,7 +7,6 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
@@ -18,10 +17,12 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.Half;
+import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -32,7 +33,8 @@ import org.lwjgl.system.MemoryUtil;
 /**
  * Where rain reaches the ground, for wet surfaces. A 512 by 512 texture
  * wraps around the camera, one texel per block column: the height of the column's top rain-blocking block (red and
- * green's low 15 bits, offset by 16384; the top bit says the last change was water or lava coming or going),
+ * green's low 13 bits, offset by 4096; green's top bit says the last change was water or lava coming or going, the
+ * next that the top is a dirt path or farmland, which keeps no snow, the next that it is a bottom slab),
  * whether it rains there rather than snows (blue), and in alpha whether the column is known
  * (0 not) and how long its top has been out in the rain. The shader wets upward faces that are the top of their
  * column. Wetness itself follows the rain slowly, drying well after it stops.
@@ -134,24 +136,12 @@ public final class RainExposure {
     /** Per column: 0 when its top is not a trapdoor (or not read yet), 1 a shut one, 2 an open one. */
     private static final byte[] trapdoorState = new byte[SIZE * SIZE];
 
-    /**
-     * A torch, lantern, campfire, lava bucket or bright light held by the player standing still: after
-     * HELD_HEAT_DELAY seconds the column under their feet warms a step every HELD_HEAT_STEP seconds up to what the
-     * block would give set down, melting the snow round them as it would. heldColumn is -1 while nothing is held.
-     */
-    private static final float HELD_HEAT_DELAY = 2.0f;
-    private static final float HELD_HEAT_STEP = 1.5f;
-    private static int heldColumn = -1;
-    private static int heldHeat;
-    private static int heldX;
-    private static int heldY;
-    private static int heldZ;
-    private static float heldStill;
     /** Tiles whose chunk was not loaded when they were read: read again every frame until it is. */
     private static final boolean[] missing = new boolean[TILES * TILES];
     private static int nearRefresh;
     private static boolean lastRainEnabled = true;
     private static boolean lastSnowEnabled = true;
+    private static boolean lastSnowOnPaths;
 
     static {
         Arrays.fill(heights, Integer.MIN_VALUE);
@@ -176,8 +166,6 @@ public final class RainExposure {
             Arrays.fill(exposedAt, Float.NaN);
             Arrays.fill(missing, false);
             Arrays.fill(trapdoorState, (byte) 0);
-            heldColumn = -1;
-            heldHeat = 0;
         }
         long now = System.nanoTime();
         float dt = Math.min((now - lastTime) * 1e-9f, 0.1f);
@@ -188,9 +176,10 @@ public final class RainExposure {
             wetness = 0.0f;
             return new Vector4f(0.0f);
         }
-        if (rainEnabled != lastRainEnabled || snowEnabled != lastSnowEnabled) {
+        if (rainEnabled != lastRainEnabled || snowEnabled != lastSnowEnabled || Options.snowOnPaths != lastSnowOnPaths) {
             lastRainEnabled = rainEnabled;
             lastSnowEnabled = snowEnabled;
+            lastSnowOnPaths = Options.snowOnPaths;
             Arrays.fill(tileX, Integer.MIN_VALUE);
             centerX = Integer.MIN_VALUE;
         }
@@ -212,7 +201,6 @@ public final class RainExposure {
         if (wetness == 0.0f) {
             return new Vector4f(0.0f);
         }
-        updateHeld(minecraft, dt);
 
         if (texture < 0) {
             texture = TextureProxy.generateTextureId();
@@ -298,64 +286,8 @@ public final class RainExposure {
         }
     }
 
-    /** Follows what the player holds and how long they have stood on the same column (see heldColumn). */
-    private static void updateHeld(Minecraft minecraft, float dt) {
-        LocalPlayer player = minecraft.player;
-        int target = 0;
-        if (player != null && player.onGround() && !player.isSpectator()) {
-            target = Math.max(heldHeatOf(player.getMainHandItem()), heldHeatOf(player.getOffhandItem()));
-        }
-        BlockPos at = player == null ? null : player.blockPosition();
-        boolean moved = at == null || at.getX() != heldX || at.getZ() != heldZ || at.getY() != heldY;
-        if (target == 0 || moved) {
-            release();
-            heldStill = 0.0f;
-            if (at != null) {
-                heldX = at.getX();
-                heldY = at.getY();
-                heldZ = at.getZ();
-            }
-            if (target == 0) {
-                return;
-            }
-        }
-        if (minecraft.isPaused()) {
-            return;
-        }
-        heldStill += dt;
-        int heat = heldStill < HELD_HEAT_DELAY ? 0
-            : Math.min(target, 1 + (int) ((heldStill - HELD_HEAT_DELAY) / HELD_HEAT_STEP));
-        if (heat != heldHeat) {
-            // Shows at the next refresh of the tiles round the camera.
-            nearRefresh = 8;
-        }
-        heldHeat = heat;
-        heldColumn = heat > 0 ? (heldZ & (SIZE - 1)) * SIZE + (heldX & (SIZE - 1)) : -1;
-    }
-
-    /**
-     * The player walked off or put the heat source away: the ground it melted starts bare, as a top laid bare does,
-     * and the snow gathers on it again over the Wet-Up Time, instead of the whole blanket coming back at once.
-     */
-    private static void release() {
-        if (heldHeat > 0 && heldColumn >= 0) {
-            float clock = (float) (rainClock / CLOCK_UNIT);
-            int reach = heldHeat >= 3 ? 2 : heldHeat >= 2 ? 1 : 0;
-            for (int dz = -reach; dz <= reach; dz++) {
-                for (int dx = -reach; dx <= reach; dx++) {
-                    int column = ((heldZ + dz) & (SIZE - 1)) * SIZE + ((heldX + dx) & (SIZE - 1));
-                    exposedAt[column] = clock;
-                    lowered[column] = true;
-                }
-            }
-            nearRefresh = 8;
-        }
-        heldHeat = 0;
-        heldColumn = -1;
-    }
-
     /** How hot an item is in the hand: as its block would be set down, a lava bucket as lava, a bright light as a torch. */
-    private static int heldHeatOf(ItemStack stack) {
+    static int heldHeatOf(ItemStack stack) {
         if (stack.isEmpty()) {
             return 0;
         }
@@ -452,9 +384,18 @@ public final class RainExposure {
                     }
                     fluidTop[column] = fluid;
                     pos.set(tileX[slot] * 16 + x, y + 1, tileZ[slot] * 16 + z);
-                    // Green's top bit: the top changed lately with water or lava coming or going (see fluidChange).
-                    int height = Math.clamp(y + 16384, 0, 32767)
-                        | (fluidChange[column] && !Float.isNaN(exposedAt[column]) ? 32768 : 0);
+                    // Green's top bit: the top changed lately with water or lava coming or going (see fluidChange);
+                    // the next: a dirt path, which keeps no snow, as in Minecraft.
+                    // A dirt path or farmland keeps no snow unless Snow on Paths & Farmland is on; the next bit: a
+                    // bottom slab, whose sides carry their band of snow half a block up.
+                    BlockState topState = chunk.getBlockState(pos.set(tileX[slot] * 16 + x, y, tileZ[slot] * 16 + z));
+                    boolean path = !Options.snowOnPaths
+                        && (topState.is(Blocks.DIRT_PATH) || topState.is(Blocks.FARMLAND));
+                    boolean halfTop = topState.getBlock() instanceof SlabBlock
+                        && topState.getValue(SlabBlock.TYPE) == SlabType.BOTTOM;
+                    int height = Math.clamp(y + 4096, 0, 8191)
+                        | (fluidChange[column] && !Float.isNaN(exposedAt[column]) ? 32768 : 0) | (path ? 16384 : 0)
+                        | (halfTop ? 8192 : 0);
                     int offset = (z * 16 + x) * 4;
                     pixels.put(offset, (byte) height);
                     pixels.put(offset + 1, (byte) (height >>> 8));
@@ -481,10 +422,6 @@ public final class RainExposure {
                         } else {
                             heat = steps;
                         }
-                    }
-                    // A heat source held by the player standing still on this column (see updateHeld).
-                    if (column == heldColumn && heldHeat > heat && y <= heldY && (rains || snows)) {
-                        heat = heldHeat;
                     }
                     // A trapdoor on top opened or shut: whichever face is now on top was out of the weather, so it
                     // starts bare like a top laid bare, and the snow on a trapdoor swung open falls off it. The snow

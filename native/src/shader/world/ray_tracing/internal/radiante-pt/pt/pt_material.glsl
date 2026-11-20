@@ -468,11 +468,11 @@ void sampleSurfaceState(bool useTexture,
         vec3 dryAlbedo = mat.albedo;
         vec2 groundRain = vptGroundRain(worldPos, baseGeoNormal);
         float open = groundRain.x;
-        // Water stands only on the flat top of a full block: a slab, a stair's step, a path block. Elsewhere, and on
-        // leaves, the rain only darkens a little: on a roof of stairs and slabs the full film read as sheets of
-        // glass broken at every step.
+        // Water stands on the flat top of a full block, and on a slab's and a stair's half a block up, which took
+        // only a little darkening before. Not on a path block or farmland, a sixteenth lower, nor on leaves.
         float topHeight = float(fract(worldUBO.cameraPos.y + double(worldPos.y)));
-        bool fullTop = alphaMode == ALPHA_MODE_OPAQUE && (topHeight < 0.002 || topHeight > 0.998);
+        bool fullTop = alphaMode == ALPHA_MODE_OPAQUE &&
+                       (topHeight < 0.002 || topHeight > 0.998 || abs(topHeight - 0.5) < 0.002);
         // The ground darkens well before water stands on it: the wetness rises over a couple of minutes. Upright
         // faces carry their share already (vptGroundRain); leaves, plants and other thin cut-out things take less. A
         // mob's skin is cut out too, but takes the rain as a block does: it took the leaves' share before, and mobs
@@ -515,11 +515,19 @@ void sampleSurfaceState(bool useTexture,
         float porous = any(lessThan(colorLayer, vec3(0.98))) ? 1.0 : 0.0;
         float puddle = open > 0.0 && fullTop ? vptRainPuddleEdge(vptPuddle(rainPos, open, porous)) : 0.0;
 
-        // Rime frost and snow in snowy biomes, melted around heat sources and bright lights.
-        vec2 groundSnow = radianteIsHeld(g_hit.packedData) ? vec2(0.0) : vptGroundSnow(worldPos, baseGeoNormal);
+        // Rime frost and snow in snowy biomes, melted around heat sources and bright lights. Not on mobs, players,
+        // chests or anything else drawn as an entity (they use the overlay texture): the blanket and the band laid
+        // by the column under them sat on their heads and backs as if they were blocks.
+        bool snowFree = radianteIsHeld(g_hit.packedData) || useOverlay;
+        g_vptSnowFootprint = mainRay.coneWidth + g_hit.hitT * mainRay.coneSpread;
+        // The top edge of the face hit, from its triangle (chunk geometry is only moved, never turned or scaled).
+        float faceTopY = max(max(g_hit.p0.pos.y, g_hit.p1.pos.y), g_hit.p2.pos.y);
+        float hitY = dot(g_hit.bary, vec3(g_hit.p0.pos.y, g_hit.p1.pos.y, g_hit.p2.pos.y));
+        g_vptSnowFaceTop = worldPos.y + (faceTopY - hitY);
+        vec2 groundSnow = snowFree ? vec2(0.0) : vptGroundSnow(worldPos, baseGeoNormal);
         // The footprints left in the snow (SnowPrints).
-        VptSnowPrints prints = upward && skyUBO.snowPrintControl.x > 0.5 && !radianteIsHeld(g_hit.packedData)
-                                   ? vptSnowPrints(rainPos) : VptSnowPrints(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+        VptSnowPrints prints = upward && skyUBO.snowPrintControl.x > 0.5 && !snowFree
+                                   ? vptSnowPrints(rainPos) : VptSnowPrints(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
         float frost = 0.0;
         float snowCover = 0.0;
         if (groundSnow.x > 0.0 || groundSnow.y > 0.0) {
@@ -534,7 +542,7 @@ void sampleSurfaceState(bool useTexture,
                 float rimePatch = vptRainValueNoise(rimeAt.xz * 0.45 + rimeAt.y * 0.37 + 19.0);
                 frost *= 0.65 + 0.35 * smoothstep(0.2, 0.8, rimePatch);
             }
-            // Slabs, stairs, path blocks and trapdoors take the whole blanket like a full block: they took less, so
+            // Slabs, stairs and trapdoors take the whole blanket like a full block: they took less, so
             // the snow on them stopped at their edge, thinner than on the ground beside. Leaves and plants take less.
             float snowShare = solidFace ? 1.0 : 0.35;
             if (upward) {
@@ -544,8 +552,9 @@ void sampleSurfaceState(bool useTexture,
                 // block's side as on the earth under it, the way the snowy grass block draws its sides.
                 snowCover = groundSnow.x * min(snowStrength, 1.0) * snowShare;
             }
-            // Stepped through to the ground in a footprint.
-            snowCover *= 1.0 - 0.85 * prints.clear;
+            // Stepped through to the ground in a footprint, or melted round a heat source held standing still.
+            snowCover *= 1.0 - max(0.85 * prints.clear, prints.melt);
+            frost *= 1.0 - prints.melt;
         }
 #ifndef RADIANTE_HOOK_WEATHER_SURFACE_DEFAULT
         // A pack's own rain and snow (hooks/weather_surface.glsl), before any of it is laid on the material.
