@@ -1,8 +1,10 @@
 [← Ajustes](../opciones.md) · [Índice](../README.md)
 
-# Cielo y Agua
+# Cielo y Niebla, Agua y Clima
 
-![Ajustes de Radiante: Cielo y Agua](../../images/ui/settings-sky.png)
+Dos secciones del menú, en una página: **Cielo y Niebla** (grupos Cielo, Nubes, Niebla) y **Agua y Clima** (grupos Lluvia, Nieve, Agua, Viento). Vidrio sin Bordes y Transparencia del Portal están en **Otros**, en Vidrio y Portales.
+
+![Ajustes de Radiante: Cielo y Niebla](../../images/ui/settings-sky.png)
 
 **Niebla volumétrica.** Niebla apagada y encendida al mediodía.
 

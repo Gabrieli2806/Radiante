@@ -56,7 +56,7 @@ Some rows are grey at the defaults, and the panel on the right says why:
 |---|---|---|
 | ![Natural](../../images/compare/styles-natural.webp) | ![Bedrock](../../images/compare/styles-bedrock.webp) | ![Vivid](../../images/compare/styles-vivid.webp) |
 
-Picture Style and **Atmosphere** (in [Sky & Water](sky-fog-water.md)) are independent: Atmosphere picks where the
+Picture Style and **Atmosphere** (in [Sky & Fog](sky-fog-water.md)) are independent: Atmosphere picks where the
 sky's colours come from, Picture Style how the final picture is processed.
 
 HDR Output and its brightness controls are explained in [HDR](../hdr.md).

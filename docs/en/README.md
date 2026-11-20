@@ -24,7 +24,7 @@ work the same.
 ## Settings by section
 
 [Quality](settings/quality-and-upscaling.md) · [Image](settings/image.md) · [Lighting](settings/lighting.md) ·
-[Sky & Water](settings/sky-fog-water.md) · [Performance](settings/performance.md) ·
+[Sky & Fog, Water & Weather](settings/sky-fog-water.md) · [Performance](settings/performance.md) ·
 [Other and Debug](settings/other-and-debug.md)
 
 ## Making things for Radiante

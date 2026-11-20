@@ -24,7 +24,7 @@ Radiante es un mod de path tracing para Minecraft Java. Estas páginas describen
 ## Ajustes por sección
 
 [Calidad](opciones/calidad-y-escalado.md) · [Imagen](opciones/imagen.md) · [Iluminación](opciones/iluminacion.md) ·
-[Cielo y Agua](opciones/cielo-niebla-agua.md) · [Rendimiento](opciones/rendimiento.md) ·
+[Cielo y Niebla, Agua y Clima](opciones/cielo-niebla-agua.md) · [Rendimiento](opciones/rendimiento.md) ·
 [Otros y Depuración](opciones/otros-y-depuracion.md)
 
 ## Crear cosas para Radiante

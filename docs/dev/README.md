@@ -9,6 +9,7 @@ They are in English only.
 | [Testing](testing.md) | Development clients, test worlds, scripted runs, the smoke test, the settings sweep, the shader check under every setting, visual comparisons, unit tests |
 | [Performance audit](performance-audit.md) | Where a frame's time goes, measured, and what could save the most |
 | [Architecture](architecture.md) | How PrismRT works: JNI, frames, acceleration structures, pipelines, the path tracer |
+| [The settings menu](settings-menu.md) | Where a setting goes: sections, groups, what is basic and what is advanced; the rules for adding one |
 | [Shader packs: design](shader-packs.md) | The pack contract: manifest, `extends`, hooks, settings, versioning, safety |
 | [Bedrock RTX defaults](bedrock-defaults.md) | How radiante-pt's defaults were matched to Bedrock RTX, and what still differs |
 
