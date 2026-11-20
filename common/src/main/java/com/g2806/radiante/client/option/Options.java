@@ -108,6 +108,8 @@ public class Options {
     public static volatile boolean rainWetness = true;
     /** Surfaces under open sky gather frost and snow while it snows in cold biomes, and melt near heat sources. */
     public static volatile boolean snowAccumulation = true;
+    /** Snow settles on dirt paths and farmland too; off, they keep none, as in Minecraft. */
+    public static volatile boolean snowOnPaths = false;
     /** The outline around the block under the crosshair. */
     public static volatile boolean blockOutline = false;
     /** How thick the Vanilla clouds are, in percent of Minecraft's 4 blocks (CloudGeometry). */
@@ -299,6 +301,7 @@ public class Options {
         bool("heldItemLight", () -> heldItemLight, v -> heldItemLight = v),
         bool("rainWetness", () -> rainWetness, v -> rainWetness = v),
         bool("snowAccumulation", () -> snowAccumulation, v -> snowAccumulation = v),
+        bool("snowOnPaths", () -> snowOnPaths, v -> snowOnPaths = v),
         bool("waterFoam", () -> waterFoam, v -> waterFoam = v),
         number("cloudThickness", () -> cloudThickness,
             v -> cloudThickness = Math.max(MIN_CLOUD_THICKNESS, Math.min(MAX_CLOUD_THICKNESS, v))),

@@ -84,10 +84,13 @@ float vptHeatDryness(ivec2 column, uint textureId, vec2 withinColumn) {
     return max(edge * HEAT_DRYING, dry * dry * HEAT_DRYING);
 }
 
-// The height of the column's top block (red and green's low 7 bits, offset by 16384), and green's top bit: whether its
-// last change was water or lava coming or going (RainExposure).
-int vptColumnHeight(ivec4 data) { return data.r + 256 * (data.g & 127) - 16384; }
+// The height of the column's top block (red and green's low 5 bits, offset by 4096); green's top bit: whether its last
+// change was water or lava coming or going; the next: whether its top keeps no snow (a dirt path, farmland); the
+// next: whether its top is a bottom slab, half a block high (RainExposure).
+int vptColumnHeight(ivec4 data) { return data.r + 256 * (data.g & 31) - 4096; }
 bool vptColumnFluidChange(ivec4 data) { return (data.g & 128) != 0; }
+bool vptColumnKeepsNoSnow(ivec4 data) { return (data.g & 64) != 0; }
+bool vptColumnHalfTop(ivec4 data) { return (data.g & 32) != 0; }
 
 bool vptRainColumnBlocks(ivec4 data, int surfaceBlockY) {
     return data.a == 0 || vptColumnHeight(data) > surfaceBlockY;
@@ -531,15 +534,28 @@ float vptSnowSpread(float topSoak) {
  *  ragged lower edge, deeper as the snow on the top builds, the way Minecraft's snowy grass block draws its sides.
  *  below: how far under the block's top the point is, in blocks; along: across the face, in blocks. The walls took a
  *  pale film of rime over their whole height before, which read as a washed-out wall more than as snow. */
+// How wide the view's ray is where it meets the surface, in blocks, and the camera-relative height of the top edge of
+// the face hit (pt_material.glsl sets both before vptGroundSnow; above 1e8, the top of the block).
+float g_vptSnowFootprint = 0.0;
+float g_vptSnowFaceTop = 1e9;
+
 float vptSnowSideFringe(float below, float along, float spread, float salt) {
     if (spread <= 0.0 || below > 0.3) { return 0.0; }
+    // Where a screen pixel covers more than a pixel of the texture the band is drawn as its average depth, a soft
+    // edge as wide as the ray: one pixel tall and one apart, the steps of its lower edge flickered from frame to frame
+    // as the ray landed on one or the next.
+    float average = spread * 2.8 / RAIN_PIXELS_PER_BLOCK;
+    float footprint = max(g_vptSnowFootprint, 0.004);
+    float smoothBand = 1.0 - smoothstep(average - footprint, average + footprint, below);
     if (VPT_RAIN_PIXELS != 0) {
         float column = floor(along * RAIN_PIXELS_PER_BLOCK);
         float depth = spread * mix(1.0, 4.6, vptRainHash(vec2(column, salt)));
-        return floor(below * RAIN_PIXELS_PER_BLOCK) < floor(depth) ? 1.0 : 0.0;
+        float pixelBand = floor(below * RAIN_PIXELS_PER_BLOCK) < floor(depth) ? 1.0 : 0.0;
+        return mix(pixelBand, smoothBand, smoothstep(0.6, 1.4, footprint * RAIN_PIXELS_PER_BLOCK));
     }
     float depth = spread * mix(1.0, 4.6, vptRainValueNoise(vec2(along * 4.0, salt))) / RAIN_PIXELS_PER_BLOCK;
-    return 1.0 - smoothstep(depth - 0.015, depth + 0.015, below);
+    float band = 1.0 - smoothstep(depth - 0.015, depth + 0.015, below);
+    return mix(band, smoothBand, smoothstep(0.03, 0.09, footprint));
 }
 
 /** How snowfall and frost reach a surface in a snowy biome.
@@ -575,15 +591,24 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
         // Only the side of the top block of its column, whose top the snow lies on, and not where water is the top.
         ivec2 own = cameraCell.xz + ivec2(floor(relativePosition.xz - outwardNormal.xz * 0.5));
         ivec4 ownData = vptRainColumn(own, textureId);
-        if (ownData.a == 0 || vptColumnHeight(ownData) != faceBlockY || (ownData.b & 8) != 0) {
+        if (ownData.a == 0 || vptColumnHeight(ownData) != faceBlockY || (ownData.b & 8) != 0 ||
+            vptColumnKeepsNoSnow(ownData)) {
             return vec2(0.0);
         }
-        float spread = vptSnowSpread((ownData.b & 4) != 0 ? vptColumnSoak(ownData) : 1.0);
+        float spread = vptSnowSpread(vptColumnSince(ownData) >= 0.0 ? vptColumnSoak(ownData) : 1.0);
         vec2 sideWorld = vptRainWorldXZ(position);
         float along = abs(outwardNormal.z) > abs(outwardNormal.x) ? sideWorld.x : sideWorld.y;
         float salt = float(faceBlockY & 255) + (abs(outwardNormal.x) > 0.5 ? 17.0 : 0.0) +
                      (outwardNormal.x + outwardNormal.z > 0.0 ? 41.0 : 0.0);
-        float fringe = vptSnowSideFringe(1.0 - fract(relativePosition.y), along, spread, salt);
+        // Measured from the top edge of the face itself, so a slab's sides carry the band under its top half a
+        // block up; on a full block's (or a stair's upper half's) side that is the block's top. A face whose top
+        // edge lies inside the block anywhere else (the lower half of a stair's side, under its upper step) has none.
+        float faceTop = g_vptSnowFaceTop > 1e8 ? float(faceBlockY - cameraCell.y + 1)
+                                               : g_vptSnowFaceTop + float(worldUBO.cameraPos.y - double(cameraCell.y));
+        float topInBlock = faceTop - float(faceBlockY - cameraCell.y);
+        bool topEdge = abs(topInBlock - 1.0) < 0.01 || (vptColumnHalfTop(ownData) && abs(topInBlock - 0.5) < 0.01);
+        if (!topEdge) { return vec2(0.0); }
+        float fringe = vptSnowSideFringe(faceTop - relativePosition.y, along, spread, salt);
         if (fringe <= 0.0) { return vec2(0.0); }
         vec2 melt = vptSnowHeatMelt(own, textureId, clamp(relativePosition.xz - vec2(own - cameraCell.xz),
                                                           vec2(0.0), vec2(1.0)));
@@ -594,10 +619,13 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
     int surfaceBlockY = cameraCell.y + int(floor(relativePosition.y - 0.001));
     ivec4 center = vptRainColumn(column, textureId);
     bool laidBare = (center.b & 4) != 0;
-    // Water or lava came or went here lately: the top starts bare and gathers the snow again evenly, as the ground did
-    // when it began to snow, with no snow reaching in from its edges (a block put down or taken away keeps that).
+    // A new top starts bare and gathers the snow as the ground did when it began to snow: a block put down (it came
+    // out under as much snow as the ground round it), and water or lava come or gone, with no snow reaching in from
+    // its edges. Only a top a block taken away laid bare has the snow round it reach in from its edges too.
     bool fluidChange = vptColumnFluidChange(center) && vptColumnSince(center) >= 0.0;
-    g_vptSnowSoak = laidBare || fluidChange ? vptColumnSoak(center) : 1.0;
+    g_vptSnowSoak = vptColumnSince(center) >= 0.0 ? vptColumnSoak(center) : 1.0;
+    // A dirt path keeps no snow, nor frost (Minecraft lays none on it).
+    if (vptColumnKeepsNoSnow(center) && !vptRainColumnBlocks(center, surfaceBlockY)) { return vec2(0.0); }
 
     if (vptRainColumnBlocks(center, surfaceBlockY)) {
         // The floor of a pool or a river: snow does not lie under water, nor drift in from the bank. It showed the
@@ -673,12 +701,16 @@ const int SNOW_PRINT_PACKED = 1;
 const int SNOW_PRINT_SLUSH = 2;
 const int SNOW_PRINT_CARRIED_SNOW = 3;
 const int SNOW_PRINT_WET = 4;
+// The snow melted round a heat source the player holds standing still (SnowPrints): size is the melted round's width
+// in pixels; it fills back in from its rim as the snow falls on it.
+const int SNOW_PRINT_MELT = 5;
 
 /** How much of each kind of print is at a point, 0 none to 1 fresh: clear, how far the print clears the snow
  *  vptSnowCover lays; packed, a snow layer's or block's snow packed greyer; rim, the print's outer pixels, in the
  *  shade of the step; slush, snow and water trodden together; snow, snow left on a floor; wet, water left on one. */
 struct VptSnowPrints {
     float clear;
+    float melt;
     float packed;
     float rim;
     float slush;
@@ -688,7 +720,7 @@ struct VptSnowPrints {
 
 /** The prints at a camera-relative point of an upward face. */
 VptSnowPrints vptSnowPrints(vec3 position) {
-    VptSnowPrints prints = VptSnowPrints(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    VptSnowPrints prints = VptSnowPrints(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     int count = clamp(int(skyUBO.snowPrintControl.x + 0.5), 0, PRISM_SNOW_PRINT_MAX);
     vec2 cameraFraction = vec2(mod(worldUBO.cameraPos.xz, dvec2(1.0)));
     for (int i = 0; i < count; i++) {
@@ -709,14 +741,27 @@ VptSnowPrints vptSnowPrints(vec3 position) {
         vec2 cell = floor(vptRainWorldXZ(position) * RAIN_PIXELS_PER_BLOCK);
         float h = vptRainHash(cell + vec2(17.0 + float(i), 5.0));
         float h2 = vptRainHash(cell + vec2(3.0, 29.0 + float(i)));
+        if (kind == SNOW_PRINT_MELT) {
+            // A round melted out from the feet with a ragged pixel edge, as round a campfire, shrinking from its rim
+            // as the snow fills it back in, its last pixels going at their own moments.
+            float radius = size / (2.0 * RAIN_PIXELS_PER_BLOCK) * (1.0 - age);
+            float amount = clamp((radius - length(d.xz)) / 0.6 + 0.35, 0.0, 1.0);
+            float melt = vptRainFray(vptRainWorldXZ(position), amount, 41.3);
+            melt *= VPT_RAIN_PIXELS != 0 ? step(age, 0.15 + 0.85 * h) : 1.0 - age;
+            prints.melt = max(prints.melt, melt);
+            continue;
+        }
         if (VPT_RAIN_PIXELS != 0) {
             // The square of the leg that came down, in whole pixels on the world's grid as Minecraft would draw it:
-            // four across for a player's leg. Its outer pixels are the rim.
+            // four across for a player's leg, turned the way the walker faced, so a step taken diagonally is a
+            // diamond of pixels where the foot came down instead of a square set to the grid. Its outer pixels are
+            // the rim.
             float halfSize = 0.5 * size;
             vec2 grid = (print.xz + cameraFraction) * RAIN_PIXELS_PER_BLOCK;
             vec2 corner = mod(size, 2.0) == 0.0 ? floor(grid + 0.5) : floor(grid) + 0.5;
             vec2 offset = (position.xz + cameraFraction) * RAIN_PIXELS_PER_BLOCK - corner;
-            vec2 local = abs(offset);
+            vec2 facing = vec2(cos(print.w), sin(print.w));
+            vec2 local = abs(vec2(dot(offset, facing), dot(offset, vec2(-facing.y, facing.x))));
             inside = step(local.x, halfSize) * step(local.y, halfSize);
             rim = inside * step(halfSize - 1.0, max(local.x, local.y));
         } else {
