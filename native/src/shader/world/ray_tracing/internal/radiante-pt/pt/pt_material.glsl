@@ -518,7 +518,10 @@ void sampleSurfaceState(bool useTexture,
         // Rime frost and snow in snowy biomes, melted around heat sources and bright lights. Not on mobs, players,
         // chests or anything else drawn as an entity (they use the overlay texture): the blanket and the band laid
         // by the column under them sat on their heads and backs as if they were blocks.
-        bool snowFree = radianteIsHeld(g_hit.packedData) || useOverlay;
+        // Nor on the top of a dirt path or farmland (a sixteenth lower than a block) unless Snow on Paths & Farmland is
+        // on, wherever it is: told by the block's column only, the snow drifting in under a roof lay on them.
+        bool pathTop = upward && alphaMode == ALPHA_MODE_OPAQUE && abs(topHeight - 0.9375) < 0.002;
+        bool snowFree = radianteIsHeld(g_hit.packedData) || useOverlay || (pathTop && !vptSnowOnPaths());
         g_vptSnowFootprint = mainRay.coneWidth + g_hit.hitT * mainRay.coneSpread;
         // The top edge of the face hit, from its triangle (chunk geometry is only moved, never turned or scaled).
         float faceTopY = max(max(g_hit.p0.pos.y, g_hit.p1.pos.y), g_hit.p2.pos.y);

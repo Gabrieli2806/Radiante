@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Lights: a torch, lantern or other light set down lights the room as the same light held does. In first person the player's own model, which is there for the sun's shadow, stopped the shadow rays of the lights round the player, so a torch at the feet lit a room about a thirtieth of the held one; block lights now leave that model out in first person, as the held light always did.
+
+- Local Tone Mapping brings down only what would go past white once exposed, instead of everything brighter than the picture's mean: at night or in a storm a room lit by torches stood stops above the mean and was darkened as if it were the sky through a window.
+
+- Snow: dirt paths and farmland keep none under a roof either (told by their height, not only where they are the top of their column), and the band of snow along the sides of a stair runs along its step half a block up as well as along its top, as on a slab, without crossing the side where the upper step goes on up.
+
 - Snow settles evenly everywhere at once, in flakes of one, two and three pixels that fill the blanket in within about a minute, instead of growing in patches a few blocks across that spread and joined up the way puddles gather in the rain; it thins the same way after the storm. The floor of a pool or river holds no snow: it showed the snow that lay there before the water came. Where water or lava drains away the ground starts bare and the snow settles on it again the same even way; a block put down or taken away keeps its own way.
 
 - Snow ends in a ragged pixel edge everywhere, as round a campfire: slabs, stairs and trapdoors take the whole blanket (they took less, and the snow stopped at their edge), and bright lights (glowstone, froglights, sea lanterns, any block light over 11, as Minecraft melts snow by) melt a ring round them like a torch, where the snow stopped dead at the light's edge. The sides of a block the snow lies on carry a band of it a few pixels deep along their top edge with a ragged lower edge, like the snowy grass block, instead of a pale film of rime over the whole wall.
