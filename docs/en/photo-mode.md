@@ -17,7 +17,7 @@ Photo Mode has no key until you give it one: in Minecraft's **Options → Contro
 |---|---|
 | `WASD` / `Space` / `Shift` | Fly the Photo Mode camera (hold `Ctrl` to move faster) |
 | Mouse wheel (on viewport) | Adjust camera fly speed (`Shift` + wheel adjusts Field of View) |
-| Drag mouse (on viewport) | Aim the camera |
+| Hold a mouse button (on viewport) | Aim the camera; the cursor is held in place while it turns, as while playing |
 | Left-click (on viewport) | Focus the lens on the block or entity under the cursor |
 | `H` or `F1` | Hide or show the Photo Mode UI |
 | `F2` | Queue saving a PNG once target samples are reached |
@@ -35,16 +35,16 @@ Photo Mode has no key until you give it one: in Minecraft's **Options → Contro
 - **Exposure (`-4` to `+4 EV`)**: Adjusts tone-mapped brightness live **without resetting** your accumulated samples.
 - **Hands**: Hides or shows first-person hands and held items.
 
-## Cinematic panel
+## The photo and camera panels
 
 The panel on the left:
 
 - **Frame**: the shape the photo is cut to: the screen, `16:9`, the cinema ratios `2.39:1` and `1.85:1`, `4:3`, `1:1` or `9:16` upright. Bars show what is left out, and the saved PNG and EXR are cut the same way.
 - **Guides**: composition lines over the frame (rule of thirds, golden ratio, centre with a safe area, diagonals). They are never in the saved photo.
 - **Lens**: steps through full-frame lenses (14, 24, 35, 50, 85, 135 mm) by setting the Field of View, which also shows its focal length.
-- **Scene** (singleplayer only): ready-made times and weathers in turn: Sunrise, Morning, Noon, Golden Hour, Sunset, Blue Hour, Moonlight, Rainy Day, Storm and Stormy Night.
+- **Scene**: ready-made times and weathers in turn: Sunrise, Morning, Noon, Golden Hour, Sunset, Blue Hour, Moonlight, Rainy Day, Storm and Stormy Night. Right-click steps back, as on Look, Lens, Frame, Guides and Weather.
 - **Look**: ready-made camera settings in turn, the lens, the depth of field and the exposure together: Natural, Landscape, Portrait, Macro, Cinematic, Night and Dramatic. The sliders fine-tune whichever is set.
-- **Time of Day** and **Weather** (singleplayer only): change the world's time and weather for golden hour, blue hour, night, rain or a storm. The world runs on for a moment so the sky and the rain follow, then the picture starts over.
+- **Time of Day** and **Weather**: the photo's own time and weather, for golden hour, blue hour, night, rain or a storm. Only you see them, on a server as well as in your own world, and they end with Photo Mode: the world's time and weather are never changed. **World's Own** goes back to the world's. The world runs on for a moment so the sky and the wet ground follow.
 
 ## Saving PNG and HDR OpenEXR
 

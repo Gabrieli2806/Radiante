@@ -947,10 +947,10 @@ public final class DevAutomation {
         }
         if (spec.equals("frame") || spec.equals("guides") || spec.equals("lens") || spec.equals("weather")) {
             switch (spec) {
-                case "frame" -> com.g2806.radiante.client.photo.PhotoCinema.cycleFrame();
-                case "guides" -> com.g2806.radiante.client.photo.PhotoCinema.cycleGuides();
-                case "lens" -> com.g2806.radiante.client.photo.PhotoCinema.nextLens();
-                default -> com.g2806.radiante.client.photo.PhotoCinema.cycleWeather(minecraft);
+                case "frame" -> com.g2806.radiante.client.photo.PhotoCinema.cycleFrame(1);
+                case "guides" -> com.g2806.radiante.client.photo.PhotoCinema.cycleGuides(1);
+                case "lens" -> com.g2806.radiante.client.photo.PhotoCinema.cycleLens(1);
+                default -> com.g2806.radiante.client.photo.PhotoCinema.cycleWeather(minecraft, 1);
             }
             RadianteClient.LOGGER.info("[dev] photo {} -> frame {} guides {} fov {}", spec,
                 com.g2806.radiante.client.photo.PhotoCinema.frame().label(),

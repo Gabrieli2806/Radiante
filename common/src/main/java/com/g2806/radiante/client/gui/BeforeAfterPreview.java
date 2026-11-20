@@ -69,6 +69,8 @@ public final class BeforeAfterPreview {
     private static String packCaptureReturn;
     /** BUILDING: when to give up (nanoTime); SETTLING: when to take the picture. */
     private static long packCaptureAt;
+    /** The cover that follows a picture is a pack's going back on, not ray tracing coming back: what it says. */
+    private static boolean coverAfterPack;
     private static final long PACK_BUILD_TIMEOUT_NANOS = 60_000_000_000L;
     /** The denoiser's history and the eye's adaptation after a pack change, before the picture is taken. */
     private static final long PACK_SETTLE_NANOS = 1_500_000_000L;
@@ -144,6 +146,7 @@ public final class BeforeAfterPreview {
         }
         RadianteClient.LOGGER.info("Before / After: taking the picture with ray tracing off");
         ensureSession(mc);
+        coverAfterPack = false;
         offCapturePending = true;
         offCaptureAt = System.nanoTime() + OFF_SETTLE_NANOS;
         RadianteClient.toggleRayTracing(mc);
@@ -210,6 +213,7 @@ public final class BeforeAfterPreview {
         RadianteClient.LOGGER.info("Before / After: taking Before with shader pack {}", pack);
         packCaptureTarget = pack;
         packCaptureReturn = live;
+        coverAfterPack = true;
         packCapture = PackCapture.BUILDING;
         packCaptureAt = System.nanoTime() + PACK_BUILD_TIMEOUT_NANOS;
         BackgroundRebuild.apply(mc);
@@ -266,6 +270,7 @@ public final class BeforeAfterPreview {
     /** The live picture's pack back on, built in the background as a change from the pack list is. */
     private static void returnPack() {
         packCapture = PackCapture.RETURNING;
+        coverAfterPack = true;
         if (packCaptureReturn != null
             && com.g2806.radiante.client.pipeline.PipelineShaderPack.selectShaderPack(packCaptureReturn)) {
             BackgroundRebuild.apply(Minecraft.getInstance());
@@ -601,9 +606,12 @@ public final class BeforeAfterPreview {
             } else {
                 g.fill(0, 0, screenW, screenH, 0xFF0E1010);
             }
-            Component wait = packCapture != PackCapture.NONE && packCapture != PackCapture.RETURNING
+            // Which picture, in its own words: with a pack chosen it said ray tracing was off, which it was not.
+            Component wait = offCapturePending || !coverAfterPack
+                ? Component.translatable("options.radiante.compare.capturing_off")
+                : packCapture != PackCapture.NONE && packCapture != PackCapture.RETURNING
                 ? Component.translatable("options.radiante.compare.capturing_pack", packName(packCaptureTarget))
-                : Component.translatable("options.radiante.compare.capturing_off");
+                : Component.translatable("options.radiante.compare.returning_pack", packName(packCaptureReturn));
             int w = font.width(wait) + 24;
             g.fill((screenW - w) / 2, screenH / 2 - 12, (screenW + w) / 2, screenH / 2 + 12, 0xD0101413);
             g.outline((screenW - w) / 2, screenH / 2 - 12, w, 24, Theme.ACCENT);
