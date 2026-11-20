@@ -69,6 +69,26 @@ public final class VersionCompat {
         org.lwjgl.sdl.SDLEvents.SDL_PumpEvents();
     }
 
+    /**
+     * Puts the cursor at a point of the window, in its pixels, and tells the game it is there, so the next movement
+     * is counted from that point (GLFW's cursor position on 26.2, SDL's warp since).
+     */
+    public static void warpCursor(net.minecraft.client.Minecraft minecraft, double x, double y) {
+        org.lwjgl.sdl.SDLMouse.SDL_WarpMouseInWindow(minecraft.getWindow().handle(), (float) x, (float) y);
+        var mouse = (com.g2806.radiante.mixin.gui.MouseHandlerAccessor) minecraft.mouseHandler;
+        mouse.radiante$setX(x);
+        mouse.radiante$setY(y);
+    }
+
+    /** Shows or hides the cursor over the window, leaving it where it is. */
+    public static void showCursor(boolean shown) {
+        if (shown) {
+            org.lwjgl.sdl.SDLMouse.SDL_ShowCursor();
+        } else {
+            org.lwjgl.sdl.SDLMouse.SDL_HideCursor();
+        }
+    }
+
     /** Whether a key is held: 26.2 asks it of the window, later versions of the keyboard as a whole. */
     public static boolean isKeyDown(int key) {
         return InputConstants.isKeyDown(key);
