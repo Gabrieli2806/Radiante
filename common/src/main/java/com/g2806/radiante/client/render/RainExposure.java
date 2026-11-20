@@ -33,9 +33,10 @@ import org.lwjgl.system.MemoryUtil;
 
 /**
  * Where rain reaches the ground, for wet surfaces. A 512 by 512 texture
- * wraps around the camera, one texel per block column: the height of the column's top rain-blocking block (red and
- * green's low 12 bits, offset by 2048; green's top bit says the last change was water or lava coming or going, the
- * next three what the top has half a block up, see halfTopOf),
+ * wraps around the camera, one texel per block column: the height of the column's top rain-blocking block, fences,
+ * walls and panes left out (red and green's low 11 bits, offset by 1024; green's top bit says the last change was
+ * water or lava coming or going, the next three what the top has half a block up or that a fence stands on it, see
+ * halfTopOf and isThin, the next that the stamp is a block's under the top, see underStamp),
  * whether it rains there rather than snows (blue), and in alpha whether the column is known
  * (0 not) and how long its top has been out in the rain. The shader wets upward faces that are the top of their
  * column. Wetness itself follows the rain slowly, drying well after it stops.
@@ -144,6 +145,13 @@ public final class RainExposure {
      */
     private static final boolean[] topChanged = new boolean[SIZE * SIZE];
     private static final boolean[] changedTiles = new boolean[TILES * TILES];
+    /**
+     * Per column: a block under its top became another kind of block since it was last read, and whether the column's
+     * stamp (exposedAt) is that block's rather than the top's: a block under a roof or an overhang, swapped for another,
+     * starts bare of the snow blown in under the cover and gathers it again, where it kept the old block's.
+     */
+    private static final boolean[] underChanged = new boolean[SIZE * SIZE];
+    private static final boolean[] underStamp = new boolean[SIZE * SIZE];
 
     /** Tiles whose chunk was not loaded when they were read: read again every frame until it is. */
     private static final boolean[] missing = new boolean[TILES * TILES];
@@ -308,11 +316,16 @@ public final class RainExposure {
         }
         int column = (pos.getZ() & (SIZE - 1)) * SIZE + (pos.getX() & (SIZE - 1));
         // The top itself: a block put on top raises the column, which its next read sees anyway, and a flower or a
-        // torch set down on the ground is not a new top for the ground under it.
-        if (heights[column] == Integer.MIN_VALUE || pos.getY() != heights[column]) {
+        // torch set down on the ground is not a new top for the ground under it. A block under the top: under a roof,
+        // the snow blown in on it starts over.
+        if (heights[column] == Integer.MIN_VALUE || pos.getY() > heights[column]) {
             return;
         }
-        topChanged[column] = true;
+        if (pos.getY() == heights[column]) {
+            topChanged[column] = true;
+        } else {
+            underChanged[column] = true;
+        }
         changedTiles[slot] = true;
     }
 
@@ -326,6 +339,8 @@ public final class RainExposure {
             Arrays.fill(exposedAt, row, row + 16, Float.NaN);
             Arrays.fill(trapdoorState, row, row + 16, (byte) 0);
             Arrays.fill(topChanged, row, row + 16, false);
+            Arrays.fill(underChanged, row, row + 16, false);
+            Arrays.fill(underStamp, row, row + 16, false);
         }
     }
 
@@ -386,6 +401,17 @@ public final class RainExposure {
         return 0;
     }
 
+    /**
+     * A block the snow falls past onto the block under it, though it stops rain and players: a fence, a wall, a fence
+     * gate, a pane or iron bars. Taken for the top of its column, it kept the snow off the whole top of the block it
+     * stands on (a fence along a wall, the posts round a well) and the band off that block's sides.
+     */
+    private static boolean isThin(BlockState state) {
+        return state.is(net.minecraft.tags.BlockTags.FENCES) || state.is(net.minecraft.tags.BlockTags.WALLS)
+            || state.is(net.minecraft.tags.BlockTags.FENCE_GATES)
+            || state.getBlock() instanceof net.minecraft.world.level.block.IronBarsBlock;
+    }
+
     /** The brightest light of the column's top and the block standing on it. */
     private static int lightOf(LevelChunk chunk, BlockPos.MutableBlockPos pos) {
         int light = chunk.getBlockState(pos).getLightEmission();
@@ -431,6 +457,18 @@ public final class RainExposure {
             for (int z = 0; z < 16; z++) {
                 for (int x = 0; x < 16; x++) {
                     int y = chunk.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
+                    // Down through fences, walls and panes (isThin) to the block they stand on, and through what is
+                    // open under them: the snow falls past them.
+                    boolean thinAbove = false;
+                    for (int step = 0; step < 8 && y > chunk.getMinY(); step++) {
+                        BlockState at = chunk.getBlockState(pos.set(tileX[slot] * 16 + x, y, tileZ[slot] * 16 + z));
+                        boolean thin = isThin(at);
+                        if (!thin && (!thinAbove || Heightmap.Types.MOTION_BLOCKING.isOpaque().test(at))) {
+                            break;
+                        }
+                        thinAbove |= thin;
+                        y--;
+                    }
                     int column = (baseZ + z) * SIZE + baseX + x;
                     int before = heights[column];
                     heights[column] = y;
@@ -439,23 +477,38 @@ public final class RainExposure {
                         .isEmpty();
                     boolean replaced = topChanged[column];
                     topChanged[column] = false;
+                    boolean underReplaced = underChanged[column];
+                    underChanged[column] = false;
                     if (before != Integer.MIN_VALUE && (before != y || fluid != fluidTop[column] || replaced)) {
                         // A new top: dry, from now on the rain clock.
                         exposedAt[column] = clock;
                         lowered[column] = y < before || fluidTop[column] && !fluid;
                         fluidChange[column] = fluid || fluidTop[column];
+                        underStamp[column] = false;
+                    } else if (underReplaced && (Float.isNaN(exposedAt[column]) || underStamp[column])) {
+                        // A block under the top swapped: the stamp is its own while the top's has run out (the top's
+                        // own change comes first).
+                        exposedAt[column] = clock;
+                        lowered[column] = false;
+                        fluidChange[column] = false;
+                        underStamp[column] = true;
                     } else if (!Float.isNaN(exposedAt[column]) && (clock - exposedAt[column]) * CLOCK_UNIT > SOAKED) {
                         exposedAt[column] = Float.NaN;
+                        underStamp[column] = false;
                     }
                     fluidTop[column] = fluid;
                     pos.set(tileX[slot] * 16 + x, y + 1, tileZ[slot] * 16 + z);
                     // Green's top bit: the top changed lately with water or lava coming or going (see fluidChange);
                     // the next three: what is half a block up on a top that is not a whole block, for the band of
-                    // snow along the top edge of its sides (halfTopOf).
+                    // snow along the top edge of its sides (halfTopOf), or 6 where a fence, a wall or a pane stands
+                    // on it (isThin); the next: the stamp is a block's under the top (underStamp). The height
+                    // takes the low eleven bits, offset by 1024.
                     BlockState topState = chunk.getBlockState(pos.set(tileX[slot] * 16 + x, y, tileZ[slot] * 16 + z));
-                    int height = Math.clamp(y + 2048, 0, 4095)
-                        | (fluidChange[column] && !Float.isNaN(exposedAt[column]) ? 32768 : 0)
-                        | (halfTopOf(topState) << 12);
+                    boolean stamped = !Float.isNaN(exposedAt[column]);
+                    int height = Math.clamp(y + 1024, 0, 2047)
+                        | (stamped && underStamp[column] ? 2048 : 0)
+                        | (fluidChange[column] && stamped ? 32768 : 0)
+                        | ((thinAbove ? 6 : halfTopOf(topState)) << 12);
                     int offset = (z * 16 + x) * 4;
                     pixels.put(offset, (byte) height);
                     pixels.put(offset + 1, (byte) (height >>> 8));

@@ -527,6 +527,20 @@ void sampleSurfaceState(bool useTexture,
         float faceTopY = max(max(g_hit.p0.pos.y, g_hit.p1.pos.y), g_hit.p2.pos.y);
         float hitY = dot(g_hit.bary, vec3(g_hit.p0.pos.y, g_hit.p1.pos.y, g_hit.p2.pos.y));
         g_vptSnowFaceTop = worldPos.y + (faceTopY - hitY);
+        // A side under a roof near its top edge, while snow may lie: is there open air over that edge, or more of the
+        // wall (vptGroundSnow)? A short ray along the face just above the edge, towards the block, tells.
+        g_vptSnowAboveOpen = false;
+        if (!upward && !snowFree && skyUBO.rainWetness.x > 0.0 && abs(baseGeoNormal.y) < 0.1 &&
+            g_vptSnowFaceTop - worldPos.y < 0.3 && vptSnowSideUnderCover(worldPos, baseGeoNormal)) {
+            vec3 above = vec3(worldPos.x, g_vptSnowFaceTop + 0.2, worldPos.z) + baseGeoNormal * 0.02;
+            shadowRay.radiance = vec3(0.0);
+            shadowRay.throughput = vec3(1.0);
+            shadowRay.insideBoat = 0u;
+            shadowRay.pad0 = BLOCK_LIGHT_QUERY;
+            traceRayEXT(topLevelAS, VPT_SHADOW_RAY_FLAGS, WORLD_MASK, 0, 0, 0, above, 0.0, -baseGeoNormal, 0.05, 1);
+            shadowRay.pad0 = 0u;
+            g_vptSnowAboveOpen = shadowRay.radiance.x > 0.5;
+        }
         vec2 groundSnow = snowFree ? vec2(0.0) : vptGroundSnow(worldPos, baseGeoNormal);
         // The footprints left in the snow (SnowPrints).
         VptSnowPrints prints = upward && skyUBO.snowPrintControl.x > 0.5 && !snowFree

@@ -20,16 +20,22 @@ bool vptSnowOnPaths() { return skyUBO.rainWetness.y < 0.0; }
 float g_vptColumnSoak = 1.0;
 const float RAIN_CLOCK_STEPS = 253.0;
 const float RAIN_CLOCK_UNIT = 0.025;
-// How long ago, in time constants of soaking on the rain clock, the column's top changed; -1 for an old top.
-float vptColumnSince(ivec4 data) {
+// Whether the column's stamp (alpha) is a block's under its top, swapped lately (green's bit 3, RainExposure's
+// underStamp), rather than the top's own.
+bool vptColumnUnderStamp(ivec4 data) { return (data.g & 8) != 0; }
+// How long ago, in time constants of soaking on the rain clock, the column's stamp was set; -1 for none.
+float vptColumnStampAge(ivec4 data) {
     if (data.a == 255 || data.a == 0) { return -1.0; }
     return mod(vptRainClock() - float(data.a - 1) + RAIN_CLOCK_STEPS, RAIN_CLOCK_STEPS) * RAIN_CLOCK_UNIT;
 }
+// How long ago the column's top changed; -1 for an old top.
+float vptColumnSince(ivec4 data) { return vptColumnUnderStamp(data) ? -1.0 : vptColumnStampAge(data); }
+// How long ago a block under the column's top was swapped; -1 for none lately.
+float vptColumnUnderSince(ivec4 data) { return vptColumnUnderStamp(data) ? vptColumnStampAge(data) : -1.0; }
 
 float vptColumnSoak(ivec4 data) {
-    if (data.a == 255 || data.a == 0) { return 1.0; }
-    float since = mod(vptRainClock() - float(data.a - 1) + RAIN_CLOCK_STEPS, RAIN_CLOCK_STEPS);
-    return 1.0 - exp(-since * RAIN_CLOCK_UNIT);
+    float since = vptColumnSince(data);
+    return since < 0.0 ? 1.0 : 1.0 - exp(-since);
 }
 
 ivec4 vptRainColumn(ivec2 column, uint textureId) {
@@ -94,10 +100,12 @@ float vptHeatDryness(ivec2 column, uint textureId, vec2 withinColumn) {
     return max(edge * HEAT_DRYING, dry * dry * HEAT_DRYING);
 }
 
-// The height of the column's top block (red and green's low 4 bits, offset by 2048); green's top bit: whether its last
-// change was water or lava coming or going; the next three: what its top has half a block up (RainExposure.halfTopOf:
-// 0 nothing, 1 a bottom slab, 2 to 5 a bottom stair facing north, east, south, west).
-int vptColumnHeight(ivec4 data) { return data.r + 256 * (data.g & 15) - 2048; }
+// The height of the column's top block, fences, walls and panes left out (red and green's low 3 bits, offset by 1024);
+// green's top bit: whether its last change was water or lava coming or going; the next three: what its top has half a
+// block up (RainExposure.halfTopOf: 0 nothing, 1 a bottom slab, 2 to 5 a bottom stair facing north, east, south, west)
+// or 6, a fence, a wall or a pane standing on it (RainExposure.isThin); bit 3: vptColumnUnderStamp.
+int vptColumnHeight(ivec4 data) { return data.r + 256 * (data.g & 7) - 1024; }
+bool vptColumnThinAbove(ivec4 data) { return ((data.g >> 4) & 7) == 6; }
 bool vptColumnFluidChange(ivec4 data) { return (data.g & 128) != 0; }
 int vptColumnHalfTop(ivec4 data) { return (data.g >> 4) & 7; }
 
@@ -565,10 +573,12 @@ float vptSnowSpread(float topSoak) {
  *  ragged lower edge, deeper as the snow on the top builds, the way Minecraft's snowy grass block draws its sides.
  *  below: how far under the block's top the point is, in blocks; along: across the face, in blocks. The walls took a
  *  pale film of rime over their whole height before, which read as a washed-out wall more than as snow. */
-// How wide the view's ray is where it meets the surface, in blocks, and the camera-relative height of the top edge of
-// the face hit (above 1e8, the top of the block). pt_material.glsl sets both before vptGroundSnow.
+// How wide the view's ray is where it meets the surface, in blocks, the camera-relative height of the top edge of the
+// face hit (above 1e8, the top of the block), and, for a side under a roof (vptSnowSideUnderCover), whether there is
+// open air over its top edge. pt_material.glsl sets them before vptGroundSnow.
 float g_vptSnowFootprint = 0.0;
 float g_vptSnowFaceTop = 1e9;
+bool g_vptSnowAboveOpen = false;
 
 float vptSnowSideFringe(float below, float along, float spread, float salt) {
     if (spread <= 0.0 || below > 0.3) { return 0.0; }
@@ -599,6 +609,22 @@ float vptSnowSideFringe(float below, float along, float spread, float salt) {
  *  On upward faces, x: openness to falling snow (0..1), melted near heat sources and frayed under roof eaves; y: rime
  *  frost reach (0..1), including the ground under leaves and by the eaves. On upright faces, x: the snow along the top
  *  edge of a block whose top carries it, already as far as it has settled (vptSnowSideFringe); y: none. */
+/** Whether a side is that of a block under a roof in a snowy column, facing a column open at its height: the one case
+ *  vptGroundSnow needs to know about the air over the block's top for (g_vptSnowAboveOpen), told by the columns. */
+bool vptSnowSideUnderCover(vec3 position, vec3 outwardNormal) {
+    uint textureId = vptRainTextureId();
+    if (textureId == 0u || max(abs(position.x), abs(position.z)) > 238.0) { return false; }
+    ivec3 cameraCell = ivec3(floor(worldUBO.cameraPos.xyz));
+    vec3 relativePosition = position + vec3(worldUBO.cameraPos.xyz - dvec3(cameraCell));
+    ivec2 front = cameraCell.xz + ivec2(floor(relativePosition.xz + outwardNormal.xz * 0.02));
+    ivec2 own = cameraCell.xz + ivec2(floor(relativePosition.xz - outwardNormal.xz * 0.02));
+    if (front == own) { return false; }
+    int faceBlockY = cameraCell.y + int(floor(relativePosition.y));
+    ivec4 ownData = vptRainColumn(own, textureId);
+    if (ownData.a == 0 || (ownData.b & 160) != 32 || vptColumnHeight(ownData) <= faceBlockY) { return false; }
+    return !vptRainColumnBlocks(vptRainColumn(front, textureId), faceBlockY);
+}
+
 vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
     g_vptSnowSoak = 1.0;
     // Nothing falling and the last snow long gone (as vptSnowCover reads it): every hit in a snowy biome on a clear
@@ -630,12 +656,17 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
         // Under an overhang, or against a block in front: no snow reaches it. A face inside its block has open air
         // in front once its column's top is this block (below).
         if (front != own && vptRainColumnBlocks(vptRainColumn(front, textureId), faceBlockY)) { return vec2(0.0); }
-        // Only the side of the top block of its column, whose top the snow lies on, and not where water is the top.
+        // The side of the top block of its column, whose top the snow lies on, and not where water is the top; or of
+        // a block under a roof with open air over it (the rim of a well under its roof, a step under a porch), on the
+        // side facing the open, where the snow blown in under the roof lies along its top's edge.
         ivec4 ownData = vptRainColumn(own, textureId);
-        if (ownData.a == 0 || vptColumnHeight(ownData) != faceBlockY || (ownData.b & 8) != 0) {
-            return vec2(0.0);
-        }
-        float spread = vptSnowSpread(vptColumnSince(ownData) >= 0.0 ? vptColumnSoak(ownData) : 1.0);
+        if (ownData.a == 0 || (ownData.b & 8) != 0) { return vec2(0.0); }
+        int ownHeight = vptColumnHeight(ownData);
+        bool sheltered = ownHeight > faceBlockY && front != own && g_vptSnowAboveOpen;
+        if (ownHeight != faceBlockY && !sheltered) { return vec2(0.0); }
+        float underSince = vptColumnUnderSince(ownData);
+        float spread = sheltered ? vptSnowSpread(underSince >= 0.0 ? 1.0 - exp(-underSince) : 1.0)
+                                 : vptSnowSpread(vptColumnSince(ownData) >= 0.0 ? vptColumnSoak(ownData) : 1.0);
         vec2 sideWorld = vptRainWorldXZ(position);
         float along = abs(outwardNormal.z) > abs(outwardNormal.x) ? sideWorld.x : sideWorld.y;
         float salt = float(faceBlockY & 255) + (abs(outwardNormal.x) > 0.5 ? 17.0 : 0.0) +
@@ -646,7 +677,7 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
         float faceTop = g_vptSnowFaceTop > 1e8 ? float(faceBlockY - cameraCell.y + 1)
                                                : g_vptSnowFaceTop + float(worldUBO.cameraPos.y - double(cameraCell.y));
         float topInBlock = faceTop - float(faceBlockY - cameraCell.y);
-        bool topEdge = abs(topInBlock - 1.0) < 0.01 ||
+        bool topEdge = abs(topInBlock - 1.0) < 0.01 || (sheltered && abs(topInBlock - 0.5) < 0.01) ||
                        (abs(topInBlock - 0.5) < 0.01 &&
                         vptHalfEdgeOpen(ownData, clamp(relativePosition.xz - vec2(own - cameraCell.xz), 0.0, 1.0)));
         if (!topEdge) { return vec2(0.0); }
@@ -671,7 +702,11 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
     // A top above the one its column holds: a block just put down, before RainExposure has read it (that takes a
     // moment). It is bare, as it will be once read; taken for the open top of its column it came out under the snow
     // of the ground it was put on, and lost it a second or two later.
-    if (center.a != 0 && vptColumnHeight(center) < surfaceBlockY) { return vec2(0.0); }
+    // The top of a fence, a wall or a pane standing on the top block takes the snow as that top does.
+    if (center.a != 0 && vptColumnHeight(center) < surfaceBlockY &&
+        !(vptColumnThinAbove(center) && surfaceBlockY == vptColumnHeight(center) + 1)) {
+        return vec2(0.0);
+    }
 
     if (vptRainColumnBlocks(center, surfaceBlockY)) {
         // The floor of a pool or a river: snow does not lie under water, nor drift in from the bank. It showed the
@@ -680,6 +715,10 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
         g_vptSnowSoak = 1.0;
         float since = vptColumnSince(center);
         float covered = since >= 0.0 ? exp(-since * 1.5) : 0.0;
+        // A block swapped under the roof lately: the snow blown in on it gathers again, as on a new top in the open.
+        float underSince = vptColumnUnderSince(center);
+        float regrow = underSince >= 0.0 ? vptSnowSpread(1.0 - exp(-underSince)) /
+                                               max(vptSnowSpread(1.0), 1e-4) : 1.0;
         float nearest = 1e3;
         for (int dz = -2; dz <= 2; dz++) {
             for (int dx = -2; dx <= 2; dx++) {
@@ -694,8 +733,8 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
         float frostFringe = vptRainFray(world, 1.0 - smoothstep(0.0, 1.4, nearest), 17.9);
         bool underLeaves = (center.b & 224) == 32;
         vec2 melt = vptSnowHeatMelt(column, textureId, withinColumn);
-        float snowOpen = max(max(driftCreep, underLeaves ? 0.22 : 0.0), covered) * (1.0 - melt.x);
-        float frostOpen = max(max(0.75 * frostFringe, underLeaves ? 0.40 : 0.0), covered) * (1.0 - melt.y);
+        float snowOpen = max(max(driftCreep, underLeaves ? 0.22 : 0.0), covered) * (1.0 - melt.x) * regrow;
+        float frostOpen = max(max(0.75 * frostFringe, underLeaves ? 0.40 : 0.0), covered) * (1.0 - melt.y) * regrow;
         return vec2(snowOpen, frostOpen) * fade;
     }
 
