@@ -4,53 +4,53 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * How bright the picture is held, as one choice over two sliders: Exposure and Local Tone Mapping. Changing either by
- * hand shows as Custom.
+ * How the picture is held, as one choice over five sliders: Exposure, Local Tone Mapping, Brightness, Contrast and
+ * Shadow Depth. Changing any of them by hand shows as Custom.
  * <ul>
- *   <li>Bright, for play: seven tenths of a stop up, and the dark parts of a picture lifted more, so caves and rooms
- *   read clearly.</li>
- *   <li>Balanced, the default: the sliders' own defaults.</li>
- *   <li>Cinematic: a stop down and little lifting, so a cave stays dark round its lights and a bright patch (lava, a
- *   window) is not evened out with the rest. The eye already closes for the light lava throws round itself and opens
- *   again looking away; here that shows plainly.</li>
+ *   <li>Bright, for play: brighter and evened out, so caves and rooms read clearly.</li>
+ *   <li>Balanced: the look of before, an even picture.</li>
+ *   <li>Cinematic, the default: a little darker, crisper and deeper in its shadows, with little lifting of the dark
+ *   parts, so a cave stays dark round its lights and a bright patch (lava, a window) is not evened out with the rest.
+ *   The eye closes for the light lava throws round itself and opens again looking away.</li>
  * </ul>
- * (A third slider, Glare, which was to let the glow in view close the eye too, changed nothing that could be measured:
- * looking at lava already closes it by two stops through the light lava casts, which the meter reads.)
+ * Exposure goes in before Bedrock's tone curve, which takes most of it back; Brightness after it, where it shows.
  */
 enum LightStyle {
-    BRIGHT("options.radiante.light_style.bright", 7, 65),
-    BALANCED("options.radiante.light_style.balanced", 0, 40),
-    CINEMATIC("options.radiante.light_style.cinematic", -10, 10),
-    CUSTOM("options.radiante.light_style.custom", 0, 0);
+    BRIGHT("options.radiante.light_style.bright", 3, 55, 3, 100, 0),
+    BALANCED("options.radiante.light_style.balanced", 0, 40, 1, 100, 0),
+    CINEMATIC("options.radiante.light_style.cinematic", -5, 15, -3, 106, 12),
+    CUSTOM("options.radiante.light_style.custom", 0, 0, 0, 0, 0);
 
     final String key;
-    /** Exposure in steps of a tenth of a stop, Local Tone Mapping in percent (the sliders' steps). */
-    final int exposure;
-    final int localTone;
+    /** Each slider's value in its steps (Tunable): Exposure, Local Tone Mapping, Brightness, Contrast, Shadow Depth. */
+    private final Map<Tunable, Integer> values;
 
-    LightStyle(String key, int exposure, int localTone) {
+    LightStyle(String key, int exposure, int localTone, int brightness, int contrast, int shadowDepth) {
         this.key = key;
-        this.exposure = exposure;
-        this.localTone = localTone;
+        this.values = Map.of(Tunable.EXPOSURE_BIAS, exposure, Tunable.LOCAL_TONE_MAPPING, localTone,
+            Tunable.TONE_BRIGHTNESS, brightness, Tunable.CONTRAST, contrast, Tunable.SHADOW_DEPTH, shadowDepth);
     }
 
-    boolean matches(Map<Tunable, Integer> values) {
-        return this != CUSTOM && same(values.get(Tunable.EXPOSURE_BIAS), this.exposure)
-            && same(values.get(Tunable.LOCAL_TONE_MAPPING), this.localTone);
+    boolean matches(Map<Tunable, Integer> current) {
+        if (this == CUSTOM) {
+            return false;
+        }
+        for (Map.Entry<Tunable, Integer> entry : this.values.entrySet()) {
+            Integer value = current.get(entry.getKey());
+            if (value != null && !Objects.equals(value, entry.getValue())) {
+                return false;
+            }
+        }
+        return true;
     }
 
-    private static boolean same(Integer value, int expected) {
-        return value == null || Objects.equals(value, expected);
+    void applyTo(Map<Tunable, Integer> current) {
+        this.values.forEach((tunable, value) -> current.computeIfPresent(tunable, (k, v) -> value));
     }
 
-    void applyTo(Map<Tunable, Integer> values) {
-        values.computeIfPresent(Tunable.EXPOSURE_BIAS, (k, v) -> this.exposure);
-        values.computeIfPresent(Tunable.LOCAL_TONE_MAPPING, (k, v) -> this.localTone);
-    }
-
-    static LightStyle of(Map<Tunable, Integer> values) {
+    static LightStyle of(Map<Tunable, Integer> current) {
         for (LightStyle style : values()) {
-            if (style.matches(values)) {
+            if (style.matches(current)) {
                 return style;
             }
         }

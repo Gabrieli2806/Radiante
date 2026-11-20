@@ -234,6 +234,9 @@ const float LOCAL_TONE_MIN_LUMINANCE = 1.0 / 16384.0;
 const float LOCAL_TONE_KNEE = 1.0;
 // Highlights are brought down from where their surroundings, exposed, pass this (log2 of the exposed luminance): white.
 const float LOCAL_TONE_WHITE = 0.0;
+// How much of the lifting of the dark parts the Nether keeps: its caverns are meant to be deep, and lifted like a
+// cave in the Overworld, the rock far from the lava came up to the same flat red as the rock beside it.
+const float NETHER_LOCAL_TONE_SHADOWS = 0.3;
 
 // What the radiance at this pixel is multiplied by: the brightness of its surroundings (the guided filter's base) is
 // brought back where it would go past white once exposed, and lifted where it is far darker than the anchor; the
@@ -247,7 +250,8 @@ float localToneGain(vec3 radiance, float exposure) {
     float overWhite = base + log2(max(exposure, 1e-12)) - LOCAL_TONE_WHITE;
     float offset = clamp(overWhite > 0.0 ? overWhite : min(base - localTone.anchor, 0.0), -24.0, 24.0);
     float beyond = offset - LOCAL_TONE_KNEE * tanh(clamp(offset / LOCAL_TONE_KNEE, -10.0, 10.0));
-    float strength = offset > 0.0 ? localTone.highlights : localTone.shadows;
+    float strength = offset > 0.0 ? localTone.highlights
+                                  : localTone.shadows * (expData.padding0 > 0.5 ? NETHER_LOCAL_TONE_SHADOWS : 1.0);
     float stops = clamp(-strength * beyond, -4.0, 2.0);
     return isnan(stops) ? 1.0 : exp2(stops);
 }

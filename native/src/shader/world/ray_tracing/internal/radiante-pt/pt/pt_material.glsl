@@ -26,9 +26,10 @@ struct SampledSurface {
 // the tone curve), and the share of its colour that is left to the light other things throw on it.
 // Under 1: at 1.3 the bright swirls of its texture were over white, where the tone mapper keeps the hue and gives
 // up the rest, and the whole sheet came out one pale, flat peach (and, with bloom starting at white, in a haze of
-// its own). At 0.95 its brightest texels just reach white and the darker ones keep their deep orange.
+// its own). At 0.95 its brightest texels just reached white, and a sea of it read as one flat orange; at 0.8 its
+// texture shows across the sheet, the bright swirls over the deep orange.
 #ifndef LAVA_DISPLAY
-#    define LAVA_DISPLAY 0.95
+#    define LAVA_DISPLAY 0.8
 #endif
 #ifndef LAVA_LIT_SHARE
 #    define LAVA_LIT_SHARE 0.1
