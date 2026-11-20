@@ -413,6 +413,9 @@ public class Options {
         read = true;
         Path path = RadianteClient.radianceDir.resolve(OPTION_PROPERTIES);
         if (!Files.exists(path)) {
+            for (Entry entry : ENTRIES) {
+                entry.load().accept(DEFAULTS.get(entry.key()));
+            }
             applyChunkBuildingAuto();
             overwriteConfig();
             return;
@@ -429,8 +432,14 @@ public class Options {
                 + "kept as {}.", path, kept, e);
         }
         for (Entry entry : ENTRIES) {
+            // A setting the file leaves out is at its default, and is still loaded: several settings live in the
+            // renderer too (collecting the block lights, the chunk building threads), and the renderer's own copy
+            // starts unset. Since only what differs from the defaults is written, a setting never touched was never
+            // handed to it: the block lights were never collected, and no torch, lantern or lamp set down lit
+            // anything, while the one held in the hand, which needs no list, did.
             String text = props.getProperty(entry.key());
             if (text == null) {
+                entry.load().accept(DEFAULTS.get(entry.key()));
                 continue;
             }
             try {
@@ -438,6 +447,7 @@ public class Options {
             } catch (NumberFormatException badValue) {
                 // A hand-edited or damaged value keeps its default rather than stopping the game from starting.
                 RadianteClient.LOGGER.warn("Ignoring option {}={}", entry.key(), text);
+                entry.load().accept(DEFAULTS.get(entry.key()));
             }
         }
         // A config from before the automatic setting: automatic unless the batch sliders were moved off their old 12.
