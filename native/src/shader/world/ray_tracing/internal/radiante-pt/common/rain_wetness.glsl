@@ -122,10 +122,8 @@ const float SHELTER_DAMP = 0.45;
 const float SHELTER_REACH = 2.0;
 // Ground under leaves: the rain drips through them, so it is never quite dry there.
 const float LEAF_DAMP = 0.3;
-// How far apart the columns are that are read to blend the rain and the snow across a biome's edge, in blocks: the
-// weather changes over about twice that. At 4 the edge of a snowy biome by a rainy one was a strip eight blocks wide
-// of wet ground and snow sprinkled together, with rain running down walls under the snow.
-const float BIOME_BLEND_STEP = 2.0;
+// How far the columns round a point count towards the weather there (vptBiomeShares), in blocks from their middles.
+const float BIOME_REACH = 1.5;
 // The fray both the rain and the snow cross a biome's edge by (vptRainFray), so that where they meet each pixel takes
 // the one or the other: frayed apart, a pixel could be both wet and snowy, or neither.
 const float BIOME_FRAY_SALT = 13.7;
@@ -135,17 +133,29 @@ const float BIOME_FRAY_SALT = 13.7;
 #endif
 
 
-/** How much of the rain falls here, 0..1, from the biomes of the columns around: a wet area fades out over a few
- *  blocks into a desert or a snowy biome instead of stopping at the biome's edge. */
-float vptRainBiome(ivec2 column, uint textureId) {
-    float rains = 0.0;
+/** How much of the rain (x) and of the snow (y) falls at a point, 0..1, from the columns round it, each counting as
+ *  much as its middle is near (BIOME_REACH), then drawn in to a band about a block wide: the edge of a biome runs as
+ *  one smooth line along its columns, rounding their corners, and vptRainFray frays it a pixel or two either way, as
+ *  round a campfire. Columns read every two blocks and evened out over eight, it was a strip several blocks wide of
+ *  scattered specks and block-sized steps. The two shares add up to 1 where rain and snow meet, so each pixel of the
+ *  edge takes the one or the other (the line's wander moves both alike). */
+vec2 vptBiomeShares(ivec2 column, vec2 within, uint textureId) {
+    vec2 sum = vec2(0.0);
+    float total = 0.0;
     for (int dz = -1; dz <= 1; dz++) {
         for (int dx = -1; dx <= 1; dx++) {
-            ivec2 at = column + ivec2(dx, dz) * int(BIOME_BLEND_STEP);
-            rains += (vptRainColumn(at, textureId).b & 128) != 0 ? 1.0 : 0.0;
+            vec2 d = abs(within - (vec2(dx, dz) + 0.5));
+            float weight = max(1.0 - d.x / BIOME_REACH, 0.0) * max(1.0 - d.y / BIOME_REACH, 0.0);
+            if (weight <= 0.0) { continue; }
+            int b = vptRainColumn(column + ivec2(dx, dz), textureId).b;
+            sum += weight * vec2((b & 128) != 0 ? 1.0 : 0.0, (b & 160) == 32 ? 1.0 : 0.0);
+            total += weight;
         }
     }
-    return smoothstep(0.0, 1.0, rains / 9.0);
+    // The line wanders a little either way over a few blocks, so it does not trace the columns' corners: following
+    // them alone, the edge was a chain of rounded steps, too regular to be the ground's own.
+    float wander = (vptRainValueNoise((vec2(column) + within) * 0.45 + 71.0) - 0.5) * 0.4;
+    return smoothstep(vec2(0.3), vec2(0.7), sum / max(total, 1e-4) + vec2(wander, -wander));
 }
 
 /** How the rain reaches a face here, whatever the weather.
@@ -155,7 +165,7 @@ float vptRainBiome(ivec2 column, uint textureId) {
  *  the rain blown in from the open columns around, fading over SHELTER_REACH blocks, and under leaves never less
  *  than LEAF_DAMP. Walls and other upright faces: VPT_RAIN_WET_WALLS where the column in front of them is open to
  *  the sky at their height. Undersides stay dry. Both fade over a few blocks at the edge of a biome where it rains
- *  (vptRainBiome). It was cut hard at the edge of the open sky and of the biome before, and only floors got wet. */
+ *  (vptBiomeShares). It was cut hard at the edge of the open sky and of the biome before, and only floors got wet. */
 vec2 vptGroundRain(vec3 position, vec3 outwardNormal) {
     g_vptColumnSoak = 1.0;
     uint textureId = vptRainTextureId();
@@ -165,11 +175,12 @@ vec2 vptGroundRain(vec3 position, vec3 outwardNormal) {
     ivec3 cameraCell = ivec3(floor(worldUBO.cameraPos.xyz));
     vec3 relativePosition = position + vec3(worldUBO.cameraPos.xyz - dvec3(cameraCell));
     ivec2 column = cameraCell.xz + ivec2(floor(relativePosition.xz));
-    float biome = vptRainBiome(column, textureId);
+    vec2 biomeWithin = vptRainPixelWithin(fract(relativePosition.xz));
+    float biome = vptBiomeShares(column, biomeWithin, textureId).x;
     if (biome <= 0.0) { return vec2(0.0); }
     // Across a biome's edge the wet ground frays out into the dry instead of thinning evenly: the pixels the snow of a
     // snowy biome beside does not take (vptGroundSnow), and only those.
-    biome = 1.0 - vptRainFray(vec2(column) + fract(relativePosition.xz), 1.0 - biome, BIOME_FRAY_SALT);
+    biome = 1.0 - vptRainFray(vec2(column) + biomeWithin, 1.0 - biome, BIOME_FRAY_SALT);
     if (biome <= 0.0) { return vec2(0.0); }
     float fade = (1.0 - smoothstep(220.0, 238.0, max(abs(position.x), abs(position.z)))) * biome;
 
@@ -509,18 +520,6 @@ vec3 vptApplyRainRipples(vec3 normal, vec2 slope, float strength) {
 
 float g_vptSnowSoak = 1.0;
 
-float vptSnowBiome(ivec2 column, uint textureId) {
-    float snows = 0.0;
-    for (int dz = -1; dz <= 1; dz++) {
-        for (int dx = -1; dx <= 1; dx++) {
-            ivec2 at = column + ivec2(dx, dz) * int(BIOME_BLEND_STEP);
-            int b = vptRainColumn(at, textureId).b;
-            snows += (b & 160) == 32 ? 1.0 : 0.0;
-        }
-    }
-    return smoothstep(0.0, 1.0, snows / 9.0);
-}
-
 /** Heat melting around torches, lanterns, campfires, furnaces and lava, and bright lights (glowstone, froglights,
  *  sea lanterns: RainExposure's bit 4 where it snows, melting as a torch does): x melts the snow blanket, y melts the
  *  thinner rime frost further out, both frayed with vptRainFray instead of stopping at a clean circle. A light's own
@@ -613,9 +612,9 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
     ivec3 cameraCell = ivec3(floor(worldUBO.cameraPos.xyz));
     vec3 relativePosition = position + vec3(worldUBO.cameraPos.xyz - dvec3(cameraCell));
     ivec2 column = cameraCell.xz + ivec2(floor(relativePosition.xz));
-    float biome = vptSnowBiome(column, textureId);
-    if (biome <= 0.0) { return vec2(0.0); }
     vec2 withinColumn = vptRainPixelWithin(fract(relativePosition.xz));
+    float biome = vptBiomeShares(column, withinColumn, textureId).y;
+    if (biome <= 0.0) { return vec2(0.0); }
     biome = vptRainFray(vec2(column) + withinColumn, biome, BIOME_FRAY_SALT);
     if (biome <= 0.0) { return vec2(0.0); }
     float fade = (1.0 - smoothstep(220.0, 238.0, max(abs(position.x), abs(position.z)))) * biome;

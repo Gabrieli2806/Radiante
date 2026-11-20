@@ -136,6 +136,14 @@ public final class RainExposure {
     private static final boolean[] fluidChange = new boolean[SIZE * SIZE];
     /** Per column: 0 when its top is not a trapdoor (or not read yet), 1 a shut one, 2 an open one. */
     private static final byte[] trapdoorState = new byte[SIZE * SIZE];
+    /**
+     * Per column: its top block became another kind of block since the column was last read
+     * (onBlockChanged), and per tile: it has such a column to read again on the next frame. Read by its height alone,
+     * a block broken and put back between two reads (a stair swapped for another) left the column as it was, and the
+     * new block came out under the old one's snow.
+     */
+    private static final boolean[] topChanged = new boolean[SIZE * SIZE];
+    private static final boolean[] changedTiles = new boolean[TILES * TILES];
 
     /** Tiles whose chunk was not loaded when they were read: read again every frame until it is. */
     private static final boolean[] missing = new boolean[TILES * TILES];
@@ -254,6 +262,15 @@ public final class RainExposure {
                     upload(world, slot, pixels, pos);
                 }
             }
+            // Tiles a block changed in (onBlockChanged), on the next frame.
+            for (int slot = 0; slot < changedTiles.length; slot++) {
+                if (changedTiles[slot]) {
+                    changedTiles[slot] = false;
+                    if (tileX[slot] != Integer.MIN_VALUE) {
+                        upload(world, slot, pixels, pos);
+                    }
+                }
+            }
             // The tiles round the camera every few frames, so a block broken or put down nearby shows within a
             // fraction of a second.
             if (++nearRefresh >= 8) {
@@ -275,6 +292,30 @@ public final class RainExposure {
         return new Vector4f(wetness, Options.snowOnPaths ? -idAndClock : idAndClock, 0.0f, 0.0f);
     }
 
+    /**
+     * A block of the level changed (ClientLevel's block updates, as the world renderer hears of them). The top block of
+     * a column becoming another kind of block marks the column as a new top for the next read, even if its height
+     * comes out the same. A change of state alone (a leaf's distance, a crop's age, a grass block turning
+     * snowy) is not a new top.
+     */
+    public static void onBlockChanged(BlockPos pos, BlockState before, BlockState after) {
+        if (before.getBlock() == after.getBlock()) {
+            return;
+        }
+        int slot = ((pos.getZ() >> 4) & (TILES - 1)) * TILES + ((pos.getX() >> 4) & (TILES - 1));
+        if (tileX[slot] != pos.getX() >> 4 || tileZ[slot] != pos.getZ() >> 4) {
+            return;
+        }
+        int column = (pos.getZ() & (SIZE - 1)) * SIZE + (pos.getX() & (SIZE - 1));
+        // The top itself: a block put on top raises the column, which its next read sees anyway, and a flower or a
+        // torch set down on the ground is not a new top for the ground under it.
+        if (heights[column] == Integer.MIN_VALUE || pos.getY() != heights[column]) {
+            return;
+        }
+        topChanged[column] = true;
+        changedTiles[slot] = true;
+    }
+
     /** The tile's columns start over unknown: a tile that comes into the ring is not ground that just changed. */
     private static void forgetTile(int slot) {
         int baseX = (slot & (TILES - 1)) * 16;
@@ -284,6 +325,7 @@ public final class RainExposure {
             Arrays.fill(heights, row, row + 16, Integer.MIN_VALUE);
             Arrays.fill(exposedAt, row, row + 16, Float.NaN);
             Arrays.fill(trapdoorState, row, row + 16, (byte) 0);
+            Arrays.fill(topChanged, row, row + 16, false);
         }
     }
 
@@ -395,7 +437,9 @@ public final class RainExposure {
                     // Water or lava on top: water poured on or drained off, lava flowing in or out.
                     boolean fluid = !chunk.getFluidState(pos.set(tileX[slot] * 16 + x, y, tileZ[slot] * 16 + z))
                         .isEmpty();
-                    if (before != Integer.MIN_VALUE && (before != y || fluid != fluidTop[column])) {
+                    boolean replaced = topChanged[column];
+                    topChanged[column] = false;
+                    if (before != Integer.MIN_VALUE && (before != y || fluid != fluidTop[column] || replaced)) {
                         // A new top: dry, from now on the rain clock.
                         exposedAt[column] = clock;
                         lowered[column] = y < before || fluidTop[column] && !fluid;
