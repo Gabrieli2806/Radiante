@@ -271,6 +271,21 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
             "gui.radiante.photo.lens.tooltip", innerX + halfW + 4, y, innerW - halfW - 4, BUTTON_H,
             com.g2806.radiante.client.photo.PhotoCinema::nextLens, () -> true, false));
         y += BUTTON_H + 4;
+        // Ready-made scenes (time and weather) and camera looks (lens, depth of field, exposure).
+        this.buttons.add(new ButtonBox(
+            () -> Component.translatable("gui.radiante.photo.scene", com.g2806.radiante.client.photo.PhotoCinema.scene() == null
+                ? Component.translatable("gui.radiante.photo.preset.pick")
+                : Component.translatable(com.g2806.radiante.client.photo.PhotoCinema.scene().key())),
+            "gui.radiante.photo.scene.tooltip", innerX, y, halfW, BUTTON_H,
+            () -> com.g2806.radiante.client.photo.PhotoCinema.nextScene(this.minecraft),
+            () -> this.minecraft != null && com.g2806.radiante.client.photo.PhotoCinema.ownsWorld(this.minecraft), false));
+        this.buttons.add(new ButtonBox(
+            () -> Component.translatable("gui.radiante.photo.look", com.g2806.radiante.client.photo.PhotoCinema.look() == null
+                ? Component.translatable("gui.radiante.photo.preset.pick")
+                : Component.translatable(com.g2806.radiante.client.photo.PhotoCinema.look().key())),
+            "gui.radiante.photo.look.tooltip", innerX + halfW + 4, y, innerW - halfW - 4, BUTTON_H,
+            com.g2806.radiante.client.photo.PhotoCinema::nextLook, () -> true, false));
+        y += BUTTON_H + 4;
         addSlider("gui.radiante.photo.time", "gui.radiante.photo.time.tooltip", innerX, y, innerW,
             () -> Math.max(0L, com.g2806.radiante.client.photo.PhotoCinema.dayTime(this.minecraft)) / 24000.0f,
             t -> {

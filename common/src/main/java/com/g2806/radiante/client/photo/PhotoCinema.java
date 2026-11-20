@@ -128,6 +128,85 @@ public final class PhotoCinema {
         PhotoMode.releaseFrozenSky(6000L);
     }
 
+    /** Ready-made scenes: a time of day and a weather, set together (singleplayer). */
+    public enum Scene {
+        SUNRISE(23300L, "clear"), MORNING(1500L, "clear"), NOON(6000L, "clear"), GOLDEN_HOUR(11800L, "clear"),
+        SUNSET(12600L, "clear"), BLUE_HOUR(13300L, "clear"), MOONLIGHT(18000L, "clear"), RAINY_DAY(8000L, "rain"),
+        STORM(10500L, "thunder"), STORMY_NIGHT(17000L, "thunder");
+
+        final long time;
+        final String weather;
+
+        Scene(long time, String weather) {
+            this.time = time;
+            this.weather = weather;
+        }
+
+        public String key() {
+            return "gui.radiante.photo.scene." + name().toLowerCase(Locale.ROOT);
+        }
+    }
+
+    private static int scene = -1;
+
+    /** The last scene set, or null before any. */
+    public static Scene scene() {
+        return scene < 0 ? null : Scene.values()[scene];
+    }
+
+    /** Sets the next scene's time and weather. */
+    public static void nextScene(Minecraft minecraft) {
+        if (!ownsWorld(minecraft)) {
+            return;
+        }
+        scene = (scene + 1) % Scene.values().length;
+        Scene next = Scene.values()[scene];
+        serverCommand(minecraft, "time set " + next.time);
+        serverCommand(minecraft, "weather " + next.weather);
+        PhotoMode.releaseFrozenSky(6000L);
+    }
+
+    /** Ready-made camera looks: the lens, the depth of field and the exposure, set together. */
+    public enum Look {
+        // fov in degrees, aperture radius in blocks (0 is a pinhole: everything sharp), focus in blocks, exposure EV.
+        NATURAL(70.0f, 0.0f, 10.0f, 0.0f), LANDSCAPE(85.0f, 0.0f, 32.0f, -0.3f), PORTRAIT(35.0f, 0.12f, 4.0f, 0.2f),
+        MACRO(25.0f, 0.25f, 1.5f, 0.3f), CINEMATIC(45.0f, 0.06f, 8.0f, -0.5f), NIGHT(60.0f, 0.02f, 12.0f, 1.0f),
+        DRAMATIC(30.0f, 0.08f, 6.0f, -1.0f);
+
+        final float fov;
+        final float aperture;
+        final float focus;
+        final float exposure;
+
+        Look(float fov, float aperture, float focus, float exposure) {
+            this.fov = fov;
+            this.aperture = aperture;
+            this.focus = focus;
+            this.exposure = exposure;
+        }
+
+        public String key() {
+            return "gui.radiante.photo.look." + name().toLowerCase(Locale.ROOT);
+        }
+    }
+
+    private static int look = -1;
+
+    /** The last look set, or null before any. */
+    public static Look look() {
+        return look < 0 ? null : Look.values()[look];
+    }
+
+    /** Sets the next look. */
+    public static void nextLook() {
+        look = (look + 1) % Look.values().length;
+        Look next = Look.values()[look];
+        PhotoMode.setFovDegrees(next.fov);
+        PhotoMode.setApertureRadius(next.aperture);
+        PhotoMode.setFocusDistance(next.focus);
+        PhotoMode.setExposureBias(next.exposure);
+    }
+
     public static String weatherKey(Minecraft minecraft) {
         if (minecraft.level == null) {
             return "gui.radiante.photo.weather.clear";

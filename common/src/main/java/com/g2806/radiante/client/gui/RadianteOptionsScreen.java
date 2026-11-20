@@ -189,7 +189,9 @@ public class RadianteOptionsScreen extends SettingsRows {
                 },
                 RadianteRenderer.isActive() ? this::startOptimizeGpu : null,
                 () -> {
-                    // Undo: a fresh screen reads everything back from what is applied.
+                    // Undo: a fresh screen reads everything back from what is applied, the sliders shown live put
+                    // back first.
+                    revertPreview();
                     this.applied = true;
                     RadianteOptionsScreen fresh = new RadianteOptionsScreen(this.lastScreen, this.options);
                     fresh.scroll = this.layout.scroll();
