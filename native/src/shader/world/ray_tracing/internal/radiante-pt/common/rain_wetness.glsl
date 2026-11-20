@@ -166,6 +166,49 @@ vec2 vptBiomeShares(ivec2 column, vec2 within, uint textureId) {
     return smoothstep(vec2(0.3), vec2(0.7), sum / max(total, 1e-4) + vec2(wander, -wander));
 }
 
+/** Under cover: how far the closest column open at the surface's height is from a point of column, in blocks (1e3 with
+ *  none within two columns), and the way to its nearest point. */
+float vptShelterNearest(ivec2 column, vec2 withinColumn, int surfaceBlockY, uint textureId, out vec2 toward) {
+    float nearest = 1e3;
+    toward = vec2(0.0);
+    for (int dz = -2; dz <= 2; dz++) {
+        for (int dx = -2; dx <= 2; dx++) {
+            if (dx == 0 && dz == 0) { continue; }
+            if (vptRainColumnBlocks(vptRainColumn(column + ivec2(dx, dz), textureId), surfaceBlockY)) { continue; }
+            vec2 to = clamp(withinColumn, vec2(dx, dz), vec2(dx, dz) + 1.0) - withinColumn;
+            float away = length(to);
+            if (away < nearest) {
+                nearest = away;
+                toward = to;
+            }
+        }
+    }
+    return nearest;
+}
+
+// What pt_material.glsl found for the upward face being shaded (vptShelterProbe and a ray): how far the closest open
+// column is that the rain and the snow can come in from, 1e3 with a wall in the way; negative when not worked out,
+// and the columns alone are gone by. The columns do not tell a wall from the room behind it (both lie under the
+// roof), so by them alone the rain blown in and the snow drifting in reached through every outside wall: a damp,
+// frosted strip along the inside of a house's walls, and specks of water on the floor of its corners.
+float g_vptShelterNearest = -1.0;
+
+/** Whether position is on an upward face under cover with an open column in reach; then how far, and the way to it. */
+bool vptShelterProbe(vec3 position, out float nearest, out vec2 toward) {
+    nearest = 1e3;
+    toward = vec2(0.0);
+    uint textureId = vptRainTextureId();
+    if (textureId == 0u || max(abs(position.x), abs(position.z)) > 238.0) { return false; }
+    ivec3 cameraCell = ivec3(floor(worldUBO.cameraPos.xyz));
+    vec3 relativePosition = position + vec3(worldUBO.cameraPos.xyz - dvec3(cameraCell));
+    ivec2 column = cameraCell.xz + ivec2(floor(relativePosition.xz));
+    int surfaceBlockY = cameraCell.y + int(floor(relativePosition.y - 0.001));
+    ivec4 center = vptRainColumn(column, textureId);
+    if (center.b == 0 || !vptRainColumnBlocks(center, surfaceBlockY)) { return false; }
+    nearest = vptShelterNearest(column, vptRainPixelWithin(fract(relativePosition.xz)), surfaceBlockY, textureId, toward);
+    return true;
+}
+
 /** How the rain reaches a face here, whatever the weather.
  *  x: how open an upward face is to the sky, 0..1, for standing water: 1 on the top of its column, fading towards a
  *  wall or overhang and at the edge of the texture.
@@ -230,15 +273,9 @@ vec2 vptGroundRain(vec3 position, vec3 outwardNormal) {
         float since = vptColumnSince(center);
         float covered = since >= 0.0 ? exp(-since * 1.5) : 0.0;
         // Under cover: how near the closest open column is.
-        float nearest = 1e3;
-        for (int dz = -2; dz <= 2; dz++) {
-            for (int dx = -2; dx <= 2; dx++) {
-                if (dx == 0 && dz == 0) { continue; }
-                if (vptRainColumnBlocks(vptRainColumn(column + ivec2(dx, dz), textureId), surfaceBlockY)) { continue; }
-                vec2 away = max(abs(withinColumn - (vec2(dx, dz) + 0.5)) - 0.5, vec2(0.0));
-                nearest = min(nearest, length(away));
-            }
-        }
+        vec2 shelterToward;
+        float nearest = g_vptShelterNearest >= 0.0 ? g_vptShelterNearest
+            : vptShelterNearest(column, withinColumn, surfaceBlockY, textureId, shelterToward);
         float blownIn = 1.0 - smoothstep(0.0, SHELTER_REACH, nearest);
         // Under the edge of a roof or a canopy the rain blown in wets the ground in a ragged fringe, wet pixels
         // reaching in among dry ones, and the water standing outside creeps in a little the same way, instead of
@@ -745,15 +782,9 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
         float underSince = vptColumnUnderSince(center);
         float regrow = underSince >= 0.0 ? vptSnowSpread(1.0 - exp(-underSince)) /
                                                max(vptSnowSpread(1.0), 1e-4) : 1.0;
-        float nearest = 1e3;
-        for (int dz = -2; dz <= 2; dz++) {
-            for (int dx = -2; dx <= 2; dx++) {
-                if (dx == 0 && dz == 0) { continue; }
-                if (vptRainColumnBlocks(vptRainColumn(column + ivec2(dx, dz), textureId), surfaceBlockY)) { continue; }
-                vec2 away = max(abs(withinColumn - (vec2(dx, dz) + 0.5)) - 0.5, vec2(0.0));
-                nearest = min(nearest, length(away));
-            }
-        }
+        vec2 shelterToward;
+        float nearest = g_vptShelterNearest >= 0.0 ? g_vptShelterNearest
+            : vptShelterNearest(column, withinColumn, surfaceBlockY, textureId, shelterToward);
         vec2 world = vec2(column) + withinColumn;
         float driftCreep = vptRainFray(world, 1.0 - smoothstep(0.0, 0.65, nearest), 15.3);
         float frostFringe = vptRainFray(world, 1.0 - smoothstep(0.0, 1.4, nearest), 17.9);

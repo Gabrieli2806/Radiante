@@ -472,6 +472,28 @@ void sampleSurfaceState(bool useTexture,
     // Rain soaks the ground under open sky: darker, glossy, and the bumps of the normal map drown.
     if (!useWaterMaterial && !isFftWaterSurface && !g_hitIsGlass && !isRainStreak) {
         vec3 dryAlbedo = mat.albedo;
+        // Under a roof, near its edge: can the weather come in from the open column beside, or is there a wall
+        // between (g_vptShelterNearest)? A ray a third of a block over the floor, towards that column, tells: through
+        // a doorway or under an eave it gets there, through a wall it does not.
+        g_vptShelterNearest = -1.0;
+        if (baseGeoNormal.y >= 0.5 && (skyUBO.rainWetness.x > 0.0 || skyUBO.rainGradient > 0.01)) {
+            float shelterNearest;
+            vec2 shelterToward;
+            if (vptShelterProbe(worldPos, shelterNearest, shelterToward)) {
+                if (shelterNearest < 2.0 && shelterNearest > 1e-3) {
+                    shadowRay.radiance = vec3(0.0);
+                    shadowRay.throughput = vec3(1.0);
+                    shadowRay.insideBoat = 0u;
+                    shadowRay.pad0 = BLOCK_LIGHT_QUERY;
+                    traceRayEXT(topLevelAS, VPT_SHADOW_RAY_FLAGS, WORLD_MASK, 0, 0, 0,
+                                worldPos + vec3(0.0, 0.35, 0.0), 0.0,
+                                vec3(shelterToward.x, 0.0, shelterToward.y) / shelterNearest, shelterNearest + 0.05, 1);
+                    shadowRay.pad0 = 0u;
+                    if (shadowRay.radiance.x <= 0.5) { shelterNearest = 1e3; }
+                }
+                g_vptShelterNearest = shelterNearest;
+            }
+        }
         vec2 groundRain = vptGroundRain(worldPos, baseGeoNormal);
         float open = groundRain.x;
         // Water stands on the flat top of a full block, and on a slab's and a stair's half a block up, which took

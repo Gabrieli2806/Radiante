@@ -184,8 +184,6 @@ vec4 evalMoonBillboard(vec3 rayDir) {
 #    define END_VOID_TINT vec3(1.3, 0.8, 1.85)
 #endif
 // How bright the void looks to the camera against the light it casts; also in world.rgen (the islands' fog).
-// How dark the overcast sky gets in a full thunderstorm, against plain rain.
-const float RAIN_STORM_SKY = 0.7;
 
 #ifndef END_VOID_SEEN
 #    define END_VOID_SEEN 0.15
@@ -310,10 +308,8 @@ void main() {
     float progress = skyUBO.rainGradient;
     float celestialSeen = rayCrossedCloud(mainRay) ? CLOUD_DISC_SEEN : 1.0;
     mainRay.directLightRadiance.x *= celestialSeen;
-    vec3 rainyRadiance = celestialOvercastRadiance();
-    // The overcast is heavier overhead than at the horizon, where the light comes in under the clouds, and darker
-    // still in a thunderstorm; over the whole sky it gives about the light the flat grey did, less in a storm.
-    rainyRadiance *= mix(1.25, 0.85, clamp(rayDir.y, 0.0, 1.0)) * mix(1.0, RAIN_STORM_SKY, skyUBO.thunderGradient);
+    // The sky of the weather (celestial.glsl): the one the camera sees for a view ray, the one that lights for the rest.
+    vec3 rainyRadiance = celestialOvercastSky(rayDir, rayBounce(mainRay) == 0u || rayCameraPath(mainRay));
     // A lightning flash lights the clouds: the sky over the bolt the most, all of it a little (celestial.glsl).
     float lightning = lightningFlash();
     if (lightning > 0.0) {
