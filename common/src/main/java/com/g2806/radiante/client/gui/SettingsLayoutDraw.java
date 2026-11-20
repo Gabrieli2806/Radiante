@@ -241,7 +241,7 @@ final class SettingsLayoutDraw {
         int captionX = layout.listX + PAD + (advanced ? 14 : 4);
         // A light block's row shows its texture before its name (BlockEmissionSettings).
         java.util.List<String> sprites = BlockEmissionSettings.ROW_SPRITES.get(option);
-        if (sprites != null && !sprites.isEmpty()) {
+        if (sprites != null && !sprites.isEmpty() && BlockEmissionSettings.iconsShown()) {
             BlockEmissionSettings.drawIcon(g, BlockEmissionSettings.ROW_ITEMS.get(option), sprites, captionX, y + 2, 16);
             captionX += 20;
         }

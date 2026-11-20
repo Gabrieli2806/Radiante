@@ -96,13 +96,22 @@ final class BlockEmissionSettings {
     }
 
     /**
+     * Whether the rows' icons are drawn: only once a world has bound the items' components. Before that (the settings
+     * opened from the title screen) no item can be made, and a flat texture in its place looked unlike the game.
+     */
+    static boolean iconsShown() {
+        return net.minecraft.world.item.Items.TORCH.builtInRegistryHolder().areComponentsBound();
+    }
+
+    /**
      * A row's icon at size (16 is an inventory slot's): its item as the inventory and the creative menu draw it, a
-     * lantern as a lantern and a crafter as a block, once a world has bound the items' components; before that (the
-     * settings opened from the title screen, where no item can be made) its texture.
+     * lantern as a lantern and a crafter as a block; its texture for a light with no item (fire, lava). Nothing
+     * outside a world (iconsShown).
      */
     static void drawIcon(net.minecraft.client.gui.GuiGraphicsExtractor g, net.minecraft.world.item.Item item,
         List<String> sprites, int x, int y, int size) {
-        if (item != null && item.builtInRegistryHolder().areComponentsBound()) {
+        if (!iconsShown()) return;
+        if (item != null) {
             net.minecraft.world.item.ItemStack stack = STACKS.computeIfAbsent(item, net.minecraft.world.item.ItemStack::new);
             if (size == 16) {
                 g.fakeItem(stack, x, y);
