@@ -66,6 +66,9 @@ abstract class SettingsRows extends SettingsUpscalerRows {
         if (current == null) {
             return null;
         }
+        if (tunable.module == null) {
+            ShaderCompileRows.register(tunable.key(), tunable.attribute);
+        }
         return new OptionInstance<Integer>(tunable.key(), SettingsRows.<Integer>tooltip(tunable.key()),
             (caption, value) -> switch (tunable.format) {
                 case EV -> Component.translatable("options.radiante.ev_value", caption,
@@ -686,6 +689,7 @@ abstract class SettingsRows extends SettingsUpscalerRows {
             return null;
         }
         boolean value = this.pendingPackToggles.computeIfAbsent(attribute, PipelineSettings::isShaderPackToggleOn);
+        ShaderCompileRows.register(key, attribute);
         return OptionInstance.createBoolean(key, tooltip(key), value, newValue -> {
             this.pendingPackToggles.put(attribute, newValue);
         });

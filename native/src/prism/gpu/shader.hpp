@@ -59,6 +59,8 @@ class Shader : public SharedObject<Shader> {
         std::vector<uint32_t> spirv;
         // Served from the cache.
         bool cacheHit = false;
+        // Of those, served from the SPIR-V that came with Radiante (setBundle) and now in the cache too.
+        bool bundleHit = false;
         // A cache file was there but held no usable SPIR-V, so the shader was compiled again.
         bool cacheReadFailed = false;
         // Empty when the compile could not be cached.
@@ -94,6 +96,12 @@ class Shader : public SharedObject<Shader> {
                                           std::vector<std::string> includeDirectories = {},
                                           std::string injectedSource = "",
                                           const std::filesystem::path &cacheDir = {});
+
+    // The zip of SPIR-V compiled when Radiante was built (radiante-pt's shaders at its default settings, named as the
+    // cache names them: compiledHash), read when a compile is not in the cache: what it has is used, and stored in the
+    // cache, instead of being compiled. A missing zip, or one from another build, only means compiling as without it.
+    // The first call sets it; later ones with the same path do nothing.
+    static void setBundle(const std::filesystem::path &zip);
 
     // While one lives, compiles on this thread do not write their errors to the renderer's error log (the message is
     // in the exception compileGlslToSpv throws either way). For a shader pack check, whose failures Java must not take

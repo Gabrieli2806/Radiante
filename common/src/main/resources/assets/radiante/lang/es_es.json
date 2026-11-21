@@ -430,6 +430,7 @@
   "options.radiante.seconds_value": "%s: %s s",
   "options.radiante.restart.tag": "(reinicio)",
   "options.radiante.restart.tag_pending": "Requiere reiniciar",
+  "options.radiante.compiles.hint": "Cambiar esto compila los shaders que lo usan: unos segundos, mientras sigues jugando.",
   "options.radiante.restart.hint": "Se aplica después de reiniciar el juego.",
   "options.radiante.restart.title": "Se requiere reiniciar",
   "options.radiante.restart.message": "Estos cambios se aplican la próxima vez que inicies el juego:",

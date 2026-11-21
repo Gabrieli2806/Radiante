@@ -1,0 +1,26 @@
+[
+    {
+        "name": "DLSS Ray Reconstruction (the default on NVIDIA)",
+        "micromaps": true,
+        "attributes": {}
+    },
+    {
+        "name": "DLSS Ray Reconstruction, without opacity micromaps (RTX 20 and 30)",
+        "micromaps": false,
+        "attributes": {}
+    },
+    {
+        "name": "NRD (with FSR, XeSS, DLSS or no upscaler: the default on AMD and Intel)",
+        "micromaps": true,
+        "attributes": {
+            "render_pipeline.module.ray_tracing.attribute.nrd_signals": "render_pipeline.true"
+        }
+    },
+    {
+        "name": "NRD, without opacity micromaps",
+        "micromaps": false,
+        "attributes": {
+            "render_pipeline.module.ray_tracing.attribute.nrd_signals": "render_pipeline.true"
+        }
+    }
+]

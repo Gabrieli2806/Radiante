@@ -75,9 +75,11 @@ jobs:
           git clone --depth 1 --branch "$DLSS_SDK_TAG" https://github.com/NVIDIA/DLSS.git /tmp/dlss
           mkdir -p native/extern/DLSS/lib && cp -r /tmp/dlss/lib/Windows_x86_64 native/extern/DLSS/lib/
       # bash, not PowerShell: PowerShell splits -DCMAKE_POLICY_VERSION_MINIMUM=3.5 into "3" and ".5".
+      # PRISM_SPIRV_BUNDLE: radiante-pt compiled into radiante-pt-spirv.zip, so a first start compiles nothing. Only
+      # here: this job's artifact carries the shaders folder for both systems.
       - name: Configure
         shell: bash
-        run: cmake -S native -B native/build/ci -A x64 -DPRISM_ENABLE_NRD=ON -DUSE_AMD=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+        run: cmake -S native -B native/build/ci -A x64 -DPRISM_ENABLE_NRD=ON -DUSE_AMD=ON -DPRISM_SPIRV_BUNDLE=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5
       - name: Build
         shell: bash
         run: cmake --build native/build/ci --config Release --target INSTALL -- -m

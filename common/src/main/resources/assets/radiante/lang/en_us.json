@@ -430,6 +430,7 @@
   "options.radiante.seconds_value": "%s: %s s",
   "options.radiante.restart.tag": "(restart)",
   "options.radiante.restart.tag_pending": "Restart required",
+  "options.radiante.compiles.hint": "Changing this compiles the shaders that use it: a few seconds, while you keep playing.",
   "options.radiante.restart.hint": "Takes effect after restarting the game.",
   "options.radiante.restart.title": "Restart required",
   "options.radiante.restart.message": "These changes take effect the next time the game starts:",
