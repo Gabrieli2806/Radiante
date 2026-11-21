@@ -102,6 +102,7 @@
 
 // The raygen library (pt/): each file is a verbatim block of what used to be here, in the original order.
 #include "pt/pt_bindings.glsl"
+#include "common/weather_layer.glsl"
 
 #include "pt/pt_fog.glsl"
 #include "pt/pt_volumetric.glsl"

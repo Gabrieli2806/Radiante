@@ -180,8 +180,10 @@ layout(set = 5, binding = RADIANTE_DEBUG_VIEW_STORAGE_BINDING, rgba16f) uniform 
 #include "hooks/cloud_shadow.glsl"
 #include "pt/pt_direct.glsl"
 #include "pt/pt_media.glsl"
-// A pack's falling rain (hooks/rain_streak.glsl), called by pt_glass.glsl; nothing in radiante-pt.
-#include "hooks/rain_streak.glsl"
+// A pack's falling rain and snow (hooks/falling_weather.glsl), called by pt_glass.glsl; nothing in radiante-pt.
+#include "hooks/falling_weather.glsl"
+// Where the camera's view of the falling weather goes, over the picture (common/weather_layer.glsl).
+#include "common/weather_layer.glsl"
 #include "pt/pt_glass.glsl"
 
 // Up to how rough a metal is still a mirror looked into (see the mirror path below); LabPBR's smoothest is 0.01.
@@ -429,14 +431,12 @@ void ptShadeDefault(bool viewMark) {
     // steady glow and showed two brightnesses, split along the edge of whatever was in front.
     if (radianteIsLava(packedData) && (bounce == 0u || rayCameraPath(mainRay))) { ptShapeLava(surface); }
     // What the camera sees changes in a way its motion vector does not follow (lava's flowing texture, a translucent
-    // particle, which drifts and is rebuilt each frame, falling snow, whose sheet stands still while its flakes fall
-    // down it): DLSS is told to favour this frame there, seen straight or through glass and water (a view chain).
-    // Without it the flakes stood still in the air, or faded out, whenever the camera did. Rain is a streak the view
-    // passes through (ptRainPassThrough), favoured there.
+    // particle, which drifts and is rebuilt each frame): DLSS is told to favour this frame there, seen straight or
+    // through glass and water (a view chain). Rain and snow are not in the picture the denoiser takes at all: they
+    // go over it afterwards (common/weather_layer.glsl).
     bool seenThisFrame = bounce == 0u || rayCameraPath(mainRay) || g_viewBounce;
     if (seenThisFrame) {
-        if (radianteIsLava(packedData) || radianteIsSnowfall(packedData) ||
-            (radianteIsThin(packedData) && alphaMode == ALPHA_MODE_STOCHASTIC)) {
+        if (radianteIsLava(packedData) || (radianteIsThin(packedData) && alphaMode == ALPHA_MODE_STOCHASTIC)) {
             raySetFavourCurrent(mainRay, true);
         }
     }

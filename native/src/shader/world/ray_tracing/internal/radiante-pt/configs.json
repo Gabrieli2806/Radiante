@@ -1080,6 +1080,16 @@
             "address_mode": "clamp_to_edge"
         },
         {
+            "name": "radiante_weather_layer",
+            "type": "intermediate",
+            "format": "R16G16B16A16_SFLOAT",
+            "scale": 1,
+            "sampled_binding": 53,
+            "storage_binding": 54,
+            "filter": "linear",
+            "address_mode": "clamp_to_edge"
+        },
+        {
             "name": "volumetric_cloud_temporal",
             "type": "intermediate",
             "format": "R16G16B16A16_SFLOAT",
@@ -1579,7 +1589,8 @@
                     "fog_sun_far",
                     "fog_block_far",
                     "fog_march_record",
-                    "out:fog_transmission"
+                    "out:fog_transmission",
+                    "radiante_weather_layer"
                 ],
                 "buffers": [
                     "light_grid_feedback"

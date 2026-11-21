@@ -36,6 +36,12 @@ class RayTracingModule : public WorldModule, public SharedObject<RayTracingModul
     friend RayTracingModuleContext;
 
   public:
+    // The shader pack this build traces with, for the modules after it that read its textures (the tone mapping's
+    // weather layer); null before a build.
+    const std::shared_ptr<ShaderPack> &shaderPack() const {
+        return shaderPack_;
+    }
+
     constexpr static std::string_view NAME = "render_pipeline.module.ray_tracing.name";
     constexpr static uint32_t inputImageNum = 0;
     constexpr static uint32_t outputImageNum = 16;
