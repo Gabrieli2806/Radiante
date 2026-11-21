@@ -6,6 +6,8 @@
 // compose), traces the world's ray and, in first person, the hand's, takes the nearer of the two as the surface seen,
 // and adds the world a pane of glass in front of it reflects.
 
+    // This pixel's falling weather, written by the hit shaders the camera's rays meet (common/weather_layer.glsl).
+    vptWeatherLayerClear(pixel);
     float surfaceDepth = INF_DISTANCE;
     bool psrHitSky = false;
     vec3 psrHitPosition;
@@ -125,6 +127,8 @@
     g_passThroughRadiance = worldPassThroughRadiance;
     g_passThroughDistance = worldPassThroughDistance;
     if (handFirstHit.surfaceDepth != INF_DISTANCE) {
+        // The weather the world's ray met lies behind the hand.
+        vptWeatherLayerClear(pixel);
         isHand = 1;
         selectedFirstHit = handFirstHit;
         mainRay = handRay;

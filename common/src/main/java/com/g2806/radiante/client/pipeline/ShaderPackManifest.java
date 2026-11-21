@@ -51,7 +51,7 @@ public final class ShaderPackManifest {
         "glass_frost",
         // hooks/footprints.glsl.
         "footprints",
-        // hooks/rain_streak.glsl, radianteIsSnowfall.
+        // hooks/falling_weather.glsl, radianteIsSnowfall.
         "falling_weather",
         // hookChangesEveryFrame() for hookSurface.
         "changes_every_frame");

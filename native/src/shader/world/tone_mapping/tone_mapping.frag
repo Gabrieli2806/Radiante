@@ -36,6 +36,10 @@ layout(std430, set = 0, binding = 6) readonly buffer LocalToneBuffer {
 localTone;
 // The guided filter's a and b, at an eighth of the picture's size (local_tone.comp, pass 3).
 layout(set = 0, binding = 7) uniform sampler2D localToneImage;
+// The falling weather the camera saw (the shader pack's weather layer, at its render size): rgb the light it adds, a
+// how much of the picture behind it it hides. Laid over here, after the denoiser and the upscaler, so rain and snow
+// show as they are in this frame instead of smearing through the history those keep. One clear texel without it.
+layout(set = 0, binding = 8) uniform sampler2D weatherLayer;
 
 // ToneMappingModulePushConstant (tone_mapping_module.hpp).
 layout(push_constant) uniform PushConstant {
@@ -271,6 +275,10 @@ void main() {
     // dot exactly where the picture is brightest. Not a number becomes black, too bright becomes white.
     hdr = vec3(isnan(hdr.r) ? 0.0 : min(hdr.r, 60000.0), isnan(hdr.g) ? 0.0 : min(hdr.g, 60000.0),
                isnan(hdr.b) ? 0.0 : min(hdr.b, 60000.0));
+    vec4 weather = texture(weatherLayer, texCoord);
+    if (!any(isnan(weather))) {
+        hdr = hdr * (1.0 - clamp(weather.a, 0.0, 1.0)) + clamp(weather.rgb, vec3(0.0), vec3(60000.0));
+    }
 
     // Capped again after the exposure, which can lift a large value past what a float divides cleanly.
     float exposure = max(currentExposure(), 0.0);

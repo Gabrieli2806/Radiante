@@ -167,6 +167,13 @@ void main() {
             if (texel.a < 0.05) { ignoreIntersectionEXT; }
             return;
         }
+        // Rain and falling snow the same way: met wherever there is any of a streak or a flake, the hit shader
+        // laying it over the picture by its coverage (ptRainPassThrough). Kept at random, they came and went from one
+        // frame to the next, and over the finished picture nothing smooths that.
+        if (radianteIsRain(packedData) || radianteIsSnowfall(packedData)) {
+            if (alpha < 0.02) { ignoreIntersectionEXT; }
+            return;
+        }
     }
 
     // Glass is always kept as a hit, clear parts included (shaded as fully see-through glass, alpha 0): the hit shader

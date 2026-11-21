@@ -6,6 +6,7 @@
 #include "prism/render/render_framework.hpp"
 #include "prism/render/renderer.hpp"
 #include "prism/render/modules/world/shader_pack/shader_pack.hpp"
+#include "prism/render/modules/world/ray_tracing/ray_tracing_module.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -480,6 +481,9 @@ void ToneMappingModule::createDescriptorTables(Framework &framework) {
     auto device = framework.device();
     sampler_ =
         gpu::Sampler::create(device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+    weatherSampler_ = gpu::Sampler::create(device, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_NEAREST,
+                                           VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+    createNoWeather(framework);
     auto lightMeter = Renderer::instance().buffers()->lightMeterBuffer();
 
     for (Frame &frame : frames_) {
@@ -498,6 +502,8 @@ void ToneMappingModule::createDescriptorTables(Framework &framework) {
                 // Local tone mapping's anchor and strengths, and its smoothed coefficients (createLocalTone).
                 layoutBinding(6, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT),
                 layoutBinding(7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT),
+                // The falling weather laid over the picture (weatherLayer).
+                layoutBinding(8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT),
             },
             {.stageFlags = kComputeAndFragment, .offset = 0, .size = sizeof(ToneMappingModulePushConstant)});
 
@@ -507,7 +513,51 @@ void ToneMappingModule::createDescriptorTables(Framework &framework) {
         frame.descriptors->bindBuffer(bedrockCurve_, 0, 4);
         frame.descriptors->bindBuffer(lightMeter, 0, 5);
         frame.descriptors->bindBuffer(localTone_, 0, 6);
+        frame.descriptors->bindSamplerImageForShader(weatherSampler_, noWeather_, 0, 8);
     }
+}
+
+// One clear texel (nothing added, nothing hidden), for a pack without a weather layer.
+void ToneMappingModule::createNoWeather(Framework &framework) {
+    auto device = framework.device();
+    noWeather_ = gpu::DeviceLocalImage::create(
+        device, framework.vma(),
+        gpu::ImageDesc{.width = 1,
+                       .height = 1,
+                       .format = VK_FORMAT_R16G16B16A16_SFLOAT,
+                       .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT});
+    auto commandBuffer = gpu::CommandBuffer::create(device, framework.mainCommandPool());
+    commandBuffer->begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    commandBuffer->sync({{noWeather_, gpu::ImageUsage::TransferDst, 0, true}});
+    const VkClearColorValue clear{};
+    vkCmdClearColorImage(commandBuffer->vkCommandBuffer(), noWeather_->vkImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                         &clear, 1, &gpu::wholeColorSubresourceRange);
+    commandBuffer->sync({{noWeather_, gpu::ImageUsage::Sampled, kFragment}});
+    commandBuffer->end();
+    auto fence = gpu::Fence::create(device);
+    commandBuffer->submitMainQueueIndividual(device, fence);
+    const VkResult waited = vkWaitForFences(device->vkDevice(), 1, &fence->vkFence(), VK_TRUE, UINT64_MAX);
+    if (waited != VK_SUCCESS) {
+        gpu::diagnostics::onResult(waited, device->mainVkQueue(), device->secondaryQueue());
+        throw std::runtime_error("the tone mapping could not prepare its empty weather layer on the GPU");
+    }
+}
+
+// This frame's falling weather from the ray tracing module's shader pack (radiante_weather_layer), or null when the
+// pack has none: a pack that replaces radiante-pt's world shaders, or a pipeline without ray tracing.
+std::shared_ptr<gpu::DeviceLocalImage> ToneMappingModule::weatherLayer(uint32_t frameIndex) const {
+    auto worldPipeline = worldPipeline_.lock();
+    if (worldPipeline == nullptr) return nullptr;
+    for (const auto &module : worldPipeline->worldModules()) {
+        auto rayTracing = std::dynamic_pointer_cast<RayTracingModule>(module);
+        if (rayTracing == nullptr) continue;
+        const std::shared_ptr<ShaderPack> &pack = rayTracing->shaderPack();
+        if (pack == nullptr || !pack->runtimeResourcesReady()) return nullptr;
+        const auto texture = pack->findRuntimeTexture("radiante_weather_layer");
+        if (!texture.has_value()) return nullptr;
+        return pack->findRuntimeVKTexture(texture->get(), frameIndex);
+    }
+    return nullptr;
 }
 
 void ToneMappingModule::createPipelines(Framework &framework, const std::shared_ptr<gpu::Shader> &vertexShader) {
@@ -754,6 +804,15 @@ void ToneMappingModule::record(uint32_t frameIndex, gpu::CommandBuffer &commandB
     commandBuffer.sync({{frame.localSmoothed, gpu::ImageUsage::Sampled, kFragment}});
     // The curve passes pushed constants of their own over these, and the bloom and local passes bound other layouts.
     if (bedrockCurve || runsBloom() || localTone) pushToneMappingConstants();
+    // The rain and snow the camera saw this frame, laid over the denoised and upscaled picture (tone_mapping.frag).
+    // Bound every frame: the pack makes its textures again when it is rebuilt.
+    std::shared_ptr<gpu::DeviceLocalImage> weather = weatherLayer(frameIndex);
+    if (weather != nullptr) {
+        commandBuffer.sync({{weather, gpu::ImageUsage::Sampled, kFragment}});
+    } else {
+        weather = noWeather_;
+    }
+    frame.descriptors->bindSamplerImageForShader(weatherSampler_, weather, 0, 8);
 
     commandBuffer.beginRenderPass({
         .renderPass = renderPass_,
