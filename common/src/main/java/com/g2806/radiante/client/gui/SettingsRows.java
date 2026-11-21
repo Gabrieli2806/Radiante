@@ -529,17 +529,6 @@ abstract class SettingsRows extends SettingsUpscalerRows {
                 value -> this.pendingBiomeAmbianceStrength = value),
             tunable(Tunable.LIGHT_SHAFTS, false), tunable(Tunable.FOG_VEIL_DIMMING, false),
             tunable(Tunable.AERIAL_PERSPECTIVE, false), tunable(Tunable.AERIAL_PERSPECTIVE_START, false));
-        // What is in the air for the light to find: each an on/off, seen within seconds where it applies.
-        group("air");
-        addRows(OptionInstance.createBoolean("options.radiante.fireflies",
-                tooltip("options.radiante.fireflies"), staged("fireflies", Options.fireflies),
-                value -> stage("fireflies", value)),
-            OptionInstance.createBoolean("options.radiante.dust_motes",
-                tooltip("options.radiante.dust_motes"), staged("dustMotes", Options.dustMotes),
-                value -> stage("dustMotes", value)),
-            OptionInstance.createBoolean("options.radiante.heat_haze",
-                tooltip("options.radiante.heat_haze"), staged("heatHaze", Options.heatHaze),
-                value -> stage("heatHaze", value)));
     }
 
     private void addWeatherOptions() {

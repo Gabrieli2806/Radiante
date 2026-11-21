@@ -156,8 +156,8 @@ void main() {
             ignoreIntersectionEXT;
         }
     }
-    // Hot air casts no shadow.
-    if (getAlphaMode(flags) == ALPHA_MODE_HEAT) {
+    // Frost on glass casts its shadow only where it has grown (as default.rahit shows it).
+    if (getAlphaMode(flags) == ALPHA_MODE_GLASS_FROST && m0.albedoEmission > glassFrostGrowth(skyUBO.rainWetness.x)) {
         ignoreIntersectionEXT;
     }
     // A drop of a splash of water (rain on a particle): clear, it casts no shadow of its own. Nor does a redstone
