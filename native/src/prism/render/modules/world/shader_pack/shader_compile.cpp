@@ -25,7 +25,10 @@ struct NameHash {
 };
 using NameSet = std::unordered_set<std::string, NameHash, std::equal_to<>>;
 
+// The SPIR-V cache, and the SPIR-V that came with Radiante for it (gpu::Shader::setBundle, made by spirv_bundle when
+// Radiante is built: radiante-pt at its default settings).
 fs::path shaderCacheFolder() {
+    gpu::Shader::setBundle(Renderer::folderPath / "shaders/world/ray_tracing/radiante-pt-spirv.zip");
     return Renderer::folderPath / "cache/shaders";
 }
 
@@ -170,6 +173,7 @@ struct BatchCounts {
     size_t requests = 0;
     size_t unique = 0;
     size_t cacheHits = 0;
+    size_t bundleHits = 0;
     size_t cacheMisses = 0;
     size_t cacheReadFailures = 0;
 };
@@ -267,20 +271,24 @@ std::vector<std::shared_ptr<gpu::Shader>> compileBatch(const ShaderPack &pack,
         if (progress.done != nullptr) progress.done->fetch_add(1);
     });
     if (cancelled()) return {};
-    radiante::out() << "[ShaderPack] " << compiles.size() << " shaders to SPIR-V in "
-                    << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() -
-                                                                               started)
-                           .count()
-                    << " ms" << std::endl;
 
     for (const auto &result : results) {
         if (result.cacheHit) {
             counts.cacheHits++;
+            if (result.bundleHit) counts.bundleHits++;
         } else {
             counts.cacheMisses++;
         }
         if (result.cacheReadFailed) counts.cacheReadFailures++;
     }
+    // How many came with Radiante (the SPIR-V bundle) says whether it still matches the shaders: after an update,
+    // radiante-pt at its default settings should compile none.
+    radiante::out() << "[ShaderPack] " << compiles.size() << " shaders to SPIR-V in "
+                    << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() -
+                                                                               started)
+                           .count()
+                    << " ms (" << counts.cacheHits - counts.bundleHits << " from the cache, " << counts.bundleHits
+                    << " from the bundle, " << counts.cacheMisses << " compiled)" << std::endl;
 
     std::vector<std::shared_ptr<gpu::Shader>> shaders(requests.size());
     shader_pack::parallelEach(requests.size(), [&](size_t i) {

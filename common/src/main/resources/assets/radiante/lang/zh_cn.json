@@ -430,6 +430,7 @@
   "options.radiante.seconds_value": "%s：%s 秒",
   "options.radiante.restart.tag": "（需重启）",
   "options.radiante.restart.tag_pending": "需要重启",
+  "options.radiante.compiles.hint": "更改此项会编译使用它的着色器：需要几秒钟，期间可以继续游戏。",
   "options.radiante.restart.hint": "重启游戏后生效。",
   "options.radiante.restart.title": "需要重启",
   "options.radiante.restart.message": "以下更改将在下次启动游戏时生效：",

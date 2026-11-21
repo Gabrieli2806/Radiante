@@ -49,11 +49,14 @@ ShaderPack::ShaderCreateInfo request(const fs::path &path,
 // The shaders RayTracingModule::collectShaders asks for, pass by pass.
 void collectRayTracing(const ShaderPack &pack,
                        Framework *framework,
+                       std::optional<bool> micromapsOverride,
                        std::vector<ShaderPack::ShaderCreateInfo> &requests) {
     const ShaderPackLoader::ShaderPack &config = pack.shaderPack();
     const uint32_t executionSet = pack.executionSet(kRayTracingRuntimeResourceSet);
     constexpr auto stage = ShaderPackLoader::Stage::RayTracing;
-    const bool micromaps = framework != nullptr && framework->device()->isOpacityMicromapEnabled();
+    const bool micromaps = micromapsOverride.has_value()
+                               ? *micromapsOverride
+                               : framework != nullptr && framework->device()->isOpacityMicromapEnabled();
 
     for (const auto &pass : config.passes) {
         if (pass.stage != stage) continue;
@@ -158,7 +161,8 @@ void collectPostRender(const ShaderPack &pack, std::vector<ShaderPack::ShaderCre
 
 PackCheck checkPack(const std::shared_ptr<Framework> &framework,
                     const std::vector<std::string> &attributeKVs,
-                    const std::string &language) {
+                    const std::string &language,
+                    std::optional<bool> micromaps) {
     // The check folder is shared by every check.
     static std::mutex checking;
     std::scoped_lock lock(checking);
@@ -170,7 +174,7 @@ PackCheck checkPack(const std::shared_ptr<Framework> &framework,
     try {
         if (!pack.initialize(config, check.error, {.fallBack = false, .tempFolder = kCheckFolder})) return check;
         std::vector<ShaderPack::ShaderCreateInfo> requests;
-        collectRayTracing(pack, framework.get(), requests);
+        collectRayTracing(pack, framework.get(), micromaps, requests);
         collectPostRender(pack, requests);
         ShaderPack::CheckResult result = pack.checkShaders(requests, pack.shaderAttributes());
         check.shaders = result.shaders;

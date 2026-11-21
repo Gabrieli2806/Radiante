@@ -420,6 +420,16 @@ public final class DevAutomation {
                 () -> new com.g2806.radiante.client.gui.RadianteOptionsScreen(null, options)));
             return;
         }
+        if (action.equals("dumpattrs")) {
+            // The ray tracing attributes a build of the active pack compiles with, as name=value lines in the log: the
+            // SPIR-V bundle's variants (native/src/shader/spirv_bundle_variants.json) are taken from them.
+            String[] values = com.g2806.radiante.client.pipeline.Pipeline.shaderPackValidationAttributes(
+                com.g2806.radiante.client.pipeline.PipelineShaderPack.shaderPackPath());
+            for (int i = 0; i + 1 < values.length; i += 2) {
+                RadianteClient.LOGGER.info("[dev] attr {}={}", values[i], values[i + 1]);
+            }
+            return;
+        }
         if (action.startsWith("shaderpack=")) {
             // shaderpack=shaderpacks/<pack>.zip (or "builtin"): switches pack at once, for comparing packs in one view.
             String path = action.substring(11);

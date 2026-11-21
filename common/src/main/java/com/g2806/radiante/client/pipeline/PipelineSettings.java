@@ -257,6 +257,20 @@ public final class PipelineSettings {
         return attribute != null && Objects.equals(attribute.value, "render_pipeline.true");
     }
 
+    /** Whether the active pack has this attribute. */
+    public static boolean hasShaderPackAttribute(String attributeName) {
+        return findAttribute(getRayTracingModule(), attributeName) != null;
+    }
+
+    /**
+     * Whether a change to this attribute of the active pack compiles shaders: it is compiled in (not "runtime"), so
+     * the shaders that use it are built again. False when the pack does not have it.
+     */
+    public static boolean compilesShadersOnChange(String attributeName) {
+        AttributeConfig attribute = findAttribute(getRayTracingModule(), attributeName);
+        return attribute != null && !attribute.runtime;
+    }
+
     /** A shader pack attribute's value as text, or null when the pack does not have it. */
     public static String getShaderPackValue(String attributeName) {
         AttributeConfig attribute = findAttribute(getRayTracingModule(), attributeName);
