@@ -186,6 +186,9 @@ bool rayFavourCurrent(MainRay ray) { return (ray.stateBits & rayFavourCurrentBit
 // the ray carries what the camera sees off or through a surface - a reflection or refraction - rather than light
 // gathered for that surface.
 const uint RAY_VIEW_BOUNCE_MARK = 1u;
+// The lobe a pass-through of the view leaves when it was weather (a rain or snow streak, a splash), not glass: no
+// surface scatters into it (0 diffuse, 1 reflection, 2 refraction). The primary loop counts weather by it.
+const uint RAY_LOBE_WEATHER = 3u;
 
 // The pack controls a source's visible glow, also through mirrors and glass. Per-source tints affect illumination
 // gathered for surfaces and the radiance cache, independently of how the source looks to the camera, except for its

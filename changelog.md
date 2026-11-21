@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Rain and snow are seen through glass and glass panes as through an open window: the view looks for the weather on its first two stretches only (so a pixel shows two streaks at most), and the two faces of a window used both up, so behind glass it looked as if it had stopped raining or snowing. The faces of glass no longer count, and a view through glass shaded as its own branch meets the weather too.
+
 - The firefly bush's fireflies glow: a firefly gives itself block light and no sky light, and a particle had to have both at full to glow, so they were dark specks in the night.
 
 - Lava seen through glass keeps its steady glow: past the first surface of the view it was shown by another rule, a different brightness along the edge of whatever stood in front.
