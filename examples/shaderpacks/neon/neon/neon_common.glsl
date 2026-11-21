@@ -29,6 +29,24 @@
 
 const vec3 NEON_LUMA = vec3(0.2126, 0.7152, 0.0722);
 
+// How much the weather glows: the rain, the falling snow and the frost on windows (hooks/rain_streak.glsl,
+// hooks/surface.glsl).
+#ifndef NEON_WEATHER
+#    define NEON_WEATHER 0.8
+#endif
+
+const vec3 NEON_WEATHER_PINK = vec3(1.0, 0.18, 0.72);
+const vec3 NEON_WEATHER_CYAN = vec3(0.12, 0.85, 1.0);
+
+// Pink or cyan for a cell of the world, the same in every frame and for every ray.
+vec3 neonWeatherColour(ivec2 cell) {
+    uint h = uint(cell.x) * 0x8DA6B343u ^ uint(cell.y) * 0xD8163841u;
+    h ^= h >> 13u;
+    h *= 0x85EBCA6Bu;
+    h ^= h >> 16u;
+    return (h & 1u) == 0u ? NEON_WEATHER_PINK : NEON_WEATHER_CYAN;
+}
+
 float neonLuminance(vec3 c) {
     return dot(c, NEON_LUMA);
 }

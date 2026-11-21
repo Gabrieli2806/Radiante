@@ -4,6 +4,21 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Radiante PT's water stays as Minecraft's: Interactive Water Ripples (the rings and wakes of players, mobs, boats and items, and the rings under feet in puddles) start at 0%, and Water Foam & Mist (the splashes carried by the current, the spray where a waterfall lands) starts off. Aether turns both on, for its realistic water. Water Foam & Mist is now a setting of the shader pack, so a pack can turn it on; both are still in Sky & Water for whoever wants them with Radiante PT. Rain rings, the surface's own waves and everything else about water are as they were.
+
+- Rain and snow keep falling under DLSS Ray Reconstruction while the camera stands still, seen through a window or water as much as in the open. The snow's sheets stand still while their flakes fall down them, and through glass the pixel moves as the glass does: in both the denoiser took the weather for noise and held the flakes still in the air or blended them away. It is now told to take each frame's own colour where falling snow is, and where rain, snow, particles or lava are seen through glass and water.
+
+- Shader packs, for the effects that had none:
+  - `hooks/glass_frost.glsl` (`hookGlassFrost`): how far the frost on windows has grown, so a pack can grow it at other times or not at all; `radianteIsGlassFrost(surfaceFlags)` tells a frost pixel in `hookSurface`, for its colour.
+  - `hooks/footprints.glsl` (`hookFootprints`): the footprints in sand, mud and snow as Radiante PT is about to lay them, to deepen, soften or replace them.
+  - `hooks/rain_streak.glsl` (`hookRainStreak`): the light a falling streak of rain adds and what it lets through; falling snow is told in `hookSurface` by `radianteIsSnowfall(surfaceFlags)`.
+  - `hookChangesEveryFrame()`, for `hookSurface`: a pack's surface that changes from frame to frame (a flicker, a shimmer) is taken from each frame by DLSS Ray Reconstruction instead of blended away.
+  - Each is a feature (`glass_frost`, `footprints`, `falling_weather`, `changes_every_frame`), and every pack's shaders now get `RADIANTE_FEATURE_<NAME>` for each feature the Radiante they run on has: code behind `#ifdef` uses a feature where it is there and the pack still runs where it is not. A feature listed with a `?` in `requires.features` no longer refuses the pack.
+  - `radiantePaneTopOpen` and `radiantePaneBottomOpen` are false for anything that is not a pane.
+  - Radiante PT without a pack compiles to the same shaders as before the three hooks (checked byte for byte).
+- Neon Dusk: Neon Weather (`Atmosphere`, live), rain that glows pink and cyan as it falls, snowflakes in both, and a faint cyan to the frost on windows.
+- Aether: Night Frost, the frost on windows also grows on clear nights where it is cold enough to snow and goes with the morning; Footprint Depth, deeper prints in sand, mud and snow, that hold water a while after rain.
+
 - Rain and snow are seen through glass and glass panes as through an open window: the view looks for the weather on its first two stretches only (so a pixel shows two streaks at most), and the two faces of a window used both up, so behind glass it looked as if it had stopped raining or snowing. The faces of glass no longer count, and a view through glass shaded as its own branch meets the weather too.
 
 - The firefly bush's fireflies glow: a firefly gives itself block light and no sky light, and a particle had to have both at full to glow, so they were dark specks in the night.

@@ -550,9 +550,7 @@ abstract class SettingsRows extends SettingsUpscalerRows {
                 tooltip("options.radiante.snow_on_paths"), staged("snowOnPaths", Options.snowOnPaths),
                 value -> stage("snowOnPaths", value)));
         group("water");
-        addRows(OptionInstance.createBoolean("options.radiante.water_foam",
-                tooltip("options.radiante.water_foam"), staged("waterFoam", Options.waterFoam),
-                value -> stage("waterFoam", value)),
+        addRows(packToggle(RtAttributes.WATER_FOAM_ATTRIBUTE, "options.radiante.water_foam"),
             tunable(Tunable.WATER_WAVES, false));
         addAdvanced(tunable(Tunable.WATER_RIPPLES, false), tunable(Tunable.WATER_DENSITY, false),
             tunable(Tunable.WATER_GOD_RAYS, false), tunable(Tunable.WATER_TEXTURE, false),

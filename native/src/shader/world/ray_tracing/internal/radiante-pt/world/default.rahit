@@ -53,6 +53,8 @@ layout(location = 0) rayPayloadInEXT MainRay mainRay;
 hitAttributeEXT vec2 attribs;
 
 #include "common/debug_count.glsl"
+// How far the frost on glass has grown, as a pack's hooks/glass_frost.glsl has it.
+#include "common/glass_frost.glsl"
 
 void main() {
     RADIANTE_DEBUG_COUNT_ANYHIT();
@@ -99,7 +101,7 @@ void main() {
     uint alphaMode = getAlphaMode(packedData);
     // Frost on glass: there once the snow has grown it as far as this pixel's rank, solid where it is.
     if (alphaMode == ALPHA_MODE_GLASS_FROST) {
-        if (m0.albedoEmission > glassFrostGrowth(skyUBO.rainWetness.x)) { ignoreIntersectionEXT; }
+        if (m0.albedoEmission > VPT_GLASS_FROST_GROWTH()) { ignoreIntersectionEXT; }
         return;
     }
 

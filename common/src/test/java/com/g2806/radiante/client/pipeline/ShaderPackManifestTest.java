@@ -47,6 +47,29 @@ class ShaderPackManifestTest {
     }
 
     @Test
+    void optionalFeaturesNeverRefuse() {
+        assertNull(check("{\"requires\": {\"features\": [\"glass_frost?\", \"block_ids?\"]}}", "1.1.0"));
+        assertEquals("block_ids",
+            check("{\"requires\": {\"features\": [\"omm?\", \"block_ids\"]}}", "1.1.0").detail());
+    }
+
+    /** The loader defines RADIANTE_FEATURE_<NAME> from its own list: the two must name the same features. */
+    @Test
+    void featuresMatchTheNativeList() throws java.io.IOException {
+        java.nio.file.Path header = java.nio.file.Path.of("..", "native", "src", "prism", "render", "modules", "world",
+            "shader_pack", "shader_pack_features.hpp");
+        String text = java.nio.file.Files.readString(header);
+        String body = text.substring(text.indexOf("kShaderPackFeatures"));
+        body = body.substring(body.indexOf('{') + 1, body.indexOf("};"));
+        java.util.Set<String> nativeFeatures = new java.util.HashSet<>();
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("\"([a-z_]+)\"").matcher(body);
+        while (m.find()) {
+            nativeFeatures.add(m.group(1));
+        }
+        assertEquals(ShaderPackManifest.FEATURES, nativeFeatures);
+    }
+
+    @Test
     void newerApiVersionRefused() {
         assertNull(check("{\"api_version\": 1}", "1.1.0"));
         ShaderPackManifest.Problem problem = check("{\"api_version\": 2}", "1.1.0");
@@ -68,7 +91,7 @@ class ShaderPackManifestTest {
             check("{\"requires\": {\"radiante\": \"soon\"}}", "1.1.0").key());
         // A feature this Radiante lacks is named before the version is looked at.
         assertEquals("screen.radiante.shader_packs.problem.feature",
-            check("{\"requires\": {\"radiante\": \">=1.1\", \"features\": [\"omm?\"]}}", "1.1.0").key());
+            check("{\"requires\": {\"radiante\": \">=1.1\", \"features\": [\"omm\"]}}", "1.1.0").key());
     }
 
     @Test

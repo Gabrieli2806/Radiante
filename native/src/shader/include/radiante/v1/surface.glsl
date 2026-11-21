@@ -26,13 +26,13 @@ bool radianteIsPane(uint surfaceFlags) {
     return (surfaceFlags & (1u << 22u)) != 0u;
 }
 
-// Whether the top or the bottom end of a glass pane faces air.
+// Whether the top or the bottom end of a glass pane faces air; false for anything that is not a pane.
 bool radiantePaneTopOpen(uint surfaceFlags) {
-    return (surfaceFlags & (1u << 23u)) != 0u;
+    return (surfaceFlags & (1u << 22u)) != 0u && (surfaceFlags & (1u << 23u)) != 0u;
 }
 
 bool radiantePaneBottomOpen(uint surfaceFlags) {
-    return (surfaceFlags & (1u << 24u)) != 0u;
+    return (surfaceFlags & (1u << 22u)) != 0u && (surfaceFlags & (1u << 24u)) != 0u;
 }
 
 // Leaves of every tree.
@@ -66,9 +66,21 @@ bool radianteIsLayer(uint surfaceFlags) {
     return (surfaceFlags & (1u << 29u)) != 0u;
 }
 
-// Rain and snow sheets.
+// Rain sheets (falling snow is radianteIsSnowfall).
 bool radianteIsRain(uint surfaceFlags) {
     return (surfaceFlags & (1u << 18u)) != 0u && (surfaceFlags & (1u << 27u)) == 0u;
+}
+
+// Falling snow: the sheets of snowflakes Minecraft draws in a snowfall, shaded as a surface (rain is a streak the view
+// passes through, radianteIsRain, and reaches no surface hook).
+bool radianteIsSnowfall(uint surfaceFlags) {
+    return (surfaceFlags & (1u << 23u)) != 0u && (surfaceFlags & (1u << 22u)) == 0u;
+}
+
+// A pixel of the frost on windows: the rim of frost glass and glass panes grow where it snows (hooks/glass_frost.glsl
+// says how far). Shaded as a cut-out over the glass.
+bool radianteIsGlassFrost(uint surfaceFlags) {
+    return ((surfaceFlags >> 8u) & 0xFu) == 12u;
 }
 
 // A drop of a splash of water: the particles rain throws up where it lands, a fish's, a boat's. Radiante PT sees

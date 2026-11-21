@@ -90,12 +90,23 @@ def debug_view_defines(config, view):
 PACK_BINDINGS = range(64, 120)
 
 
+def shader_pack_features():
+    """The feature names of shader_pack_features.hpp, the list the loader defines RADIANTE_FEATURE_<NAME> from."""
+    header = (Path(__file__).resolve().parents[1] / "prism" / "render" / "modules" / "world" / "shader_pack" /
+              "shader_pack_features.hpp").read_text(encoding="utf-8")
+    body = header[header.index("kShaderPackFeatures"):]
+    body = body[body.index("{") + 1:body.index("};")]
+    return re.findall(r'"([a-z_]+)"', body)
+
+
 def resource_defines(config):
     """As ShaderPackLoader::addResourceDefinitions, with the loader's bindings for textures that name none."""
     def macro(prefix, name):
         return prefix + "".join(c.upper() if c.isalnum() else "_" for c in name)
 
     defines = {"RADIANTE_PACK_SET_RAY_TRACING": "5", "RADIANTE_PACK_SET_POST": "4"}
+    for feature in shader_pack_features():
+        defines[macro("RADIANTE_FEATURE_", feature)] = "1"
     textures = [t for t in config.get("textures", []) if isinstance(t, dict)]
     buffers = [b for b in config.get("buffers", []) if isinstance(b, dict)]
     taken = set()

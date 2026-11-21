@@ -116,8 +116,6 @@ public class Options {
     public static volatile int cloudThickness = 100;
     public static final int MIN_CLOUD_THICKNESS = 25;
     public static final int MAX_CLOUD_THICKNESS = 400;
-    /** Foam on flowing water and mist where a waterfall lands (WaterRapids). */
-    public static volatile boolean waterFoam = true;
     /**
      * Frames a second at most while the window is on screen but another one has the focus, 0 for no cap
      * (BackgroundFramerateMixin).
@@ -302,7 +300,6 @@ public class Options {
         bool("rainWetness", () -> rainWetness, v -> rainWetness = v),
         bool("snowAccumulation", () -> snowAccumulation, v -> snowAccumulation = v),
         bool("snowOnPaths", () -> snowOnPaths, v -> snowOnPaths = v),
-        bool("waterFoam", () -> waterFoam, v -> waterFoam = v),
         number("cloudThickness", () -> cloudThickness,
             v -> cloudThickness = Math.max(MIN_CLOUD_THICKNESS, Math.min(MAX_CLOUD_THICKNESS, v))),
         bool("blockOutline", () -> blockOutline, v -> blockOutline = v),
