@@ -625,11 +625,17 @@ void ptShadeDefault(bool viewMark) {
 #endif
 
         SampledSurface litSurface = currentSurface;
+        // Water crossed by light on its way to a surface (not seen by the camera, straight or in a reflection): the
+        // surface is clear, and the lights sampled on it gave that path next to nothing for a sun shadow ray, a sky
+        // ray and the block lights' candidates at every crossing. Only what the camera sees keeps them (the sun's
+        // glint on the water, the texture's layer).
+        bool waterCrossedByLight = isWaterMaterial && currentSurface.mat.transmission > EPS && bounce > 0u &&
+                                   !rayCameraPath(mainRay) && !g_viewBounce;
         // The shadow rays of the lights sampled here are traced as the hit shader ends (main below, see
         // pt_deferred_shadow.glsl); the light they let through is added there.
         g_deferShadowRays = true;
         g_deferredToDirect = localBounce == 0;
-        vec3 directLight =
+        vec3 directLight = waterCrossedByLight ? vec3(0.0) :
             sampleSurfaceDirectLight(litSurface, currentViewDir, textureUV, planeHitWorldPos, atlasUvMin, atlasUvMax,
                                      dPduWorld, dPdvWorld, baseGeoNormal, traceLocalHeight && !handShifted,
                                      textureMap.normal, maxDepthWorld, hasFftWaterSurface);
@@ -652,14 +658,16 @@ void ptShadeDefault(bool viewMark) {
         // and, from far away, at a level of detail where the average of greens squared undercounts it - a room lit
         // by lamps came out a fifth darker on its walls and floor, and the light of a torch, which has no surface to
         // be found, stopped after the second bounce.
-        vec3 blockLight = blockLightView && !blockLightPrimary ?
-            sampleBlockLight(litSurface.worldPos, litSurface.geometricNormal,
-                             litSurface.shadingNormal, currentViewDir, litSurface.mat, false) :
-            sampleBlockLightAt(litSurface.worldPos, litSurface.geometricNormal,
-                               litSurface.shadingNormal, currentViewDir, litSurface.mat, blockLightPrimary);
-        directLight += blockLight;
-        directLight += sampleHeldLight(handShifted ? heldLightPos : litSurface.worldPos, litSurface.geometricNormal,
-                                       litSurface.shadingNormal, litSurface.mat);
+        if (!waterCrossedByLight) {
+            vec3 blockLight = blockLightView && !blockLightPrimary ?
+                sampleBlockLight(litSurface.worldPos, litSurface.geometricNormal,
+                                 litSurface.shadingNormal, currentViewDir, litSurface.mat, false) :
+                sampleBlockLightAt(litSurface.worldPos, litSurface.geometricNormal,
+                                   litSurface.shadingNormal, currentViewDir, litSurface.mat, blockLightPrimary);
+            directLight += blockLight;
+            directLight += sampleHeldLight(handShifted ? heldLightPos : litSurface.worldPos,
+                                           litSurface.geometricNormal, litSurface.shadingNormal, litSurface.mat);
+        }
         g_deferShadowRays = false;
         if (localBounce == 0) { mainRay.directLightRadiance = directLight; }
         mainRay.radiance += directLight;

@@ -11,6 +11,8 @@
 // blue where the view came out through its surface, or what lay far beyond, sharp and untinted - while the same sea
 // seen from above, through its top, was deep and dark.
 const float PASS_THROUGH_STEP = 0.0002;
+// Blocks of water under which light on its way to a surface takes none of the water's own glow (ptWaterMediumAtHit).
+const float THIN_WATER_STRETCH = 2.0;
 
 void ptWaterMediumAtHit(uint bounce) {
     // The stretch of water this ray just crossed. The camera's own stretch, when it is under water, is the ray
@@ -27,7 +29,11 @@ void ptWaterMediumAtHit(uint bounce) {
             waterMediumSegmentBedrock(waterDistance, waterMediumBounceDensity(mediumBounce), g_hit.rayOrigin,
                                       g_hit.rayDir, waterTransmittance, waterScatter);
             float waterAmbient = max(waterMediumBounceAmbient(mediumBounce), 0.0);
-            if (waterAmbient > 0.0) {
+            // Not for light crossing a thin stretch on its way to a surface (through a waterfall, across the corner
+            // of a pool): the water scatters next to nothing into so short a stretch, and the ray to the sky that
+            // asks for it cost as much as the stretch.
+            bool seenStretch = bounce == 0u || g_viewBounce || rayCameraPath(mainRay);
+            if (waterAmbient > 0.0 && (seenStretch || waterDistance > THIN_WATER_STRETCH)) {
                 // Some light still reaches under an overhang sideways through the water around it. Asked at a random
                 // point of the stretch, towards a random direction near straight up, so that over frames it averages
                 // the whole stretch and a soft cone of sky. Asked at the stretch's middle only, the sky's outline

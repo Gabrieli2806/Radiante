@@ -44,6 +44,11 @@ indexBuffer;
 #include "common/seamless_glass.glsl"
 
 
+// The water's colour, for the light let through its faces below.
+layout(set = 2, binding = 2) uniform SkyUniform {
+    SkyUBO skyUBO;
+};
+
 layout(location = 0) rayPayloadInEXT MainRay mainRay;
 hitAttributeEXT vec2 attribs;
 
@@ -70,6 +75,23 @@ void main() {
     // until the near terrain replaces it (lod_coverage.glsl); met from inside, its surface counted as leaving the
     // water, and the sea past it lost its colour in whole chunks and sections.
     if (rayInWater(mainRay) && radianteIsWater(packedData) && VPT_LOD_HIT(ubo)) {
+        ignoreIntersectionEXT;
+        return;
+    }
+    // Light on its way to a surface (not what the camera sees, straight or in a reflection) goes through water's
+    // faces as if they were not there: the top of a pool or the sea, a waterfall, the edge of a pool. Met as a
+    // surface each cost a hit, shaded as water, and a ray more to carry on with; under water and in front of a
+    // waterfall every bounce crosses one or two, and most of what a frame of water cost went there (a view of a pool
+    // 20 ms where the stone around it took 7). The light keeps what matters of the water: the colour it takes over
+    // the stretch it crossed on its way out, and whether it is in the water from there on. Which way it bends at the
+    // surface, and the little the surface mirrors, are lost on light that is averaged over every direction anyway.
+    // (Each face is reported once: the geometry is built with NO_DUPLICATE_ANY_HIT_INVOCATION.)
+    if (radianteIsWater(packedData) && rayBounce(mainRay) > 0u && !rayCameraPath(mainRay) &&
+        mainRay.pad0 != RAY_VIEW_BOUNCE_MARK) {
+        if (rayInWater(mainRay) && skyUBO.waterExtinction.w > 0.5) {
+            mainRay.throughput *= exp(-max(skyUBO.waterExtinction.rgb, vec3(0.0)) * max(gl_HitTEXT, 0.0));
+        }
+        raySetInWater(mainRay, !rayInWater(mainRay));
         ignoreIntersectionEXT;
         return;
     }
