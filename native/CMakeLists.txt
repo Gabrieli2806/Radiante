@@ -139,6 +139,12 @@ if(PRISM_ENABLE_NRD)
 
     if(TARGET NRD)
         target_include_directories(NRD PRIVATE "${NRD_SHADERS_PATH}")
+        # NRD builds with warnings as errors, and MSVC 14.52 (Visual Studio 18, on GitHub's runners since November
+        # 2026) warns of a discarded [[nodiscard]] result in NRD's own MathLib (C4834): a newer compiler's warning in
+        # code that is not ours must not stop the build.
+        if(MSVC)
+            target_compile_options(NRD PRIVATE /wd4834)
+        endif()
     endif()
 else()
     message(STATUS "NRD Denoiser Disabled")
