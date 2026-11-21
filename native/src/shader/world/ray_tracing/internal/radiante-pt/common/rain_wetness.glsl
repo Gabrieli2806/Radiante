@@ -846,6 +846,8 @@ const int SNOW_PRINT_WET = 4;
 // The snow melted round a heat source the player holds standing still (SnowPrints): size is the melted round's width
 // in pixels; it fills back in from its rim as the snow falls on it.
 const int SNOW_PRINT_MELT = 5;
+// A step pressed into sand, mud, clay or soul sand: no snow in it, only the ground lower and in its own shade.
+const int SNOW_PRINT_SOFT = 6;
 
 /** How much of each kind of print is at a point, 0 none to 1 fresh: clear, how far the print clears the snow
  *  vptSnowCover lays; packed, a snow layer's or block's snow packed greyer; rim, the print's outer pixels, in the
@@ -858,11 +860,12 @@ struct VptSnowPrints {
     float slush;
     float snow;
     float wet;
+    float soft;
 };
 
 /** The prints at a camera-relative point of an upward face. */
 VptSnowPrints vptSnowPrints(vec3 position) {
-    VptSnowPrints prints = VptSnowPrints(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+    VptSnowPrints prints = VptSnowPrints(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
     int count = clamp(int(skyUBO.snowPrintControl.x + 0.5), 0, PRISM_SNOW_PRINT_MAX);
     vec2 cameraFraction = vec2(mod(worldUBO.cameraPos.xz, dvec2(1.0)));
     for (int i = 0; i < count; i++) {
@@ -915,6 +918,14 @@ VptSnowPrints vptSnowPrints(vec3 position) {
         }
         if (inside <= 0.0) { continue; }
         bool pixels = VPT_RAIN_PIXELS != 0;
+        if (kind == SNOW_PRINT_SOFT) {
+            // Pressed into soft ground: deepest in the middle, half as deep at the rim, settling back a pixel at a
+            // time from the rim in.
+            float depth = inside * (pixels ? step(age, (rim > 0.0 ? 0.55 : 1.0) * (0.15 + 0.85 * h))
+                                           : 1.0 - smoothstep(0.0, 1.0, age + 0.3 * rim));
+            prints.soft = max(prints.soft, depth * (rim > 0.0 ? 0.5 : 1.0));
+            continue;
+        }
         if (kind <= SNOW_PRINT_SLUSH) {
             // Pressed into snow, filled back in by the snow falling on it a pixel at a time, from the rim in.
             float depth = inside * (pixels ? step(age, (rim > 0.0 ? 0.6 : 1.0) * (0.12 + 0.88 * h))
@@ -944,10 +955,15 @@ VptSnowPrints vptSnowPrints(vec3 position) {
     return prints;
 }
 
+// How much darker the middle of a print in sand or mud is than the ground round it.
+const float SOFT_PRINT_SHADE = 0.34;
+
 /** Lays the prints on a material, after the snow (vptApplySnowFrost): the pressed prints have cleared its blanket
  *  already. dryAlbedo is the material's own colour, before rain and snow. */
 void vptApplySnowPrints(inout LabPBRMat material, VptSnowPrints prints, vec3 dryAlbedo) {
     if (material.transmission > 0.0) { return; }
+    // A step in sand or mud: the ground pressed down lies in its own shade, a darker square of the same colour.
+    if (prints.soft > 0.0) { material.albedo *= 1.0 - SOFT_PRINT_SHADE * prints.soft; }
     // A snow layer's or snow block's own snow, packed down: a little greyer and bluer, smoother, its rim in the shade
     // of the step. Only on white tops: the print may reach the next block.
     if (prints.packed > 0.0 && dot(dryAlbedo, vec3(0.2126, 0.7152, 0.0722)) > 0.45) {

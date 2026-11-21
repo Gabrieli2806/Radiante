@@ -11,7 +11,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Footprints: each foot that comes down where it snows (Footsteps) leaves its print, the square of the leg itself.
+ * Footprints: each foot that comes down where it snows (Footsteps) leaves its print, the square of the leg itself,
+ * and so does one that comes down on sand, mud, clay or soul sand: pressed into the ground, in its own shade, until
+ * the ground settles back over a few minutes or the rain washes it out.
  * Snow falling on them fills them back in; out of the snowfall they stay, settling slowly. Feet still wet from the
  * water tread the snow into slush, and feet that come off the snow carry it onto the next floor, a house's, for a few
  * steps more, where it melts and dries within half a minute; wet feet leave water on a floor the same way. The shaders
@@ -33,6 +35,10 @@ public final class SnowPrints {
     private static final int CARRIED_SNOW = 3;
     private static final int WET = 4;
     private static final int MELT = 5;
+    private static final int SOFT = 6;
+    /** Seconds a print in sand or mud takes to settle away, and to be washed out by rain falling on it. */
+    private static final double SOFT_SECONDS = 240.0;
+    private static final double SOFT_RAIN_SECONDS = 40.0;
 
     /** Seconds standing still with a heat source before the snow melts, how fast its round grows (blocks a second),
      * and how far the player may sway without having moved (blocks). */
@@ -94,7 +100,8 @@ public final class SnowPrints {
             lastNow = Double.NaN;
             lastSnowfall = Double.NEGATIVE_INFINITY;
         }
-        if (level == null || !Options.snowAccumulation || !RadianteRenderer.isRayTracingEnabled()) {
+        // Prints in sand and mud are left whether or not Snow Accumulation is on; the snow's own need it (printKind).
+        if (level == null || !RadianteRenderer.isRayTracingEnabled()) {
             return PACKED_FLOATS;
         }
         double now = (gameTime + partialTick) / 20.0;
@@ -123,13 +130,17 @@ public final class SnowPrints {
             KIND[slot] = kind;
             SIZE[slot] = fall.size;
             AGE[slot] = startAge;
+            // For a print in sand or mud: whether rain falls on it.
+            Biome.Precipitation falls = level.getBiome(at).value().getPrecipitationAt(at, level.getSeaLevel());
             SNOWED_ON[slot] = level.canSeeSky(at)
-                && level.getBiome(at).value().getPrecipitationAt(at, level.getSeaLevel()) == Biome.Precipitation.SNOW;
+                && (kind == SOFT ? falls == Biome.Precipitation.RAIN : falls == Biome.Precipitation.SNOW);
         }
         if (SNOW_ON_FEET.size() > 256) {
             SNOW_ON_FEET.values().removeIf(state -> state[0] == 0);
         }
-        heldMelt(minecraft, level, now, dt);
+        if (Options.snowAccumulation) {
+            heldMelt(minecraft, level, now, dt);
+        }
 
         int packed = 0;
         for (int i = 0; i < count; i++) {
@@ -226,6 +237,7 @@ public final class SnowPrints {
         return switch (kind) {
             case CARRIED_SNOW -> 1.0 / CARRIED_SECONDS;
             case WET -> 1.0 / WET_SECONDS;
+            case SOFT -> (snowedOn ? snowfall / SOFT_RAIN_SECONDS : 0.0) + 1.0 / SOFT_SECONDS;
             // The snow falling on it fills it in; out of the snowfall it only settles, over a long while.
             default -> (snowedOn ? snowfall / FILL_SECONDS : 0.0) + 1.0 / SETTLE_SECONDS;
         };
@@ -237,15 +249,26 @@ public final class SnowPrints {
         BlockPos below = BlockPos.containing(fall.x, fall.y - 0.05, fall.z);
         BlockState at = level.getBlockState(feet);
         BlockState under = level.getBlockState(below);
-        boolean snowBlock = at.is(Blocks.SNOW) || under.is(Blocks.SNOW) || under.is(Blocks.SNOW_BLOCK)
-            || under.is(Blocks.POWDER_SNOW);
+        boolean snows = Options.snowAccumulation;
+        boolean snowBlock = snows && (at.is(Blocks.SNOW) || under.is(Blocks.SNOW) || under.is(Blocks.SNOW_BLOCK)
+            || under.is(Blocks.POWDER_SNOW));
         // Ground where it snows has the snow the shaders lay on it while it snows and for a while after.
-        boolean snowyGround = !snowBlock && now - lastSnowfall < SNOW_LINGERS && level.canSeeSky(feet)
+        boolean snowyGround = snows && !snowBlock && now - lastSnowfall < SNOW_LINGERS && level.canSeeSky(feet)
             && level.getBiome(feet).value().getPrecipitationAt(feet, level.getSeaLevel()) == Biome.Precipitation.SNOW;
         if (snowBlock || snowyGround) {
             snowOnFeet[0] = CARRIED_STEPS;
             snowOnFeet[1] = 0;
             return fall.wetLeft > 0 ? SLUSH : snowBlock ? PACKED : PRESSED;
+        }
+        // Ground soft enough to take a print: sand of either colour, mud, clay, soul sand and soul soil.
+        // (Mud and soul sand stand a little under a full block: the feet are then in the block itself.)
+        if ((at.isAir() || at == under) && (under.is(net.minecraft.tags.BlockTags.SAND) || under.is(Blocks.MUD) || under.is(Blocks.CLAY)
+            || under.is(Blocks.SOUL_SAND) || under.is(Blocks.SOUL_SOIL))) {
+            return SOFT;
+        }
+        // Snow and water carried on the feet are Snow Accumulation's.
+        if (!snows) {
+            return -1;
         }
         // A floor to leave the snow or water on: something to stand on, not a liquid.
         if (under.isAir() || !under.getFluidState().isEmpty() || under.getCollisionShape(level, below).isEmpty()) {

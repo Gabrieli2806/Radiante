@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Footprints in sand and mud: every foot that comes down on sand, red sand, mud, clay, soul sand or soul soil (the player's and the mobs') leaves the square of its leg pressed into the ground, a shade darker, its rim less so. The ground settles back a pixel at a time over a few minutes, sooner where rain falls on it. They are left whether or not Snow & Frost is on.
+
 - Photo Mode: Logo, Radiante's logo and name in a corner of the photo (top or bottom, left or right), off unless chosen: shown on screen where it will be and drawn into the saved PNG; the EXR keeps the bare picture.
 
 - Water costs far less to draw, most of all waterfalls, wet floors and views from under water: the world pass of a 4K frame went from 41 to 23 ms in front of falling water, 33 to 15 ms over a floor under a sheet of water, 19 to 12 ms along a waterfall, 15 to 10 ms under water and 20 to 17 ms over a pool; scenes without water gained too (14 to 11.5 ms in the showcase), with the picture unchanged. A glossy bounce off a rough surface was taken for part of what the camera sees whatever the roughness, so the light gathered off every wet floor and wall was shaded as a view, every light sampled in full, bounce after bounce; only a mirror-like bounce (roughness under 0.3) carries the view on now. Behind water and in its reflection, what is seen gets one ray of gathered light; light on its way to a surface goes through water's faces without stopping at them (keeping the colour it takes in the water); and shadow rays skip the sides of water before reading its texture.
