@@ -243,33 +243,10 @@ void ptShadeDefault(bool viewMark) {
     uint textureID = m0.textureID;
     uint alphaMode = getAlphaMode(packedData);
     uint coordinate = getCoordinate(packedData);
-    // Hot air over lava and fire: the view goes on through it, bent by an amount that wanders in quarter-block
-    // patches of the sheet, each on its own beat, fading out with distance. Nothing is shaded.
-    if (alphaMode == ALPHA_MODE_HEAT) {
-        vec3 hazePos = planeHitWorldPos + vec3(worldUBO.cameraPos.xyz);
-        vec2 hazeCell = floor(hazePos.xz * 4.0);
-        float phase = fract(sin(dot(hazeCell, vec2(12.9898, 78.233))) * 43758.5453) * 6.2831853;
-        float seconds = worldUBO.gameTime * 24000.0 * 0.05;
-        vec2 wobble = vec2(sin(seconds * 5.1 + phase), cos(seconds * 4.3 + phase * 1.7));
-        float strength = HEAT_HAZE_STRENGTH * (1.0 - smoothstep(0.6 * HEAT_HAZE_REACH, HEAT_HAZE_REACH, g_hit.hitT));
-        vec3 forward = normalize(mainRay.direction);
-        vec3 side = cross(forward, vec3(0.0, 1.0, 0.0));
-        side = dot(side, side) > 1e-6 ? normalize(side) : vec3(1.0, 0.0, 0.0);
-        vec3 lift = cross(side, forward);
-        mainRay.hitT = g_hit.hitT;
-        mainRay.coneWidth += mainRay.hitT * mainRay.coneSpread;
-        mainRay.origin = planeHitWorldPos + forward * PASS_THROUGH_STEP;
-        mainRay.direction = normalize(forward + (side * wobble.x + lift * wobble.y) * strength);
-        ptClearReflectionRequest();
-        mainRay.hasPrevScenePos = 0u;
-        mainRay.directLightRadiance = vec3(0.0);
-        ptStoreMaterial(vec4(1.0), vec3(0.0), 0.0, 0.0, 1.0, 1.0, 0.0);
-        ptStoreAux(vec2(0.0));
-        raySetNoisy(mainRay, false);
-        raySetContinue(mainRay, true);
-        raySetPassThrough(mainRay, true);
-        raySetStop(mainRay, false);
-        return;
+    // Frost on glass: its vertex glow is the rank it shows from (default.rahit), not a glow; seen, it is cut-out.
+    if (alphaMode == ALPHA_MODE_GLASS_FROST) {
+        albedoEmission = 0.0;
+        alphaMode = ALPHA_MODE_CUTOUT;
     }
 
     vec2 textureUV = vec2(0.0);

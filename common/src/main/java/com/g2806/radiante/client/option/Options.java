@@ -108,12 +108,6 @@ public class Options {
     public static volatile boolean rainWetness = true;
     /** Surfaces under open sky gather frost and snow while it snows in cold biomes, and melt near heat sources. */
     public static volatile boolean snowAccumulation = true;
-    /** Fireflies drift over swamps and forests at night (AmbientParticles). */
-    public static volatile boolean fireflies = true;
-    /** Dust shows in the shafts of sunlight that reach under a roof (AmbientParticles). */
-    public static volatile boolean dustMotes = true;
-    /** The air over lava, fire and lit campfires shimmers (HeatHaze). */
-    public static volatile boolean heatHaze = true;
     /** Snow settles on dirt paths and farmland too; off, they keep none, as in Minecraft. */
     public static volatile boolean snowOnPaths = false;
     /** The outline around the block under the crosshair. */
@@ -308,9 +302,6 @@ public class Options {
         bool("rainWetness", () -> rainWetness, v -> rainWetness = v),
         bool("snowAccumulation", () -> snowAccumulation, v -> snowAccumulation = v),
         bool("snowOnPaths", () -> snowOnPaths, v -> snowOnPaths = v),
-        bool("fireflies", () -> fireflies, v -> fireflies = v),
-        bool("dustMotes", () -> dustMotes, v -> dustMotes = v),
-        bool("heatHaze", () -> heatHaze, v -> heatHaze = v),
         bool("waterFoam", () -> waterFoam, v -> waterFoam = v),
         number("cloudThickness", () -> cloudThickness,
             v -> cloudThickness = Math.max(MIN_CLOUD_THICKNESS, Math.min(MAX_CLOUD_THICKNESS, v))),
