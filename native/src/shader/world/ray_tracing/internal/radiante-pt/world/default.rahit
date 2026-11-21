@@ -97,6 +97,14 @@ void main() {
     }
     uint textureID = m0.textureID;
     uint alphaMode = getAlphaMode(packedData);
+    // Hot air: met by the camera's own view, near enough for the shimmer to show, and by nothing else.
+    if (alphaMode == ALPHA_MODE_HEAT) {
+        if (!(rayBounce(mainRay) == 0u || rayCameraPath(mainRay)) || rayCacheUpdate(mainRay) ||
+            gl_HitTEXT > HEAT_HAZE_REACH) {
+            ignoreIntersectionEXT;
+        }
+        return;
+    }
 
     float alpha = hasColorLayer(packedData) ?
                       (baryCoords.x * m0.colorLayer + baryCoords.y * m1.colorLayer + baryCoords.z * m2.colorLayer).a :

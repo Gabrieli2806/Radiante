@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- In the Air, a new group in Sky & Fog with three switches, all on:
+  - **Fireflies** drift over swamps and forests at night, the firefly bush's own fireflies, a few in a forest and more in a swamp; each glows and lights what is next to it. Not in the rain. The firefly bush's fireflies glow as well now: a firefly gives itself block light and no sky light, and a particle had to have both at full to glow, so they were dark specks in the night.
+  - **Dust in Light Shafts**: small pale motes sink slowly where the sun reaches under a roof, through a window, a doorway or a hole in a cave's ceiling, only inside the shaft.
+  - **Heat Haze**: the air over lava, fire and lit campfires shimmers, what is seen through it wavering in quarter-block patches, up to 40 blocks away. Only the camera's view is bent; light, shadows and reflections pass as before.
+
+- Lava seen through glass (and through the hot air over it) keeps its steady glow: past the first surface of the view it was shown by another rule, a different brightness along the edge of whatever stood in front.
+
 - Frost on windows: where it snows, glass and glass panes grow a ragged rim of frost in from their edges, whole pixels up to three deep. Each block of glass has its own rim; with Seamless Glass only the outer edges of the joined sheet take it (the ones against a wall, a frame or the open air), so a big window is frosted round its border and clear in the middle. Part of Snow & Frost in Cold Biomes.
 
 - Photo Mode's logo is the lantern on nothing (no box behind it) with the name in the game's own font, bold, as the settings' side panel writes it.

@@ -156,6 +156,10 @@ void main() {
             ignoreIntersectionEXT;
         }
     }
+    // Hot air casts no shadow.
+    if (getAlphaMode(flags) == ALPHA_MODE_HEAT) {
+        ignoreIntersectionEXT;
+    }
     // A drop of a splash of water (rain on a particle): clear, it casts no shadow of its own. Nor does a redstone
     // torch's halo, a glow of light round its head (written as a glow light kept at random).
     if (radianteIsSplash(flags) || (isGlowLightSurface(flags) && getAlphaMode(flags) == ALPHA_MODE_STOCHASTIC)) {
