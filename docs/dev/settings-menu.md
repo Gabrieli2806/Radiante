@@ -26,7 +26,7 @@ Nothing is ever removed from the menu to simplify it: it moves to `addAdvanced`.
 | Quality | What decides how the frame is produced: ray tracing, the quality level, upscaling, frame generation | Upscaling, Frame Generation |
 | Image | How the finished picture looks: style, exposure, tone, HDR, camera effects | Tone & Exposure, HDR, Camera Effects |
 | Lighting | How bright things are and what casts light | Player, Light Sources |
-| Sky & Fog | Everything above the ground and in the air: sky, sun and moon, stars, clouds, fog, and what drifts in the air (fireflies, dust, heat haze) | Sky, Clouds, Fog, In the Air |
+| Sky & Fog | Everything above the ground and in the air: sky, sun and moon, stars, clouds, fog | Sky, Clouds, Fog |
 | Water & Weather | What the weather does to the world, and water | Rain, Snow, Water, Wind |
 | Performance | Settings whose point is speed, not look | Materials, Ray Tracing, World Building |
 | Other | Interface and compatibility, and what fits nowhere else | Glass & Portals |

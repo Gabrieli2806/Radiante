@@ -56,8 +56,8 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     public static final int ALPHA_MODE_STOCHASTIC = 9;
     /** A multiplicative decal such as block cracks; see util/alpha_mode.glsl. */
     public static final int ALPHA_MODE_DECAL = 10;
-    /** Hot air: the camera's view goes through it, bent a little; nothing else meets it. See util/alpha_mode.glsl. */
-    public static final int ALPHA_MODE_HEAT = 12;
+    /** Frost on glass: solid where the snow has grown it as far as the vertex's glow says. See GlassFrost. */
+    public static final int ALPHA_MODE_GLASS_FROST = 12;
     /** An additive layer: only its coloured texels are surface; see util/alpha_mode.glsl. */
     public static final int ALPHA_MODE_ADDITIVE = 11;
 
