@@ -230,6 +230,24 @@ final class SettingsLayoutDraw {
         g.fill(cx - 1, cy - 6, cx + 1, cy + 6, 0xFFFFFFFF);
     }
 
+    /** The mark of a row that compiles shaders: its colour, a cool blue against the amber of a restart. */
+    private static final int COMPILE_ICON = 0xFF7FB8FF;
+
+    /**
+     * The mark of a row that compiles shaders when changed: an hourglass of whole pixels, eight tall, its sand run
+     * half into the lower bulb. Top left at (x, y).
+     */
+    private static void drawCompileIcon(GuiGraphicsExtractor g, int x, int y, int color) {
+        int sand = (color & 0x00FFFFFF) | 0x90000000;
+        g.fill(x, y, x + 7, y + 1, color);
+        g.fill(x + 1, y + 1, x + 6, y + 2, color);
+        g.fill(x + 2, y + 2, x + 5, y + 3, sand);
+        g.fill(x + 3, y + 3, x + 4, y + 5, color);
+        g.fill(x + 2, y + 5, x + 5, y + 6, sand);
+        g.fill(x + 1, y + 6, x + 6, y + 7, sand);
+        g.fill(x, y + 7, x + 7, y + 8, color);
+    }
+
     /** An icon fitted into a square of {@link SettingsLayout#ICON} at its own proportions. */
     private static void drawIcon(GuiGraphicsExtractor g, AddonIcons.Icon icon, int x, int y) {
         int iw = icon.width();
@@ -258,13 +276,18 @@ final class SettingsLayoutDraw {
             captionX += 20;
         }
         g.text(layout.font, caption(option), captionX, y + 6, blocked ? TEXT_BLOCKED : advanced ? TEXT_DIM : TEXT);
+        int tagX = captionX + layout.font.width(caption(option)) + 6;
+        if (ShaderCompileRows.compiles(focusKey(option))) {
+            // Changing it compiles the shaders that use it: the description says so.
+            drawCompileIcon(g, tagX, y + 6, blocked ? TEXT_BLOCKED : COMPILE_ICON);
+            tagX += 10;
+        }
         if (layout.restart.needsRestart(option)) {
             // Marked on the row itself, amber once the choice differs from what the running game uses.
             boolean pending = layout.restart.pending(option);
             Component tag = Component.translatable(pending ? "options.radiante.restart.tag_pending"
                 : "options.radiante.restart.tag");
-            g.text(layout.font, tag, layout.listX + PAD + 12 + layout.font.width(caption(option)), y + 6,
-                pending ? 0xFFF0B040 : 0xFF808080);
+            g.text(layout.font, tag, tagX + 2, y + 6, pending ? 0xFFF0B040 : 0xFF808080);
         }
         Object value = option.get();
         if (value instanceof com.g2806.radiante.client.option.EmissionColor colour
@@ -339,6 +362,10 @@ final class SettingsLayoutDraw {
         if (layout.restart.needsRestart(option)) {
             lines.addAll(layout.font.split(Component.translatable("options.radiante.restart.hint")
                 .withColor(NOTICE), wrap));
+        }
+        if (ShaderCompileRows.compiles(optionKey)) {
+            lines.addAll(layout.font.split(Component.translatable("options.radiante.compiles.hint")
+                .withColor(COMPILE_ICON), wrap));
         }
         Component blockedBy = layout.availability.blocked(optionKey);
         if (blockedBy != null) {

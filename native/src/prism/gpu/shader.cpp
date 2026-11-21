@@ -6,6 +6,11 @@
 
 #include <spirv-tools/optimizer.hpp>
 
+#include "mz.h"
+#include "mz_strm.h"
+#include "mz_zip.h"
+#include "mz_zip_rw.h"
+
 #include <algorithm>
 #include <atomic>
 #include <cctype>
@@ -113,7 +118,10 @@ std::string toHex(uint64_t value) {
 // Bumped whenever decorateNonUniformResources (below) changes what it writes.
 constexpr std::string_view kSpirvPostProcessVersion = "nonuniform-1";
 
-// The name, without its .spv extension, of the cache file of one compile of a source whose canonical path is known.
+// The name, without its .spv extension, of the cache file of one compile of a source, by its portable key
+// (SourceFile::hashKey). Nothing in it depends on where the game is installed: the same compile of the same files has
+// the same name on every computer, so SPIR-V compiled when Radiante is built can stand in for the game's own
+// (Shader::setBundle).
 std::string compiledHash(std::string_view canonicalSource,
                          VkShaderStageFlagBits stage,
                          const std::unordered_map<std::string, std::string> &definitions,
@@ -135,7 +143,9 @@ std::string compiledHash(std::string_view canonicalSource,
         hash.string(definition->first);
         hash.string(definition->second);
     }
-    for (const std::string &directory : includeDirectories) { hash.string(directory); }
+    // The include directories count by how many there are: which file each include found is in the dependency hash,
+    // by its key relative to them, and their own paths are the installation's.
+    hash.value(includeDirectories.size());
     hash.string(injectedSource);
     return toHex(hash.state());
 }
@@ -149,7 +159,8 @@ using shader_source::stripComments;
 
 // One source file of a SourceIndex. Read on first use, then never changed.
 struct SourceFile {
-    std::string key; // the canonical path, as hashed
+    std::string key; // the canonical path
+    std::string hashKey; // the path as hashed: relative to the include directory it lies in (portableKey)
     fs::path path;
     std::once_flag loaded;
     bool readable = false;
@@ -163,7 +174,27 @@ struct SourceFile {
 class SourceIndex {
   public:
     explicit SourceIndex(const std::vector<std::string> &includeDirectories)
-        : includeDirectories_(includeDirectories) {}
+        : includeDirectories_(includeDirectories) {
+        for (const std::string &directory : includeDirectories) {
+            std::string root = makeCanonical(directory).generic_string();
+            if (!root.empty() && root.back() != '/') { root += '/'; }
+            roots_.push_back(std::move(root));
+        }
+    }
+
+    // A file's path as the hashes see it: "<i>/" and the path under the i-th include directory, the first that holds
+    // it (the renderer's public headers, then the pack's root, where every file of a pack lies), so a compile hashes
+    // the same wherever the game is installed and wherever the pack was unpacked. A file outside them all (none in a
+    // pack that loads) keeps its full path.
+    std::string portableKey(const fs::path &canonicalPath) const {
+        const std::string path = canonicalPath.generic_string();
+        for (size_t i = 0; i < roots_.size(); i++) {
+            if (path.size() > roots_[i].size() && path.compare(0, roots_[i].size(), roots_[i]) == 0) {
+                return "<" + std::to_string(i) + ">/" + path.substr(roots_[i].size());
+            }
+        }
+        return path;
+    }
 
     SourceFile &file(const fs::path &canonicalPath) {
         return loaded(entry(canonicalPath));
@@ -183,6 +214,7 @@ class SourceIndex {
         if (inserted) {
             it->second = std::make_unique<SourceFile>();
             it->second->key = it->first;
+            it->second->hashKey = portableKey(canonicalPath);
             it->second->path = canonicalPath;
         }
         return *it->second;
@@ -193,7 +225,7 @@ class SourceIndex {
         if (!stream) { return; }
         const std::string content = readAll(stream);
         Fnv1a hash;
-        hash.string(file.key);
+        hash.string(file.hashKey);
         hash.string(content);
         file.ownHash = hash.state();
         file.size = content.size();
@@ -231,6 +263,7 @@ class SourceIndex {
     }
 
     const std::vector<std::string> includeDirectories_;
+    std::vector<std::string> roots_;
     std::mutex mutex_;
     std::unordered_map<std::string, std::unique_ptr<SourceFile>> files_;
 };
@@ -276,6 +309,63 @@ class DependencyWalk {
     std::unordered_set<const SourceFile *> open_;
     uint64_t bytes_ = 0;
 };
+
+// ---- SPIR-V that came with Radiante (Shader::setBundle)
+
+// The bundle's files by name, read whole the first time a compile misses the cache: a few megabytes, read once.
+struct SpirvBundle {
+    std::mutex mutex;
+    fs::path path;
+    bool read = false;
+    std::unordered_map<std::string, std::vector<uint32_t>> files;
+};
+
+SpirvBundle &spirvBundle() {
+    static SpirvBundle bundle;
+    return bundle;
+}
+
+void readBundle(SpirvBundle &bundle) {
+    std::error_code error;
+    if (bundle.path.empty() || !fs::is_regular_file(bundle.path, error)) { return; }
+    void *reader = mz_zip_reader_create();
+    if (reader == nullptr) { return; }
+    if (mz_zip_reader_open_file(reader, bundle.path.string().c_str()) == MZ_OK) {
+        for (int32_t status = mz_zip_reader_goto_first_entry(reader); status == MZ_OK;
+             status = mz_zip_reader_goto_next_entry(reader)) {
+            mz_zip_file *info = nullptr;
+            if (mz_zip_reader_entry_get_info(reader, &info) != MZ_OK || info == nullptr || info->filename == nullptr) {
+                continue;
+            }
+            const std::string name = info->filename;
+            const int32_t length = mz_zip_reader_entry_save_buffer_length(reader);
+            // SPIR-V is whole 32-bit words; a shader of radiante-pt is well under 16 MB.
+            if (length <= 0 || length % 4 != 0 || length > (16 << 20) || name.find('/') != std::string::npos) {
+                continue;
+            }
+            std::vector<uint32_t> words(static_cast<size_t>(length) / 4);
+            if (mz_zip_reader_entry_save_buffer(reader, words.data(), length) != MZ_OK) { continue; }
+            if (words.empty() || words.front() != 0x07230203u) { continue; }
+            bundle.files.emplace(name, std::move(words));
+        }
+        mz_zip_reader_close(reader);
+    }
+    mz_zip_reader_delete(&reader);
+    shaderOut() << "SPIR-V bundle " << bundle.path.filename().string() << ": " << bundle.files.size() << " shaders"
+                << std::endl;
+}
+
+// The bundle's SPIR-V of a cache file name, or empty.
+std::vector<uint32_t> bundledSpirv(const std::string &name) {
+    SpirvBundle &bundle = spirvBundle();
+    std::scoped_lock lock(bundle.mutex);
+    if (!bundle.read) {
+        bundle.read = true;
+        readBundle(bundle);
+    }
+    const auto found = bundle.files.find(name);
+    return found == bundle.files.end() ? std::vector<uint32_t>{} : found->second;
+}
 
 // ---- The cache folder
 
@@ -713,6 +803,15 @@ Shader::QuietErrors::~QuietErrors() {
     quietErrors = previous_;
 }
 
+void Shader::setBundle(const std::filesystem::path &zip) {
+    SpirvBundle &bundle = spirvBundle();
+    std::scoped_lock lock(bundle.mutex);
+    if (bundle.path == zip) { return; }
+    bundle.path = zip;
+    bundle.read = false;
+    bundle.files.clear();
+}
+
 Shader::CompileResult Shader::compileGlslToSpv(std::string sourcePath,
                                                VkShaderStageFlagBits stage,
                                                std::unordered_map<std::string, std::string> definitions,
@@ -728,7 +827,7 @@ Shader::CompileResult Shader::compileGlslToSpv(std::string sourcePath,
         SourceIndex index(includeDirectories);
         SourceFile &source = index.file(makeCanonical(sourcePath));
         if (const std::optional<uint64_t> dependencyHash = DependencyWalk(index).hash(source)) {
-            cacheFile = cacheDir / (compiledHash(source.key, stage, definitions, includeDirectories, injectedSource,
+            cacheFile = cacheDir / (compiledHash(source.hashKey, stage, definitions, includeDirectories, injectedSource,
                                                  *dependencyHash) +
                                     ".spv");
             result.cacheFilePath = cacheFile.string();
@@ -744,6 +843,17 @@ Shader::CompileResult Shader::compileGlslToSpv(std::string sourcePath,
                     return result;
                 }
                 result.cacheReadFailed = true;
+            }
+            // Not compiled on this computer yet, but compiled when Radiante was built: the same files and settings
+            // give the same name, so it is the same SPIR-V.
+            std::vector<uint32_t> bundled = bundledSpirv(cacheFile.filename().string());
+            if (!bundled.empty()) {
+                ShaderSpirvCache::writeCachedSpirv(cacheFile, bundled);
+                result.sourcePath = std::move(sourcePath);
+                result.spirv = std::move(bundled);
+                result.cacheHit = true;
+                result.bundleHit = true;
+                return result;
             }
         }
     }

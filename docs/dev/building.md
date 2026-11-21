@@ -110,6 +110,27 @@ with xz next to `natives.sha256`; the mod unpacks and checks them on first start
 
 Check a jar: `unzip -l <jar> | grep -E 'prismrt.dll|libprismrt.so'`.
 
+## Shaders compiled at build time
+
+The game compiles Radiante PT's shaders to SPIR-V when it builds the pipeline and keeps them in
+`radiante/cache/shaders`, named after everything the compile reads: the files' contents and their paths relative to
+the pack and to the public headers, the settings compiled in, the stage (`compiledHash`, `gpu/shader.cpp`). Nothing in
+the name depends on where the game is installed, so the SPIR-V of one computer is the SPIR-V of all.
+
+With `-DPRISM_SPIRV_BUNDLE=ON` the install step runs `spirv_bundle` (`native/src/tools/spirv_bundle.cpp`): it loads
+the renderer library just built and compiles Radiante PT with the renderer's own compile
+(`prismrtCompileSpirvBundle`, `middleware/spirv_bundle_export.cpp`) for each variant of
+`native/src/shader/spirv_bundle_variants.json` (the default pipelines, DLSS Ray Reconstruction and NRD, each with and
+without opacity micromaps), into `shaders/world/ray_tracing/radiante-pt-spirv.zip` (about 3 MB). A compile the cache
+lacks is looked up there first (`gpu::Shader::setBundle`), so a first start, and the first start after an update,
+compiles nothing at the default settings; the log says how many came from it
+(`[ShaderPack] 38 shaders to SPIR-V in 57 ms (0 from the cache, 38 from the bundle, 0 compiled)`). A setting changed
+from its default, another pack, or a bundle that no longer matches only means compiling as without it.
+
+The CI's Windows job turns it on; local builds leave it off (it adds about 45 seconds, and while shaders are being
+changed the bundle never matches). A variant whose settings differ from what the game compiles with shows as
+`compiled` in that log: the `dumpattrs` dev action lists the attributes a build compiles with, to compare.
+
 ## GitHub Actions
 
 `.github/workflows/build.yml` does all of the above on every push to a Minecraft version branch (`mc/26.2`, `mc/26.3`, `mc/26.4`) and on every pull request:
@@ -117,7 +138,7 @@ Check a jar: `unzip -l <jar> | grep -E 'prismrt.dll|libprismrt.so'`.
 | Job | What it does |
 |---|---|
 | `version` | Reads `mod_version` and `minecraft_version` and decides whether this is a new version. |
-| `native-windows` | Builds `prismrt.dll` on Windows with the Vulkan SDK and the DLSS SDK. |
+| `native-windows` | Builds `prismrt.dll` on Windows with the Vulkan SDK and the DLSS SDK, and the SPIR-V bundle. |
 | `native-linux` | Builds `libprismrt.so` on Ubuntu 22.04 with g++ 13 and checks the glibc version it needs. Compiles Radiante PT under every setting and every example shader pack, and runs the native tests. |
 | `jars` | Brings both renderers together, runs the Java tests, builds the jars and fails if any lacks either. |
 | `release` | Only for a new version: a GitHub release. |

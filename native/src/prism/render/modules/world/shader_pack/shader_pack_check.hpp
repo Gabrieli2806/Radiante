@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -23,8 +24,11 @@ struct PackCheck {
 // pipeline: no fallback to the built-in pack, extraction and staging in a folder of the check's own, no shader
 // modules, nothing in the error log. For /radiante pack validate and the hot reload of folder packs. Thread-safe;
 // checks run one at a time.
+// `micromaps`, when given, stands for the device's opacity micromaps (VPT_OMM_SUPPORTED): the SPIR-V bundle compiles
+// both without a device (spirv_bundle).
 PackCheck checkPack(const std::shared_ptr<Framework> &framework,
                     const std::vector<std::string> &attributeKVs,
-                    const std::string &language);
+                    const std::string &language,
+                    std::optional<bool> micromaps = std::nullopt);
 
 } // namespace shader_pack
