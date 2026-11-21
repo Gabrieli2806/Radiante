@@ -133,6 +133,9 @@ void traceSecondary(inout MainRay rayState,
     int extraBounces = 0;
     // The same for light gathered through water or glass, but only this many times a path: see below.
     int gatherCrossings = 0;
+    // The view through glass or water still going straight on, and the weather it has met (see weatherSeen).
+    bool weatherView = false;
+    int weatherStreaks = 0;
     bool viewChain = false;
     // The view chain has been off a mirror-like surface at least once, not only through see-through ones.
     bool viewReflected = false;
@@ -167,8 +170,15 @@ void traceSecondary(inout MainRay rayState,
         bool fromSeenSurface = b == startBounce || clearView;
         clearView = fromSeenSurface &&
                     (leavingLobeType == 2u || (leavingLobeType == 1u && rayLoadMaterial(rayState).roughness < 0.08));
+        // Through glass or water, seen straight: the rain and the snow behind it are seen too, as the camera sees
+        // them in the open (two streaks a pixel at most), for as long as the view goes straight on through what it
+        // passes (the far face of a glass block, more glass). prepareSecondaryBase leaves the weather out of bounces,
+        // whose random streaks speckled the light; a view is not light gathered.
+        if (b == startBounce) { weatherView = viewChain && leavingLobeType == 2u; }
+        bool weatherSeen = weatherView && weatherStreaks < 2;
         resetMainRay(rayState, b);
         prepareSecondary(b, isHand, len, mask);
+        if (weatherSeen) { mask |= WEATHER_MASK | PARTICLE_MASK; }
         // In first person a mirror-like view (wet ground, a puddle, water, a window) shows the player, as it does in
         // third person: their body is in the scene only while First Person Shadow is on. Light gathered by rough
         // bounces still leaves it out, so the body seen from within does not darken what is around the camera.
@@ -192,6 +202,13 @@ void traceSecondary(inout MainRay rayState,
         VPT_TRACE_PATH(VPT_RAY_FLAGS, mask, 1, 1, missId, mainRay.origin, 0.001, mainRay.direction, len);
         rayState = mainRay;
         raySetIgnoreWaterSelf(rayState, false);
+        if (weatherView) {
+            if (!rayIsPassThrough(rayState)) {
+                weatherView = false;
+            } else if (rayLobeType(rayState) == RAY_LOBE_WEATHER) {
+                weatherStreaks++;
+            }
+        }
 
         if (b == startBounce) {
             secondHitDistance = rayState.hitT;

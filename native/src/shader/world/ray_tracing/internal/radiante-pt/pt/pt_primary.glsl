@@ -94,9 +94,16 @@ vec2 handMotionVector(mat4 prevMVP, vec2 pixelCenter, vec3 position) {
     return oldPos.xy - pixelCenter;
 }
 
-void preparePrimary(int step, int isHand, out float len, out uint mask, out uint missId) {
+/**
+ * step: the view's step, counted without the glass it went through (tracePrimary). Rain, snow, particles and clouds
+ * are looked for on the first two steps only, so that a pixel shows at most two streaks and the view does not run out
+ * of steps in a storm; counted with the glass, a view through a window, whose two faces took those two steps, met no
+ * snow and no rain behind it, and it looked as if the weather had stopped outside. The miss shader goes by the real
+ * step (realStep).
+ */
+void preparePrimary(int step, int realStep, int isHand, out float len, out uint mask, out uint missId) {
     if (isHand == 0) {
-        missId = step == 0 ? VPT_WORLD_MISS_INDEX : VPT_WORLD_NO_VOLUMETRIC_MISS_INDEX;
+        missId = realStep == 0 ? VPT_WORLD_MISS_INDEX : VPT_WORLD_NO_VOLUMETRIC_MISS_INDEX;
         if (step == 0) {
             len = worldTraceDistance();
             if (worldUBO.isFirstPerson > 0) {
@@ -114,6 +121,7 @@ void preparePrimary(int step, int isHand, out float len, out uint mask, out uint
             mask = WORLD_MASK | PLAYER_MASK | FISHING_BOBBER_MASK | BOAT_WATER_MASK;
         }
     } else {
+        step = realStep;
         if (step == 0) {
             len = 10.0;
             mask = HAND_MASK;
@@ -189,6 +197,8 @@ void tracePrimary(vec3 eyePos,
     bool cameraPath = true;
     // The view was turned back by a mirror somewhere on its way (see the player's mask below).
     bool turnedBack = false;
+    // Faces of glass (and other pass-throughs that are not weather) the view has gone through: preparePrimary.
+    int glassSteps = 0;
     for (int step = 0; step < VPT_PRIMARY_TRACE_STEP_LIMIT; ++step) {
         resetMainRay(rayState, step);
         raySetCameraPath(rayState, cameraPath);
@@ -200,7 +210,7 @@ void tracePrimary(vec3 eyePos,
         float len;
         uint mask;
         uint missId;
-        preparePrimary(step, isHand, len, mask, missId);
+        preparePrimary(step - glassSteps, step, isHand, len, mask, missId);
         // In first person the player's own model stays out of the view for as long as the view runs straight on.
         // Past a cloud's face, a pane or a raindrop it was looked for again, and whatever of it lay beyond showed:
         // rising into a cloud, with its underside between the eyes and the body, the body from within, black.
@@ -234,6 +244,7 @@ void tracePrimary(vec3 eyePos,
             dot(tracedDirection, rayState.direction) < 0.9999) {
             turnedBack = true;
         }
+        if (rayIsPassThrough(rayState) && rayLobeType(rayState) != RAY_LOBE_WEATHER) { glassSteps++; }
         cameraPath = cameraPath && rayIsPassThrough(rayState);
         raySetCameraPath(rayState, false);
 

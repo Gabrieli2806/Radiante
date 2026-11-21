@@ -197,6 +197,8 @@ bool ptSplashPassThrough(uint textureID, vec2 textureUV, vec4 colorLayerValue, v
     raySetContinue(mainRay, true);
     raySetPassThrough(mainRay, true);
     raySetStop(mainRay, false);
+    // Weather, not glass: the primary loop counts the view's weather hits by this (tracePrimary).
+    raySetLobeType(mainRay, RAY_LOBE_WEATHER);
     return true;
 }
 
@@ -257,6 +259,8 @@ bool ptRainPassThrough(uint textureID, vec2 textureUV, vec4 colorLayerValue, vec
     raySetContinue(mainRay, true);
     raySetPassThrough(mainRay, true);
     raySetStop(mainRay, false);
+    // Weather, not glass: the primary loop counts the view's weather hits by this (tracePrimary).
+    raySetLobeType(mainRay, RAY_LOBE_WEATHER);
     return true;
 }
 
