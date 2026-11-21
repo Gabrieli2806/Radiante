@@ -639,8 +639,12 @@ public final class PhotoMode {
         String pngPath = savePng ? dir.resolve(stem + ".png").toAbsolutePath().toString() : "";
         String exrPath = saveExr ? dir.resolve(stem + ".exr").toAbsolutePath().toString() : "";
         PhotoProxy.requestCapture(pngPath, exrPath, waitForTarget);
+        pendingPngPath = pngPath;
         lastCaptureStatus = 1;
     }
+
+    /** The PNG the renderer is writing, for the logo drawn over it once it is there. */
+    private static String pendingPngPath = "";
 
     /** Polls native capture state and updates the UI status banner. */
     public static void pollStatus() {
@@ -653,6 +657,9 @@ public final class PhotoMode {
             lastCaptureStatus = 1;
         } else if (status == 2) {
             lastCaptureStatus = 0;
+            // The file is written: the logo goes over it, if one is chosen (PhotoWatermark).
+            PhotoWatermark.applyLater(pendingPngPath);
+            pendingPngPath = "";
             statusBanner = pollMessageSlot[0] != null ? pollMessageSlot[0] : "";
             statusBannerUntilMillis = Util.getMillis() + 5000L;
         } else if (status < 0) {
