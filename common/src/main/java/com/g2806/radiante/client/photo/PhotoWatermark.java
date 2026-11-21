@@ -12,7 +12,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.Util;
 
 /**
- * Radiante's logo and name in a corner of the photo, for whoever wants to sign what they share (Photo Mode's Logo).
+ * Radiante's logo and name in a corner of the photo, for whoever wants to sign what they share (Photo Mode's Logo):
+ * the lantern of the settings screen on nothing, no box behind it, and the name in the game's own font, bold, as the
+ * settings' side panel writes it.
  * Off unless chosen. The screen shows it where it will be, and the saved PNG gets it once the renderer has written
  * the file: the picture is the renderer's own accumulation, which knows nothing of the game's textures, so the logo is
  * drawn over the file afterwards. The OpenEXR keeps the bare light: it is the one meant for further work.
@@ -30,8 +32,8 @@ public final class PhotoWatermark {
 
     public static final Identifier TEXTURE = Identifier.fromNamespaceAndPath("radiante", "textures/gui/photo_watermark.png");
     /** The logo's own size, for the screen's preview. */
-    public static final int TEXTURE_WIDTH = 516;
-    public static final int TEXTURE_HEIGHT = 148;
+    public static final int TEXTURE_WIDTH = 422;
+    public static final int TEXTURE_HEIGHT = 114;
     /** The logo's height and its distance from the edges, as shares of the photo's height. */
     public static final float HEIGHT_SHARE = 0.055f;
     public static final float MARGIN_SHARE = 0.025f;

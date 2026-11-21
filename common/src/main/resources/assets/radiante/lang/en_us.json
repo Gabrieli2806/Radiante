@@ -437,7 +437,7 @@
   "options.radiante.restart.later": "Later",
   "options.radiante.rain_wetness": "Wet Ground in Rain",
   "options.radiante.snow_accumulation": "Snow & Frost in Cold Biomes",
-  "options.radiante.snow_accumulation.tooltip": "Surfaces under open sky in snowy biomes gather rime frost and fresh snow as snowfall continues, melt around torches, campfires and lava, and clear slowly after the storm.",
+  "options.radiante.snow_accumulation.tooltip": "Surfaces under open sky in snowy biomes gather rime frost and fresh snow as snowfall continues, melt around torches, campfires and lava, and clear slowly after the storm. Glass and glass panes there grow a rim of frost in from their edges: each block's own, or only the outer edges of the sheet with Seamless Glass.",
   "options.radiante.snow_on_paths": "Snow on Paths & Farmland",
   "options.radiante.snow_on_paths.tooltip": "Snow settles on dirt paths and farmland as on the ground beside them. Off, they keep none, as in Minecraft.",
   "options.radiante.water_foam": "Water Foam & Mist",
