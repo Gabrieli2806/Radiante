@@ -437,7 +437,7 @@
   "options.radiante.restart.later": "Más tarde",
   "options.radiante.rain_wetness": "Suelo Mojado con Lluvia",
   "options.radiante.snow_accumulation": "Nieve y Escarcha en Biomas Fríos",
-  "options.radiante.snow_accumulation.tooltip": "Las superficies a cielo abierto en biomas nevados acumulan escarcha y nieve fresca mientras nieva, se derriten junto a antorchas, hogueras y lava, y se despejan poco a poco al amainar.",
+  "options.radiante.snow_accumulation.tooltip": "Las superficies a cielo abierto en biomas nevados acumulan escarcha y nieve fresca mientras nieva, se derriten junto a antorchas, hogueras y lava, y se despejan poco a poco al amainar. El cristal y los paneles de cristal crían allí un borde de escarcha desde sus cantos: el de cada bloque, o solo los cantos exteriores de la lámina con Vidrio sin Bordes.",
   "options.radiante.snow_on_paths": "Nieve en Caminos y Cultivos",
   "options.radiante.snow_on_paths.tooltip": "La nieve se posa sobre los caminos de tierra y la tierra de cultivo como en el suelo de al lado. Desactivado, no se posa en ellos, como en Minecraft.",
   "options.radiante.water_foam": "Espuma y Bruma en el Agua",
