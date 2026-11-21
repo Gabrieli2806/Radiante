@@ -147,6 +147,15 @@ void main() {
     if ((shadowRay.pad0 == SKY_VISIBILITY_QUERY || shadowRay.pad0 == HAND_CLEARANCE_QUERY) && radianteIsWater(flags)) {
         ignoreIntersectionEXT;
     }
+    // The side of water takes nothing from the light through it (only a top has depth and caustics, see
+    // waterSurfaceLight), so it is let through before its texture and its flags are read: under a waterfall every
+    // shadow ray crosses one. The underwater query keeps its own bookkeeping of the nearest boundary below.
+    if (radianteIsWater(flags) && shadowRay.pad0 != GLOW_OUTLINE_QUERY && shadowRay.pad0 != UNDERWATER_CELESTIAL_QUERY) {
+        vec3 sideNormal = mat3(gl_ObjectToWorldEXT) * cross(p1.pos - p0.pos, p2.pos - p0.pos);
+        if (!(abs(sideNormal.y) > 0.75 * length(sideNormal))) {
+            ignoreIntersectionEXT;
+        }
+    }
     // A drop of a splash of water (rain on a particle): clear, it casts no shadow of its own. Nor does a redstone
     // torch's halo, a glow of light round its head (written as a glow light kept at random).
     if (radianteIsSplash(flags) || (isGlowLightSurface(flags) && getAlphaMode(flags) == ALPHA_MODE_STOCHASTIC)) {

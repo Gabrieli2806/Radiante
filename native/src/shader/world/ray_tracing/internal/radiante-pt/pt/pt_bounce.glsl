@@ -87,6 +87,11 @@ bool initTransparent(MainRay rayState,
 // A macro rather than a const: the setting changes live, read from the world uniform, and a global const needs a
 // value known when the shader is compiled.
 #define MIRROR_EXTRA_BOUNCES VPT_MIRROR_EXTRA_BOUNCES
+// Crossings of water or clear glass a light-gathering path makes for free (traceSecondary): one in and one out, which
+// is what the floor of a pool needs to see the sky.
+const int GATHER_FREE_CROSSINGS = 2;
+// How rough a surface may be for its reflection to count as what the camera sees (traceSecondary's viewChain).
+const float VIEW_CHAIN_MAX_ROUGHNESS = 0.3;
 
 #ifndef VPT_EXPOSURE_DAY_MAX
 #    define VPT_EXPOSURE_DAY_MAX 2.5
@@ -103,6 +108,10 @@ bool initTransparent(MainRay rayState,
 bool checkerboardCell(ivec2 pixel) {
     return ((pixel.x + pixel.y + int(worldUBO.frameCounter & 1u)) & 1) == 0;
 }
+
+// The path being traced is one of the two a water or glass surface splits into (traceTransparent): see where
+// traceSecondary reads it.
+bool g_transparentBranch = false;
 
 void traceSecondary(inout MainRay rayState,
                    int startBounce,
@@ -122,6 +131,8 @@ void traceSecondary(inout MainRay rayState,
     // two mirrors facing each other used up the few bounces in the first reflections, and the mirror seen inside the
     // mirror came out black.
     int extraBounces = 0;
+    // The same for light gathered through water or glass, but only this many times a path: see below.
+    int gatherCrossings = 0;
     bool viewChain = false;
     // The view chain has been off a mirror-like surface at least once, not only through see-through ones.
     bool viewReflected = false;
@@ -142,7 +153,13 @@ void traceSecondary(inout MainRay rayState,
         uint firstBounceLobeType = b == startBounce ? leavingLobeType : 0u;
         // Still what the camera sees, off or through one mirror-like surface after another: a window, then the
         // water behind it. It ends at the first surface the ray scatters from.
-        viewChain = (b == startBounce || viewChain) && leavingLobeType != 0u;
+        // A glossy bounce off a rough surface is light gathered for it, not a view: only a mirror-like one carries
+        // the view on (VIEW_CHAIN_MAX_ROUGHNESS). Counted as a view whatever the roughness, the light off every wet
+        // or polished floor was shaded as what the camera sees, with all the lights sampled in full, bounce after
+        // bounce.
+        viewChain = (b == startBounce || viewChain) &&
+                    (leavingLobeType == 2u ||
+                     (leavingLobeType == 1u && rayLoadMaterial(rayState).roughness < VIEW_CHAIN_MAX_ROUGHNESS));
         viewReflected = viewChain && (viewReflected || leavingLobeType == 1u);
         // The surface this ray leaves is one the camera sees clearly: the first hit, or one seen through water or
         // glass or in a smooth mirror (the floor of a pool, a wall in a mirror) - not one met by a glossy bounce off a
@@ -221,8 +238,17 @@ void traceSecondary(inout MainRay rayState,
             bool mirrorBounce = false;
             if ((passedThrough || (hitMat.roughness < 0.08 && rayLobeType(rayState) != 0u)) &&
                 extraBounces < MIRROR_EXTRA_BOUNCES) {
-                extraBounces++;
-                mirrorBounce = true;
+                // Free for what the camera sees, mirror after mirror. Light gathered for a surface (the path has
+                // scattered) gets GATHER_FREE_CROSSINGS of them and pays for the rest out of its budget: every
+                // crossing was free, and in front of a waterfall or beside a pool the light of each bounce went in
+                // and out of the water until the eight extra bounces were gone - paths three times as long as
+                // anywhere else, each crossing shaded in full, and a wall of falling water cost six times the wall
+                // behind it (42 ms against 7 for the world pass, filling a 4K screen).
+                if (viewChain || gatherCrossings < GATHER_FREE_CROSSINGS) {
+                    if (!viewChain) { gatherCrossings++; }
+                    extraBounces++;
+                    mirrorBounce = true;
+                }
             }
             // One bounce is the budget of each surface the camera sees, not of the path: a surface seen through
             // water or glass, or in a reflection, gets its own bounce as the first hit does. Ended here, the floor
@@ -233,6 +259,14 @@ void traceSecondary(inout MainRay rayState,
                 extraBounces++;
             }
         }
+
+        // Behind water or glass, and in their reflection, what is seen gets one ray of gathered light and no more:
+        // that ray's own direct light, and what the radiance cache holds where it lands. A pixel of water is two
+        // views already (the reflection and what is under it), each lit in full where it ends; carried on for the
+        // whole budget each, a screen of water traced three times the rays of a screen of stone and took the frame
+        // from 7 ms to 20 and more. The bounces left out are the third and later of light that has already crossed
+        // the water, tinted and dimmed by it.
+        if (g_transparentBranch && !viewChain) { break; }
 
         // A chain of mirrors seen from the camera is not cut short at random: the reflection inside a reflection
         // would come out speckled. Its length is bounded by the mirror bounces allowed.
@@ -257,11 +291,13 @@ void traceTransparent(inout MainRay transparentRay,
 #endif
                       out bool hasTransparentSecondHit,
                       out float transparentSecondHitDistance) {
+    g_transparentBranch = true;
     traceSecondary(transparentRay, startBounce, isHand,
 #if USE_SHARC && SHARC_QUERY
                   sharcParameters, sharcDebugBounceCount, sharcDebugCacheHit,
 #endif
                   hasTransparentSecondHit, transparentSecondHitDistance);
+    g_transparentBranch = false;
 }
 
 #ifndef VPT_HAND_SAMPLES
