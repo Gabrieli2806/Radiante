@@ -2,6 +2,7 @@ package com.g2806.radiante.client.gui;
 
 import com.g2806.radiante.client.photo.PhotoCinema;
 import com.g2806.radiante.client.photo.PhotoMode;
+import com.g2806.radiante.client.photo.PhotoWatermark;
 import com.g2806.radiante.compat.VersionCompat;
 import com.mojang.blaze3d.platform.InputConstants;
 import java.nio.file.Path;
@@ -229,6 +230,9 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
             "gui.radiante.photo.guides.tooltip", innerX + halfW + 4, y, innerW - halfW - 4,
             () -> PhotoCinema.cycleGuides(1), () -> PhotoCinema.cycleGuides(-1), () -> true, false);
         y += BUTTON_H + 4;
+        button(() -> Component.translatable(PhotoWatermark.corner().key()), "gui.radiante.photo.logo.tooltip",
+            innerX, y, innerW, () -> PhotoWatermark.cycle(1), () -> PhotoWatermark.cycle(-1), () -> true, false);
+        y += BUTTON_H + 4;
 
         // A time of day and a weather for the photo alone, on a server as well (PhotoCinema).
         y = header(named, "gui.radiante.photo.group.scene", innerX, y, innerW);
@@ -342,6 +346,14 @@ public final class PhotoModeScreen extends VersionCompat.DrawnScreen {
         if (r[0] > 0) {
             g.fill(0, 0, r[0], this.height, bar);
             g.fill(r[0] + r[2], 0, this.width, this.height, bar);
+        }
+        // The logo where the saved photo will have it (PhotoWatermark), with the controls hidden too: it is part of
+        // the picture.
+        if (PhotoWatermark.corner() != PhotoWatermark.Corner.OFF) {
+            int[] at = PhotoWatermark.place(PhotoWatermark.corner(), r[2], r[3]);
+            VersionCompat.blit(g, PhotoWatermark.TEXTURE, r[0] + at[0], r[1] + at[1], 0.0f, 0.0f, at[2], at[3],
+                PhotoWatermark.TEXTURE_WIDTH, PhotoWatermark.TEXTURE_HEIGHT, PhotoWatermark.TEXTURE_WIDTH,
+                PhotoWatermark.TEXTURE_HEIGHT);
         }
         if (!guides) {
             return;
