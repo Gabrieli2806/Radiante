@@ -133,6 +133,9 @@ bool ptBedrockGlassHit(uint textureID,
 // There is no floor: a fixed light, however faint, is what the eye opened up for a dark night shows as bright white
 // streaks; at night rain shows where it dims the lit ground behind it (Rain Opacity) and by the night sky's glint.
 const float RAIN_STREAK_SKY = 0.35;
+// A snowflake's light against the overcast sky's (a white surface lit by it), and how much of the view it hides.
+const float SNOWFLAKE_SKY = 1.0;
+const float SNOWFLAKE_OPACITY = 0.9;
 
 // A raindrop streak met by the camera's view: seen through, with a faint glint of the light around it added on top,
 // as glass is (ptGlassPassThrough). It was a surface of its own before, refracted and lit like a sheet of water, and
@@ -228,38 +231,49 @@ bool ptTorchHaloPassThrough(uint textureID, vec2 textureUV, vec4 colorLayerValue
     return true;
 }
 
+// The falling weather the view passes through: a rain streak or a snowflake (Minecraft's own sheets of them, which
+// stand still while their texture falls). Where the camera sees it, straight or through glass and water, it goes into
+// the weather layer (common/weather_layer.glsl), which the tone mapping puts over the finished picture after the
+// denoiser and the upscaler; seen otherwise, it is added to the ray here as before.
 bool ptRainPassThrough(uint textureID, vec2 textureUV, vec4 colorLayerValue, vec3 dPduWorld, vec3 dPdvWorld) {
     if (radianteIsSplash(g_hit.packedData)) {
         return ptSplashPassThrough(textureID, textureUV, colorLayerValue, dPduWorld, dPdvWorld);
     }
-    if (!radianteIsRain(g_hit.packedData)) { return false; }
+    bool snow = radianteIsSnowfall(g_hit.packedData);
+    if (!radianteIsRain(g_hit.packedData) && !snow) { return false; }
     vec4 texel = sampleTexture(textures[nonuniformEXT(textureID)], textureUV, 0.0, false);
     float coverage = clamp(texel.a * colorLayerValue.a, 0.0, 1.0);
-    float opacity = clamp(VPT_RAIN_OPACITY, 0.0, 1.0);
-    // Only the sky: the rain's vertices carry full light levels everywhere, so they cannot say where a lamp is.
+    // Only the sky: the weather's vertices carry full light levels everywhere, so they cannot say where a lamp is.
     vec3 skyUp = texture(skyFull, vec3(0.0, 1.0, 0.0)).rgb;
     vec3 overcast = vec3(0.1) * smoothstep(-0.3, 0.3, celestialSunDirection().y);
-    vec3 around = mix(skyUp, overcast, skyUBO.rainGradient) * RAIN_STREAK_SKY;
-    float glint = coverage * max(VPT_RAIN_STREAK_BRIGHTNESS, 0.0) * (1.0 + 2.0 * opacity);
-#ifdef RADIANTE_HOOK_RAIN_STREAK_DEFAULT
-    mainRay.radiance += mainRay.throughput * around * glint;
-    // Rain Opacity: how much of the view a streak takes away, a little blue-grey.
-    mainRay.throughput *= mix(vec3(1.0), vec3(0.82, 0.90, 1.0), coverage * opacity);
-#else
-    // A pack's rain (hooks/rain_streak.glsl): the light the streak adds and what it lets through.
-    vec3 streakLight = around * glint;
-    vec3 streakTint = mix(vec3(1.0), vec3(0.82, 0.90, 1.0), coverage * opacity);
-    hookRainStreak(streakLight, streakTint, coverage, g_hit.rayOrigin + g_hit.rayDir * g_hit.hitT);
-    mainRay.radiance += mainRay.throughput * max(streakLight, vec3(0.0));
-    mainRay.throughput *= clamp(streakTint, vec3(0.0), vec3(1.0));
+    vec3 sky = mix(skyUp, overcast, skyUBO.rainGradient);
+    vec3 light;
+    vec3 tint;
+    if (snow) {
+        // A flake is lit as a white surface under the overcast it falls from, and hides what is behind it.
+        light = texel.rgb * colorLayerValue.rgb * sky * SNOWFLAKE_SKY * coverage;
+        tint = vec3(1.0 - coverage * SNOWFLAKE_OPACITY);
+    } else {
+        float opacity = clamp(VPT_RAIN_OPACITY, 0.0, 1.0);
+        // By the square of the coverage: a streak was kept at random by its coverage and then lit by it, so the faint
+        // edges of the texture showed little; met wherever it is there at all, the rain came out twice as dense.
+        float glint = coverage * coverage * max(VPT_RAIN_STREAK_BRIGHTNESS, 0.0) * (1.0 + 2.0 * opacity);
+        light = sky * RAIN_STREAK_SKY * glint;
+        // Rain Opacity: how much of the view a streak takes away, a little blue-grey.
+        tint = mix(vec3(1.0), vec3(0.82, 0.90, 1.0), coverage * coverage * opacity);
+    }
+#ifndef RADIANTE_HOOK_FALLING_WEATHER_DEFAULT
+    // A pack's rain and snow (hooks/falling_weather.glsl).
+    hookFallingWeather(light, tint, coverage, g_hit.rayOrigin + g_hit.rayDir * g_hit.hitT, snow);
+    light = max(light, vec3(0.0));
+    tint = clamp(tint, vec3(0.0), vec3(1.0));
 #endif
-    // The streak falls past a still background: the pixel's motion is the ground's, so DLSS Ray Reconstruction
-    // carried the streak over its history and, with the camera still, drew the rain as long straight lines. The
-    // bias mask tells it to take this frame's colour here (main_paths.glsl). Seen through a window or water too (a view
-    // chain): there the pixel's motion is the glass's, still while the camera is, and the rain behind it was blended
-    // away into the history as if it were noise.
-    if (coverage > 0.02 && (rayBounce(mainRay) == 0u || rayCameraPath(mainRay) || g_viewBounce)) {
-        raySetFavourCurrent(mainRay, true);
+    if (rayBounce(mainRay) == 0u || rayCameraPath(mainRay) || g_viewBounce) {
+        // What the weather hides of the view is the same for every colour over the picture: its mean.
+        vptWeatherLayerAdd(mainRay.throughput * light, 1.0 - (tint.r + tint.g + tint.b) / 3.0);
+    } else {
+        mainRay.radiance += mainRay.throughput * light;
+        mainRay.throughput *= tint;
     }
     mainRay.hitT = g_hit.hitT;
     mainRay.coneWidth += mainRay.hitT * mainRay.coneSpread;

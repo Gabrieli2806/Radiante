@@ -110,13 +110,22 @@ def resource_defines(config):
     textures = [t for t in config.get("textures", []) if isinstance(t, dict)]
     buffers = [b for b in config.get("buffers", []) if isinstance(b, dict)]
     taken = set()
+    owner = {}
+
+    def take(number, what):
+        # Two resources on one number: the loader refuses the pack ("duplicate runtime binding"), so the check does.
+        if number in owner and owner[number] != what.split(":")[1]:
+            raise SystemExit(f"duplicate runtime binding {number}: {owner[number]} and {what}")
+        owner.setdefault(number, what.split(":")[1])
+        taken.add(number)
+
     for texture in textures:
         for key in ("sampled_binding", "storage_binding"):
             if key in texture:
-                taken.add(int(texture[key]))
+                take(int(texture[key]), "texture:" + str(texture.get("name", "")))
     for buffer in buffers:
         if "binding" in buffer:
-            taken.add(int(buffer["binding"]))
+            take(int(buffer["binding"]), "buffer:" + str(buffer.get("name", "")))
     free = iter(number for number in PACK_BINDINGS if number not in taken)
     for texture in textures:
         name = str(texture.get("name", ""))

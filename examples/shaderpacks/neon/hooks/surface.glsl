@@ -55,10 +55,10 @@ float neonPuddle(vec3 worldPos, float amount) {
     return smoothstep(threshold, threshold + 0.06, n);
 }
 
-// The weather glows (NEON_WEATHER): falling snow in flakes of pink and cyan, and the frost on windows a cold
-// cyan along the glass's edges. Each is told by its own flag, which a Radiante older than the hooks for them does not
-// have: the code is compiled only where the loader defines the feature (RADIANTE_FEATURE_FALLING_WEATHER,
-// RADIANTE_FEATURE_GLASS_FROST), so the pack runs on that older Radiante too, without them.
+// The frost on windows takes a cold cyan (NEON_WEATHER; the falling rain and snow glow in hooks/falling_weather.glsl).
+// A frost pixel is told by its own flag, which a Radiante older than the frost hook does not have: the code is
+// compiled only where the loader defines the feature (RADIANTE_FEATURE_GLASS_FROST), so the pack runs on that older
+// Radiante too, without it.
 void neonWeatherGlow(inout SampledSurface surface, vec3 colour, float glow) {
     surface.mat.albedo = mix(surface.mat.albedo, colour, 0.6);
     surface.albedoValue.rgb = mix(surface.albedoValue.rgb, colour, 0.6);
@@ -68,17 +68,6 @@ void neonWeatherGlow(inout SampledSurface surface, vec3 colour, float glow) {
 
 void hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce) {
     float weather = clamp(float(NEON_WEATHER), 0.0, 1.0);
-#ifdef RADIANTE_FEATURE_FALLING_WEATHER
-    if (weather > 0.0 && radianteIsSnowfall(surfaceFlags)) {
-        // Each flake its own colour, kept as it falls: the colour goes by the flake's texels in the snow texture
-        // (two by two), which slide down the sheet with it, and by the block column the sheet stands in.
-        dvec2 absolute = dvec2(worldUBO.cameraPos.xz) + dvec2(surface.worldPos.xz);
-        ivec2 column = ivec2(floor(absolute));
-        ivec2 texel = ivec2(floor(surface.uv * g_hookTexelSize)) >> 1;
-        neonWeatherGlow(surface, neonWeatherColour(texel + column * ivec2(131, 977)), 0.6 * weather);
-        return;
-    }
-#endif
 #ifdef RADIANTE_FEATURE_GLASS_FROST
     if (weather > 0.0 && radianteIsGlassFrost(surfaceFlags)) {
         // Tinted only: any glow the camera sees is lifted to a flame's brightness (vptSeenGlowFloor), and the rim of

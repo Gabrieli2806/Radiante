@@ -311,6 +311,12 @@ class ToneMappingModule : public WorldModule, public SharedObject<ToneMappingMod
     uint32_t height_ = 0;
 
     std::shared_ptr<gpu::Sampler> sampler_;
+    // The falling weather the ray tracing lays over the picture (the shader pack's radiante_weather_layer,
+    // common/weather_layer.glsl), sampled at the picture's size; one clear texel without it (weatherLayer).
+    std::shared_ptr<gpu::Sampler> weatherSampler_;
+    std::shared_ptr<gpu::DeviceLocalImage> noWeather_;
+    std::shared_ptr<gpu::DeviceLocalImage> weatherLayer(uint32_t frameIndex) const;
+    void createNoWeather(Framework &framework);
     // One exposure for all frames, carried from each to the next.
     std::shared_ptr<gpu::DeviceLocalBuffer> exposure_;
     // The Bedrock-style histogram (uint[256]) and tone curve (float[256]), one for all frames; the curve is eased from
