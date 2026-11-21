@@ -588,6 +588,21 @@ void sampleSurfaceState(bool useTexture,
             shadowRay.pad0 = 0u;
             g_vptSnowAboveOpen = shadowRay.radiance.x > 0.5;
         }
+        // The top of a fence, a wall or a pane over its column's top, or the top edge of its side: open to the sky?
+        // A ray straight up from just over it tells (vptGroundSnow); only near a side's top edge, where a band may lie.
+        g_vptThinTopOpen = false;
+        if (!snowFree && (upward || (abs(baseGeoNormal.y) < 0.1 && g_vptSnowFaceTop - worldPos.y < 0.3)) &&
+            vptSnowOnThin(worldPos, baseGeoNormal)) {
+            vec3 from = upward ? worldPos + vec3(0.0, 0.01, 0.0)
+                               : vec3(worldPos.x, g_vptSnowFaceTop + 0.01, worldPos.z) - baseGeoNormal * 0.01;
+            shadowRay.radiance = vec3(0.0);
+            shadowRay.throughput = vec3(1.0);
+            shadowRay.insideBoat = 0u;
+            shadowRay.pad0 = BLOCK_LIGHT_QUERY;
+            traceRayEXT(topLevelAS, VPT_SHADOW_RAY_FLAGS, WORLD_MASK, 0, 0, 0, from, 0.0, vec3(0.0, 1.0, 0.0), 384.0, 1);
+            shadowRay.pad0 = 0u;
+            g_vptThinTopOpen = shadowRay.radiance.x > 0.5;
+        }
         vec2 groundSnow = snowFree ? vec2(0.0) : vptGroundSnow(worldPos, baseGeoNormal);
         // The footprints left in the snow (SnowPrints).
         VptSnowPrints prints = upward && skyUBO.snowPrintControl.x > 0.5 && !snowFree

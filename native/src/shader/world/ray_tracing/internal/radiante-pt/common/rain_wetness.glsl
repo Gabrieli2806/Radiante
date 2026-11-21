@@ -588,6 +588,45 @@ vec2 vptSnowHeatMelt(ivec2 column, uint textureId, vec2 withinColumn) {
     return clamp(vec2(snowMelt, frostMelt), vec2(0.0), vec2(1.0));
 }
 
+/** The melt round fire alone (vptColumnHeat 3: fire, lava, magma, a lit campfire or furnace), for the snow on fences,
+ *  walls and panes: a torch or a lantern does not clear the snow off the fence it hangs from or stands by, as its light
+ *  does off the ground round it. */
+vec2 vptSnowFireMelt(ivec2 column, uint textureId, vec2 withinColumn) {
+    float melt = 0.0;
+    for (int dz = -2; dz <= 2; dz++) {
+        for (int dx = -2; dx <= 2; dx++) {
+            if (vptColumnHeat(vptRainColumn(column + ivec2(dx, dz), textureId)) != 3) { continue; }
+            vec2 away = max(abs(withinColumn - (vec2(dx, dz) + 0.5)) - 0.5, vec2(0.0));
+            melt = max(melt, 1.0 - smoothstep(0.0, 2.2, length(away)));
+        }
+    }
+    if (melt <= 0.0) { return vec2(0.0); }
+    vec2 world = vec2(column) + withinColumn;
+    float snowMelt = max(vptRainFray(world, min(melt * 1.35, 1.0), 19.1), melt * melt);
+    float frostMelt = max(vptRainFray(world, min(melt * 1.15, 1.0), 23.7), melt * melt * 0.9);
+    return clamp(vec2(snowMelt, frostMelt), vec2(0.0), vec2(1.0));
+}
+
+// Whether the top (of a face up) or the top edge (of a side) of a fence, a wall or a pane above its column's top is
+// open to the sky: the column map lets the snow fall past them (RainExposure.isThin) and does not know how high they
+// stand, so pt_material.glsl asks with a ray straight up (vptSnowOnThin says when).
+bool g_vptThinTopOpen = false;
+
+/** Whether a face is part of fences, walls or panes standing over its column's top in a snowy column while snow may
+ *  lie: the case g_vptThinTopOpen is needed for. */
+bool vptSnowOnThin(vec3 position, vec3 outwardNormal) {
+    if (skyUBO.rainGradient <= 0.2 && skyUBO.rainStoppedFor > max(VPT_RAIN_DRYING_TIME, 1.0) * 1.35) { return false; }
+    uint textureId = vptRainTextureId();
+    if (textureId == 0u || max(abs(position.x), abs(position.z)) > 238.0) { return false; }
+    ivec3 cameraCell = ivec3(floor(worldUBO.cameraPos.xyz));
+    vec3 relativePosition = position + vec3(worldUBO.cameraPos.xyz - dvec3(cameraCell));
+    bool up = outwardNormal.y > 0.5;
+    ivec2 own = cameraCell.xz + ivec2(floor(relativePosition.xz - (up ? vec2(0.0) : outwardNormal.xz * 0.02)));
+    int blockY = cameraCell.y + int(floor(relativePosition.y - (up ? 0.001 : 0.0)));
+    ivec4 data = vptRainColumn(own, textureId);
+    return data.a != 0 && (data.b & 160) == 32 && vptColumnThinAbove(data) && blockY > vptColumnHeight(data);
+}
+
 /** How far the snow has settled on a top that has soaked this far (g_vptSnowSoak), 0..1: evenly over the Wet-Up
  *  Time while it snows, thinning over VPT_RAIN_DRYING_TIME after it stops; times the Snow & Frost Cover setting. */
 float vptSnowSpread(float topSoak) {
@@ -726,7 +765,10 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
         if (ownData.a == 0 || (ownData.b & 8) != 0) { return vec2(0.0); }
         int ownHeight = vptColumnHeight(ownData);
         bool sheltered = ownHeight > faceBlockY && front != own && g_vptSnowAboveOpen;
-        if (ownHeight != faceBlockY && !sheltered) { return vec2(0.0); }
+        // A fence post, a wall or a pane over the column's top, its top open to the sky: the band runs along its own
+        // top edge, wherever that is (a fence's rails, a wall's lower arms).
+        bool thinSide = vptColumnThinAbove(ownData) && faceBlockY > ownHeight && g_vptThinTopOpen;
+        if (ownHeight != faceBlockY && !sheltered && !thinSide) { return vec2(0.0); }
         float underSince = vptColumnUnderSince(ownData);
         float spread = sheltered ? vptSnowSpread(underSince >= 0.0 ? 1.0 - exp(-underSince) : 1.0)
                                  : vptSnowSpread(vptColumnSince(ownData) >= 0.0 ? vptColumnSoak(ownData) : 1.0);
@@ -740,15 +782,16 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
         float faceTop = g_vptSnowFaceTop > 1e8 ? float(faceBlockY - cameraCell.y + 1)
                                                : g_vptSnowFaceTop + float(worldUBO.cameraPos.y - double(cameraCell.y));
         float topInBlock = faceTop - float(faceBlockY - cameraCell.y);
-        bool topEdge = abs(topInBlock - 1.0) < 0.01 || (sheltered && abs(topInBlock - 0.5) < 0.01) ||
+        bool topEdge = thinSide || abs(topInBlock - 1.0) < 0.01 || (sheltered && abs(topInBlock - 0.5) < 0.01) ||
                        (abs(topInBlock - 0.5) < 0.01 &&
                         vptHalfEdgeOpen(ownData, clamp(relativePosition.xz - vec2(own - cameraCell.xz), 0.0, 1.0)));
         if (!topEdge) { return vec2(0.0); }
         float fringe = vptSnowSideFringe(faceTop - relativePosition.y, along, spread, salt);
         if (fringe <= 0.0) { return vec2(0.0); }
-        vec2 melt = vptSnowHeatMelt(own, textureId, vptRainPixelWithin(clamp(relativePosition.xz -
-                                                                                 vec2(own - cameraCell.xz),
-                                                                             vec2(0.0), vec2(0.9999))));
+        vec2 sideWithin = vptRainPixelWithin(clamp(relativePosition.xz - vec2(own - cameraCell.xz), vec2(0.0),
+                                                   vec2(0.9999)));
+        vec2 melt = thinSide ? vptSnowFireMelt(own, textureId, sideWithin)
+                             : vptSnowHeatMelt(own, textureId, sideWithin);
         return vec2(fringe * fade * (1.0 - melt.x), 0.0);
     }
     fade *= smoothstep(0.5, 0.95, outwardNormal.y);
@@ -765,9 +808,11 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
     // A top above the one its column holds: a block just put down, before RainExposure has read it (that takes a
     // moment). It is bare, as it will be once read; taken for the open top of its column it came out under the snow
     // of the ground it was put on, and lost it a second or two later.
-    // The top of a fence, a wall or a pane standing on the top block takes the snow as that top does.
-    if (center.a != 0 && vptColumnHeight(center) < surfaceBlockY &&
-        !(vptColumnThinAbove(center) && surfaceBlockY == vptColumnHeight(center) + 1)) {
+    // The top of a fence, a wall or a pane over the top block takes the snow as that top does, however high it stands
+    // (a post on a post, the beam of a frame, a wall on a wall), wherever nothing is over it (g_vptThinTopOpen): the
+    // lower rail of a fence, under the upper one, takes none.
+    bool thinTop = vptColumnThinAbove(center) && vptColumnHeight(center) < surfaceBlockY && g_vptThinTopOpen;
+    if (center.a != 0 && vptColumnHeight(center) < surfaceBlockY && !thinTop) {
         return vec2(0.0);
     }
 
@@ -804,7 +849,8 @@ vec2 vptGroundSnow(vec3 position, vec3 outwardNormal) {
         g_vptSnowSoak = max(g_vptSnowSoak, creep);
     }
 
-    vec2 melt = vptSnowHeatMelt(column, textureId, withinColumn);
+    vec2 melt = thinTop ? vptSnowFireMelt(column, textureId, withinColumn)
+                        : vptSnowHeatMelt(column, textureId, withinColumn);
     return vec2(fade * (1.0 - melt.x), fade * (1.0 - melt.y));
 }
 
