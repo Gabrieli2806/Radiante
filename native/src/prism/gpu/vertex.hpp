@@ -47,7 +47,7 @@ struct Vertex {
     // Water surfaces.
     static constexpr uint32_t alphaModeWaterFlag = 0x10u;
     static constexpr uint32_t waterSurfaceBit = 1u << 17u;
-    // Rain and snow sheets, whose texture falls while the sheet stands still.
+    // Rain sheets, whose texture falls while the sheet stands still (snow sheets carry paneCapUpBit instead).
     static constexpr uint32_t alphaModeRainFlag = 0x20u;
     static constexpr uint32_t rainSurfaceBit = 1u << 18u;
     // What the player holds in first person, which glows by its own brightness setting.
@@ -64,6 +64,7 @@ struct Vertex {
     static constexpr uint32_t alphaModeCapUpFlag = 0x400u;
     static constexpr uint32_t alphaModeCapDownFlag = 0x800u;
     static constexpr uint32_t paneSurfaceBit = 1u << 22u;
+    // Without the pane bit, the cap up bit marks falling snow (radianteIsSnowfall, EntityWeather.java).
     static constexpr uint32_t paneCapUpBit = 1u << 23u;
     static constexpr uint32_t paneCapDownBit = 1u << 24u;
     // Ice, slime and honey blocks, which the experimental Bedrock profile sees through as it does glass.

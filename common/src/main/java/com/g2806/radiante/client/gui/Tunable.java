@@ -121,7 +121,8 @@ enum Tunable {
         1024, 128, Format.BLOCKS),
     WATER_WAVES(null, "render_pipeline.module.ray_tracing.attribute.water_wave_strength", 0.0035, 0, 400, 100,
         Format.PERCENT),
-    WATER_RIPPLES(null, "render_pipeline.module.ray_tracing.attribute.water_ripples", 0.01, 0, 200, 100,
+    // Off in Radiante PT (its water stays as Minecraft's); Aether turns the ripples on.
+    WATER_RIPPLES(null, "render_pipeline.module.ray_tracing.attribute.water_ripples", 0.01, 0, 200, 0,
         Format.PERCENT),
     WATER_DENSITY(null, "render_pipeline.module.ray_tracing.attribute.water_density", 0.01, 0, 400, 100,
         Format.PERCENT),

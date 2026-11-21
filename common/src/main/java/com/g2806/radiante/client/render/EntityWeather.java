@@ -84,7 +84,8 @@ public final class EntityWeather {
             .albedoEmission(0.0f)
             .overlayEnabled(false)
             .computeQuadNormals(true)
-            .rain(rain);
+            .rain(rain)
+            .snowfall(!rain);
         writer.reset();
 
         float radiusSq = Math.max(radius * radius, 1);

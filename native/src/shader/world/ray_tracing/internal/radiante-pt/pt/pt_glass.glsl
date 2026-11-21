@@ -241,13 +241,26 @@ bool ptRainPassThrough(uint textureID, vec2 textureUV, vec4 colorLayerValue, vec
     vec3 overcast = vec3(0.1) * smoothstep(-0.3, 0.3, celestialSunDirection().y);
     vec3 around = mix(skyUp, overcast, skyUBO.rainGradient) * RAIN_STREAK_SKY;
     float glint = coverage * max(VPT_RAIN_STREAK_BRIGHTNESS, 0.0) * (1.0 + 2.0 * opacity);
+#ifdef RADIANTE_HOOK_RAIN_STREAK_DEFAULT
     mainRay.radiance += mainRay.throughput * around * glint;
     // Rain Opacity: how much of the view a streak takes away, a little blue-grey.
     mainRay.throughput *= mix(vec3(1.0), vec3(0.82, 0.90, 1.0), coverage * opacity);
+#else
+    // A pack's rain (hooks/rain_streak.glsl): the light the streak adds and what it lets through.
+    vec3 streakLight = around * glint;
+    vec3 streakTint = mix(vec3(1.0), vec3(0.82, 0.90, 1.0), coverage * opacity);
+    hookRainStreak(streakLight, streakTint, coverage, g_hit.rayOrigin + g_hit.rayDir * g_hit.hitT);
+    mainRay.radiance += mainRay.throughput * max(streakLight, vec3(0.0));
+    mainRay.throughput *= clamp(streakTint, vec3(0.0), vec3(1.0));
+#endif
     // The streak falls past a still background: the pixel's motion is the ground's, so DLSS Ray Reconstruction
     // carried the streak over its history and, with the camera still, drew the rain as long straight lines. The
-    // bias mask tells it to take this frame's colour here (main_paths.glsl).
-    if (coverage > 0.02 && (rayBounce(mainRay) == 0u || rayCameraPath(mainRay))) { raySetFavourCurrent(mainRay, true); }
+    // bias mask tells it to take this frame's colour here (main_paths.glsl). Seen through a window or water too (a view
+    // chain): there the pixel's motion is the glass's, still while the camera is, and the rain behind it was blended
+    // away into the history as if it were noise.
+    if (coverage > 0.02 && (rayBounce(mainRay) == 0u || rayCameraPath(mainRay) || g_viewBounce)) {
+        raySetFavourCurrent(mainRay, true);
+    }
     mainRay.hitT = g_hit.hitT;
     mainRay.coneWidth += mainRay.hitT * mainRay.coneSpread;
     mainRay.origin = g_hit.rayOrigin + g_hit.rayDir * (g_hit.hitT + PASS_THROUGH_STEP);

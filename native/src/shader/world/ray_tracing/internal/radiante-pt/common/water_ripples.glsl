@@ -17,7 +17,7 @@
 #endif
 
 #ifndef VPT_WATER_RIPPLES
-#    define VPT_WATER_RIPPLES 1.0
+#    define VPT_WATER_RIPPLES 0.0
 #endif
 
 const float INTERACTIVE_RIPPLE_SLOPE = 0.30;

@@ -14,6 +14,11 @@ public final class RtAttributes {
 
     public static final String MOTION_BLUR_ATTRIBUTE =
         "render_pipeline.module.ray_tracing.attribute.post_enable_motion_blur";
+    /**
+     * Water Foam &amp; Mist (WaterRapids): off in Radiante PT, whose water stays as Minecraft's; a pack such as Aether
+     * turns it on by default. An attribute of the pack rather than a game option so that a pack can.
+     */
+    public static final String WATER_FOAM_ATTRIBUTE = "render_pipeline.module.ray_tracing.attribute.water_foam";
     public static final String DOF_AUTO_FOCUS_ATTRIBUTE =
         "render_pipeline.module.ray_tracing.attribute.post_dof_auto_focus";
     public static final String DEPTH_OF_FIELD_ATTRIBUTE =

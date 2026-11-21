@@ -163,6 +163,11 @@
             }
         }
 
+        // Whether the view met something past its first surface that DLSS is to take from this frame
+        // (rayFavourCurrent: rain, falling snow, particles, lava or a pack's hookChangesEveryFrame surface, seen
+        // through glass or water or in a mirror-like reflection): the guide's alpha was written above, before the
+        // branches were traced, so it is written again after them.
+        bool favourPastFirstHit = false;
         if (isFirstHitNoisy) {
             if (isFirstHitTransparent) {
                 // Only for glass. A translucent solid (ice) is mostly shaded as a surface and only partly let
@@ -214,6 +219,7 @@
                                          hasTransparentReflectionSecondHit, transparentReflectionSecondHitDistance);
                         transparentReflectionRadiance = transparentReflectionRay.radiance;
                         hasTransparentReflection = true;
+                        favourPastFirstHit = favourPastFirstHit || rayFavourCurrent(transparentReflectionRay);
                     }
                     // The two branches replace the ray's own radiance; what the glass in front added goes with them.
                     transparentReflectionRadiance += g_passThroughRadiance;
@@ -232,6 +238,7 @@
                                          hasTransparentRefractionSecondHit, transparentRefractionSecondHitDistance);
                         transparentRefractionRadiance = transparentRefractionRay.radiance;
                         hasTransparentRefraction = true;
+                        favourPastFirstHit = favourPastFirstHit || rayFavourCurrent(transparentRefractionRay);
                     }
 
                     mainRay.radiance = transparentReflectionRadiance + transparentRefractionRadiance;
@@ -247,6 +254,7 @@
                                   sharcParameters, sharcDebugBounceCount, sharcDebugCacheHit,
 #    endif
                                   hasSecondHit, distFirstToSecond);
+                    favourPastFirstHit = rayFavourCurrent(mainRay);
                 }
             } else {
 #if VPT_RESTIR_GI != 0
@@ -283,5 +291,7 @@
                           sharcParameters, sharcDebugBounceCount, sharcDebugCacheHit,
 #    endif
                           hasSecondHit, distFirstToSecond);
+            favourPastFirstHit = rayFavourCurrent(mainRay);
         }
+        if (favourPastFirstHit) { imageStore(specularAlbedoImage, pixel, vec4(specularGuide, 1.0)); }
     }

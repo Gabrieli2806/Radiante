@@ -118,6 +118,7 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     private static final int EMISSION_TINT_FLAG = 1 << 21;
     private boolean water;
     private boolean rain;
+    private boolean snowfall;
     private boolean held;
     private boolean heldLight;
     private float albedoEmission;
@@ -224,6 +225,15 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     /** Whether the vertices from here on are rain sheets, whose texture falls: their motion vectors follow it. */
     public PBRVertexWriter rain(boolean rain) {
         this.rain = rain;
+        return this;
+    }
+
+    /**
+     * Whether the vertices from here on are sheets of falling snow, for shader packs to tell them apart
+     * ({@code radianteIsSnowfall}): carried in the pane's top cap flag without the pane flag, which no pane is.
+     */
+    public PBRVertexWriter snowfall(boolean snowfall) {
+        this.snowfall = snowfall;
         return this;
     }
 
@@ -740,7 +750,8 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         }
         MemoryUtil.memPutInt(v + OFF_ALPHA_MODE,
             this.alphaMode | emissionFlags() | (this.water ? WATER_FLAG : 0) | (this.rain ? RAIN_FLAG : 0) | (this.held ? HELD_FLAG : 0) | (this.glass ? GLASS_FLAG : 0)
-                | (this.plant ? PLANT_FLAG : 0) | this.paneFlags | (this.blend ? BLEND_FLAG : 0)
+                | (this.plant ? PLANT_FLAG : 0) | this.paneFlags | (this.snowfall && this.paneFlags == 0 ? CAP_UP_FLAG : 0)
+                | (this.blend ? BLEND_FLAG : 0)
                 | (this.unlit ? UNLIT_FLAG : 0) | (this.lava ? LAVA_FLAG : 0) | (this.layerOffset != 0.0f ? LAYER_FLAG : 0)
                 | (this.leaves ? LEAVES_FLAG : 0) | (this.glowLight ? GLOW_LIGHT_FLAG : 0) | (this.frost ? FROST_FLAG : 0)
                 | (this.heldLight ? HELD_LIGHT_FLAG : 0)
