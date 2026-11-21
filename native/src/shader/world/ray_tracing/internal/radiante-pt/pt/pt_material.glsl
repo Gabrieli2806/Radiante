@@ -591,7 +591,7 @@ void sampleSurfaceState(bool useTexture,
         vec2 groundSnow = snowFree ? vec2(0.0) : vptGroundSnow(worldPos, baseGeoNormal);
         // The footprints left in the snow (SnowPrints).
         VptSnowPrints prints = upward && skyUBO.snowPrintControl.x > 0.5 && !snowFree
-                                   ? vptSnowPrints(rainPos) : VptSnowPrints(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+                                   ? vptSnowPrints(rainPos) : VptSnowPrints(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
         float frost = 0.0;
         float snowCover = 0.0;
         if (groundSnow.x > 0.0 || groundSnow.y > 0.0) {
@@ -673,7 +673,7 @@ void sampleSurfaceState(bool useTexture,
         // Packed snow, slush, and snow or water carried in on the feet (vptApplySnowPrints): the water and the snow
         // smooth the bumps of the surface under them.
         float printCover = max(max(prints.slush, prints.snow), prints.wet * 0.6);
-        if (prints.packed > 0.0 || printCover > 0.0) {
+        if (prints.packed > 0.0 || printCover > 0.0 || prints.soft > 0.0) {
             vptApplySnowPrints(mat, prints, dryAlbedo);
             shadingNormal = normalizeF(mix(shadingNormal, geometricNormal, printCover * 0.8), geometricNormal);
         }
