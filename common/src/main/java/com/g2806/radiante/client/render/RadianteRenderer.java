@@ -567,6 +567,8 @@ public final class RadianteRenderer {
             // No moon either: what stands for it is the side of the sky opposite the flash, as it always was.
             moonDirection = new Vector3f(sunDirection).negate();
         }
+        // For the dust in its shafts (AmbientParticles): where the sun is, in a sky that has one.
+        AmbientParticles.sun(skyType == 2 ? null : new Vector3f(sunDirection));
         // Vanilla's sun and moon quads lie along the transform's local x and z, so their edges stay lined up with
         // the path; x is the axis the sky turns around.
         Vector3f celestialAxis = celestial.transformDirection(new Vector3f(1.0f, 0.0f, 0.0f)).normalize();

@@ -21,6 +21,13 @@ const uint ALPHA_MODE_DECAL = 10u;
 // opaque and casts no shadow.
 const uint ALPHA_MODE_ADDITIVE = 11u;
 
+// Hot air over lava and fire (HeatHaze on the Java side): a sheet only the camera's view meets, and goes on through
+// bent a little (default.rahit lets everything else by, pt_shade_default.glsl bends the view).
+const uint ALPHA_MODE_HEAT = 12u;
+// How far away the shimmer is still drawn, in blocks, and how much it bends the view (radians, about).
+const float HEAT_HAZE_REACH = 40.0;
+const float HEAT_HAZE_STRENGTH = 0.012;
+
 // Cutout surfaces (leaves, grass) are solid where alpha reaches this and absent elsewhere.
 const float CUTOUT_ALPHA_THRESHOLD = 0.5;
 

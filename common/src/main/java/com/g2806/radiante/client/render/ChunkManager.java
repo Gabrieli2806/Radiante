@@ -96,6 +96,8 @@ public final class ChunkManager {
     static volatile boolean glassFrost;
     static volatile boolean seamlessBlocks;
     static volatile boolean seamlessPanes;
+    /** The air over lava and fire is meshed as sheets the view bends through (HeatHaze). */
+    static volatile boolean heatHaze;
     /**
      * Newest build handed out for each section. A synchronous rebuild can overtake an older one still running in
      * the background, and the older one must not land on top of it afterwards.
@@ -351,6 +353,10 @@ public final class ChunkManager {
             "render_pipeline.module.ray_tracing.attribute.seamless_glass_scope") : null;
         boolean joinBlocks = seamless && (scope == null || !scope.endsWith(".panes"));
         boolean joinPanes = seamless && (scope == null || !scope.endsWith(".blocks"));
+        if (Options.heatHaze != heatHaze) {
+            heatHaze = Options.heatHaze;
+            forceAllDirty = true;
+        }
         if (frost != glassFrost || joinBlocks != seamlessBlocks || joinPanes != seamlessPanes) {
             glassFrost = frost;
             seamlessBlocks = joinBlocks;
@@ -689,6 +695,18 @@ public final class ChunkManager {
                 scratch.fluidIsWater = fluidState.is(net.minecraft.tags.FluidTags.WATER);
                 scratch.fluidIsLava = fluidState.is(net.minecraft.tags.FluidTags.LAVA);
                 fluidRenderer.tesselate(region, pos, fluidOutput, blockState, fluidState);
+                if (heatHaze && scratch.fluidIsLava && region.getBlockState(pos.above()).isAir()) {
+                    // A wall of hot air wherever the lava ends: none between two blocks of it.
+                    boolean[] walls = new boolean[4];
+                    Direction[] sides = {Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST};
+                    for (int side = 0; side < 4; side++) {
+                        walls[side] = !region.getFluidState(pos.relative(sides[side]))
+                            .is(net.minecraft.tags.FluidTags.LAVA);
+                    }
+                    HeatHaze.emit(scratch.writer(ChunkSectionLayer.TRANSLUCENT, atlasId),
+                        SectionPos.sectionRelative(pos.getX()), SectionPos.sectionRelative(pos.getY()),
+                        SectionPos.sectionRelative(pos.getZ()), HeatHaze.LAVA_FROM, HeatHaze.LAVA_TO, walls);
+                }
                 scratch.blockIsGlass = isGlass(blockState);
                 scratch.blockIsBlend = isBlend(blockState);
                 scratch.blockCastScale = EmissionTiles.castScale(blockState);
@@ -733,6 +751,10 @@ public final class ChunkManager {
                 if (scratch.collectPanel && !scratch.panelQuads.isEmpty()) {
                     CutoutWalls.emit(scratch.panelQuads, sx, sy, sz,
                         scratch.writer(scratch.panelQuads.get(0).materialInfo().layer(), atlasId));
+                }
+                if (heatHaze && HeatHaze.burns(blockState) && region.getBlockState(pos.above()).isAir()) {
+                    HeatHaze.emit(scratch.writer(ChunkSectionLayer.TRANSLUCENT, atlasId), sx, sy, sz,
+                        HeatHaze.FIRE_FROM, HeatHaze.FIRE_TO, new boolean[] {true, true, true, true});
                 }
                 if (scratch.collectFrost && !scratch.panelQuads.isEmpty()) {
                     var snow = snowSprite(minecraft);

@@ -56,6 +56,8 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
     public static final int ALPHA_MODE_STOCHASTIC = 9;
     /** A multiplicative decal such as block cracks; see util/alpha_mode.glsl. */
     public static final int ALPHA_MODE_DECAL = 10;
+    /** Hot air: the camera's view goes through it, bent a little; nothing else meets it. See util/alpha_mode.glsl. */
+    public static final int ALPHA_MODE_HEAT = 12;
     /** An additive layer: only its coloured texels are surface; see util/alpha_mode.glsl. */
     public static final int ALPHA_MODE_ADDITIVE = 11;
 
@@ -477,9 +479,10 @@ public final class PBRVertexWriter implements VertexConsumer, AutoCloseable {
         try {
             for (int quad = 0; quad < this.vertexCount / 4; quad++) {
                 long at = this.address + quad * quadBytes;
+                // By its block light alone: a firefly gives itself full block light and no sky light at all, and
+                // asked for both it never glowed - the firefly bush's fireflies were dark specks in the night.
                 boolean full = MemoryUtil.memGetInt(at + OFF_USE_LIGHT) != 0
-                    && MemoryUtil.memGetInt(at + OFF_LIGHT_UV) >= FULL_LIGHT
-                    && MemoryUtil.memGetInt(at + OFF_LIGHT_UV + 4) >= FULL_LIGHT;
+                    && MemoryUtil.memGetInt(at + OFF_LIGHT_UV) >= FULL_LIGHT;
                 if (!full) {
                     continue;
                 }
