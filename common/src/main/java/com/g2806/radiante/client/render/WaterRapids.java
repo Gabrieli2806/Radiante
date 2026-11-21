@@ -31,11 +31,25 @@ public final class WaterRapids {
     private WaterRapids() {
     }
 
+    private static long foamReadAt;
+    private static boolean foam;
+
+    /** Water Foam & Mist, the pack's attribute (RtAttributes.WATER_FOAM_ATTRIBUTE), read a few times a second. */
+    private static boolean foamOn() {
+        long now = System.nanoTime();
+        if (now - foamReadAt > 250_000_000L) {
+            foamReadAt = now;
+            foam = com.g2806.radiante.client.pipeline.PipelineSettings.isShaderPackToggleOn(
+                com.g2806.radiante.client.pipeline.RtAttributes.WATER_FOAM_ATTRIBUTE);
+        }
+        return foam;
+    }
+
     /** Once a client tick. */
     public static void tick(Minecraft minecraft) {
         ClientLevel level = minecraft.level;
         LocalPlayer player = minecraft.player;
-        if (level == null || player == null || !Options.waterFoam || minecraft.isPaused()
+        if (level == null || player == null || !foamOn() || minecraft.isPaused()
             || !RadianteRenderer.isRayTracingEnabled()) {
             return;
         }

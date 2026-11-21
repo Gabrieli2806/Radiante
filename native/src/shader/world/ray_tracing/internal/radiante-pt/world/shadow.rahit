@@ -129,6 +129,9 @@ bool waterSurfaceLight(PositionVertex p0, PositionVertex p1, PositionVertex p2,
     return true;
 }
 
+// How far the frost on glass has grown, as a pack's hooks/glass_frost.glsl has it.
+#include "common/glass_frost.glsl"
+
 void main() {
     if (VPT_LOD_COVERED(ubo)) {
         ignoreIntersectionEXT;
@@ -157,7 +160,7 @@ void main() {
         }
     }
     // Frost on glass casts its shadow only where it has grown (as default.rahit shows it).
-    if (getAlphaMode(flags) == ALPHA_MODE_GLASS_FROST && m0.albedoEmission > glassFrostGrowth(skyUBO.rainWetness.x)) {
+    if (getAlphaMode(flags) == ALPHA_MODE_GLASS_FROST && m0.albedoEmission > VPT_GLASS_FROST_GROWTH()) {
         ignoreIntersectionEXT;
     }
     // A drop of a splash of water (rain on a particle): clear, it casts no shadow of its own. Nor does a redstone

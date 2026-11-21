@@ -9,7 +9,13 @@
         "api_version": 1,
         "extends": "radiante-pt@1",
         "requires": {
-            "features": ["noise", "clock", "player_state", "named_resources", "colour_settings"]
+            "features": [
+                "noise",
+                "clock",
+                "player_state",
+                "named_resources",
+                "colour_settings"
+            ]
         }
     },
     "attributes": [
@@ -321,6 +327,28 @@
             "description": "aether.desc.pixel_weather"
         },
         {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_night_frost",
+            "type": "float_range:0.0-1.0",
+            "default_value": "0.7",
+            "runtime": true,
+            "define": "AETHER_NIGHT_FROST",
+            "group": "aether.group.light",
+            "order": 56,
+            "step": 0.05,
+            "description": "aether.desc.night_frost"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.aether_footprints",
+            "type": "float_range:0.0-2.0",
+            "default_value": "1.5",
+            "runtime": true,
+            "define": "AETHER_FOOTPRINTS",
+            "group": "aether.group.light",
+            "order": 57,
+            "step": 0.1,
+            "description": "aether.desc.footprints"
+        },
+        {
             "name": "render_pipeline.module.ray_tracing.attribute.aether_water_tint",
             "type": "float_range:0.0-1.0",
             "default_value": "0.7",
@@ -497,6 +525,14 @@
         {
             "name": "render_pipeline.module.ray_tracing.attribute.wind",
             "default_value": "render_pipeline.true"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.water_ripples",
+            "default_value": "1.0"
+        },
+        {
+            "name": "render_pipeline.module.ray_tracing.attribute.water_foam",
+            "default_value": "render_pipeline.true"
         }
     ],
     "presets": [
@@ -527,6 +563,8 @@
                 "aether_torch_warmth": 0.6,
                 "aether_wetness": 0.8,
                 "aether_puddles": 0.6,
+                "aether_night_frost": 0.7,
+                "aether_footprints": 1.5,
                 "aether_water_tint": 0.7,
                 "aether_water_clarity": 0.5,
                 "aether_water_calm": 0.5,
@@ -569,6 +607,8 @@
                 "aether_torch_warmth": 0.8,
                 "aether_wetness": 0.8,
                 "aether_puddles": 0.6,
+                "aether_night_frost": 0.7,
+                "aether_footprints": 1.5,
                 "aether_water_tint": 0.7,
                 "aether_water_clarity": 0.5,
                 "aether_water_calm": 0.6,
@@ -611,6 +651,8 @@
                 "aether_torch_warmth": 0.8,
                 "aether_wetness": 1.0,
                 "aether_puddles": 0.8,
+                "aether_night_frost": 1.0,
+                "aether_footprints": 1.8,
                 "aether_water_tint": 0.5,
                 "aether_water_clarity": 0.3,
                 "aether_water_calm": 0.2,
@@ -653,6 +695,8 @@
                 "aether_torch_warmth": 0.3,
                 "aether_wetness": 0.6,
                 "aether_puddles": 0.3,
+                "aether_night_frost": 0.3,
+                "aether_footprints": 1.0,
                 "aether_water_tint": 0.5,
                 "aether_water_clarity": 0.7,
                 "aether_water_calm": 0.5,

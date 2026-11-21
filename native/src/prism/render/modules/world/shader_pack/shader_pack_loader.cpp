@@ -1,5 +1,6 @@
 #include "prism/render/modules/world/shader_pack/shader_pack_loader_internal.hpp"
 #include "prism/render/modules/world/shader_pack/shader_pack_extends.hpp"
+#include "prism/render/modules/world/shader_pack/shader_pack_features.hpp"
 
 #include "prism/render/renderer.hpp"
 #include "prism/util/logging.hpp"
@@ -835,6 +836,10 @@ void ShaderPackLoader::addResourceDefinitions(const std::vector<TextureConfig> &
     };
     definitions.try_emplace("RADIANTE_PACK_SET_RAY_TRACING", "5");
     definitions.try_emplace("RADIANTE_PACK_SET_POST", "4");
+    // What this Radiante offers, for a pack that uses a feature only where it is there ("glass_frost?").
+    for (const std::string_view feature : kShaderPackFeatures) {
+        definitions.try_emplace(macro("RADIANTE_FEATURE_", std::string(feature)), "1");
+    }
     for (const auto &texture : textures) {
         if (texture.sampledBinding.has_value()) {
             definitions.try_emplace(macro("RADIANTE_TEXTURE_", texture.name), std::to_string(*texture.sampledBinding));

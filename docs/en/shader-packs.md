@@ -47,9 +47,12 @@ that does nothing in Radiante PT; put your own file at the same path:
 
 | File | Function | What you can do there |
 | --- | --- | --- |
-| `hooks/surface.glsl` | `hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce)` | Change a surface's colour, roughness, normal or glow after its textures are read. `radianteIsLeaves(surfaceFlags)` and the other tests in `radiante/v1/surface.glsl` say what was hit. `hookTexelCentre(surface.uv, surface.worldPos)` gives the centre of the texel hit; moving `surface.worldPos` there and setting `g_hookViewDir` lights and reflects per texel (see the Pixelated Lighting pack) |
+| `hooks/surface.glsl` | `hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce)` | Change a surface's colour, roughness, normal or glow after its textures are read. `radianteIsLeaves(surfaceFlags)` and the other tests in `radiante/v1/surface.glsl` say what was hit. `hookTexelCentre(surface.uv, surface.worldPos)` gives the centre of the texel hit; moving `surface.worldPos` there and setting `g_hookViewDir` lights and reflects per texel (see the Pixelated Lighting pack). Something that changes by itself every frame (a flicker, a shimmer) calls `hookChangesEveryFrame()`, so DLSS Ray Reconstruction does not blend it away while the camera stands still |
 | `hooks/ray_origins.glsl` | `vec3 hookShadowOffset()`, `vec3 hookReflectionOffset()`, and optionally `float hookShadowSoftness()` (1 keeps radiante-pt's soft sun and moon shadows, 0 makes them hard; a file that has it says so with `#define RADIANTE_HOOK_SHADOW_SOFTNESS 1`) | Move where a hit's shadow rays and reflection rays start, apart from where it is lit: the sun's, block lights' and held lights' shadow rays (still aimed at the same light), the reflection lobe, water's and glass's reflection and mirrors (turned to the view of the moved point; give `material_state` `"depth": 4` in your `textures`). Return offsets from the hit, set in `hookSurface`; zero keeps Radiante PT's. See Pixelated Lighting |
 | `hooks/rain_surface.glsl` | `vec3 hookRainPosition(vec3 worldPos)`, `float hookPuddleEdge(float puddle)` | Where rain's puddles and drop rings are looked up (camera-relative; return it unchanged to keep Radiante PT's) and how hard a puddle's rim is. See Pixelated Lighting |
+| `hooks/footprints.glsl` | `hookFootprints(inout float soft, inout float packed, inout float slush, inout float snow, inout float wet, inout float rim, vec3 position, uint surfaceFlags)` | The footprints of players and mobs, each 0..1: steps in sand and mud (`soft`), snow packed down, slush, snow and water carried onto floors, and the print's rim. Scale them to make prints deeper or fainter, or set them to 0 and draw your own in `hookSurface`. See Aether |
+| `hooks/glass_frost.glsl` | `hookGlassFrost(inout float growth, vec3 position)` | How far the frost on windows has grown, 0..1: Radiante PT grows it while it snows; grow it at other times (Aether: on clear cold nights) or not at all. Its colour is `hookSurface`'s, where `radianteIsGlassFrost(surfaceFlags)` tells a frost pixel |
+| `hooks/rain_streak.glsl` | `hookRainStreak(inout vec3 light, inout vec3 tint, float coverage, vec3 position)` | The look of falling rain: the light a streak adds and what it lets through of the view behind it. Falling snow is a surface, `radianteIsSnowfall(surfaceFlags)` in `hookSurface`. See Neon Dusk, whose rain and snow glow |
 | `hooks/weather_surface.glsl` | `hookWeatherSurface(inout float wetness, inout float puddle, inout float frost, inout float snow, vec3 position, vec3 normal, uint surfaceFlags, vec2 exposure)` | Your own rain and snow on every surface, in any weather: change how wet, how much standing water, rime and snow Radiante PT lays (each 0..1), put them where and when it does not (wet caves, frost at night, snow in any biome), or set them to 0 and draw your own in `hookSurface`; `exposure` is how open the face is to the rain (x) and the snow (y) |
 | `hooks/direct_light.glsl` | `hookDirectLight(SampledSurface surface, vec3 viewDir, vec3 lightDir, float NoL, inout vec3 lightBRDF)` | Change how the sun and moon light a surface (cel bands, light through leaves when `NoL < 0`) |
 | `hooks/water.glsl` | `hookWaterAbsorption(inout vec3 extinction)` | Water colour: how fast each colour is absorbed |
@@ -261,9 +264,14 @@ wind, its live settings) and `RadianteSky` (the sun and the moon, the weather, t
   `"requires": {"radiante": ">=..."}` this version does not meet) is listed with the reason and cannot be chosen.
 - Better than a version number: name what your pack uses in `"requires": {"features": [...]}`, from `noise`
   (`radiante/v1/noise.glsl`), `clock` (`radianteTime`, `radianteFrame`), `player_state` (`radianteHealth`...),
-  `named_resources` (textures without a binding), `shadow_softness` and `colour_settings` (`vec3` sliders). A
-  Radiante without one of them lists the pack with the missing name instead of failing to compile it, on every
-  Minecraft version alike.
+  `named_resources` (textures without a binding), `shadow_softness`, `colour_settings` (`vec3` sliders),
+  `glass_frost` (`hookGlassFrost`, `radianteIsGlassFrost`), `footprints` (`hookFootprints`), `falling_weather`
+  (`hookRainStreak`, `radianteIsSnowfall`) and `changes_every_frame` (`hookChangesEveryFrame`). A Radiante without one of them lists the pack with the missing name
+  instead of failing to compile it, on every Minecraft version alike.
+- A feature your pack can do without: leave it out of the list and test `#ifdef RADIANTE_FEATURE_GLASS_FROST`
+  round the code that uses it. Every Radiante that has the feature defines it for your shaders; an older one leaves
+  it out and still runs your pack, without that part. Neon Dusk does this for its glowing snow and frost. (Listed
+  with a `?`, `"glass_frost?"`, it is skipped by Radiante after 1.2.0, but 1.2.0 refuses the pack over it.)
 
 ## Licence
 

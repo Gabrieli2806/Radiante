@@ -369,9 +369,9 @@ public final class WaterRipples {
             settingReadAt = now;
             String value = PipelineSettings.getShaderPackValue(RIPPLES_ATTRIBUTE);
             try {
-                cachedSetting = value == null ? 1.0f : Float.parseFloat(value.trim());
+                cachedSetting = value == null ? 0.0f : Float.parseFloat(value.trim());
             } catch (NumberFormatException ignored) {
-                cachedSetting = 1.0f;
+                cachedSetting = 0.0f;
             }
         }
         return cachedSetting > 0.001f;

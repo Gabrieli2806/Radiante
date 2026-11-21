@@ -46,7 +46,15 @@ public final class ShaderPackManifest {
         // hookShadowSoftness in hooks/ray_origins.glsl, behind RADIANTE_HOOK_SHADOW_SOFTNESS.
         "shadow_softness",
         // A vec3 attribute shown as three sliders.
-        "colour_settings");
+        "colour_settings",
+        // hooks/glass_frost.glsl, radianteIsGlassFrost.
+        "glass_frost",
+        // hooks/footprints.glsl.
+        "footprints",
+        // hooks/rain_streak.glsl, radianteIsSnowfall.
+        "falling_weather",
+        // hookChangesEveryFrame() for hookSurface.
+        "changes_every_frame");
 
     /** Why a pack cannot be used: a translation key and its argument. */
     public record Problem(String key, String detail) {
@@ -161,6 +169,10 @@ public final class ShaderPackManifest {
                 continue;
             }
             String name = feature.getAsString().trim().toLowerCase(Locale.ROOT);
+            // "name?": used where this Radiante has it (#ifdef RADIANTE_FEATURE_NAME), and no reason to refuse it.
+            if (name.endsWith("?")) {
+                continue;
+            }
             if (!name.isEmpty() && !FEATURES.contains(name)) {
                 return new Problem("screen.radiante.shader_packs.problem.feature", feature.getAsString().trim());
             }

@@ -13,6 +13,11 @@
 //   radiante-pt's own share for leaves, plants, ice and snow; see translucentBackLight in pt/pt_direct.glsl.)
 //   bounce       0 for what the camera sees first, then 1, 2... along the path
 // Globals declared here are visible to hooks/direct_light.glsl, which is included after this file.
+// A surface that changes by itself from frame to frame (a flicker, a shimmer, a scrolling texture) calls
+// hookChangesEveryFrame(): where the camera sees it, DLSS Ray Reconstruction takes this frame's colour there instead
+// of blending the change away into its history while the camera is still (pt/pt_shade_default.glsl). Feature
+// changes_every_frame: #ifdef RADIANTE_FEATURE_CHANGES_EVERY_FRAME round the call keeps the pack working on a
+// Radiante without it.
 void hookSurface(inout SampledSurface surface, uint surfaceFlags, uint bounce) {}
 
 #endif

@@ -83,6 +83,12 @@
 #ifndef AETHER_PUDDLES
 #    define AETHER_PUDDLES 0.6
 #endif
+#ifndef AETHER_NIGHT_FROST
+#    define AETHER_NIGHT_FROST 0.7
+#endif
+#ifndef AETHER_FOOTPRINTS
+#    define AETHER_FOOTPRINTS 1.5
+#endif
 
 // Water
 #ifndef AETHER_WATER_TINT

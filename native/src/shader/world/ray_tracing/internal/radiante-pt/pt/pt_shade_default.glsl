@@ -124,6 +124,8 @@ layout(location = 1) rayPayloadEXT ShadowRay shadowRay;
 #include "pt/pt_side_channels.glsl"
 // A pack's rain and snow on surfaces (hooks/weather_surface.glsl), called by pt_material.glsl; nothing in radiante-pt.
 #include "hooks/weather_surface.glsl"
+// A pack's footprints (hooks/footprints.glsl), called by pt_material.glsl; nothing in radiante-pt.
+#include "hooks/footprints.glsl"
 #include "pt/pt_material.glsl"
 #include "pt/pt_parallax.glsl"
 #include "pt/pt_deferred_shadow.glsl"
@@ -137,6 +139,14 @@ vec3 g_hookPlanePos;
 vec3 g_hookDPdu;
 vec3 g_hookDPdv;
 vec3 g_hookViewDir;
+bool g_hookChangesEveryFrame;
+
+// For hookSurface: this surface changes by itself from one frame to the next in a way the motion of what it lies on
+// does not follow (a flicker, a shimmer, a texture that scrolls or falls). Where the camera sees it, straight or
+// through glass and water, DLSS Ray Reconstruction then takes this frame's colour over its history, as for rain,
+// falling snow, lava and particles; otherwise, with the camera still, it would blend the change away. Each pixel so
+// marked shows more of this frame's noise: for what changes, not for a whole surface.
+void hookChangesEveryFrame() { g_hookChangesEveryFrame = true; }
 
 // The centre of the texture's texel at uv, on the face's plane, in camera-relative world space; worldPos when the
 // surface has no texture. Follows the texture as it lies on the face: cross plants, vines, rotated or inset quads.
@@ -170,6 +180,8 @@ layout(set = 5, binding = RADIANTE_DEBUG_VIEW_STORAGE_BINDING, rgba16f) uniform 
 #include "hooks/cloud_shadow.glsl"
 #include "pt/pt_direct.glsl"
 #include "pt/pt_media.glsl"
+// A pack's falling rain (hooks/rain_streak.glsl), called by pt_glass.glsl; nothing in radiante-pt.
+#include "hooks/rain_streak.glsl"
 #include "pt/pt_glass.glsl"
 
 // Up to how rough a metal is still a mirror looked into (see the mirror path below); LabPBR's smoothest is 0.01.
@@ -417,10 +429,14 @@ void ptShadeDefault(bool viewMark) {
     // steady glow and showed two brightnesses, split along the edge of whatever was in front.
     if (radianteIsLava(packedData) && (bounce == 0u || rayCameraPath(mainRay))) { ptShapeLava(surface); }
     // What the camera sees changes in a way its motion vector does not follow (lava's flowing texture, a translucent
-    // particle, which drifts and is rebuilt each frame): DLSS is told to favour this frame there. Not rain, whose
-    // sheets carry their fall in their motion vectors (transparent_only.rchit).
-    if (bounce == 0u || rayCameraPath(mainRay)) {
-        if (radianteIsLava(packedData) || (radianteIsThin(packedData) && alphaMode == ALPHA_MODE_STOCHASTIC)) {
+    // particle, which drifts and is rebuilt each frame, falling snow, whose sheet stands still while its flakes fall
+    // down it): DLSS is told to favour this frame there, seen straight or through glass and water (a view chain).
+    // Without it the flakes stood still in the air, or faded out, whenever the camera did. Rain is a streak the view
+    // passes through (ptRainPassThrough), favoured there.
+    bool seenThisFrame = bounce == 0u || rayCameraPath(mainRay) || g_viewBounce;
+    if (seenThisFrame) {
+        if (radianteIsLava(packedData) || radianteIsSnowfall(packedData) ||
+            (radianteIsThin(packedData) && alphaMode == ALPHA_MODE_STOCHASTIC)) {
             raySetFavourCurrent(mainRay, true);
         }
     }
@@ -465,7 +481,10 @@ void ptShadeDefault(bool viewMark) {
     g_hookDPdu = dPduWorld;
     g_hookDPdv = dPdvWorld;
     g_hookViewDir = viewDir;
+    g_hookChangesEveryFrame = false;
     hookSurface(surface, packedData, bounce);
+    // A pack's surface that changes by itself from frame to frame (hookChangesEveryFrame): favoured as above.
+    if (g_hookChangesEveryFrame && seenThisFrame) { raySetFavourCurrent(mainRay, true); }
     // What the sun lets through it from behind (translucentBackLight), after the pack's hookSurface, which may set
     // surface.mat.subSurface to say how much.
     if (radianteIsLeaves(packedData)) {

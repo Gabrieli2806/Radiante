@@ -670,6 +670,17 @@ void sampleSurfaceState(bool useTexture,
                                            clamp(snowCover * 0.80 + frost * 0.25, 0.0, 0.88)),
                                        geometricNormal);
         }
+#ifndef RADIANTE_HOOK_FOOTPRINTS_DEFAULT
+        // A pack's footprints (hooks/footprints.glsl), before they are laid on the material.
+        hookFootprints(prints.soft, prints.packed, prints.slush, prints.snow, prints.wet, prints.rim, worldPos,
+                       g_hit.packedData);
+        prints.soft = clamp(prints.soft, 0.0, 1.0);
+        prints.packed = clamp(prints.packed, 0.0, 1.0);
+        prints.slush = clamp(prints.slush, 0.0, 1.0);
+        prints.snow = clamp(prints.snow, 0.0, 1.0);
+        prints.wet = clamp(prints.wet, 0.0, 1.0);
+        prints.rim = clamp(prints.rim, 0.0, 1.0);
+#endif
         // Packed snow, slush, and snow or water carried in on the feet (vptApplySnowPrints): the water and the snow
         // smooth the bumps of the surface under them.
         float printCover = max(max(prints.slush, prints.snow), prints.wet * 0.6);
