@@ -135,6 +135,7 @@ public final class RadianteClient {
         }
 
         com.g2806.radiante.client.photo.PhotoMode.checkWorld(minecraft);
+        com.g2806.radiante.client.render.AmbientParticles.tick(minecraft);
         if (com.g2806.radiante.client.gui.BeforeAfterPreview.hasSession()
             && (!com.g2806.radiante.client.gui.BeforeAfterPreview.matchesLevel(minecraft.level)
                 || !RadianteRenderer.isRayTracingEnabled()
