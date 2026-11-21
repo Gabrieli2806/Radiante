@@ -92,6 +92,10 @@ public final class ChunkManager {
      * renderer neither moves nor refits anything: the wind costs nothing while it is off.
      */
     static volatile boolean wind;
+    /** Frost is laid on glass where it snows (GlassFrost), and the glass Seamless Glass joins into sheets. */
+    static volatile boolean glassFrost;
+    static volatile boolean seamlessBlocks;
+    static volatile boolean seamlessPanes;
     /**
      * Newest build handed out for each section. A synchronous rebuild can overtake an older one still running in
      * the background, and the older one must not land on top of it afterwards.
@@ -338,6 +342,21 @@ public final class ChunkManager {
             wind = windOn;
             forceAllDirty = true;
         }
+        // Frost on glass is meshed (GlassFrost): whether it is on, and which glass Seamless Glass joins, change what
+        // every glass block's section holds.
+        boolean frost = Options.snowAccumulation;
+        boolean seamless = com.g2806.radiante.client.pipeline.PipelineSettings.isShaderPackToggleOn(
+            com.g2806.radiante.client.pipeline.RtAttributes.SEAMLESS_GLASS_ATTRIBUTE);
+        String scope = seamless ? com.g2806.radiante.client.pipeline.PipelineSettings.getShaderPackValue(
+            "render_pipeline.module.ray_tracing.attribute.seamless_glass_scope") : null;
+        boolean joinBlocks = seamless && (scope == null || !scope.endsWith(".panes"));
+        boolean joinPanes = seamless && (scope == null || !scope.endsWith(".blocks"));
+        if (frost != glassFrost || joinBlocks != seamlessBlocks || joinPanes != seamlessPanes) {
+            glassFrost = frost;
+            seamlessBlocks = joinBlocks;
+            seamlessPanes = joinPanes;
+            forceAllDirty = true;
+        }
         boolean rebuildAll = forceAllDirty;
         forceAllDirty = false;
         // Relocating a slot takes the grid's write lock, so a builder thread cannot check the slot's owner, lose it
@@ -501,6 +520,30 @@ public final class ChunkManager {
         return layer;
     }
 
+    /** Whether it snows at a block: where glass frosts over (GlassFrost). False when the biome cannot be read. */
+    private static boolean snowsAt(Minecraft minecraft, BlockPos pos) {
+        ClientLevel level = minecraft.level;
+        if (level == null) {
+            return false;
+        }
+        try {
+            return level.getBiome(pos).value().getPrecipitationAt(pos, level.getSeaLevel())
+                == net.minecraft.world.level.biome.Biome.Precipitation.SNOW;
+        } catch (RuntimeException unloaded) {
+            return false;
+        }
+    }
+
+    /** The snow block's texture, whose colour the frost takes; null before the atlas is there. */
+    private static net.minecraft.client.renderer.texture.TextureAtlasSprite snowSprite(Minecraft minecraft) {
+        try {
+            return minecraft.getAtlasManager().getAtlasOrThrow(net.minecraft.data.AtlasIds.BLOCKS)
+                .getSprite(net.minecraft.resources.Identifier.withDefaultNamespace("block/snow"));
+        } catch (RuntimeException missing) {
+            return null;
+        }
+    }
+
     static double distanceSqr(long sectionNode, BlockPos cameraBlock) {
         return SectionPos.of(sectionNode).center().distSqr(cameraBlock);
     }
@@ -590,7 +633,7 @@ public final class ChunkManager {
             quadWriter.layerOffset(stacked ? COPLANAR_LIFT : 0.0f);
             quadWriter.putBlockBakedQuad(x, y, z, quad, instance);
             quadWriter.layerOffset(0.0f);
-            if (scratch.collectPanel) {
+            if (scratch.collectPanel || scratch.collectFrost) {
                 scratch.panelQuads.add(quad);
             }
         };
@@ -670,6 +713,7 @@ public final class ChunkManager {
                 scratch.wallTorch = blockState.is(Blocks.REDSTONE_WALL_TORCH);
                 scratch.torchHalo = blockState.is(Blocks.REDSTONE_TORCH) || scratch.wallTorch;
                 scratch.collectPanel = blockState.is(BlockTags.DOORS) || blockState.is(BlockTags.TRAPDOORS);
+                scratch.collectFrost = glassFrost && scratch.blockIsGlass && snowsAt(minecraft, pos);
                 scratch.panelQuads.clear();
                 java.util.Arrays.fill(scratch.faceSeen, false);
                 int sx = SectionPos.sectionRelative(pos.getX());
@@ -689,6 +733,18 @@ public final class ChunkManager {
                 if (scratch.collectPanel && !scratch.panelQuads.isEmpty()) {
                     CutoutWalls.emit(scratch.panelQuads, sx, sy, sz,
                         scratch.writer(scratch.panelQuads.get(0).materialInfo().layer(), atlasId));
+                }
+                if (scratch.collectFrost && !scratch.panelQuads.isEmpty()) {
+                    var snow = snowSprite(minecraft);
+                    if (snow != null) {
+                        // Plain opaque squares over the glass: none of the glass's own flags.
+                        PBRVertexWriter frostWriter = scratch.writer(ChunkSectionLayer.SOLID, atlasId).glass(false)
+                            .glassPane(false, false, false).blend(false);
+                        GlassFrost.emit(scratch.panelQuads, region, pos, sx, sy, sz,
+                            scratch.blockIsPane ? seamlessPanes : seamlessBlocks, scratch.blockIsPane, snow,
+                            frostWriter);
+                    }
+                    scratch.collectFrost = false;
                 }
             } else if (pointLights && blockState.is(Blocks.LIGHT)) {
                 // The light block has no model to draw, only its light (BedrockPointLights).
@@ -995,6 +1051,8 @@ public final class ChunkManager {
         private boolean paneCapUp;
         private boolean paneCapDown;
         private final List<BakedQuad> panelQuads = new ArrayList<>();
+        /** The block's faces are kept for the frost laid on its glass (GlassFrost). */
+        boolean collectFrost;
 
         void reset() {
             for (PBRVertexWriter writer : this.writers.values()) {

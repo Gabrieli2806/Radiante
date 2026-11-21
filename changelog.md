@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Frost on windows: where it snows, glass and glass panes grow a ragged rim of frost in from their edges, whole pixels up to three deep. Each block of glass has its own rim; with Seamless Glass only the outer edges of the joined sheet take it (the ones against a wall, a frame or the open air), so a big window is frosted round its border and clear in the middle. Part of Snow & Frost in Cold Biomes.
+
+- Photo Mode's logo is the lantern on nothing (no box behind it) with the name in the game's own font, bold, as the settings' side panel writes it.
+
 - Footprints in sand and mud: every foot that comes down on sand, red sand, mud, clay, soul sand or soul soil (the player's and the mobs') leaves the square of its leg pressed into the ground, a shade darker, its rim less so. The ground settles back a pixel at a time over a few minutes, sooner where rain falls on it. They are left whether or not Snow & Frost is on.
 
 - Photo Mode: Logo, Radiante's logo and name in a corner of the photo (top or bottom, left or right), off unless chosen: shown on screen where it will be and drawn into the saved PNG; the EXR keeps the bare picture.
