@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Snow on the riser of a stair, between its two steps: the band along its top edge from the snow on the upper step, and a drift against its foot from the snow on the lower step, both with their ragged pixel edge, under a roof as in the open. Under a roof or an overhang the riser had none, though the snow blown in lay on both steps.
+
 - Rain and snow over the picture flicker less: each streak and flake is read over the pixel's footprint instead of at one texel (far off, a streak thinner than a pixel came and went from frame to frame), and laid where it was traced, the camera's jitter undone.
 
 - The top rail of fences and the top of fence gates take the snow too: at the height of a dirt path's top (15/16 of a block) they were taken for one and kept bare.
