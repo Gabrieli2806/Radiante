@@ -576,6 +576,7 @@ void sampleSurfaceState(bool useTexture,
         float faceTopY = max(max(g_hit.p0.pos.y, g_hit.p1.pos.y), g_hit.p2.pos.y);
         float hitY = dot(g_hit.bary, vec3(g_hit.p0.pos.y, g_hit.p1.pos.y, g_hit.p2.pos.y));
         g_vptSnowFaceTop = worldPos.y + (faceTopY - hitY);
+        g_vptSnowFaceBottom = worldPos.y + (min(min(g_hit.p0.pos.y, g_hit.p1.pos.y), g_hit.p2.pos.y) - hitY);
         // A side under a roof near its top edge, while snow may lie: is there open air over that edge, or more of the
         // wall (vptGroundSnow)? A short ray along the face just above the edge, towards the block, tells.
         g_vptSnowAboveOpen = false;
@@ -606,6 +607,26 @@ void sampleSurfaceState(bool useTexture,
             g_vptThinTopOpen = shadowRay.radiance.x > 0.5;
         }
         vec2 groundSnow = snowFree ? vec2(0.0) : vptGroundSnow(worldPos, baseGeoNormal);
+        // The riser of a stair takes the snow of the steps either side of it, read where it meets them: the upper
+        // step just behind its top edge, the lower step just in front of its foot (vptStairRiserSnow).
+        if (!snowFree && !upward && vptStairRiser(worldPos, baseGeoNormal)) {
+            float riserSoak = g_vptSnowSoak;
+            vec3 inward = -vec3(baseGeoNormal.x, 0.0, baseGeoNormal.z) * 0.03;
+            g_vptShelterNearest = -1.0;
+            float upperOpen = vptGroundSnow(vec3(worldPos.x, g_vptSnowFaceTop, worldPos.z) + inward,
+                                            vec3(0.0, 1.0, 0.0)).x;
+            float upperSpread = vptSnowSpread(g_vptSnowSoak);
+            g_vptShelterNearest = -1.0;
+            // The lower step at its middle, a quarter block out: under a roof the snow blown in lies deepest at its
+            // open edge, and none reached the riser's foot, so the drift against the riser was missing there.
+            float lowerOpen = vptGroundSnow(vec3(worldPos.x, g_vptSnowFaceBottom, worldPos.z) - inward * 8.0,
+                                            vec3(0.0, 1.0, 0.0)).x;
+            float lowerSpread = vptSnowSpread(g_vptSnowSoak);
+            g_vptSnowSoak = riserSoak;
+            g_vptShelterNearest = -1.0;
+            groundSnow.x = max(groundSnow.x, vptStairRiserSnow(worldPos, baseGeoNormal, upperOpen, upperSpread,
+                                                                lowerOpen, lowerSpread));
+        }
         // The footprints left in the snow (SnowPrints).
         VptSnowPrints prints = upward && skyUBO.snowPrintControl.x > 0.5 && !snowFree
                                    ? vptSnowPrints(rainPos) : VptSnowPrints(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
