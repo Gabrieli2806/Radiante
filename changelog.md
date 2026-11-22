@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Rain and snow over the picture flicker less: each streak and flake is read over the pixel's footprint instead of at one texel (far off, a streak thinner than a pixel came and went from frame to frame), and laid where it was traced, the camera's jitter undone.
+
+- The top rail of fences and the top of fence gates take the snow too: at the height of a dirt path's top (15/16 of a block) they were taken for one and kept bare.
+
 - Settings that compile shaders when changed carry a small blue hourglass after their name, and their description says so: those compiled into the shaders rather than applied live, read from the shader pack (so a pack's own settings on its page are marked the same way). Most settings apply at once and carry none.
 
 - The first start no longer compiles shaders, nor the first start after an update: Radiante PT comes with its shaders already compiled for its default settings (on NVIDIA with and without opacity micromaps, and for the NRD pipelines of AMD and Intel), about 3 MB in the jar. On an RTX 5070 the step went from 14 seconds to under a tenth of one. A setting that is compiled in, changed from its default, still compiles the shaders it touches, as does another shader pack. The shader cache names its files the same on every computer now; the files of earlier versions no longer match and are trimmed away in time.

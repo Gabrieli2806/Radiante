@@ -241,7 +241,18 @@ bool ptRainPassThrough(uint textureID, vec2 textureUV, vec4 colorLayerValue, vec
     }
     bool snow = radianteIsSnowfall(g_hit.packedData);
     if (!radianteIsRain(g_hit.packedData) && !snow) { return false; }
+    // Over the pixel's footprint on the texture (g_textureLodUnclamped, from the ray cone): where a streak is thinner
+    // than the pixel, read at one point it was there in one frame and gone in the next as the jitter moved the
+    // pixel across it, a flicker nothing smooths over the picture. Four reads across the footprint, averaged.
     vec4 texel = sampleTexture(textures[nonuniformEXT(textureID)], textureUV, 0.0, false);
+    float footprint = exp2(clamp(g_textureLodUnclamped, 0.0, 4.0));
+    if (footprint > 1.05) {
+        vec2 step = 0.35 * footprint / vec2(textureSize(textures[nonuniformEXT(textureID)], 0));
+        texel = 0.25 * (sampleTexture(textures[nonuniformEXT(textureID)], textureUV + vec2(-step.x, -step.y), 0.0, false) +
+                        sampleTexture(textures[nonuniformEXT(textureID)], textureUV + vec2(step.x, -step.y), 0.0, false) +
+                        sampleTexture(textures[nonuniformEXT(textureID)], textureUV + vec2(-step.x, step.y), 0.0, false) +
+                        sampleTexture(textures[nonuniformEXT(textureID)], textureUV + vec2(step.x, step.y), 0.0, false));
+    }
     float coverage = clamp(texel.a * colorLayerValue.a, 0.0, 1.0);
     // Only the sky: the weather's vertices carry full light levels everywhere, so they cannot say where a lamp is.
     vec3 skyUp = texture(skyFull, vec3(0.0, 1.0, 0.0)).rgb;

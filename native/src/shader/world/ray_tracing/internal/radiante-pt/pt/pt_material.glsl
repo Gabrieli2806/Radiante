@@ -567,7 +567,9 @@ void sampleSurfaceState(bool useTexture,
         // by the column under them sat on their heads and backs as if they were blocks.
         // Nor on the top of a dirt path or farmland (a sixteenth lower than a block) unless Snow on Paths & Farmland is
         // on, wherever it is: told by the block's column only, the snow drifting in under a roof lay on them.
-        bool pathTop = upward && alphaMode == ALPHA_MODE_OPAQUE && abs(topHeight - 0.9375) < 0.002;
+        // The top rail of a fence and the top of a fence gate stand at the same height, and take the snow as fences do.
+        bool pathTop = upward && alphaMode == ALPHA_MODE_OPAQUE && abs(topHeight - 0.9375) < 0.002 &&
+                       !vptSnowOnThin(worldPos, baseGeoNormal);
         bool snowFree = radianteIsHeld(g_hit.packedData) || useOverlay || (pathTop && !vptSnowOnPaths()) || insideCovered;
         g_vptSnowFootprint = mainRay.coneWidth + g_hit.hitT * mainRay.coneSpread;
         // The top edge of the face hit, from its triangle (chunk geometry is only moved, never turned or scaled).
