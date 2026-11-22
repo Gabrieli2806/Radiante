@@ -2,6 +2,7 @@
 #extension GL_GOOGLE_include_directive : require
 
 #include "classic_tone_curves.glsl"
+#include "common/shared.hpp"
 
 // Tone mapping: the HDR radiance exposed (plus bloom), then either one of the classic curves with the grade, or the
 // Bedrock-style tone curve and grade (method 6), into the displayable image. When HDR output is active (pc.hdrPeak > 1),
@@ -40,6 +41,11 @@ layout(set = 0, binding = 7) uniform sampler2D localToneImage;
 // how much of the picture behind it it hides. Laid over here, after the denoiser and the upscaler, so rain and snow
 // show as they are in this frame instead of smearing through the history those keep. One clear texel without it.
 layout(set = 0, binding = 8) uniform sampler2D weatherLayer;
+// For the camera's jitter this frame (cameraJitter, in render pixels): each pixel of the weather layer was traced at its
+// centre moved by it, so the layer is read as far back.
+layout(set = 0, binding = 9) uniform WorldUniform {
+    WorldUBO worldUBO;
+};
 
 // ToneMappingModulePushConstant (tone_mapping_module.hpp).
 layout(push_constant) uniform PushConstant {
@@ -275,7 +281,7 @@ void main() {
     // dot exactly where the picture is brightest. Not a number becomes black, too bright becomes white.
     hdr = vec3(isnan(hdr.r) ? 0.0 : min(hdr.r, 60000.0), isnan(hdr.g) ? 0.0 : min(hdr.g, 60000.0),
                isnan(hdr.b) ? 0.0 : min(hdr.b, 60000.0));
-    vec4 weather = texture(weatherLayer, texCoord);
+    vec4 weather = texture(weatherLayer, texCoord - worldUBO.cameraJitter / vec2(textureSize(weatherLayer, 0)));
     if (!any(isnan(weather))) {
         hdr = hdr * (1.0 - clamp(weather.a, 0.0, 1.0)) + clamp(weather.rgb, vec3(0.0), vec3(60000.0));
     }

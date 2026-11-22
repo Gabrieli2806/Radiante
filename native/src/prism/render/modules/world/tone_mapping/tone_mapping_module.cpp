@@ -504,6 +504,8 @@ void ToneMappingModule::createDescriptorTables(Framework &framework) {
                 layoutBinding(7, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT),
                 // The falling weather laid over the picture (weatherLayer).
                 layoutBinding(8, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT),
+                // The world uniform, for the camera's jitter the weather layer was traced with.
+                layoutBinding(9, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT),
             },
             {.stageFlags = kComputeAndFragment, .offset = 0, .size = sizeof(ToneMappingModulePushConstant)});
 
@@ -514,6 +516,8 @@ void ToneMappingModule::createDescriptorTables(Framework &framework) {
         frame.descriptors->bindBuffer(lightMeter, 0, 5);
         frame.descriptors->bindBuffer(localTone_, 0, 6);
         frame.descriptors->bindSamplerImageForShader(weatherSampler_, noWeather_, 0, 8);
+        // The world uniform is bound before each draw (record): a build ahead of the first frame (the warm-up)
+        // has none yet.
     }
 }
 
@@ -813,6 +817,11 @@ void ToneMappingModule::record(uint32_t frameIndex, gpu::CommandBuffer &commandB
         weather = noWeather_;
     }
     frame.descriptors->bindSamplerImageForShader(weatherSampler_, weather, 0, 8);
+    // This frame's world uniform: its jitter is the one the layer was traced with. None before the first frame's
+    // upload, when nothing is drawn either.
+    if (auto worldUniform = Renderer::instance().buffers()->worldUniformBuffer()) {
+        frame.descriptors->bindBuffer(worldUniform, 0, 9);
+    }
 
     commandBuffer.beginRenderPass({
         .renderPass = renderPass_,
