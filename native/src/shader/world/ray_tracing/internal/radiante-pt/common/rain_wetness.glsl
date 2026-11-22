@@ -654,6 +654,8 @@ float vptSnowSpread(float topSoak) {
 // open air over its top edge. pt_material.glsl sets them before vptGroundSnow.
 float g_vptSnowFootprint = 0.0;
 float g_vptSnowFaceTop = 1e9;
+// The bottom edge of the face hit, camera-relative, as g_vptSnowFaceTop: for the riser of a stair (vptStairRiser).
+float g_vptSnowFaceBottom = -1e9;
 bool g_vptSnowAboveOpen = false;
 
 float vptSnowSideFringe(float below, float along, float spread, float salt) {
@@ -679,6 +681,45 @@ float vptSnowSideFringe(float below, float along, float spread, float salt) {
     float depth = spread * mix(1.0, 4.6, vptRainValueNoise(vec2(along * 4.0, salt))) / RAIN_PIXELS_PER_BLOCK;
     float band = 1.0 - smoothstep(depth - 0.015, depth + 0.015, below);
     return mix(band, smoothBand, smoothstep(0.03, 0.09, footprint));
+}
+
+/** Whether an upright face is the riser of a stair: inside its block (its own column on both sides of it), from the
+ *  lower step's top, half a block up, to the upper step's, the block's top. Its snow is that of the two steps
+ *  (vptStairRiserSnow), which pt_material.glsl reads where the riser meets them. */
+bool vptStairRiser(vec3 position, vec3 outwardNormal) {
+    if (abs(outwardNormal.y) > 0.1 || g_vptSnowFaceTop > 1e8 || g_vptSnowFaceBottom < -1e8) { return false; }
+    ivec3 cameraCell = ivec3(floor(worldUBO.cameraPos.xyz));
+    vec3 relativePosition = position + vec3(worldUBO.cameraPos.xyz - dvec3(cameraCell));
+    ivec2 front = ivec2(floor(relativePosition.xz + outwardNormal.xz * 0.02));
+    ivec2 own = ivec2(floor(relativePosition.xz - outwardNormal.xz * 0.02));
+    if (front != own) { return false; }
+    float blockY = floor(relativePosition.y);
+    float offset = float(worldUBO.cameraPos.y - double(cameraCell.y));
+    float top = g_vptSnowFaceTop + offset - blockY;
+    float bottom = g_vptSnowFaceBottom + offset - blockY;
+    return abs(top - 1.0) < 0.01 && abs(bottom - 0.5) < 0.01;
+}
+
+/** The snow on the riser of a stair: the band along its top edge from the snow on the upper step, and a drift along
+ *  its foot from the snow on the lower step, each with its ragged pixel edge. upper and lower are how far the snow
+ *  reaches each step where the riser meets it (vptGroundSnow there, under a roof too, where the snow blown in lies),
+ *  upperSpread and lowerSpread how far it has settled there (vptSnowSpread). Under a roof the riser had nothing,
+ *  though the snow lay on both steps either side of it: told by its own column, it is under cover. */
+float vptStairRiserSnow(vec3 position, vec3 outwardNormal, float upper, float upperSpread, float lower,
+                        float lowerSpread) {
+    ivec3 cameraCell = ivec3(floor(worldUBO.cameraPos.xyz));
+    vec3 relativePosition = position + vec3(worldUBO.cameraPos.xyz - dvec3(cameraCell));
+    float offset = float(worldUBO.cameraPos.y - double(cameraCell.y));
+    vec2 sideWorld = vptRainWorldXZ(position);
+    float along = abs(outwardNormal.z) > abs(outwardNormal.x) ? sideWorld.x : sideWorld.y;
+    int faceBlockY = cameraCell.y + int(floor(relativePosition.y));
+    float salt = float(faceBlockY & 255) + (abs(outwardNormal.x) > 0.5 ? 17.0 : 0.0) +
+                 (outwardNormal.x + outwardNormal.z > 0.0 ? 41.0 : 0.0);
+    float band = upper > 0.0 ? vptSnowSideFringe(g_vptSnowFaceTop + offset - relativePosition.y, along,
+                                                 upperSpread * upper, salt) : 0.0;
+    float drift = lower > 0.0 ? vptSnowSideFringe(relativePosition.y - (g_vptSnowFaceBottom + offset), along,
+                                                  lowerSpread * lower * 0.8, salt + 113.0) : 0.0;
+    return max(band, drift);
 }
 
 /** How snowfall and frost reach a surface in a snowy biome.
